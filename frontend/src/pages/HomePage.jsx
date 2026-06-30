@@ -145,7 +145,7 @@ function HomePage() {
       <Navbar />
 
       {/* ─── Hero ─── */}
-      <section className="relative overflow-hidden bg-slate-950 pb-24 pt-36">
+      <section className="relative overflow-hidden bg-gradient-to-b from-base-200 to-base-100 dark:from-slate-950 dark:to-slate-950 pb-24 pt-36">
         {/* Ambient glow orbs */}
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -top-24 left-1/4 h-[520px] w-[520px] rounded-full bg-cyan-500/8 blur-[130px]" />
@@ -165,13 +165,13 @@ function HomePage() {
 
         <div className="relative z-10 mx-auto max-w-6xl px-6 text-center">
           {/* Badge */}
-          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-400">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-400" />
+          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-600 dark:text-cyan-400">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-500 dark:bg-cyan-400" />
             Trusted by 500+ businesses worldwide
           </div>
 
           {/* Headline */}
-          <h1 className="mb-6 text-5xl font-black leading-[1.06] tracking-tight text-white md:text-7xl">
+          <h1 className="mb-6 text-5xl font-black leading-[1.06] tracking-tight text-slate-900 dark:text-white md:text-7xl">
             Inventory management
             <br />
             <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent">
@@ -179,7 +179,7 @@ function HomePage() {
             </span>
           </h1>
 
-          <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-slate-400">
+          <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-slate-600 dark:text-slate-400">
             Real-time stock tracking, a built-in POS, multi-role access control, and powerful
             analytics — everything your team needs to move faster and sell smarter.
           </p>
@@ -195,7 +195,7 @@ function HomePage() {
             </Link>
             <a
               href="#features"
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-8 py-4 text-base font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white"
+              className="inline-flex items-center gap-2 rounded-xl border border-base-300 px-8 py-4 text-base font-semibold text-base-content transition hover:border-base-content/40 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-white"
             >
               Explore Features
             </a>
@@ -279,8 +279,8 @@ function HomePage() {
       </section>
 
       {/* ─── Stats strip ─── */}
-      <section className="border-y border-slate-800 bg-slate-950">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 px-6 md:grid-cols-4 md:divide-x md:divide-slate-800">
+      <section className="border-y border-base-300 bg-base-200 dark:border-slate-800 dark:bg-slate-950">
+        <div className="mx-auto grid max-w-7xl grid-cols-2 px-6 md:grid-cols-4 md:divide-x md:divide-base-300 dark:md:divide-slate-800">
           {[
             { value: '500+', label: 'Active businesses' },
             { value: '99.9%', label: 'Platform uptime' },
@@ -288,8 +288,8 @@ function HomePage() {
             { value: '24/7', label: 'Expert support' },
           ].map((stat) => (
             <div key={stat.label} className="py-10 text-center">
-              <p className="text-4xl font-black text-white">{stat.value}</p>
-              <p className="mt-1 text-sm text-slate-400">{stat.label}</p>
+              <p className="text-4xl font-black text-base-content">{stat.value}</p>
+              <p className="mt-1 text-sm text-base-content/60">{stat.label}</p>
             </div>
           ))}
         </div>
@@ -461,7 +461,7 @@ function HomePage() {
       </section>
 
       {/* ─── CTA Banner ─── */}
-      <section className="relative overflow-hidden bg-slate-950 py-28">
+      <section className="relative overflow-hidden bg-base-200 dark:bg-slate-950 py-28">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute left-1/4 top-0 h-72 w-72 rounded-full bg-cyan-500/10 blur-[90px]" />
           <div className="absolute bottom-0 right-1/4 h-72 w-72 rounded-full bg-indigo-500/10 blur-[90px]" />
@@ -476,16 +476,16 @@ function HomePage() {
         />
 
         <div className="relative z-10 mx-auto max-w-3xl px-6 text-center">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-400">
-            <FiZap className="text-cyan-400" />
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-600 dark:text-cyan-400">
+            <FiZap className="text-cyan-500 dark:text-cyan-400" />
             Start in minutes
           </div>
-          <h2 className="mb-4 text-4xl font-black text-white md:text-5xl">
+          <h2 className="mb-4 text-4xl font-black text-base-content md:text-5xl">
             Ready to take control
             <br />
             of your inventory?
           </h2>
-          <p className="mb-10 text-lg text-slate-400">
+          <p className="mb-10 text-lg text-base-content/60">
             Join hundreds of businesses already running smarter with InventoryPro.
           </p>
 
@@ -499,13 +499,13 @@ function HomePage() {
             </Link>
             <Link
               to="/loginPage"
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-10 py-4 text-base font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white"
+              className="inline-flex items-center gap-2 rounded-xl border border-base-300 px-10 py-4 text-base font-semibold text-base-content transition hover:border-base-content/40 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-white"
             >
               Sign In
             </Link>
           </div>
 
-          <p className="mt-8 text-sm text-slate-600">
+          <p className="mt-8 text-sm text-base-content/50">
             No credit card required · Free to start · Cancel anytime
           </p>
         </div>
