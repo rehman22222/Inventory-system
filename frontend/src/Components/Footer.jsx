@@ -1,41 +1,105 @@
-import React from "react";
-import { FaFacebook, FaTwitter, FaLinkedin, FaInstagram } from "react-icons/fa";
+import React from 'react';
+import { FaFacebook, FaTwitter, FaLinkedin, FaInstagram } from 'react-icons/fa';
+import { FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
 
 function Footer() {
   return (
-    <footer className="bg-blue-950 text-white py-8">
-      <div className="container mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8">
-        
-        <div>
-          <h2 className="text-2xl font-semibold">InventoryPro</h2>
-          <p className="text-gray-300 mt-2">Efficient Inventory Management, Simplified.</p>
-          <p className="text-sm text-gray-400 mt-4">© {new Date().getFullYear()} InventoryPro. All rights reserved.</p>
+    <footer className="bg-slate-950 text-slate-400">
+      <div className="mx-auto max-w-7xl border-t border-slate-800 px-6 py-16">
+        <div className="grid gap-12 md:grid-cols-4">
+          {/* Brand */}
+          <div className="md:col-span-1">
+            <h2 className="text-xl font-black text-white">InventoryPro</h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-500">
+              Efficient inventory management for product-based businesses. Track stock, manage orders, and sell smarter.
+            </p>
+            <div className="mt-6 flex gap-4">
+              {[
+                { icon: FaFacebook, href: '#' },
+                { icon: FaTwitter, href: '#' },
+                { icon: FaLinkedin, href: '#' },
+                { icon: FaInstagram, href: '#' },
+              ].map(({ icon: Icon, href }) => (
+                <a
+                  key={href + Icon}
+                  href={href}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-800 text-slate-500 transition hover:border-slate-600 hover:text-white"
+                >
+                  <Icon />
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Product links */}
+          <div>
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-300">
+              Product
+            </h3>
+            <ul className="space-y-3 text-sm">
+              {['Dashboard', 'Products', 'Point of Sale', 'Analytics', 'Reports'].map((item) => (
+                <li key={item}>
+                  <a href="#" className="transition hover:text-white">
+                    {item}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Company links */}
+          <div>
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-300">
+              Company
+            </h3>
+            <ul className="space-y-3 text-sm">
+              {['About Us', 'Blog', 'Careers', 'Privacy Policy', 'Terms of Service'].map((item) => (
+                <li key={item}>
+                  <a href="#" className="transition hover:text-white">
+                    {item}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Contact */}
+          <div>
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-300">
+              Contact
+            </h3>
+            <ul className="space-y-3 text-sm">
+              <li className="flex items-start gap-3">
+                <FiMail className="mt-0.5 shrink-0 text-cyan-500" />
+                <span>support@inventorypro.com</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <FiPhone className="mt-0.5 shrink-0 text-cyan-500" />
+                <span>022-338-983-902</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <FiMapPin className="mt-0.5 shrink-0 text-cyan-500" />
+                <span>123 Inventory St, Tech City</span>
+              </li>
+            </ul>
+          </div>
         </div>
+      </div>
 
-     
-        <div>
-          <h3 className="text-lg font-medium mb-3">Quick Links</h3>
-          <ul className="space-y-2">
-            <li><a href="#" className="text-gray-300 hover:text-white">Dashboard</a></li>
-            <li><a href="#" className="text-gray-300 hover:text-white">Products</a></li>
-            <li><a href="#" className="text-gray-300 hover:text-white">Reports</a></li>
-            <li><a href="#" className="text-gray-300 hover:text-white">Settings</a></li>
-          </ul>
-        </div>
-
-
-        <div>
-          <h3 className="text-lg font-medium mb-3">Contact Us</h3>
-          <p className="text-gray-300">Email: support@inventorypro.com</p>
-          <p className="text-gray-300">Phone: 022-338-983-902</p>
-          <p className="text-gray-300">Address: 123 Inventory St, Tech City</p>
-
-   
-          <div className="flex space-x-4 mt-4">
-            <a href="#" className="text-gray-300 hover:text-white text-xl"><FaFacebook /></a>
-            <a href="#" className="text-gray-300 hover:text-white text-xl"><FaTwitter /></a>
-            <a href="#" className="text-gray-300 hover:text-white text-xl"><FaLinkedin /></a>
-            <a href="#" className="text-gray-300 hover:text-white text-xl"><FaInstagram /></a>
+      <div className="border-t border-slate-800 px-6 py-5">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 text-sm text-slate-600 md:flex-row">
+          <p>© {new Date().getFullYear()} InventoryPro. All rights reserved.</p>
+          <div className="flex gap-6">
+            <a href="#" className="transition hover:text-slate-400">
+              Privacy
+            </a>
+            <a href="#" className="transition hover:text-slate-400">
+              Terms
+            </a>
+            <a href="#" className="transition hover:text-slate-400">
+              Cookies
+            </a>
           </div>
         </div>
       </div>
