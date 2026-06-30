@@ -14,24 +14,30 @@ const inventoryrouter = require('./Routers/inventoryRouter');
 const salesrouter = require('./Routers/salesRouter');
 const supplierrouter = require('./Routers/supplierrouter');
 const stocktransactionrouter = require('./Routers/stocktransactionrouter');
+const posrouter = require("./Routers/posRouter");
+const localStorageRouter = require("./localStorageRouter");
 
 
 require("dotenv").config();
 const PORT = process.env.PORT || 3003;
+const useLocalStorage = process.env.USE_LOCAL_STORAGE === "true";
 
 const app = express();
 const server = http.createServer(app);
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000,https://advanced-inventory-management-system.vercel.app")
+  .split(",")
+  .map((origin) => origin.trim());
 
 const io = new Server(server, {
   cors: {
-    origin: "https://advanced-inventory-management-system.vercel.app",
+    origin: allowedOrigins,
     methods: ["GET", "POST","PUT","DELETE"],
     credentials: true,
   },
 });
 
 app.use(cors({
-  origin:"https://advanced-inventory-management-system.vercel.app",  
+  origin: allowedOrigins,
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
 }));
@@ -54,22 +60,31 @@ app.use(express.json({limit: "10mb"}));
 app.use(express.json());
 app.set("io", io);
 app.use(cookieParser());
-app.use('/api/auth', authrouter);
-app.use('/api/product', productrouter);
-app.use('/api/order', orderrouter);
-app.use('/api/category', categoryrouter);
-app.use('/api/notification', notificationrouter);
-app.use('/api/activitylogs', activityrouter(app)); 
-app.use('/api/inventory', inventoryrouter);
-app.use('/api/sales', salesrouter);
-app.use('/api/supplier', supplierrouter);
-app.use("/api/stocktransaction", stocktransactionrouter);
+if (useLocalStorage) {
+  app.use("/api", localStorageRouter(app));
+} else {
+  app.use('/api/auth', authrouter);
+  app.use('/api/product', productrouter);
+  app.use('/api/order', orderrouter);
+  app.use('/api/category', categoryrouter);
+  app.use('/api/notification', notificationrouter);
+  app.use('/api/activitylogs', activityrouter(app)); 
+  app.use('/api/inventory', inventoryrouter);
+  app.use('/api/sales', salesrouter);
+  app.use('/api/pos', posrouter);
+  app.use('/api/supplier', supplierrouter);
+  app.use("/api/stocktransaction", stocktransactionrouter);
+}
 
 
 
 
 server.listen(PORT, () => {
-  MongoDBconfig();
+  if (useLocalStorage) {
+    console.log("Using local JSON storage. MongoDB connection skipped.");
+  } else {
+    MongoDBconfig();
+  }
   console.log(`The server is running at port ${PORT}`);
 });
 

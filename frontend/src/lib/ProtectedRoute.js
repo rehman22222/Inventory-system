@@ -1,10 +1,33 @@
 import React from 'react';
-import { Route, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 
-const ProtectedRoute = ({ element, ...rest }) => {
-  const isAuthenticated = localStorage.getItem('user');
+const dashboardByRole = {
+  admin: "/AdminDashboard",
+  manager: "/ManagerDashboard",
+  staff: "/StaffDashboard",
+};
 
-  return isAuthenticated ? element : <Navigate to="/LoginPage" />;
+const getStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("user"));
+  } catch {
+    return null;
+  }
+};
+
+const ProtectedRoute = ({ element, allowedRoles }) => {
+  const user = getStoredUser();
+  const role = user?.role || user?.user?.role || user?.savedUser?.role;
+
+  if (!user) {
+    return <Navigate to="/LoginPage" replace />;
+  }
+
+  if (allowedRoles?.length && !allowedRoles.includes(role)) {
+    return <Navigate to={dashboardByRole[role] || "/LoginPage"} replace />;
+  }
+
+  return element;
 };
 
 export default ProtectedRoute;

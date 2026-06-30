@@ -1,0 +1,1000 @@
+{
+  "version": 3,
+  "users": [
+    {
+      "_id": "admin-demo",
+      "name": "Demo Admin",
+      "email": "admin@example.com",
+      "password": "Admin@123",
+      "role": "admin",
+      "ProfilePic": "",
+      "createdAt": "2026-06-29T18:13:01.730Z",
+      "updatedAt": "2026-06-29T18:13:01.730Z"
+    },
+    {
+      "_id": "manager-demo",
+      "name": "Demo Manager",
+      "email": "manager@example.com",
+      "password": "Manager@123",
+      "role": "manager",
+      "ProfilePic": "",
+      "createdAt": "2026-06-29T18:13:01.730Z",
+      "updatedAt": "2026-06-29T18:13:01.730Z"
+    },
+    {
+      "_id": "staff-demo",
+      "name": "Demo Staff",
+      "email": "staff@example.com",
+      "password": "Staff@123",
+      "role": "staff",
+      "ProfilePic": "",
+      "createdAt": "2026-06-29T18:13:01.730Z",
+      "updatedAt": "2026-06-29T18:13:01.730Z"
+    }
+  ],
+  "categories": [
+    {
+      "_id": "cat-devices",
+      "name": "Devices",
+      "description": "Reusable and rechargeable vape devices",
+      "createdAt": "2026-05-25T18:13:01.729Z",
+      "updatedAt": "2026-06-19T18:13:01.729Z"
+    },
+    {
+      "_id": "cat-liquids",
+      "name": "E-Liquids",
+      "description": "Bottled liquids and flavor refills",
+      "createdAt": "2026-05-26T18:13:01.729Z",
+      "updatedAt": "2026-06-21T18:13:01.729Z"
+    },
+    {
+      "_id": "cat-pods",
+      "name": "Pods",
+      "description": "Replacement pods and cartridges",
+      "createdAt": "2026-05-28T18:13:01.729Z",
+      "updatedAt": "2026-06-21T18:13:01.729Z"
+    },
+    {
+      "_id": "cat-disposables",
+      "name": "Disposables",
+      "description": "Single-use inventory items",
+      "createdAt": "2026-05-30T18:13:01.729Z",
+      "updatedAt": "2026-06-24T18:13:01.729Z"
+    },
+    {
+      "_id": "cat-accessories",
+      "name": "Accessories",
+      "description": "Chargers, cases, coils, and support items",
+      "createdAt": "2026-06-01T18:13:01.729Z",
+      "updatedAt": "2026-06-26T18:13:01.729Z"
+    }
+  ],
+  "products": [
+    {
+      "_id": "prod-slimpen",
+      "barcode": "6291107451235",
+      "name": "Slim Pen Device",
+      "Desciption": "Compact entry-level rechargeable device",
+      "Category": "cat-devices",
+      "Price": 34.99,
+      "quantity": 16,
+      "supplier": "sup-northline",
+      "createdAt": "2026-06-08T18:13:01.730Z",
+      "updatedAt": "2026-06-29T19:27:35.987Z"
+    },
+    {
+      "_id": "prod-mint",
+      "barcode": "6291107451236",
+      "name": "Arctic Mint 30ml",
+      "Desciption": "Cool mint e-liquid bottle",
+      "Category": "cat-liquids",
+      "Price": 15.99,
+      "quantity": 81,
+      "supplier": "sup-cloudnine",
+      "createdAt": "2026-06-09T18:13:01.730Z",
+      "updatedAt": "2026-06-29T19:28:37.126Z"
+    },
+    {
+      "_id": "prod-mango",
+      "barcode": "6291107451237",
+      "name": "Mango Ice 30ml",
+      "Desciption": "Fruit blend e-liquid with cool finish",
+      "Category": "cat-liquids",
+      "Price": 16.99,
+      "quantity": 63,
+      "supplier": "sup-cloudnine",
+      "createdAt": "2026-06-11T18:13:01.730Z",
+      "updatedAt": "2026-06-29T19:27:35.988Z"
+    },
+    {
+      "_id": "prod-pods",
+      "barcode": "6291107451238",
+      "name": "Replacement Pod Pack",
+      "Desciption": "Three-pack replacement pods",
+      "Category": "cat-pods",
+      "Price": 12.99,
+      "quantity": 30,
+      "supplier": "sup-pacific",
+      "createdAt": "2026-06-13T18:13:01.730Z",
+      "updatedAt": "2026-06-29T19:27:35.988Z"
+    },
+    {
+      "_id": "prod-disposable",
+      "barcode": "6291107451239",
+      "name": "Nova Disposable Blueberry",
+      "Desciption": "Single-use blueberry disposable unit",
+      "Category": "cat-disposables",
+      "Price": 19.99,
+      "quantity": 9,
+      "supplier": "sup-pacific",
+      "createdAt": "2026-06-14T18:13:01.730Z",
+      "updatedAt": "2026-06-28T18:13:01.730Z"
+    },
+    {
+      "_id": "prod-coils",
+      "barcode": "6291107451240",
+      "name": "Mesh Coil 5-Pack",
+      "Desciption": "Replacement mesh coils",
+      "Category": "cat-accessories",
+      "Price": 11.49,
+      "quantity": 54,
+      "supplier": "sup-pacific",
+      "createdAt": "2026-06-17T18:13:01.730Z",
+      "updatedAt": "2026-06-25T18:13:01.730Z"
+    },
+    {
+      "_id": "prod-charger",
+      "barcode": "6291107451241",
+      "name": "USB-C Fast Charger",
+      "Desciption": "Certified USB-C charging cable",
+      "Category": "cat-accessories",
+      "Price": 8.99,
+      "quantity": 73,
+      "supplier": "sup-northline",
+      "createdAt": "2026-06-19T18:13:01.730Z",
+      "updatedAt": "2026-06-27T18:13:01.730Z"
+    },
+    {
+      "_id": "e0649dfb7aa7f0fe4f9ee545",
+      "name": "pen device",
+      "Desciption": "etc",
+      "Category": "cat-pods",
+      "Price": 50,
+      "quantity": 20,
+      "createdAt": "2026-06-29T19:25:46.063Z",
+      "updatedAt": "2026-06-29T19:25:46.063Z"
+    }
+  ],
+  "suppliers": [
+    {
+      "_id": "sup-northline",
+      "name": "Northline Distribution",
+      "contactInfo": {
+        "phone": "555-0142",
+        "email": "orders@northline.example",
+        "address": "1840 Harbor Road, Los Angeles, CA"
+      },
+      "productsSupplied": "prod-vaporx",
+      "createdAt": "2026-05-31T18:13:01.729Z",
+      "updatedAt": "2026-06-25T18:13:01.729Z"
+    },
+    {
+      "_id": "sup-cloudnine",
+      "name": "CloudNine Wholesale",
+      "contactInfo": {
+        "phone": "555-0177",
+        "email": "supply@cloudnine.example",
+        "address": "72 Market Street, San Diego, CA"
+      },
+      "productsSupplied": "prod-mint",
+      "createdAt": "2026-06-02T18:13:01.729Z",
+      "updatedAt": "2026-06-23T18:13:01.729Z"
+    },
+    {
+      "_id": "sup-pacific",
+      "name": "Pacific Vape Supply",
+      "contactInfo": {
+        "phone": "555-0188",
+        "email": "sales@pacificvape.example",
+        "address": "404 Commerce Drive, Irvine, CA"
+      },
+      "productsSupplied": "prod-pods",
+      "createdAt": "2026-06-04T18:13:01.729Z",
+      "updatedAt": "2026-06-27T18:13:01.729Z"
+    }
+  ],
+  "orders": [
+    {
+      "_id": "ord-1001",
+      "user": "manager-demo",
+      "Description": "Online order for starter kit bundle",
+      "Product": {
+        "product": "prod-vaporx",
+        "quantity": 2,
+        "price": 59.99
+      },
+      "totalAmount": 119.98,
+      "status": "delivered",
+      "createdAt": "2026-06-22T18:13:01.730Z",
+      "updatedAt": "2026-06-24T18:13:01.730Z"
+    },
+    {
+      "_id": "ord-1002",
+      "user": "staff-demo",
+      "Description": "Counter pickup for mint refill",
+      "Product": {
+        "product": "prod-mint",
+        "quantity": 4,
+        "price": 15.99
+      },
+      "totalAmount": 63.96,
+      "status": "shipped",
+      "createdAt": "2026-06-24T18:13:01.730Z",
+      "updatedAt": "2026-06-26T18:13:01.730Z"
+    },
+    {
+      "_id": "ord-1003",
+      "user": "manager-demo",
+      "Description": "Replacement pods for VIP customer",
+      "Product": {
+        "product": "prod-pods",
+        "quantity": 3,
+        "price": 12.99
+      },
+      "totalAmount": 38.97,
+      "status": "pending",
+      "createdAt": "2026-06-26T18:13:01.730Z",
+      "updatedAt": "2026-06-26T18:13:01.730Z"
+    },
+    {
+      "_id": "ord-1004",
+      "user": "admin-demo",
+      "Description": "Accessory reorder for front display",
+      "Product": {
+        "product": "prod-charger",
+        "quantity": 5,
+        "price": 8.99
+      },
+      "totalAmount": 44.95,
+      "status": "pending",
+      "createdAt": "2026-06-28T18:13:01.730Z",
+      "updatedAt": "2026-06-28T18:13:01.730Z"
+    }
+  ],
+  "sales": [
+    {
+      "_id": "d919f3bd2951a3b4bb91f65d",
+      "customerName": "Walk-in Customer",
+      "receiptNo": "POS-001004",
+      "cashier": "staff-demo",
+      "cashierName": "Demo Staff",
+      "products": {
+        "product": "prod-mint",
+        "quantity": 2,
+        "price": 15.99
+      },
+      "totalAmount": 31.98,
+      "discount": 0,
+      "tax": 0,
+      "paymentStatus": "paid",
+      "paymentMethod": "cash",
+      "status": "completed",
+      "source": "pos",
+      "createdAt": "2026-06-29T19:28:37.126Z",
+      "updatedAt": "2026-06-29T19:28:37.126Z"
+    },
+    {
+      "_id": "773e62f42de8bde526d64d8b",
+      "customerName": "Walk-in Customer",
+      "receiptNo": "POS-001003",
+      "cashier": "staff-demo",
+      "cashierName": "Demo Staff",
+      "products": {
+        "product": "prod-pods",
+        "quantity": 1,
+        "price": 12.99
+      },
+      "totalAmount": 12.99,
+      "discount": 0,
+      "tax": 0,
+      "paymentStatus": "paid",
+      "paymentMethod": "cash",
+      "status": "completed",
+      "source": "pos",
+      "createdAt": "2026-06-29T19:27:35.988Z",
+      "updatedAt": "2026-06-29T19:27:35.988Z"
+    },
+    {
+      "_id": "1a24b23c02d0aecfe59ee0b9",
+      "customerName": "Walk-in Customer",
+      "receiptNo": "POS-001003",
+      "cashier": "staff-demo",
+      "cashierName": "Demo Staff",
+      "products": {
+        "product": "prod-mango",
+        "quantity": 1,
+        "price": 16.99
+      },
+      "totalAmount": 16.99,
+      "discount": 0,
+      "tax": 0,
+      "paymentStatus": "paid",
+      "paymentMethod": "cash",
+      "status": "completed",
+      "source": "pos",
+      "createdAt": "2026-06-29T19:27:35.988Z",
+      "updatedAt": "2026-06-29T19:27:35.988Z"
+    },
+    {
+      "_id": "f20e82dd3a682330f81acda9",
+      "customerName": "Walk-in Customer",
+      "receiptNo": "POS-001003",
+      "cashier": "staff-demo",
+      "cashierName": "Demo Staff",
+      "products": {
+        "product": "prod-mint",
+        "quantity": 1,
+        "price": 15.99
+      },
+      "totalAmount": 15.99,
+      "discount": 0,
+      "tax": 0,
+      "paymentStatus": "paid",
+      "paymentMethod": "cash",
+      "status": "completed",
+      "source": "pos",
+      "createdAt": "2026-06-29T19:27:35.987Z",
+      "updatedAt": "2026-06-29T19:27:35.987Z"
+    },
+    {
+      "_id": "82f4bac1c06b4490a113e909",
+      "customerName": "Walk-in Customer",
+      "receiptNo": "POS-001003",
+      "cashier": "staff-demo",
+      "cashierName": "Demo Staff",
+      "products": {
+        "product": "prod-slimpen",
+        "quantity": 1,
+        "price": 34.99
+      },
+      "totalAmount": 34.99,
+      "discount": 0,
+      "tax": 0,
+      "paymentStatus": "paid",
+      "paymentMethod": "cash",
+      "status": "completed",
+      "source": "pos",
+      "createdAt": "2026-06-29T19:27:35.987Z",
+      "updatedAt": "2026-06-29T19:27:35.987Z"
+    },
+    {
+      "_id": "1134ab7300399b1635fcf096",
+      "customerName": "Walk-in Customer",
+      "receiptNo": "POS-001002",
+      "cashier": "staff-demo",
+      "cashierName": "Demo Staff",
+      "products": {
+        "product": "prod-mint",
+        "quantity": 1,
+        "price": 15.99
+      },
+      "totalAmount": 15.99,
+      "discount": 0,
+      "tax": 0,
+      "paymentStatus": "paid",
+      "paymentMethod": "cash",
+      "status": "completed",
+      "source": "pos",
+      "createdAt": "2026-06-29T18:24:46.226Z",
+      "updatedAt": "2026-06-29T18:24:46.226Z"
+    },
+    {
+      "_id": "f12af053c6fd26b9e7ee12d0",
+      "customerName": "Walk-in Customer",
+      "receiptNo": "POS-001002",
+      "cashier": "staff-demo",
+      "cashierName": "Demo Staff",
+      "products": {
+        "product": "prod-slimpen",
+        "quantity": 1,
+        "price": 34.99
+      },
+      "totalAmount": 34.99,
+      "discount": 0,
+      "tax": 0,
+      "paymentStatus": "paid",
+      "paymentMethod": "cash",
+      "status": "completed",
+      "source": "pos",
+      "createdAt": "2026-06-29T18:24:46.226Z",
+      "updatedAt": "2026-06-29T18:24:46.226Z"
+    },
+    {
+      "_id": "708143e88e2406178b6056d9",
+      "customerName": "Walk-in Customer",
+      "receiptNo": "POS-001002",
+      "cashier": "staff-demo",
+      "cashierName": "Demo Staff",
+      "products": {
+        "product": "prod-vaporx",
+        "quantity": 1,
+        "price": 59.99
+      },
+      "totalAmount": 59.99,
+      "discount": 0,
+      "tax": 0,
+      "paymentStatus": "paid",
+      "paymentMethod": "cash",
+      "status": "completed",
+      "source": "pos",
+      "createdAt": "2026-06-29T18:24:46.226Z",
+      "updatedAt": "2026-06-29T18:24:46.226Z"
+    },
+    {
+      "_id": "13a25e85655b63741436df16",
+      "customerName": "Test Customer",
+      "receiptNo": "POS-001001",
+      "cashier": "admin-demo",
+      "cashierName": "Demo Admin",
+      "products": {
+        "product": "prod-mint",
+        "quantity": 1,
+        "price": 15.99
+      },
+      "totalAmount": 15.99,
+      "discount": 0,
+      "tax": 0,
+      "paymentStatus": "paid",
+      "paymentMethod": "easypaisa",
+      "status": "completed",
+      "source": "pos",
+      "createdAt": "2026-06-29T18:13:15.027Z",
+      "updatedAt": "2026-06-29T18:13:15.027Z"
+    },
+    {
+      "_id": "sale-2001",
+      "customerName": "Jordan Lee",
+      "products": {
+        "product": "prod-vaporx",
+        "quantity": 1,
+        "price": 59.99
+      },
+      "totalAmount": 59.99,
+      "paymentStatus": "paid",
+      "paymentMethod": "creditcard",
+      "status": "completed",
+      "createdAt": "2026-06-23T18:13:01.730Z",
+      "updatedAt": "2026-06-23T18:13:01.730Z"
+    },
+    {
+      "_id": "sale-2002",
+      "customerName": "Avery Smith",
+      "products": {
+        "product": "prod-mango",
+        "quantity": 3,
+        "price": 16.99
+      },
+      "totalAmount": 50.97,
+      "paymentStatus": "paid",
+      "paymentMethod": "cash",
+      "status": "completed",
+      "createdAt": "2026-06-24T18:13:01.730Z",
+      "updatedAt": "2026-06-24T18:13:01.730Z"
+    },
+    {
+      "_id": "sale-2003",
+      "customerName": "Taylor Morgan",
+      "products": {
+        "product": "prod-pods",
+        "quantity": 2,
+        "price": 12.99
+      },
+      "totalAmount": 25.98,
+      "paymentStatus": "pending",
+      "paymentMethod": "banktransfer",
+      "status": "pending",
+      "createdAt": "2026-06-25T18:13:01.730Z",
+      "updatedAt": "2026-06-26T18:13:01.730Z"
+    },
+    {
+      "_id": "sale-2004",
+      "customerName": "Casey Patel",
+      "products": {
+        "product": "prod-coils",
+        "quantity": 4,
+        "price": 11.49
+      },
+      "totalAmount": 45.96,
+      "paymentStatus": "paid",
+      "paymentMethod": "creditcard",
+      "status": "completed",
+      "createdAt": "2026-06-27T18:13:01.730Z",
+      "updatedAt": "2026-06-27T18:13:01.730Z"
+    },
+    {
+      "_id": "sale-2005",
+      "customerName": "Riley Chen",
+      "products": {
+        "product": "prod-disposable",
+        "quantity": 2,
+        "price": 19.99
+      },
+      "totalAmount": 39.98,
+      "paymentStatus": "paid",
+      "paymentMethod": "cash",
+      "status": "completed",
+      "createdAt": "2026-06-28T18:13:01.730Z",
+      "updatedAt": "2026-06-28T18:13:01.730Z"
+    }
+  ],
+  "stockTransactions": [
+    {
+      "_id": "efcaf6ff07daace346b73319",
+      "product": "prod-mint",
+      "type": "Stock-out",
+      "quantity": 2,
+      "supplier": "sup-cloudnine",
+      "reference": "POS-001004",
+      "transactionDate": "2026-06-29T19:28:37.126Z",
+      "createdAt": "2026-06-29T19:28:37.126Z",
+      "updatedAt": "2026-06-29T19:28:37.126Z"
+    },
+    {
+      "_id": "dcc4f1c1566b07457f4f4338",
+      "product": "prod-pods",
+      "type": "Stock-out",
+      "quantity": 1,
+      "supplier": "sup-pacific",
+      "reference": "POS-001003",
+      "transactionDate": "2026-06-29T19:27:35.988Z",
+      "createdAt": "2026-06-29T19:27:35.988Z",
+      "updatedAt": "2026-06-29T19:27:35.988Z"
+    },
+    {
+      "_id": "5e4eee4f618669ef652b8e2c",
+      "product": "prod-mango",
+      "type": "Stock-out",
+      "quantity": 1,
+      "supplier": "sup-cloudnine",
+      "reference": "POS-001003",
+      "transactionDate": "2026-06-29T19:27:35.988Z",
+      "createdAt": "2026-06-29T19:27:35.988Z",
+      "updatedAt": "2026-06-29T19:27:35.988Z"
+    },
+    {
+      "_id": "e0a03117b66d034df4a6bca1",
+      "product": "prod-mint",
+      "type": "Stock-out",
+      "quantity": 1,
+      "supplier": "sup-cloudnine",
+      "reference": "POS-001003",
+      "transactionDate": "2026-06-29T19:27:35.988Z",
+      "createdAt": "2026-06-29T19:27:35.988Z",
+      "updatedAt": "2026-06-29T19:27:35.988Z"
+    },
+    {
+      "_id": "9edbab7eb29dc4116d8cdf3c",
+      "product": "prod-slimpen",
+      "type": "Stock-out",
+      "quantity": 1,
+      "supplier": "sup-northline",
+      "reference": "POS-001003",
+      "transactionDate": "2026-06-29T19:27:35.987Z",
+      "createdAt": "2026-06-29T19:27:35.987Z",
+      "updatedAt": "2026-06-29T19:27:35.987Z"
+    },
+    {
+      "_id": "7ee7e67626676f99f28bf7d5",
+      "product": "prod-mint",
+      "type": "Stock-out",
+      "quantity": 1,
+      "supplier": "sup-cloudnine",
+      "reference": "POS-001002",
+      "transactionDate": "2026-06-29T18:24:46.226Z",
+      "createdAt": "2026-06-29T18:24:46.226Z",
+      "updatedAt": "2026-06-29T18:24:46.226Z"
+    },
+    {
+      "_id": "2840f7b5294d1409a6cf822b",
+      "product": "prod-slimpen",
+      "type": "Stock-out",
+      "quantity": 1,
+      "supplier": "sup-northline",
+      "reference": "POS-001002",
+      "transactionDate": "2026-06-29T18:24:46.226Z",
+      "createdAt": "2026-06-29T18:24:46.226Z",
+      "updatedAt": "2026-06-29T18:24:46.226Z"
+    },
+    {
+      "_id": "cc7f4bdde575714d5364f82b",
+      "product": "prod-vaporx",
+      "type": "Stock-out",
+      "quantity": 1,
+      "supplier": "sup-northline",
+      "reference": "POS-001002",
+      "transactionDate": "2026-06-29T18:24:46.226Z",
+      "createdAt": "2026-06-29T18:24:46.226Z",
+      "updatedAt": "2026-06-29T18:24:46.226Z"
+    },
+    {
+      "_id": "41e66abb48f8f4afb3e85952",
+      "product": "prod-mint",
+      "type": "Stock-out",
+      "quantity": 1,
+      "supplier": "sup-cloudnine",
+      "reference": "POS-001001",
+      "transactionDate": "2026-06-29T18:13:15.027Z",
+      "createdAt": "2026-06-29T18:13:15.027Z",
+      "updatedAt": "2026-06-29T18:13:15.027Z"
+    },
+    {
+      "_id": "stk-3001",
+      "product": "prod-vaporx",
+      "type": "Stock-in",
+      "quantity": 50,
+      "supplier": "sup-northline",
+      "transactionDate": "2026-06-17T18:13:01.730Z",
+      "createdAt": "2026-06-17T18:13:01.730Z",
+      "updatedAt": "2026-06-17T18:13:01.730Z"
+    },
+    {
+      "_id": "stk-3002",
+      "product": "prod-mint",
+      "type": "Stock-in",
+      "quantity": 120,
+      "supplier": "sup-cloudnine",
+      "transactionDate": "2026-06-18T18:13:01.730Z",
+      "createdAt": "2026-06-18T18:13:01.730Z",
+      "updatedAt": "2026-06-18T18:13:01.730Z"
+    },
+    {
+      "_id": "stk-3003",
+      "product": "prod-pods",
+      "type": "Stock-in",
+      "quantity": 75,
+      "supplier": "sup-pacific",
+      "transactionDate": "2026-06-20T18:13:01.730Z",
+      "createdAt": "2026-06-20T18:13:01.730Z",
+      "updatedAt": "2026-06-20T18:13:01.730Z"
+    },
+    {
+      "_id": "stk-3004",
+      "product": "prod-vaporx",
+      "type": "Stock-out",
+      "quantity": 8,
+      "supplier": "sup-northline",
+      "transactionDate": "2026-06-23T18:13:01.730Z",
+      "createdAt": "2026-06-23T18:13:01.730Z",
+      "updatedAt": "2026-06-23T18:13:01.730Z"
+    },
+    {
+      "_id": "stk-3005",
+      "product": "prod-mango",
+      "type": "Stock-out",
+      "quantity": 14,
+      "supplier": "sup-cloudnine",
+      "transactionDate": "2026-06-25T18:13:01.730Z",
+      "createdAt": "2026-06-25T18:13:01.730Z",
+      "updatedAt": "2026-06-25T18:13:01.730Z"
+    },
+    {
+      "_id": "stk-3006",
+      "product": "prod-disposable",
+      "type": "Stock-out",
+      "quantity": 21,
+      "supplier": "sup-pacific",
+      "transactionDate": "2026-06-27T18:13:01.730Z",
+      "createdAt": "2026-06-27T18:13:01.730Z",
+      "updatedAt": "2026-06-27T18:13:01.730Z"
+    }
+  ],
+  "notifications": [
+    {
+      "_id": "not-5001",
+      "name": "Low stock alert",
+      "type": "Nova Disposable Blueberry is below the reorder threshold.",
+      "createdAt": "2026-06-28T18:13:01.730Z",
+      "updatedAt": "2026-06-28T18:13:01.730Z"
+    },
+    {
+      "_id": "not-5002",
+      "name": "New shipment received",
+      "type": "CloudNine Wholesale shipment has been logged into stock.",
+      "createdAt": "2026-06-26T18:13:01.730Z",
+      "updatedAt": "2026-06-26T18:13:01.730Z"
+    },
+    {
+      "_id": "not-5003",
+      "name": "Demo mode active",
+      "type": "MongoDB is skipped. Data is stored in backend/data/local-store.json.",
+      "createdAt": "2026-06-25T18:13:01.730Z",
+      "updatedAt": "2026-06-25T18:13:01.730Z"
+    }
+  ],
+  "activityLogs": [
+    {
+      "_id": "17e83467ac242e97594c04ec",
+      "action": "POS Checkout",
+      "description": "Receipt POS-001004 completed for Walk-in Customer.",
+      "entity": "order",
+      "entityId": null,
+      "userId": "staff-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-29T19:28:37.127Z",
+      "updatedAt": "2026-06-29T19:28:37.127Z"
+    },
+    {
+      "_id": "43dc2399340f3008e73a2ff7",
+      "action": "POS Checkout",
+      "description": "Receipt POS-001003 completed for Walk-in Customer.",
+      "entity": "order",
+      "entityId": null,
+      "userId": "staff-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-29T19:27:35.988Z",
+      "updatedAt": "2026-06-29T19:27:35.988Z"
+    },
+    {
+      "_id": "fe7addc82eed9c9a931fe0bb",
+      "action": "User Login",
+      "description": "User Demo Staff logged in.",
+      "entity": "user",
+      "entityId": "staff-demo",
+      "userId": "staff-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-29T19:27:15.149Z",
+      "updatedAt": "2026-06-29T19:27:15.149Z"
+    },
+    {
+      "_id": "5d92a26e3876480ae07a1a5b",
+      "action": "User Login",
+      "description": "User Demo Manager logged in.",
+      "entity": "user",
+      "entityId": "manager-demo",
+      "userId": "manager-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-29T19:26:48.021Z",
+      "updatedAt": "2026-06-29T19:26:48.021Z"
+    },
+    {
+      "_id": "f399c00b5ac53aeb1f558377",
+      "action": "Add Product",
+      "description": "Product pen device was added",
+      "entity": "product",
+      "entityId": "e0649dfb7aa7f0fe4f9ee545",
+      "userId": "manager-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-29T19:25:46.063Z",
+      "updatedAt": "2026-06-29T19:25:46.063Z"
+    },
+    {
+      "_id": "62fea31459821ff23358fc6b",
+      "action": "User Login",
+      "description": "User Demo Admin logged in.",
+      "entity": "user",
+      "entityId": "admin-demo",
+      "userId": "admin-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-29T19:24:57.111Z",
+      "updatedAt": "2026-06-29T19:24:57.111Z"
+    },
+    {
+      "_id": "3808c0c472bd8698b41b09dc",
+      "action": "User Login",
+      "description": "User Demo Admin logged in.",
+      "entity": "user",
+      "entityId": "admin-demo",
+      "userId": "admin-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-29T19:24:34.033Z",
+      "updatedAt": "2026-06-29T19:24:34.033Z"
+    },
+    {
+      "_id": "8849ce56546e5af4aaa7c8bb",
+      "action": "User Login",
+      "description": "User Demo Admin logged in.",
+      "entity": "user",
+      "entityId": "admin-demo",
+      "userId": "admin-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-29T19:24:06.379Z",
+      "updatedAt": "2026-06-29T19:24:06.379Z"
+    },
+    {
+      "_id": "52418e6e6c67d1ad47b6a14f",
+      "action": "User Login",
+      "description": "User Demo Admin logged in.",
+      "entity": "user",
+      "entityId": "admin-demo",
+      "userId": "admin-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-29T19:22:59.949Z",
+      "updatedAt": "2026-06-29T19:22:59.949Z"
+    },
+    {
+      "_id": "47eda0859902b77586ddd57c",
+      "action": "User Login",
+      "description": "User Demo Admin logged in.",
+      "entity": "user",
+      "entityId": "admin-demo",
+      "userId": "admin-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-29T19:16:43.225Z",
+      "updatedAt": "2026-06-29T19:16:43.226Z"
+    },
+    {
+      "_id": "61b84dad4928b13e011fa140",
+      "action": "User Login",
+      "description": "User Demo Admin logged in.",
+      "entity": "user",
+      "entityId": "admin-demo",
+      "userId": "admin-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-29T19:13:31.081Z",
+      "updatedAt": "2026-06-29T19:13:31.081Z"
+    },
+    {
+      "_id": "10eabba9ecb1f0efc510a089",
+      "action": "User Login",
+      "description": "User Demo Admin logged in.",
+      "entity": "user",
+      "entityId": "admin-demo",
+      "userId": "admin-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-29T18:39:24.810Z",
+      "updatedAt": "2026-06-29T18:39:24.810Z"
+    },
+    {
+      "_id": "8da3ac1b87f66470180e9f31",
+      "action": "User Login",
+      "description": "User Demo Admin logged in.",
+      "entity": "user",
+      "entityId": "admin-demo",
+      "userId": "admin-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-29T18:35:55.411Z",
+      "updatedAt": "2026-06-29T18:35:55.411Z"
+    },
+    {
+      "_id": "c126e5dcd07685e0a81e09f6",
+      "action": "POS Checkout",
+      "description": "Receipt POS-001002 completed for Walk-in Customer.",
+      "entity": "order",
+      "entityId": null,
+      "userId": "staff-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-29T18:24:46.226Z",
+      "updatedAt": "2026-06-29T18:24:46.226Z"
+    },
+    {
+      "_id": "2b6220ed13020d704aec7c0f",
+      "action": "POS Checkout",
+      "description": "Receipt POS-001001 completed for Test Customer.",
+      "entity": "order",
+      "entityId": null,
+      "userId": "admin-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-29T18:13:15.028Z",
+      "updatedAt": "2026-06-29T18:13:15.028Z"
+    },
+    {
+      "_id": "act-4001",
+      "action": "Stock Review",
+      "description": "Low stock item flagged: Nova Disposable Blueberry.",
+      "entity": "product",
+      "entityId": "prod-disposable",
+      "userId": "manager-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-28T18:13:01.730Z",
+      "updatedAt": "2026-06-28T18:13:01.730Z"
+    },
+    {
+      "_id": "act-4002",
+      "action": "Create Order",
+      "description": "Order ORD-1004 was created for display accessories.",
+      "entity": "order",
+      "entityId": "ord-1004",
+      "userId": "admin-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-28T18:13:01.730Z",
+      "updatedAt": "2026-06-28T18:13:01.730Z"
+    },
+    {
+      "_id": "act-4003",
+      "action": "Add Product",
+      "description": "Product USB-C Fast Charger was added.",
+      "entity": "product",
+      "entityId": "prod-charger",
+      "userId": "manager-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-27T18:13:01.730Z",
+      "updatedAt": "2026-06-27T18:13:01.730Z"
+    },
+    {
+      "_id": "act-4004",
+      "action": "Sale Completed",
+      "description": "Sale completed for Casey Patel.",
+      "entity": "order",
+      "entityId": "sale-2004",
+      "userId": "staff-demo",
+      "ipAddress": "::1",
+      "createdAt": "2026-06-27T18:13:01.730Z",
+      "updatedAt": "2026-06-27T18:13:01.730Z"
+    }
+  ],
+  "inventories": [
+    {
+      "_id": "inv-prod-vaporx",
+      "product": "prod-vaporx",
+      "quantity": 42,
+      "status": "in-stock",
+      "lastUpdated": "2026-06-27T18:13:01.730Z",
+      "createdAt": "2026-06-07T18:13:01.730Z",
+      "updatedAt": "2026-06-27T18:13:01.730Z"
+    },
+    {
+      "_id": "inv-prod-slimpen",
+      "product": "prod-slimpen",
+      "quantity": 18,
+      "status": "in-stock",
+      "lastUpdated": "2026-06-27T18:13:01.730Z",
+      "createdAt": "2026-06-08T18:13:01.730Z",
+      "updatedAt": "2026-06-27T18:13:01.730Z"
+    },
+    {
+      "_id": "inv-prod-mint",
+      "product": "prod-mint",
+      "quantity": 86,
+      "status": "in-stock",
+      "lastUpdated": "2026-06-28T18:13:01.730Z",
+      "createdAt": "2026-06-09T18:13:01.730Z",
+      "updatedAt": "2026-06-28T18:13:01.730Z"
+    },
+    {
+      "_id": "inv-prod-mango",
+      "product": "prod-mango",
+      "quantity": 64,
+      "status": "in-stock",
+      "lastUpdated": "2026-06-28T18:13:01.730Z",
+      "createdAt": "2026-06-11T18:13:01.730Z",
+      "updatedAt": "2026-06-28T18:13:01.730Z"
+    },
+    {
+      "_id": "inv-prod-pods",
+      "product": "prod-pods",
+      "quantity": 31,
+      "status": "in-stock",
+      "lastUpdated": "2026-06-26T18:13:01.730Z",
+      "createdAt": "2026-06-13T18:13:01.730Z",
+      "updatedAt": "2026-06-26T18:13:01.730Z"
+    },
+    {
+      "_id": "inv-prod-disposable",
+      "product": "prod-disposable",
+      "quantity": 9,
+      "status": "low-stock",
+      "lastUpdated": "2026-06-28T18:13:01.730Z",
+      "createdAt": "2026-06-14T18:13:01.730Z",
+      "updatedAt": "2026-06-28T18:13:01.730Z"
+    },
+    {
+      "_id": "inv-prod-coils",
+      "product": "prod-coils",
+      "quantity": 54,
+      "status": "in-stock",
+      "lastUpdated": "2026-06-25T18:13:01.730Z",
+      "createdAt": "2026-06-17T18:13:01.730Z",
+      "updatedAt": "2026-06-25T18:13:01.730Z"
+    },
+    {
+      "_id": "inv-prod-charger",
+      "product": "prod-charger",
+      "quantity": 73,
+      "status": "in-stock",
+      "lastUpdated": "2026-06-27T18:13:01.730Z",
+      "createdAt": "2026-06-19T18:13:01.730Z",
+      "updatedAt": "2026-06-27T18:13:01.730Z"
+    }
+  ],
+  "posSequence": 1004
+}

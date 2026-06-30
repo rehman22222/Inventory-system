@@ -28,6 +28,9 @@ const StockTranscationSchema= new mongoose.Schema({
     type:mongoose.Schema.Types.ObjectId,
     ref:"Supplier"
    },
+   reference:{
+    type:String
+   },
 },
 { timestamps: true }
 

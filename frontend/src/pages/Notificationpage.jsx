@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 import image from "../images/user.png";
 import { createNotification, getAllNotifications, deleteNotification } from "../features/notificationSlice"; 
 import { io } from "socket.io-client";
+import { socketURL } from "../lib/socket";
 import toast from 'react-hot-toast';
 import FormattedTime from "../lib/FormattedTime ";
 
@@ -19,7 +20,7 @@ function NotificationPage() {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const newSocket = io("https://advanced-inventory-management-system-v1.onrender.com", {
+    const newSocket = io(socketURL, {
       withCredentials: true,
       transports: ["websocket", "polling"],
     });

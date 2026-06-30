@@ -1,5 +1,6 @@
 import { useDispatch, useSelector } from "react-redux";
 import { io } from "socket.io-client";
+import { socketURL } from "../lib/socket";
 import { useEffect, useState } from "react";
 import { getAllActivityLogs, getsingleUserActivityLogs } from "../features/activitySlice";
 import TopNavbar from "../Components/TopNavbar";
@@ -14,7 +15,7 @@ function Activitylogpage() {
   const { Authuser } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
 
-  const socket = io("https://advanced-inventory-management-system-v1.onrender.com", {
+  const socket = io(socketURL, {
      withCredentials: true,
      transports: ["websocket", "polling"], });
 
@@ -31,7 +32,7 @@ function Activitylogpage() {
     return () => {
       socket.off("newActivityLog");
     };
-  }, [dispatch, Authuser.id]);
+  }, [dispatch, Authuser?.id]);
 
   useEffect(() => {
     setLogs(activityLogs);

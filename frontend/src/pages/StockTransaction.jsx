@@ -19,7 +19,7 @@ import {
 import toast from "react-hot-toast";
 
 function StockTransaction() {
-  const { getallStocks, isgetallStocks, iscreatedStocks,searchdata } = useSelector(
+  const { getallStocks, iscreatedStocks,searchdata } = useSelector(
     (state) => state.stocktransaction
   );
 
@@ -37,7 +37,6 @@ const[query,setquery]=useState("");
   const [quantity, setquantity] = useState("");
   const [supplier, setsupplier] = useState("");
   const [isFormVisible, setIsFormVisible] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
 
 
   useEffect(() => {
@@ -110,7 +109,6 @@ const[query,setquery]=useState("");
           <button
             onClick={() => {
               setIsFormVisible(true);
-              setSelectedProduct(null);
             }}
             className="bg-blue-800 text-white w-40 h-12 rounded-lg flex items-center justify-center"
           >
@@ -232,13 +230,13 @@ const[query,setquery]=useState("");
                        <td className="px-3 py-2 border">
                         <FormattedTime  timestamp={Stocks.transactionDate}/>
                        </td>
-                      <td  className="px-3 py-2 border">box</td>
+                      <td  className="px-3 py-2 border">{Stocks.product?.name || "No Product"}</td>
                      
                       <td className="px-3 py-2 border">
                         {Stocks.type}
                       </td>
                       <td className="px-3 py-2 border">{Stocks.quantity}</td>
-                      <td  className="px-3 py-2 border">Abebe</td>
+                      <td  className="px-3 py-2 border">{Stocks.supplier?.name || "No Supplier"}</td>
                     </tr>
                   ))
                 ) : (

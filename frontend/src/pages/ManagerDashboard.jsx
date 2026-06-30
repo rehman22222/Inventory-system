@@ -6,7 +6,7 @@ function ManagerDashboard() {
   return (
     <div className="flex bg-gray-200 min-h-screen">
 
-      <div className="fixed h-full">
+      <div className="fixed inset-y-0 left-0">
         <Sidebar />
       </div>
 

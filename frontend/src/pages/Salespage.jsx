@@ -15,7 +15,6 @@ import toast from "react-hot-toast";
 
 function Salespage() {
   const {   getallsales, searchdata,
-    isgetallsales,  editedsales, iscreatedsales
      } = useSelector(
     (state) => state.sales
   );
@@ -27,7 +26,6 @@ function Salespage() {
   const [query, setquery] = useState("");
 
   const [name, setName] = useState("");
-  const [Category, setCategory] = useState("");
   const [Product, setProduct] = useState("");
   const [Payment, setPayment] = useState("");
   const [Price, setPrice] = useState("");
@@ -41,8 +39,9 @@ function Salespage() {
 
   useEffect(() => {
    dispatch(gettingallSales())
+   dispatch(gettingallproducts())
   
-  }, [dispatch,  CreateSales,EditSales]);
+  }, [dispatch]);
 
  
   useEffect(() => {
@@ -221,7 +220,7 @@ function Salespage() {
                   className="w-full h-10 px-2 border-2 rounded-lg mt-2"
                 >
                   <option value="">Select a Product</option>
-                  {getallproduct.map((product) => (
+                  {getallproduct?.map((product) => (
                     <option key={product._id} value={product._id}>
                       {product.name}
                     </option>

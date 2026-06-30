@@ -1,6 +1,8 @@
 import { io } from "socket.io-client";
 
-const socket = io("https://advanced-inventory-management-system-v1.onrender.com", {
+export const socketURL = process.env.REACT_APP_BACKEND_URL || "http://localhost:3003";
+
+const socket = io(socketURL, {
   withCredentials: true,
   transports: ["websocket", "polling"],
 });

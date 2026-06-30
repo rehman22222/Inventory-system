@@ -1,166 +1,113 @@
-import React from 'react';
+import React from "react";
 import { AiOutlineProduct } from "react-icons/ai";
 import { RiStockLine } from "react-icons/ri";
-import { FiLogOut, FiShoppingCart } from "react-icons/fi";
-import { MdOutlineInventory2, MdPointOfSale, MdOutlineCategory } from "react-icons/md";
+import { FiCreditCard, FiLogOut, FiShoppingCart } from "react-icons/fi";
+import { MdOutlineCategory, MdPointOfSale } from "react-icons/md";
 import { TfiSupport } from "react-icons/tfi";
 import { IoNotificationsOutline } from "react-icons/io5";
 import { RxActivityLog, RxDashboard } from "react-icons/rx";
-import { Link } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { logout } from "../features/authSlice";
-import toast from 'react-hot-toast';
 import { LuUsers } from "react-icons/lu";
-import logo1 from '../images/logo1.png'
+import toast from "react-hot-toast";
+import { logout } from "../features/authSlice";
+import logo1 from "../images/logo1.png";
+
+const dashboardPath = {
+  admin: "/AdminDashboard",
+  manager: "/ManagerDashboard",
+  staff: "/StaffDashboard",
+};
+
+const menuByRole = {
+  admin: [
+    { label: "Dashboard", path: "", icon: RxDashboard },
+    { label: "Products", path: "product", icon: AiOutlineProduct },
+    { label: "Categories", path: "category", icon: MdOutlineCategory },
+    { label: "Suppliers", path: "supplier", icon: TfiSupport },
+    { label: "Sales", path: "sales", icon: MdPointOfSale },
+    { label: "Orders", path: "order", icon: FiShoppingCart },
+    { label: "Stock", path: "stock-transaction", icon: RiStockLine },
+    { label: "Notifications", path: "notifications", icon: IoNotificationsOutline },
+    { label: "Users", path: "Userstatus", icon: LuUsers },
+    { label: "Activity Log", path: "activity-log", icon: RxActivityLog },
+  ],
+  manager: [
+    { label: "Dashboard", path: "", icon: RxDashboard },
+    { label: "Products", path: "product", icon: AiOutlineProduct },
+    { label: "Categories", path: "category", icon: MdOutlineCategory },
+    { label: "Suppliers", path: "supplier", icon: TfiSupport },
+    { label: "Sales", path: "sales", icon: MdPointOfSale },
+    { label: "Orders", path: "order", icon: FiShoppingCart },
+    { label: "Stock", path: "stock-transaction", icon: RiStockLine },
+    { label: "Notifications", path: "NotificationPageRead", icon: IoNotificationsOutline },
+  ],
+  staff: [
+    { label: "Dashboard", path: "", icon: RxDashboard },
+    { label: "POS", path: "pos", icon: FiCreditCard },
+    { label: "Sales", path: "sales", icon: MdPointOfSale },
+    { label: "Orders", path: "order", icon: FiShoppingCart },
+    { label: "Stock", path: "stock-transaction", icon: RiStockLine },
+    { label: "Notifications", path: "NotificationPageRead", icon: IoNotificationsOutline },
+  ],
+};
+
 function Sidebar() {
   const dispatch = useDispatch();
-  const navigator = useNavigate();
-  const { Authuser } = useSelector((state) => state.auth); 
+  const navigate = useNavigate();
+  const { Authuser } = useSelector((state) => state.auth);
+  const role = Authuser?.role || "staff";
+  const basePath = dashboardPath[role] || "/StaffDashboard";
+  const menuItems = menuByRole[role] || menuByRole.staff;
 
   const handleLogout = async () => {
     dispatch(logout())
       .then(() => {
         toast.success("Logout successfully");
-        navigator('/');
+        navigate("/");
       })
-      .catch((error) => {
+      .catch(() => {
         toast.error("Error in logout");
       });
   };
 
   return (
-    <div className="flex flex-col w-64 text-black min-h-screen p-6 shadow-lg ">
-      <h1 className="text-2xl font-bold text-center text-gray-700 mb-10"> <img src={logo1} className='w-56 bg-white' alt="sample logo"></img></h1>
+    <div className="flex h-screen w-64 flex-col overflow-y-auto bg-slate-100 p-6 text-slate-700 shadow-lg">
+      <div className="mb-10 shrink-0 bg-slate-950 p-4">
+        <img src={logo1} className="w-48 bg-white" alt="Inventory logo" />
+      </div>
 
-      <nav className="space-y-4">
-  
-        <div className="text-lg mt-10 flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-          <RxDashboard className="text-xl" />
-          <Link to="/ManagerDashboard">Dashboard</Link>
-        </div>
+      <div className="mb-5 shrink-0 rounded-md bg-white p-3 text-sm shadow-sm">
+        <p className="font-semibold text-slate-950">{Authuser?.name || "User"}</p>
+        <p className="capitalize text-slate-500">{role}</p>
+      </div>
 
-   
-        {Authuser?.role === "manager" && (
-          <ul className="space-y-2">
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <AiOutlineProduct className="text-xl" />
-              <Link to="/ManagerDashboard/product">Product</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <RxActivityLog className="text-xl" />
-              <Link to="/ManagerDashboard/activity-log">Activity Log</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <TfiSupport className="text-xl" />
-              <Link to="/ManagerDashboard/supplier">Supplier</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <MdPointOfSale className="text-xl" />
-              <Link to="/ManagerDashboard/sales">Sales</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <FiShoppingCart className="text-xl" />
-              <Link to="/ManagerDashboard/order">Order</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <RiStockLine className="text-xl" />
-              <Link to="/ManagerDashboard/stock-transaction">Stock Transaction</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <IoNotificationsOutline className="text-xl" />
-              <Link to="/ManagerDashboard/NotificationPageRead">Notifications</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <MdOutlineCategory className="text-xl" />
-              <Link to="/ManagerDashboard/category">Category</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <LuUsers className="text-xl" />
-              <Link to="/ManagerDashboard/Userstatus">Users</Link>
-            </li>
-          </ul>
-        )}
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          const to = item.path ? `${basePath}/${item.path}` : basePath;
 
-
-        {Authuser?.role === "admin" && (
-          <ul className="space-y-2">
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <AiOutlineProduct className="text-xl" />
-              <Link to="/AdminDashboard/product">Product</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <RxActivityLog className="text-xl" />
-              <Link to="/AdminDashboard/activity-log">Activity Log</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <TfiSupport className="text-xl" />
-              <Link to="/AdminDashboard/supplier">Supplier</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <MdPointOfSale className="text-xl" />
-              <Link to="/AdminDashboard/sales">Sales</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <FiShoppingCart className="text-xl" />
-              <Link to="/AdminDashboard/order">Order</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <RiStockLine className="text-xl" />
-              <Link to="/AdminDashboard/stock-transaction">Stock Transaction</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <IoNotificationsOutline className="text-xl" />
-              <Link to="/AdminDashboard/notifications">Create Notifications</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <MdOutlineCategory className="text-xl" />
-              <Link to="/AdminDashboard/category">Category</Link>
-            </li>
-          </ul>
-        )}
-
-        
-        {Authuser?.role === "staff" && (
-          <ul className="space-y-2">
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <AiOutlineProduct className="text-xl" />
-              <Link to="/StaffDashboard/product">Product</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <RxActivityLog className="text-xl" />
-              <Link to="/StaffDashboard/activity-log">Activity Log</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <TfiSupport className="text-xl" />
-              <Link to="/StaffDashboard/supplier">Supplier</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <MdPointOfSale className="text-xl" />
-              <Link to="/StaffDashboard/sales">Sales</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <FiShoppingCart className="text-xl" />
-              <Link to="/StaffDashboard/order">Order</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <RiStockLine className="text-xl" />
-              <Link to="/StaffDashboard/stock-transaction">Stock Transaction</Link>
-            </li>
-            <li className="flex items-center space-x-3 text-gray-700 hover:text-blue-700 cursor-pointer p-2 rounded-md transition">
-              <IoNotificationsOutline className="text-xl" />
-              <Link to="/StaffDashboard/NotificationPageRead">Notifications</Link>
-            </li>
-          </ul>
-        )}
+          return (
+            <Link
+              key={item.label}
+              to={to}
+              className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition hover:bg-white hover:text-cyan-700 hover:shadow-sm"
+            >
+              <Icon className="text-lg" />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
 
-      <div className="mt-auto border-t pt-4">
-        <div className="flex items-center space-x-3 text-lg text-gray-700 hover:text-red-600 cursor-pointer p-2 rounded-md transition">
-          <FiLogOut className="text-xl" />
-          <span onClick={handleLogout}>Logout</span>
-        </div>
-      </div>
+      <button
+        type="button"
+        onClick={handleLogout}
+        className="mt-4 flex shrink-0 items-center gap-3 rounded-md border-t border-slate-200 px-3 py-4 text-left text-sm font-semibold text-slate-600 transition hover:text-red-600"
+      >
+        <FiLogOut className="text-lg" />
+        Logout
+      </button>
     </div>
   );
 }

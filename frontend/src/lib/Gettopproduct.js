@@ -3,19 +3,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { getTopProductsByQuantity } from "../features/productSlice";
 import { Bar } from "react-chartjs-2";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from "chart.js";
-import {gettingallproducts} from '../features/productSlice'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 function Gettopproduct() {
   const dispatch = useDispatch();
   const { gettopproduct } = useSelector((state) => state.product);
-
-    
-  useEffect(() => {
-    dispatch(gettingallproducts());
-  
-  }, [dispatch]);
 
   useEffect(() => {
     dispatch(getTopProductsByQuantity());
@@ -28,9 +21,17 @@ function Gettopproduct() {
       {
         label: "Quantity",
         data: gettopproduct?.map((product) => product.quantity) || [],
-        backgroundColor: "rgba(54, 162, 235, 0.6)",
-        borderColor: "rgba(54, 162, 235, 1)",
-        borderWidth: 1,
+        backgroundColor: [
+          "rgba(8, 145, 178, 0.78)",
+          "rgba(16, 185, 129, 0.78)",
+          "rgba(99, 102, 241, 0.78)",
+          "rgba(245, 158, 11, 0.78)",
+          "rgba(14, 165, 233, 0.78)",
+          "rgba(100, 116, 139, 0.78)",
+        ],
+        borderWidth: 0,
+        borderRadius: 6,
+        barThickness: 22,
       },
     ],
   };
@@ -38,19 +39,37 @@ function Gettopproduct() {
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    indexAxis: "y",
     plugins: {
-      legend: { display: true },
+      legend: { display: false },
       tooltip: { enabled: true },
     },
     scales: {
-      x: { title: { display: true, text: "Products" } },
-      y: { title: { display: true, text: "Quantity" }, beginAtZero: true },
+      x: {
+        beginAtZero: true,
+        grid: { color: "rgba(148, 163, 184, 0.16)" },
+        ticks: { color: "#64748b" },
+      },
+      y: {
+        grid: { display: false },
+        ticks: { color: "#334155", font: { weight: "600" } },
+      },
     },
   };
 
   return (
-    <div className="bg-white p-6 shadow-md rounded-md w-full max-w-2xl mx-auto">
-      <h2 className="text-xl font-semibold mb-4 text-center">Top Products by Quantity</h2>
+    <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-500">
+            Inventory Mix
+          </p>
+          <h2 className="mt-2 text-xl font-semibold text-slate-950">Top products by quantity</h2>
+        </div>
+        <span className="rounded-full bg-cyan-50 px-3 py-1 text-sm font-semibold text-cyan-700">
+          Live stock
+        </span>
+      </div>
       <div className="h-80">
         <Bar data={chartData} options={chartOptions} />
       </div>

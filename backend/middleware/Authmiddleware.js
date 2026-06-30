@@ -5,7 +5,11 @@ require('dotenv').config();
 
 module.exports.authmiddleware = async (req, res, next) => {
   try {
-    const token = req.cookies.Inventorymanagmentsystem;
+    const authHeader = req.headers.authorization || "";
+    const bearerToken = authHeader.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : null;
+    const token = req.cookies.Inventorymanagmentsystem || bearerToken;
 
     if (!token) {
       return res.status(401).json({ message: "Unauthorized: No token provided." });

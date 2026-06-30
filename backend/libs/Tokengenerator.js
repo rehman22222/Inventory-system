@@ -17,11 +17,13 @@ const generateToken = async (user, res) => {
 
     console.log("Generated JWT:", token); 
 
+    const isProduction = process.env.NODE_ENV === "production";
+
     res.cookie("Inventorymanagmentsystem", token, {
       maxAge: 7 * 24 * 60 * 60 * 1000,
       httpOnly: true,
-      sameSite: 'None',
-      secure: true,
+      sameSite: isProduction ? 'None' : 'Lax',
+      secure: isProduction,
     });
     
 

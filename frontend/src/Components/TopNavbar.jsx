@@ -1,15 +1,16 @@
 import React from 'react';
-import { FaRegCircleUser } from "react-icons/fa6";
-import { HiDotsVertical } from "react-icons/hi";
 import {  useSelector } from "react-redux";
 import image from "../images/user.png";
 import ThemeToggle from "../lib/ThemeToggle";
 import { Link } from 'react-router-dom';
 function TopNavbar() {
-  const { Authuser, isUserSignup } = useSelector((state) => state.auth);
-
-
-
+  const { Authuser } = useSelector((state) => state.auth);
+  const dashboardPath =
+    Authuser?.role === "admin"
+      ? "/AdminDashboard"
+      : Authuser?.role === "staff"
+      ? "/StaffDashboard"
+      : "/ManagerDashboard";
 
   return (
    
@@ -19,7 +20,7 @@ function TopNavbar() {
 
         <div className='flex items-center space-x-4'>
           <div className='flex items-center space-x-4'>
-       <Link to='/ManagerDashboard/Profilepage'>  
+       <Link to={`${dashboardPath}/Profilepage`}>  
        <img
                 className="border-4  border-blue-500 h-10 w-10 rounded-full object-cover shadow-lg"
                 src={ Authuser?.ProfilePic || image}
