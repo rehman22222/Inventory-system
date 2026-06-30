@@ -6,7 +6,7 @@ import { MdOutlineCategory, MdPointOfSale } from "react-icons/md";
 import { TfiSupport } from "react-icons/tfi";
 import { IoNotificationsOutline } from "react-icons/io5";
 import { RxActivityLog, RxDashboard } from "react-icons/rx";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { LuUsers } from "react-icons/lu";
 import toast from "react-hot-toast";
@@ -55,6 +55,7 @@ const menuByRole = {
 function Sidebar() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { Authuser } = useSelector((state) => state.auth);
   const role = Authuser?.role || "staff";
   const basePath = dashboardPath[role] || "/StaffDashboard";
@@ -63,37 +64,42 @@ function Sidebar() {
   const handleLogout = async () => {
     dispatch(logout())
       .then(() => {
-        toast.success("Logout successfully");
+        toast.success("Logged out successfully");
         navigate("/");
       })
       .catch(() => {
-        toast.error("Error in logout");
+        toast.error("Error logging out");
       });
   };
 
   return (
-    <div className="flex h-screen w-64 flex-col overflow-y-auto bg-slate-100 p-6 text-slate-700 shadow-lg">
-      <div className="mb-10 shrink-0 bg-slate-950 p-4">
-        <img src={logo1} className="w-48 bg-white" alt="Inventory logo" />
+    <div className="flex h-screen w-64 flex-col overflow-y-auto bg-base-100 border-r border-base-300 p-6 text-base-content shadow-md">
+      <div className="mb-8 shrink-0 overflow-hidden rounded-lg bg-slate-950 p-4">
+        <img src={logo1} className="w-full bg-white" alt="Inventory logo" />
       </div>
 
-      <div className="mb-5 shrink-0 rounded-md bg-white p-3 text-sm shadow-sm">
-        <p className="font-semibold text-slate-950">{Authuser?.name || "User"}</p>
-        <p className="capitalize text-slate-500">{role}</p>
+      <div className="mb-5 shrink-0 rounded-lg border border-base-300 bg-base-200 p-3 text-sm">
+        <p className="font-semibold text-base-content">{Authuser?.name || "User"}</p>
+        <p className="mt-0.5 capitalize text-base-content/60">{role}</p>
       </div>
 
-      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
+      <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const to = item.path ? `${basePath}/${item.path}` : basePath;
+          const isActive = location.pathname === to;
 
           return (
             <Link
               key={item.label}
               to={to}
-              className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition hover:bg-white hover:text-cyan-700 hover:shadow-sm"
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                isActive
+                  ? "bg-primary/10 text-primary"
+                  : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
+              }`}
             >
-              <Icon className="text-lg" />
+              <Icon className="shrink-0 text-lg" />
               <span>{item.label}</span>
             </Link>
           );
@@ -103,7 +109,7 @@ function Sidebar() {
       <button
         type="button"
         onClick={handleLogout}
-        className="mt-4 flex shrink-0 items-center gap-3 rounded-md border-t border-slate-200 px-3 py-4 text-left text-sm font-semibold text-slate-600 transition hover:text-red-600"
+        className="mt-4 flex shrink-0 items-center gap-3 rounded-lg border-t border-base-300 px-3 py-4 text-left text-sm font-semibold text-base-content/60 transition hover:text-red-500"
       >
         <FiLogOut className="text-lg" />
         Logout

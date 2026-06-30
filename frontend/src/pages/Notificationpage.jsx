@@ -31,7 +31,7 @@ function NotificationPage() {
     newSocket.on("newNotification", (newNotification) => {
    
       toast.custom((t) => (
-        <div className={`flex items-center p-4 rounded-lg shadow-lg bg-white text-gray-800 ${t.visible ? 'animate-enter' : 'animate-leave'}`}>
+        <div className={`flex items-center p-4 rounded-lg shadow-lg bg-base-100 text-base-content border border-base-300 ${t.visible ? 'animate-enter' : 'animate-leave'}`}>
           <img 
             src={Authuser?.ProfilePic || image} 
             alt="Notification" 
@@ -39,11 +39,11 @@ function NotificationPage() {
           />
           <div>
             <p className="font-medium">{newNotification.name}</p>
-            <p className="text-sm text-gray-600">{newNotification.type}</p>
+            <p className="text-sm text-base-content/60">{newNotification.type}</p>
           </div>
-          <button 
+          <button
             onClick={() => toast.dismiss(t.id)}
-            className="ml-4 text-gray-500 hover:text-gray-700"
+            className="ml-4 text-base-content/50 hover:text-base-content"
           >
             &times;
           </button>
@@ -147,8 +147,8 @@ function NotificationPage() {
                 />
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold">{notification.name}</h3>
-                  <p className="text-sm text-gray-600">{notification.type}</p>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-sm text-base-content/60">{notification.type}</p>
+                  <p className="text-xs text-base-content/40 mt-1">
                     <FormattedTime timestamp={notification.createdAt}/>
                   </p>
                 </div>
@@ -162,7 +162,7 @@ function NotificationPage() {
               </div>
             ))
           ) : (
-            <p className="text-center bg-base-100 text-gray-600 py-4">No notifications found.</p>
+            <p className="text-center text-base-content/50 py-4">No notifications found.</p>
           )}
         </div>
       </div>

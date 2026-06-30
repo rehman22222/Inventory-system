@@ -132,7 +132,7 @@ function Supplierpage() {
   }
 
   return (
-    <div className="bg-base-100 min-h-screen">
+    <div className="bg-base-200 min-h-screen">
       <TopNavbar />
       <div className="mt-10 ml-5 mb-10">
       <div className="bg-blue-950 w-56 rounded-xl  ml-10 block h-24">
@@ -145,7 +145,7 @@ function Supplierpage() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full md:w-96 h-12 pl-4 pr-12 border-2 border-gray-300 rounded-lg bg-base-100"
+            className="w-full md:w-96 h-12 pl-4 pr-12 border-2 border-base-300 rounded-lg bg-base-100 text-base-content"
             placeholder="Search for supplier"
           />
           <button
@@ -161,7 +161,7 @@ function Supplierpage() {
         </div>
 
         {isFormVisible && (
-          <div className="absolute top-16 bg-base-100 right-0 h-svh p-6 border-2 border-gray-300 rounded-lg shadow-md transition-transform transform">
+          <div className="absolute top-16 right-0 z-50 h-svh w-80 bg-base-100 p-6 border-2 border-base-300 rounded-lg shadow-xl transition-transform transform">
             <div className="text-right">
               <MdKeyboardDoubleArrowLeft
                 onClick={() => setIsFormVisible(false)}
@@ -181,7 +181,7 @@ function Supplierpage() {
                   placeholder="Enter Supplier name"
                   onChange={(e) => setName(e.target.value)}
                   type="text"
-                  className="w-full h-10 px-2 border-2 rounded-lg mt-2 bg-base-100"
+                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
                 />
               </div>
 
@@ -192,7 +192,7 @@ function Supplierpage() {
                   placeholder="Enter Supplier Phone"
                   onChange={(e) => setPhone(e.target.value)}
                   type="text"
-                  className="w-full h-10 px-2 border-2 rounded-lg mt-2 bg-base-100"
+                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
                 />
               </div>
 
@@ -203,7 +203,7 @@ function Supplierpage() {
                   placeholder="example@email.com"
                   onChange={(e) => setEmail(e.target.value)}
                   type="email"
-                  className="w-full h-10 px-2 border-2 rounded-lg mt-2 bg-base-100"
+                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
                 />
               </div>
 
@@ -214,7 +214,7 @@ function Supplierpage() {
                   placeholder="Enter Supplier Address"
                   value={Address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="w-full h-10 px-2 border-2 rounded-lg mt-2 bg-base-100"
+                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
                 />
               </div>
 
@@ -223,7 +223,7 @@ function Supplierpage() {
                 <select
                   value={Product}
                   onChange={(e) => setProduct(e.target.value)}
-                  className="w-full h-10 px-2 border-2 rounded-lg mt-2 bg-base-100"
+                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
                 >
                   <option value="">Select a product</option>
                   {getallproduct?.map((product) => (
@@ -247,8 +247,8 @@ function Supplierpage() {
         <div className="mt-10">
           <h2 className="text-xl font-semibold mb-4">Supplier List</h2>
           <div className="overflow-x-auto">
-            <table className="min-w-full bg-base-100 border border-gray-200 rounded-lg shadow-md">
-              <thead className="bg-base-100">
+            <table className="min-w-full bg-base-100 border border-base-300 rounded-lg shadow-md">
+              <thead className="bg-base-200">
                 <tr>
                   <th className="px-3 py-2 border">#</th>
                   <th className="px-3 py-2 border">Name</th>

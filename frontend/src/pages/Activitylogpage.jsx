@@ -44,13 +44,13 @@ function Activitylogpage() {
   const totalPages = Math.ceil(logs.length / logsPerPage);
 
   return (
-    <div className="bg-base-100 min-h-screen">
+    <div className="bg-base-200 min-h-screen">
       <TopNavbar />
       <div className="mt-10 ml-5">
         <h1 className="text-xl font-semibold mb-4">Activity Logs</h1>
         <div className="overflow-x-auto">
-          <table className="min-w-full bg-base-100 mb-24 border-gray-200 rounded-lg shadow-md">
-            <thead className="bg-base-100">
+          <table className="min-w-full bg-base-100 mb-24 border border-base-300 rounded-lg shadow-md">
+            <thead className="bg-base-200">
               <tr>
                 <th className="px-3 py-2 border w-5">#</th>
                 <th className="px-3 py-2 border">Name</th>

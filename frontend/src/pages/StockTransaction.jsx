@@ -91,7 +91,7 @@ const[query,setquery]=useState("");
   
   const displaystock = query.trim() !== "" ?  searchdata : getallStocks;
   return (
-    <div className="bg-base-100 min-h-screen">
+    <div className="bg-base-200 min-h-screen">
 
 <TopNavbar />
 
@@ -103,7 +103,7 @@ const[query,setquery]=useState("");
             type="text"
             value={query}
             onChange={(e)=>setquery(e.target.value)}
-            className="w-full md:w-96 h-12 pl-4 pr-12 border-2 border-gray-300 rounded-lg"
+            className="w-full md:w-96 h-12 pl-4 pr-12 border-2 border-base-300 rounded-lg bg-base-100 text-base-content"
             placeholder="Enter your Stock"
           />
           <button
@@ -120,7 +120,7 @@ const[query,setquery]=useState("");
 
 
         {isFormVisible && (
-          <div className="absolute top-10 bg-base-100 bg-gray-100 right-0 h-svh p-6 border-2 border-gray-300 rounded-lg shadow-md transition-transform transform">
+          <div className="absolute top-10 right-0 z-50 h-svh w-80 bg-base-100 p-6 border-2 border-base-300 rounded-lg shadow-xl transition-transform transform">
             <div className="text-right">
               <MdKeyboardDoubleArrowLeft
                 onClick={() => setIsFormVisible(false)}
@@ -141,7 +141,7 @@ const[query,setquery]=useState("");
                 <select
                   value={product}
                   onChange={(e) => setproduct(e.target.value)}
-                  className="w-full h-10 px-2 border-2 rounded-lg mt-2"
+                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
                 >
                   <option value="">Select a product</option>
                   { getallproduct?.map((product) => (
@@ -170,7 +170,7 @@ const[query,setquery]=useState("");
                   placeholder="Enter product quantity"
                   value={quantity}
                   onChange={(e) => setquantity(e.target.value)}
-                  className="w-full h-10 px-2 border-2 rounded-lg mt-2"
+                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
                 />
               </div>
 
@@ -181,7 +181,7 @@ const[query,setquery]=useState("");
                 <select
                   value={supplier}
                   onChange={(e) => setsupplier(e.target.value)}
-                  className="w-full h-10 px-2 border-2 rounded-lg mt-2"
+                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
                 >
                   <option value="">Select a Supplier</option>
                   { getallSupplier?.map((supplier) => (
@@ -208,8 +208,8 @@ const[query,setquery]=useState("");
 <div className="mt-10">
           <h2 className="text-xl font-semibold mb-4">StockTransaction List</h2>
           <div className="overflow-x-auto">
-            <table className="min-w-full bg-base-100  border mb-24 border-gray-200 rounded-lg shadow-md">
-              <thead className="">
+            <table className="min-w-full bg-base-100 border mb-24 border-base-300 rounded-lg shadow-md">
+              <thead className="bg-base-200">
                 <tr>
                 <th className="px-3 py-2 border w-5">#</th>
                   <th className="px-3 py-2 border">Date</th>

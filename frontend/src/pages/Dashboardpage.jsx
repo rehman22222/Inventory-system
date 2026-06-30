@@ -103,32 +103,32 @@ function Dashboardpage() {
       value: currency.format(analytics.revenue),
       meta: `${analytics.sales.length} completed records`,
       icon: FiDollarSign,
-      color: "text-emerald-700",
-      bg: "bg-emerald-50",
+      color: "text-emerald-700 dark:text-emerald-400",
+      bg: "bg-emerald-50 dark:bg-emerald-900/20",
     },
     {
       label: "Inventory Value",
       value: currency.format(analytics.inventoryValue),
       meta: `${analytics.products.length} active products`,
       icon: FiBox,
-      color: "text-cyan-700",
-      bg: "bg-cyan-50",
+      color: "text-cyan-700 dark:text-cyan-400",
+      bg: "bg-cyan-50 dark:bg-cyan-900/20",
     },
     {
       label: "Open Orders",
       value: analytics.orders.length,
       meta: `${analytics.orderStatus.pending || 0} pending review`,
       icon: FiShoppingCart,
-      color: "text-indigo-700",
-      bg: "bg-indigo-50",
+      color: "text-indigo-700 dark:text-indigo-400",
+      bg: "bg-indigo-50 dark:bg-indigo-900/20",
     },
     {
       label: "Low Stock",
       value: analytics.lowStock.length,
       meta: "Items at or below 10 units",
       icon: FiAlertTriangle,
-      color: "text-amber-700",
-      bg: "bg-amber-50",
+      color: "text-amber-700 dark:text-amber-400",
+      bg: "bg-amber-50 dark:bg-amber-900/20",
     },
   ];
 
@@ -140,11 +140,12 @@ function Dashboardpage() {
   const maxStatus = Math.max(...statusRows.map((row) => row.value), 1);
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-base-200">
       <TopNavbar />
 
       <main className="mx-auto w-full max-w-7xl px-6 py-8">
-        <section className="mb-6 overflow-hidden rounded-lg bg-slate-950 text-white shadow-sm">
+        {/* Hero banner — always dark by design */}
+        <section className="mb-6 overflow-hidden rounded-xl bg-slate-950 text-white shadow-sm">
           <div className="grid gap-6 p-7 lg:grid-cols-[1.4fr_0.8fr] lg:items-end">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-cyan-300">
@@ -160,17 +161,17 @@ function Dashboardpage() {
             </div>
 
             <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-md border border-white/10 bg-white/5 p-4">
+              <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                 <FiUsers className="mb-3 text-cyan-300" />
                 <p className="text-2xl font-bold">{analytics.users}</p>
                 <p className="text-xs text-slate-300">Team users</p>
               </div>
-              <div className="rounded-md border border-white/10 bg-white/5 p-4">
+              <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                 <FiLayers className="mb-3 text-emerald-300" />
                 <p className="text-2xl font-bold">{analytics.categories.length}</p>
                 <p className="text-xs text-slate-300">Categories</p>
               </div>
-              <div className="rounded-md border border-white/10 bg-white/5 p-4">
+              <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                 <FiTrendingUp className="mb-3 text-amber-300" />
                 <p className="text-2xl font-bold">{analytics.sales.length}</p>
                 <p className="text-xs text-slate-300">Sales records</p>
@@ -179,18 +180,24 @@ function Dashboardpage() {
           </div>
         </section>
 
+        {/* KPI cards */}
         <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {kpis.map((item) => {
             const Icon = item.icon;
             return (
-              <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <div
+                key={item.label}
+                className="rounded-xl border border-base-300 bg-base-100 p-5 shadow-sm"
+              >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-medium text-slate-500">{item.label}</p>
-                    <p className="mt-3 text-2xl font-bold text-slate-950">{item.value}</p>
-                    <p className="mt-2 text-xs text-slate-500">{item.meta}</p>
+                    <p className="text-sm font-medium text-base-content/60">{item.label}</p>
+                    <p className="mt-3 text-2xl font-bold text-base-content">{item.value}</p>
+                    <p className="mt-2 text-xs text-base-content/50">{item.meta}</p>
                   </div>
-                  <div className={`flex h-11 w-11 items-center justify-center rounded-md ${item.bg}`}>
+                  <div
+                    className={`flex h-11 w-11 items-center justify-center rounded-lg ${item.bg}`}
+                  >
                     <Icon className={`text-xl ${item.color}`} />
                   </div>
                 </div>
@@ -199,54 +206,61 @@ function Dashboardpage() {
           })}
         </section>
 
+        {/* Charts row */}
         <section className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
           <Gettopproduct />
 
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="rounded-xl border border-base-300 bg-base-100 p-6 shadow-sm">
             <div className="mb-6 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-500">
+                <p className="text-sm font-medium uppercase tracking-[0.14em] text-base-content/50">
                   Order Pipeline
                 </p>
-                <h2 className="mt-2 text-xl font-semibold text-slate-950">Status breakdown</h2>
+                <h2 className="mt-2 text-xl font-semibold text-base-content">Status breakdown</h2>
               </div>
-              <FiShoppingCart className="text-2xl text-slate-400" />
+              <FiShoppingCart className="text-2xl text-base-content/30" />
             </div>
 
             <div className="space-y-5">
               {statusRows.map((row) => (
                 <div key={row.label}>
                   <div className="mb-2 flex items-center justify-between text-sm">
-                    <span className="font-medium text-slate-700">{row.label}</span>
-                    <span className="font-semibold text-slate-950">{row.value}</span>
+                    <span className="font-medium text-base-content/70">{row.label}</span>
+                    <span className="font-semibold text-base-content">{row.value}</span>
                   </div>
-                  <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-3 overflow-hidden rounded-full bg-base-300">
                     <div
                       className={`h-full rounded-full ${row.color}`}
-                      style={{ width: `${Math.max((row.value / maxStatus) * 100, row.value ? 12 : 0)}%` }}
+                      style={{
+                        width: `${Math.max((row.value / maxStatus) * 100, row.value ? 12 : 0)}%`,
+                      }}
                     />
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="mt-8 rounded-md bg-slate-50 p-4">
-              <p className="text-sm font-medium text-slate-600">Recommended focus</p>
-              <p className="mt-1 text-sm text-slate-500">
+            <div className="mt-8 rounded-lg bg-base-200 p-4">
+              <p className="text-sm font-medium text-base-content/70">Recommended focus</p>
+              <p className="mt-1 text-sm text-base-content/50">
                 Review pending orders and replenish low-stock products before the next sales cycle.
               </p>
             </div>
           </div>
         </section>
 
+        {/* Bottom row */}
         <section className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          {/* Low stock watchlist */}
+          <div className="rounded-xl border border-base-300 bg-base-100 p-6 shadow-sm">
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-500">
+                <p className="text-sm font-medium uppercase tracking-[0.14em] text-base-content/50">
                   Stock Watchlist
                 </p>
-                <h2 className="mt-2 text-xl font-semibold text-slate-950">Low inventory items</h2>
+                <h2 className="mt-2 text-xl font-semibold text-base-content">
+                  Low inventory items
+                </h2>
               </div>
               <FiAlertTriangle className="text-2xl text-amber-500" />
             </div>
@@ -256,54 +270,60 @@ function Dashboardpage() {
                 analytics.lowStock.map((product) => (
                   <div
                     key={product._id}
-                    className="flex items-center justify-between rounded-md border border-slate-100 bg-slate-50 px-4 py-3"
+                    className="flex items-center justify-between rounded-lg border border-base-300 bg-base-200 px-4 py-3"
                   >
                     <div>
-                      <p className="font-medium text-slate-900">{product.name}</p>
-                      <p className="text-sm text-slate-500">{product.Category?.name || "Uncategorized"}</p>
+                      <p className="font-medium text-base-content">{product.name}</p>
+                      <p className="text-sm text-base-content/50">
+                        {product.Category?.name || "Uncategorized"}
+                      </p>
                     </div>
-                    <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-800">
+                    <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
                       {product.quantity} left
                     </span>
                   </div>
                 ))
               ) : (
-                <p className="rounded-md bg-emerald-50 p-4 text-sm text-emerald-700">
+                <p className="rounded-lg bg-emerald-50 p-4 text-sm text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400">
                   All products are above the low-stock threshold.
                 </p>
               )}
             </div>
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          {/* Activity log */}
+          <div className="rounded-xl border border-base-300 bg-base-100 p-6 shadow-sm">
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-500">
+                <p className="text-sm font-medium uppercase tracking-[0.14em] text-base-content/50">
                   Audit Trail
                 </p>
-                <h2 className="mt-2 text-xl font-semibold text-slate-950">Recent activity</h2>
+                <h2 className="mt-2 text-xl font-semibold text-base-content">Recent activity</h2>
               </div>
-              <FiActivity className="text-2xl text-cyan-600" />
+              <FiActivity className="text-2xl text-cyan-500" />
             </div>
 
             <div className="space-y-4">
               {recentuser?.length > 0 ? (
                 recentuser.map((log) => (
-                  <div key={log._id} className="flex gap-4 rounded-md border border-slate-100 p-4">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-50">
-                      <FiActivity className="text-cyan-700" />
+                  <div
+                    key={log._id}
+                    className="flex gap-4 rounded-lg border border-base-300 bg-base-200 p-4"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-50 dark:bg-cyan-900/20">
+                      <FiActivity className="text-cyan-700 dark:text-cyan-400" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
-                          <p className="font-semibold text-slate-950">{log.action}</p>
-                          <p className="mt-1 text-sm text-slate-500">{log.description}</p>
+                          <p className="font-semibold text-base-content">{log.action}</p>
+                          <p className="mt-1 text-sm text-base-content/50">{log.description}</p>
                         </div>
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                        <span className="rounded-full bg-base-300 px-3 py-1 text-xs font-medium text-base-content/70">
                           {log.entity}
                         </span>
                       </div>
-                      <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+                      <div className="mt-3 flex items-center gap-2 text-xs text-base-content/50">
                         <FiClock />
                         <span>{log.userId?.name || "System"}</span>
                         <span>-</span>
@@ -313,7 +333,7 @@ function Dashboardpage() {
                   </div>
                 ))
               ) : (
-                <p className="rounded-md bg-slate-50 p-4 text-sm text-slate-500">
+                <p className="rounded-lg bg-base-200 p-4 text-sm text-base-content/50">
                   No recent activity logs found.
                 </p>
               )}

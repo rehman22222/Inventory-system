@@ -53,13 +53,13 @@ function Userstatus() {
                 <img src={user?.ProfilePic||image} alt="User" className="w-10 bg-base-100 h-10 rounded-full" />
                 <div className="bg-base-100">
                   <p className="font-medium">{user.name}</p>
-                  <p className="text-gray-600 text-sm">{user.email}</p>
+                  <p className="text-base-content/60 text-sm">{user.email}</p>
                 </div>
                 <div><TiDelete  onClick={()=>handleremove( user._id)}  className="text-red-600 text-2xl"/></div>
               </div>
             ))
           ) : (
-            <p className="text-gray-500 bg-base-100">No users available.</p>
+            <p className="text-base-content/50">No users available.</p>
           )}
         </div>
 
@@ -71,14 +71,14 @@ function Userstatus() {
                 <img src={user?.ProfilePic||image} alt="User" className="w-10 h-10 bg-base-100 rounded-full" />
                 <div className="bg-base-100">
                   <p className="font-medium">{user.name}</p>
-                  <p className="text-gray-600 text-sm">{user.email}</p>
+                  <p className="text-base-content/60 text-sm">{user.email}</p>
                 </div>
                 <div><TiDelete  onClick={()=>handleremove( user._id)} className="text-red-600 text-2xl" /></div>
               
               </div>
             ))
           ) : (
-            <p className="text-gray-500 bg-base-100">No users available.</p>
+            <p className="text-base-content/50">No users available.</p>
           )}
         </div>
 
@@ -96,7 +96,7 @@ function Userstatus() {
               </div>
             ))
           ) : (
-            <p className="text-gray-500 bg-base-100">No users available.</p>
+            <p className="text-base-content/50">No users available.</p>
           )}
         </div>
       </div>

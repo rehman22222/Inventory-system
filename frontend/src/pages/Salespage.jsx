@@ -158,7 +158,7 @@ function Salespage() {
 
 
   return (
-    <div className="bg-base-100 min-h-screen">
+    <div className="bg-base-200 min-h-screen">
       <TopNavbar />
 
 
@@ -173,7 +173,7 @@ function Salespage() {
            value={query}
            onChange={(e)=>setquery(e.target.value)}
             type="text"
-            className="w-full md:w-96 h-12 pl-4 pr-12 border-2 border-gray-300 rounded-lg"
+            className="w-full md:w-96 h-12 pl-4 pr-12 border-2 border-base-300 rounded-lg bg-base-100 text-base-content"
             placeholder="Enter your product"
           />
           <button
@@ -188,7 +188,7 @@ function Salespage() {
         </div>
 
         {isFormVisible && (
-          <div className="absolute top-10 bg-base-100 bg-gray-100 right-0 h-svh p-6 border-2 border-gray-300 rounded-lg shadow-md transition-transform transform">
+          <div className="absolute top-10 right-0 z-50 h-svh w-80 bg-base-100 p-6 border-2 border-base-300 rounded-lg shadow-xl transition-transform transform">
             <div className="text-right">
               <MdKeyboardDoubleArrowLeft
                 onClick={() => setIsFormVisible(false)}
@@ -208,7 +208,7 @@ function Salespage() {
                   placeholder="Enter product name"
                   onChange={(e) => setName(e.target.value)}
                   type="text"
-                  className="w-full h-10 px-2 border-2 rounded-lg mt-2"
+                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
                 />
               </div>
 
@@ -217,7 +217,7 @@ function Salespage() {
                 <select
                   value={Product}
                   onChange={(e) => setProduct(e.target.value)}
-                  className="w-full h-10 px-2 border-2 rounded-lg mt-2"
+                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
                 >
                   <option value="">Select a Product</option>
                   {getallproduct?.map((product) => (
@@ -235,7 +235,7 @@ function Salespage() {
                   placeholder="Enter product price"
                   value={Price}
                   onChange={(e) => setPrice(e.target.value)}
-                  className="w-full h-10 px-2 border-2 rounded-lg mt-2"
+                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
                 />
               </div>
 
@@ -246,7 +246,7 @@ function Salespage() {
                   placeholder="Enter product quantity"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
-                  className="w-full h-10 px-2 border-2 rounded-lg mt-2"
+                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
                 />
               </div>
          
@@ -300,8 +300,8 @@ function Salespage() {
         <div className="mt-10">
           <h2 className="text-xl font-semibold mb-4">Sales List</h2>
           <div className="overflow-x-auto">
-            <table className="bg-base-100 min-w-full bg-white border mb-24 border-gray-200 rounded-lg shadow-md">
-              <thead className="bg-gray-100">
+            <table className="min-w-full bg-base-100 border mb-24 border-base-300 rounded-lg shadow-md">
+              <thead className="bg-base-200">
                 <tr>
                 <th className="px-3 py-2 border w-5 bg-base-100">#</th>
                   <th className="px-3 py-2 border bg-base-100">Customer Name</th>

@@ -41,7 +41,10 @@ function LoginPage() {
 
   const schema = yup.object().shape({
     email: yup.string().email("Invalid email").required("Email is required"),
-    password: yup.string().min(6, "Password must be at least 6 characters").required("Password is required"),
+    password: yup
+      .string()
+      .min(6, "Password must be at least 6 characters")
+      .required("Password is required"),
   });
 
   const {
@@ -67,7 +70,6 @@ function LoginPage() {
       .unwrap()
       .then((response) => {
         const role = response?.user?.role || response?.savedUser?.role;
-
         if (role === "staff") {
           navigator("/StaffDashboard");
         } else if (role === "admin") {
@@ -82,11 +84,15 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
+    <div className="min-h-screen bg-base-200 text-base-content">
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[1.1fr_0.9fr]">
+        {/* Left panel — always dark by design */}
         <section className="flex flex-col justify-between bg-slate-950 px-8 py-10 text-white lg:px-14">
           <div>
-            <Link to="/" className="text-sm font-semibold uppercase tracking-[0.24em] text-cyan-300">
+            <Link
+              to="/"
+              className="text-sm font-semibold uppercase tracking-[0.24em] text-cyan-300"
+            >
               InventoryPro
             </Link>
 
@@ -98,33 +104,36 @@ function LoginPage() {
                 Inventory, stock, sales, and supplier operations in one dashboard.
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300">
-                Use the demo roles to walk through executive oversight, manager operations,
-                and staff-level day-to-day workflows without connecting MongoDB yet.
+                Use the demo roles to walk through executive oversight, manager operations, and
+                staff-level day-to-day workflows without connecting MongoDB yet.
               </p>
             </div>
           </div>
 
           <div className="mt-16 grid gap-4 sm:grid-cols-3">
-            <div className="border border-white/10 bg-white/5 p-4">
+            <div className="rounded-lg border border-white/10 bg-white/5 p-4">
               <p className="text-3xl font-bold">8</p>
               <p className="mt-1 text-sm text-slate-300">Demo products</p>
             </div>
-            <div className="border border-white/10 bg-white/5 p-4">
+            <div className="rounded-lg border border-white/10 bg-white/5 p-4">
               <p className="text-3xl font-bold">5</p>
               <p className="mt-1 text-sm text-slate-300">Active categories</p>
             </div>
-            <div className="border border-white/10 bg-white/5 p-4">
+            <div className="rounded-lg border border-white/10 bg-white/5 p-4">
               <p className="text-3xl font-bold">3</p>
               <p className="mt-1 text-sm text-slate-300">Role views</p>
             </div>
           </div>
         </section>
 
+        {/* Right panel — theme-aware */}
         <section className="flex items-center justify-center px-6 py-10 lg:px-10">
           <div className="w-full max-w-xl">
             <div className="mb-8">
-              <h2 className="text-3xl font-bold text-slate-950">Sign in</h2>
-              <p className="mt-2 text-slate-600">Select a demo role or enter credentials manually.</p>
+              <h2 className="text-3xl font-bold text-base-content">Sign in</h2>
+              <p className="mt-2 text-base-content/60">
+                Select a demo role or enter credentials manually.
+              </p>
             </div>
 
             <div className="mb-6 grid gap-3">
@@ -135,15 +144,17 @@ function LoginPage() {
                     key={account.email}
                     type="button"
                     onClick={() => selectDemoAccount(account)}
-                    className="flex w-full items-start gap-4 border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-cyan-500 hover:shadow-md"
+                    className="flex w-full items-start gap-4 rounded-lg border border-base-300 bg-base-100 p-4 text-left shadow-sm transition hover:border-cyan-500 hover:shadow-md"
                   >
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center bg-cyan-50 text-cyan-700">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700 dark:bg-cyan-900/20 dark:text-cyan-400">
                       <Icon className="text-xl" />
                     </span>
                     <span>
-                      <span className="block font-semibold text-slate-950">{account.role}</span>
-                      <span className="mt-1 block text-sm text-slate-600">{account.description}</span>
-                      <span className="mt-2 block text-xs font-medium text-slate-500">
+                      <span className="block font-semibold text-base-content">{account.role}</span>
+                      <span className="mt-1 block text-sm text-base-content/60">
+                        {account.description}
+                      </span>
+                      <span className="mt-2 block text-xs font-medium text-base-content/40">
                         {account.email} / {account.password}
                       </span>
                     </span>
@@ -152,41 +163,55 @@ function LoginPage() {
               })}
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="border border-slate-200 bg-white p-6 shadow-sm">
+            <form
+              onSubmit={handleSubmit(onSubmit)}
+              className="rounded-xl border border-base-300 bg-base-100 p-6 shadow-sm"
+            >
               <div className="mb-5">
-                <label className="mb-2 block text-sm font-medium text-slate-700">Email</label>
+                <label className="mb-2 block text-sm font-medium text-base-content/80">
+                  Email
+                </label>
                 <input
                   type="email"
                   {...register("email")}
-                  className="h-12 w-full border border-slate-300 px-3 outline-none transition focus:border-cyan-600 focus:ring-2 focus:ring-cyan-100"
+                  className="h-12 w-full rounded-lg border border-base-300 px-3 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
                   placeholder="you@example.com"
                 />
-                {errors.email && <p className="mt-2 text-sm text-red-600">{errors.email.message}</p>}
+                {errors.email && (
+                  <p className="mt-2 text-sm text-red-500">{errors.email.message}</p>
+                )}
               </div>
 
               <div className="mb-6">
-                <label className="mb-2 block text-sm font-medium text-slate-700">Password</label>
+                <label className="mb-2 block text-sm font-medium text-base-content/80">
+                  Password
+                </label>
                 <input
                   type="password"
                   {...register("password")}
-                  className="h-12 w-full border border-slate-300 px-3 outline-none transition focus:border-cyan-600 focus:ring-2 focus:ring-cyan-100"
+                  className="h-12 w-full rounded-lg border border-base-300 px-3 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
                   placeholder="Enter your password"
                 />
-                {errors.password && <p className="mt-2 text-sm text-red-600">{errors.password.message}</p>}
+                {errors.password && (
+                  <p className="mt-2 text-sm text-red-500">{errors.password.message}</p>
+                )}
               </div>
 
               <button
                 type="submit"
-                className="h-12 w-full bg-cyan-700 font-semibold text-white transition hover:bg-cyan-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                className="h-12 w-full rounded-lg bg-cyan-700 font-semibold text-white transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:bg-base-300 disabled:text-base-content/40"
                 disabled={isUserLogin}
               >
-                {isUserLogin ? "Signing in..." : "Open Dashboard"}
+                {isUserLogin ? "Signing in…" : "Open Dashboard"}
               </button>
             </form>
 
-            <p className="mt-6 text-center text-sm text-slate-600">
+            <p className="mt-6 text-center text-sm text-base-content/60">
               Need a new user?{" "}
-              <Link to="/SignupPage" className="font-semibold text-cyan-700 hover:text-cyan-900">
+              <Link
+                to="/SignupPage"
+                className="font-semibold text-cyan-600 hover:text-cyan-500 dark:text-cyan-400"
+              >
                 Create an account
               </Link>
             </p>

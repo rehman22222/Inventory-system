@@ -3,7 +3,7 @@ import Sidebar from '../Components/Sidebar'
 import { Outlet } from 'react-router-dom';
 function StaffDashboard() {
   return (
-    <div className="flex bg-gray-200 min-h-screen">
+    <div className="flex bg-base-200 min-h-screen">
 
       <div className="fixed inset-y-0 left-0">
         <Sidebar />

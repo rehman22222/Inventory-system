@@ -2,3 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  html {
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  body {
+    @apply bg-base-200 text-base-content;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select,
+  textarea {
+    @apply bg-base-100 text-base-content;
+  }
+
+  ::placeholder {
+    @apply text-base-content/40;
+  }
+
+  table {
+    @apply bg-base-100 text-base-content;
+  }
+
+  th {
+    @apply bg-base-200 text-base-content;
+  }
+
+  td {
+    @apply text-base-content;
+  }
+}

@@ -109,7 +109,7 @@ function Categorypage() {
 
   return (
 
-    <div className='bg-base-100 min-h-screen'>
+    <div className='bg-base-200 min-h-screen'>
          <TopNavbar />
 
 
@@ -128,7 +128,7 @@ function Categorypage() {
        value={query}
        onChange={(e) => setquery(e.target.value)}
       placeholder='Search the category' 
-      className="w-full ml-10 mt-20 md:w-96 h-12 pl-4 pr-12 border-2 border-gray-300 rounded-lg"/>
+      className="w-full ml-10 mt-20 md:w-96 h-12 pl-4 pr-12 border-2 border-base-300 rounded-lg bg-base-100 text-base-content"/>
       <div className='flex mt-20'>
       <button onClick={()=>{
            setIsFormVisible(true);
@@ -141,7 +141,7 @@ function Categorypage() {
 
 
       {isFormVisible && (
-          <div className="absolute top-10 bg-base-100 bg-gray-100 right-0 h-svh p-6 border-2 border-gray-300 rounded-lg shadow-md transition-transform transform">
+          <div className="absolute top-10 right-0 z-50 h-svh w-80 bg-base-100 p-6 border-2 border-base-300 rounded-lg shadow-xl transition-transform transform">
             <div className="text-right">
               <MdKeyboardDoubleArrowLeft
                 onClick={() => setIsFormVisible(false)}
@@ -161,7 +161,7 @@ function Categorypage() {
                   placeholder="Enter product name"
                   onChange={(e) => setname(e.target.value)}
                   type="text"
-                  className="w-full h-10 px-2 border-2 rounded-lg mt-2"
+                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
                 />
               </div>
 
@@ -174,7 +174,7 @@ function Categorypage() {
                   placeholder="Enter product description"
                   onChange={(e) => setdescription(e.target.value)}
                   type="text"
-                  className="w-full h-10 px-2 border-2 rounded-lg mt-2"
+                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
                 />
               </div>
 
@@ -195,8 +195,8 @@ function Categorypage() {
         <div className="mt-10">
           <h2 className="text-xl ml-10 font-semibold mb-4">Category List</h2>
           <div className="overflow-x-auto">
-            <table className="min-w-full ml-10 bg-base-100 bg-white border mb-24 border-gray-200 rounded-lg shadow-md">
-              <thead className="bg-gray-100">
+            <table className="min-w-full ml-10 bg-base-100 border mb-24 border-base-300 rounded-lg shadow-md">
+              <thead className="bg-base-200">
                 <tr>
                 <th className="px-3 py-2 bg-base-100 border w-5">#</th>
                   <th className="px-3 py-2 bg-base-100 border">Name</th>
