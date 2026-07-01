@@ -38,7 +38,7 @@ function DashboardShell() {
         </div>
 
         {/* Content — min-w-0 lets inner tables scroll instead of overflowing */}
-        <div className="min-w-0 flex-1 lg:pl-64">
+        <div className="min-w-0 flex-1 lg:pl-72">
           <Outlet />
         </div>
       </div>

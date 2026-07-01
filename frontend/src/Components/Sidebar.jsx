@@ -77,7 +77,7 @@ function Sidebar() {
   };
 
   return (
-    <div className="flex h-screen w-64 flex-col overflow-y-auto bg-base-100 border-r border-base-300 p-6 text-base-content shadow-md">
+    <div className="flex h-screen w-72 flex-col overflow-y-auto bg-base-100 border-r border-base-300 p-6 text-base-content shadow-md">
       <div className="relative mb-8 shrink-0">
         <img
           src={e360Logo}
