@@ -109,9 +109,9 @@ const STEPS = [
 
 const FAQS = [
   {
-    question: 'What is InventoryPro?',
+    question: 'What is E360?',
     answer:
-      'InventoryPro is a full-featured inventory management system for product-based businesses. It combines real-time stock tracking, a built-in POS, analytics, supplier management, multi-role access, and activity logging in a single platform.',
+      'E360 is a full-featured inventory management system for product-based businesses. It combines real-time stock tracking, a built-in POS, analytics, supplier management, multi-role access, and activity logging in a single platform.',
   },
   {
     question: 'What user roles are supported?',
@@ -486,7 +486,7 @@ function HomePage() {
             of your inventory?
           </h2>
           <p className="mb-10 text-lg text-base-content/60">
-            Join hundreds of businesses already running smarter with InventoryPro.
+            Join hundreds of businesses already running smarter with E360.
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-4">

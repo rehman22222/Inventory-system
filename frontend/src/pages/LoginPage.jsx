@@ -93,7 +93,7 @@ function LoginPage() {
               to="/"
               className="text-sm font-semibold uppercase tracking-[0.24em] text-cyan-300"
             >
-              InventoryPro
+              E360 Inventory Suite
             </Link>
 
             <div className="mt-20 max-w-2xl">

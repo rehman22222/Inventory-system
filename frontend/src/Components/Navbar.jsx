@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import logo1 from '../images/logo1.png';
+import e360Logo from '../images/e360-logo.png';
 import ThemeToggle from '../lib/ThemeToggle';
 
 function Navbar() {
@@ -21,7 +21,9 @@ function Navbar() {
       }`}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <img src={logo1} className="w-40" alt="InventoryPro" />
+        <div className="rounded-lg bg-white px-3 py-1.5">
+          <img src={e360Logo} className="h-8 w-auto" alt="E360 Inventory Suite by Eiretech" />
+        </div>
 
         <div className="hidden items-center gap-8 text-sm font-medium text-slate-400 md:flex">
           <a href="#features" className="transition hover:text-white">

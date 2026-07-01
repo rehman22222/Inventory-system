@@ -13,7 +13,7 @@ import { FiX } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { logout } from "../features/authSlice";
 import { useSidebar } from "../lib/SidebarContext";
-import logo1 from "../images/logo1.png";
+import e360Logo from "../images/e360-logo.png";
 
 const dashboardPath = {
   admin: "/AdminDashboard",
@@ -77,8 +77,8 @@ function Sidebar() {
 
   return (
     <div className="flex h-screen w-64 flex-col overflow-y-auto bg-base-100 border-r border-base-300 p-6 text-base-content shadow-md">
-      <div className="relative mb-8 shrink-0 overflow-hidden rounded-lg bg-slate-950 p-4">
-        <img src={logo1} className="w-full bg-white" alt="Inventory logo" />
+      <div className="relative mb-8 shrink-0 overflow-hidden rounded-lg bg-white p-3">
+        <img src={e360Logo} className="w-full" alt="E360 Inventory Suite by Eiretech" />
         <button
           type="button"
           onClick={() => setOpen(false)}

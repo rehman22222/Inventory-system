@@ -55,8 +55,8 @@ function SignupPage() {
       <div className="w-full sm:w-1/2 p-6 flex items-center justify-center bg-white shadow-lg rounded-xl">
         <div className="max-w-md w-full">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">InventoryPro</h1>
-            <p className="text-gray-600">by TechSolutions Inc.</p>
+            <h1 className="text-3xl font-bold text-gray-900">E360 Inventory Suite</h1>
+            <p className="text-gray-600">by Eiretech</p>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)}>

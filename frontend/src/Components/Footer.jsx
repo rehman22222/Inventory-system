@@ -10,9 +10,9 @@ function Footer() {
         <div className="grid gap-12 md:grid-cols-4">
           {/* Brand */}
           <div className="md:col-span-1">
-            <h2 className="text-xl font-black text-white">InventoryPro</h2>
+            <h2 className="text-xl font-black text-white">E360 <span className="text-cyan-400">Inventory Suite</span></h2>
             <p className="mt-3 text-sm leading-relaxed text-slate-500">
-              Efficient inventory management for product-based businesses. Track stock, manage orders, and sell smarter.
+              By Eiretech. Efficient inventory management for product-based businesses — track stock, manage orders, and sell smarter.
             </p>
             <div className="mt-6 flex gap-4">
               {[
@@ -89,7 +89,7 @@ function Footer() {
 
       <div className="border-t border-slate-800 px-6 py-5">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 text-sm text-slate-600 md:flex-row">
-          <p>© {new Date().getFullYear()} InventoryPro. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} E360 Inventory Suite by Eiretech. All rights reserved.</p>
           <div className="flex gap-6">
             <a href="#" className="transition hover:text-slate-400">
               Privacy
