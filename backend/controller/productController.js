@@ -47,8 +47,11 @@ module.exports.Addproduct=async(req,res)=>{
         res.status(201).json({ message: "Product created successfully", product: createdProduct });
 
      } catch (error) {
-
-        res.status(500).json({ message: "Error in creating product", error: error.message });
+        if (error.code === 11000) {
+          const field = Object.keys(error.keyPattern || error.keyValue || {})[0] || "value";
+          return res.status(400).json({ message: `A product with this ${field} already exists` });
+        }
+        res.status(500).json({ message: error.message || "Error in creating product" });
      }
     }
 
@@ -161,7 +164,11 @@ module.exports.Addproduct=async(req,res)=>{
         res.status(200).json(product);
       } catch (error) {
         console.error("Error updating product:", error);
-        res.status(500).json({ message: "Error updating product", error: error.message });
+        if (error.code === 11000) {
+          const field = Object.keys(error.keyPattern || error.keyValue || {})[0] || "value";
+          return res.status(400).json({ message: `A product with this ${field} already exists` });
+        }
+        res.status(500).json({ message: error.message || "Error updating product" });
       }
     };
 
