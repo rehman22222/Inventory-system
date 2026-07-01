@@ -14,6 +14,7 @@ import toast from "react-hot-toast";
 import { logout } from "../features/authSlice";
 import { useSidebar } from "../lib/SidebarContext";
 import e360Logo from "../images/e360-logo.png";
+import e360LogoWhite from "../images/e360-logo-white.png";
 
 const dashboardPath = {
   admin: "/AdminDashboard",
@@ -77,10 +78,15 @@ function Sidebar() {
 
   return (
     <div className="flex h-screen w-64 flex-col overflow-y-auto bg-base-100 border-r border-base-300 p-6 text-base-content shadow-md">
-      <div className="relative mb-8 flex shrink-0 items-center justify-between rounded-xl bg-white px-3 py-3">
+      <div className="relative mb-8 flex shrink-0 items-center justify-between">
         <img
           src={e360Logo}
-          className="h-10 w-auto object-contain"
+          className="h-11 w-auto object-contain dark:hidden"
+          alt="E360 Inventory Suite by Eiretech"
+        />
+        <img
+          src={e360LogoWhite}
+          className="hidden h-11 w-auto object-contain dark:block"
           alt="E360 Inventory Suite by Eiretech"
         />
         <button

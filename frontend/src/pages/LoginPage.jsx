@@ -6,7 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 import * as yup from "yup";
 import { FiShield, FiUsers, FiBriefcase } from "react-icons/fi";
 import { login } from "../features/authSlice";
-import e360Logo from "../images/e360-logo.png";
+import e360LogoWhite from "../images/e360-logo-white.png";
 
 const demoAccounts = [
   {
@@ -90,10 +90,10 @@ function LoginPage() {
         {/* Left panel is always dark by design. */}
         <section className="flex flex-col justify-between bg-slate-950 px-8 py-10 text-white lg:px-14">
           <div>
-            <Link to="/" className="inline-flex rounded-xl bg-white px-4 py-2.5">
+            <Link to="/" className="inline-flex">
               <img
-                src={e360Logo}
-                className="h-12 w-auto object-contain"
+                src={e360LogoWhite}
+                className="h-16 w-auto object-contain"
                 alt="E360 Inventory Suite by Eiretech"
               />
             </Link>
