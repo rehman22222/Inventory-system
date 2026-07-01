@@ -4,6 +4,7 @@ import { useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
   FiCreditCard,
+  FiImage,
   FiMinus,
   FiPlus,
   FiPrinter,
@@ -289,6 +290,21 @@ function POSPage() {
                   onClick={() => addToCart(product)}
                   className="rounded-xl border border-base-300 bg-base-100 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-500 hover:shadow-md"
                 >
+                  {/* Product image (with placeholder fallback) */}
+                  <div className="mb-4 h-28 w-full overflow-hidden rounded-lg bg-base-200">
+                    {product.image?.url ? (
+                      <img
+                        src={product.image.url}
+                        alt={product.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-base-content/30">
+                        <FiImage className="text-3xl" />
+                      </div>
+                    )}
+                  </div>
+
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
                       <h2 className="font-semibold text-base-content">{product.name}</h2>

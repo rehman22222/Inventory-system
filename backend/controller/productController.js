@@ -1,6 +1,7 @@
 const Product=require('../models/Productmodel')
 
 const logActivity=require('../libs/logger')
+const { uploadImage, deleteImage } = require('../libs/cloudinaryImage')
 
 module.exports.Addproduct=async(req,res)=>{
   const userId=req.user._id;
@@ -8,20 +9,24 @@ module.exports.Addproduct=async(req,res)=>{
 
     try {
 
-        const { name,   Desciption,Category, Price, quantity } = req.body;
-        
-   
-     
+        const { name, Desciption, Category, Price, quantity, barcode, expiryDate } = req.body;
+
         if (!name|| !Category || !  Desciption|| !Price || !quantity) {
            return res.status(400).json({ error: "Please provide all product details." });
         }
 
-     
-        const createdProduct = new Product({
-           name,Desciption, Category, Price, quantity,
-        });
+        const productData = { name, Desciption, Category, Price, quantity };
+        if (barcode) productData.barcode = barcode;
+        if (expiryDate) productData.expiryDate = expiryDate;
 
+        // Upload image to Cloudinary from the backend; store only url + publicId.
+        if (req.file) {
+          productData.image = await uploadImage(req.file);
+        }
+
+        const createdProduct = new Product(productData);
         await createdProduct.save();
+        await createdProduct.populate('Category');
 
        await logActivity({
 
@@ -33,15 +38,15 @@ module.exports.Addproduct=async(req,res)=>{
       ipAddress:ipAddress,
 
         })
-     
-     
-        res.status(201).json({ message: "Product created successfully" });
-     
+
+
+        res.status(201).json({ message: "Product created successfully", product: createdProduct });
+
      } catch (error) {
-        
+
         res.status(500).json({ message: "Error in creating product", error: error.message });
      }
-    }  
+    }
 
     module.exports.getProduct = async (req, res) => {
         try {
@@ -77,10 +82,13 @@ module.exports.Addproduct=async(req,res)=>{
         const ipAddress=req.ip
     
         const deletedProduct = await Product.findByIdAndDelete(productId);
-    
+
         if (!deletedProduct) {
           return res.status(404).json({ message: "Product not found!" });
         }
+
+        // Remove its image from Cloudinary so we don't leave orphaned assets.
+        await deleteImage(deletedProduct.image?.publicId);
 
         await logActivity({
           action: "Delete Product",
@@ -103,38 +111,50 @@ module.exports.Addproduct=async(req,res)=>{
 
     module.exports.EditProduct = async (req, res) => {
       try {
-        const { productId, updatedData } = req.body;
+        // productId comes from the route param; fields arrive as multipart form
+        // fields (or JSON). Support the legacy nested `updatedData` shape too.
+        const productId = req.params.productId || req.body.productId;
         const userId = req.user._id;
         const ipAddress = req.ip;
-    
-   
-        if (!updatedData || typeof updatedData !== 'object') {
-          return res.status(400).json({ message: "Invalid update data provided." });
-        }
-    
 
-        const updatedProduct = await Product.findByIdAndUpdate(
-          productId,
-          { ...updatedData },
-          { new: true } 
-        );
-    
-        if (!updatedProduct) {
+        const source =
+          req.body.updatedData && typeof req.body.updatedData === "object"
+            ? req.body.updatedData
+            : req.body;
+
+        const product = await Product.findById(productId);
+        if (!product) {
           return res.status(404).json({ message: "Product not found." });
         }
-    
+
+        // Apply only the fields that were actually provided.
+        const editable = ["name", "Desciption", "Category", "Price", "quantity", "barcode", "expiryDate"];
+        editable.forEach((field) => {
+          if (source[field] !== undefined && source[field] !== "") {
+            product[field] = source[field];
+          }
+        });
+
+        // Replace the image if a new file was uploaded, deleting the old one.
+        if (req.file) {
+          const oldPublicId = product.image?.publicId;
+          product.image = await uploadImage(req.file);
+          await deleteImage(oldPublicId);
+        }
+
+        await product.save();
+        await product.populate("Category");
 
         await logActivity({
           action: "Update Product",
-          description: `Product "${updatedProduct.name}" was updated.`,
+          description: `Product "${product.name}" was updated.`,
           entity: "product",
-          entityId: updatedProduct._id,
+          entityId: product._id,
           userId: userId,
           ipAddress: ipAddress,
         });
-    
-       
-        res.status(200).json(updatedProduct);
+
+        res.status(200).json(product);
       } catch (error) {
         console.error("Error updating product:", error);
         res.status(500).json({ message: "Error updating product", error: error.message });

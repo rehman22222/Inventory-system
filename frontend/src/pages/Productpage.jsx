@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import TopNavbar from "../Components/TopNavbar";
 import { IoMdAdd } from "react-icons/io";
 import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
+import { FiImage } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import FormattedTime from "../lib/FormattedTime ";
 import {
@@ -13,6 +14,29 @@ import {
 } from "../features/productSlice";
 import { gettingallCategory } from "../features/categorySlice";
 import toast from "react-hot-toast";
+
+// Clean thumbnail with a placeholder fallback when a product has no image.
+function ProductThumb({ url, alt, className = "" }) {
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt={alt}
+        className={`rounded-md object-cover ${className}`}
+      />
+    );
+  }
+  return (
+    <div
+      className={`flex items-center justify-center rounded-md bg-base-200 text-base-content/30 ${className}`}
+    >
+      <FiImage className="text-lg" />
+    </div>
+  );
+}
+
+const toDateInput = (value) =>
+  value ? new Date(value).toISOString().split("T")[0] : "";
 
 function Productpage() {
   const { getallproduct, editedProduct, isproductadd, searchdata } = useSelector(
@@ -26,7 +50,10 @@ function Productpage() {
   const [Price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
   const [Desciption, setDesciption] = useState("");
-  const [dateAdded, setDateAdded] = useState(new Date().toISOString().split('T')[0]); // Initialize with current date
+  const [barcode, setBarcode] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
@@ -46,32 +73,42 @@ function Productpage() {
     }
   }, [query, dispatch]);
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const buildFormData = () => {
+    const formData = new FormData();
+    formData.append("name", name);
+    formData.append("Category", Category);
+    formData.append("Price", Price);
+    formData.append("quantity", quantity);
+    formData.append("Desciption", Desciption);
+    if (barcode) formData.append("barcode", barcode);
+    if (expiryDate) formData.append("expiryDate", expiryDate);
+    if (imageFile) formData.append("image", imageFile);
+    return formData;
+  };
+
   const handleremove = async (productId) => {
     dispatch(Removeproduct(productId))
       .unwrap()
-      .then(() => {
-        toast.success("Product removed successfully");
-      })
-      .catch((error) => {
-        toast.error(error || "Failed to remove product");
-      });
+      .then(() => toast.success("Product removed successfully"))
+      .catch((error) => toast.error(error || "Failed to remove product"));
   };
 
   const handleEditSubmit = (event) => {
     event.preventDefault();
-
     if (!selectedProduct) return;
 
-    const updatedData = {
-      name,
-      Category,
-      Price,
-      quantity,
-      Desciption,
-      dateAdded: selectedProduct.dateAdded || new Date().toISOString() 
-    };
-
-    dispatch(EditProduct({ id: selectedProduct._id, updatedData }))
+    dispatch(EditProduct({ id: selectedProduct._id, formData: buildFormData() }))
       .unwrap()
       .then(() => {
         toast.success("Product updated successfully");
@@ -79,31 +116,19 @@ function Productpage() {
         setSelectedProduct(null);
         resetForm();
       })
-      .catch(() => {
-        toast.error("Failed to update product");
-      });
+      .catch(() => toast.error("Failed to update product"));
   };
 
   const submitProduct = async (event) => {
     event.preventDefault();
-    const productData = { 
-      name, 
-      Desciption, 
-      Category, 
-      Price, 
-      quantity,
-      dateAdded: new Date(dateAdded).toISOString() 
-    };
-
-    dispatch(Addproduct(productData))
+    dispatch(Addproduct(buildFormData()))
       .unwrap()
       .then(() => {
         toast.success("Product added successfully");
         resetForm();
+        setIsFormVisible(false);
       })
-      .catch(() => {
-        toast.error("Product add unsuccessful");
-      });
+      .catch(() => toast.error("Product add unsuccessful"));
   };
 
   const resetForm = () => {
@@ -112,7 +137,10 @@ function Productpage() {
     setPrice("");
     setQuantity("");
     setDesciption("");
-   
+    setBarcode("");
+    setExpiryDate("");
+    setImageFile(null);
+    setImagePreview("");
   };
 
   const handleEditClick = (product) => {
@@ -122,70 +150,98 @@ function Productpage() {
     setPrice(product.Price);
     setQuantity(product.quantity);
     setDesciption(product.Desciption);
-  
-   
+    setBarcode(product.barcode || "");
+    setExpiryDate(toDateInput(product.expiryDate));
+    setImageFile(null);
+    setImagePreview(product.image?.url || "");
+    setIsFormVisible(true);
+  };
+
+  const openAddForm = () => {
+    resetForm();
+    setSelectedProduct(null);
     setIsFormVisible(true);
   };
 
   const displayProducts = query.trim() !== "" ? searchdata : getallproduct;
 
+  const totalValue =
+    getallproduct?.reduce((sum, p) => sum + Number(p.Price || 0) * Number(p.quantity || 0), 0) || 0;
+
   return (
     <div className="bg-base-200 min-h-screen">
       <TopNavbar />
 
-      <div className="mt-10 flex">
-        <div className="bg-blue-950 w-56 rounded-xl ml-10 block h-24">
-          <h1 className="text-white ml-12 block pt-5 font-bold">Total Product</h1>
-          <p className="text-white font-bold pt-2 ml-24">{getallproduct?.length || "0"}</p>
+      <div className="px-4 py-6 sm:px-6">
+        {/* Summary cards */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="rounded-xl bg-slate-950 p-5 text-white shadow-sm">
+            <h1 className="text-sm font-semibold text-slate-300">Total Products</h1>
+            <p className="mt-2 text-2xl font-bold">{getallproduct?.length || 0}</p>
+          </div>
+          <div className="rounded-xl bg-slate-950 p-5 text-white shadow-sm">
+            <h1 className="text-sm font-semibold text-slate-300">Total Store Value</h1>
+            <p className="mt-2 text-2xl font-bold">${totalValue.toFixed(2)}</p>
+          </div>
+          <div className="rounded-xl bg-slate-950 p-5 text-white shadow-sm">
+            <h1 className="text-sm font-semibold text-slate-300">Total Categories</h1>
+            <p className="mt-2 text-2xl font-bold">{getallCategory?.length || 0}</p>
+          </div>
         </div>
-        <div className="bg-blue-950 ml-10 rounded-xl block w-56 h-24">
-          <h1 className="text-white font-bold ml-12 pt-5">Total store value</h1>
-          <p className="text-white font-bold pt-2 ml-24">$
-            {getallproduct?.reduce((totalAmount, product) => {
-              return totalAmount + product.Price;
-            }, 0) || "0"}
-          </p>
-        </div>
-        <div className="bg-blue-950 bg-base-100 w-56 rounded-xl ml-10 block h-24">
-          <h1 className="text-white font-bold ml-12 pt-5">Total Category</h1>
-          <p className="text-white font-bold pt-2 ml-24"> {getallCategory?.length || "0"}</p>
-        </div>
-      </div>
 
-      <div className="mt-12 ml-5">
-        <div className="flex items-center space-x-4">
+        {/* Search + Add */}
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
           <input
             type="text"
             value={query}
             onChange={(e) => setquery(e.target.value)}
-            className="w-full md:w-96 h-12 pl-4 pr-12 border-2 border-base-300 rounded-lg bg-base-100 text-base-content"
-            placeholder="Enter your product"
+            className="h-12 w-full flex-1 rounded-lg border-2 border-base-300 bg-base-100 pl-4 pr-4 text-base-content sm:max-w-md"
+            placeholder="Search products…"
           />
           <button
-            onClick={() => {
-              setIsFormVisible(true);
-              setSelectedProduct(null);
-            }}
-            className="bg-blue-800 text-white w-40 h-12 rounded-lg flex items-center justify-center"
+            onClick={openAddForm}
+            className="flex h-12 items-center justify-center rounded-lg bg-blue-800 px-6 text-white transition hover:bg-blue-700"
           >
-            <IoMdAdd className="text-xl mr-2" /> Add Product
+            <IoMdAdd className="mr-2 text-xl" /> Add Product
           </button>
         </div>
 
+        {/* Form drawer */}
         {isFormVisible && (
-          <div className="absolute top-16 right-0 z-50 h-svh w-80 bg-base-100 p-6 border-2 border-base-300 rounded-lg shadow-xl transition-transform transform">
+          <div className="fixed right-0 top-0 z-50 h-svh w-full max-w-sm overflow-y-auto border-l-2 border-base-300 bg-base-100 p-6 shadow-xl">
             <div className="text-right">
               <MdKeyboardDoubleArrowLeft
                 onClick={() => setIsFormVisible(false)}
-                className="cursor-pointer text-2xl"
+                className="ml-auto cursor-pointer text-2xl"
               />
             </div>
 
-            <h1 className="text-xl font-semibold mb-4">
+            <h1 className="mb-4 text-xl font-semibold">
               {selectedProduct ? "Edit Product" : "Add Product"}
             </h1>
 
             <form onSubmit={selectedProduct ? handleEditSubmit : submitProduct}>
+              {/* Image */}
+              <div className="mb-4">
+                <label className="mb-2 block text-sm font-medium">Product Image</label>
+                <div className="flex items-center gap-4">
+                  <ProductThumb
+                    url={imagePreview}
+                    alt="Preview"
+                    className="h-16 w-16 border border-base-300"
+                  />
+                  <label className="cursor-pointer rounded-lg border border-base-300 bg-base-200 px-3 py-2 text-sm hover:bg-base-300">
+                    {imagePreview ? "Change" : "Upload"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageChange}
+                    />
+                  </label>
+                </div>
+              </div>
+
               <div className="mb-4">
                 <label>Name</label>
                 <input
@@ -193,7 +249,7 @@ function Productpage() {
                   placeholder="Enter product name"
                   onChange={(e) => setName(e.target.value)}
                   type="text"
-                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
+                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
                   required
                 />
               </div>
@@ -203,7 +259,7 @@ function Productpage() {
                 <select
                   value={Category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
+                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
                   required
                 >
                   <option value="">Select a category</option>
@@ -222,8 +278,19 @@ function Productpage() {
                   placeholder="Enter product description"
                   onChange={(e) => setDesciption(e.target.value)}
                   type="text"
-                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
+                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
                   required
+                />
+              </div>
+
+              <div className="mb-4">
+                <label>Barcode</label>
+                <input
+                  value={barcode}
+                  placeholder="Scan or enter barcode"
+                  onChange={(e) => setBarcode(e.target.value)}
+                  type="text"
+                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
                 />
               </div>
 
@@ -234,9 +301,10 @@ function Productpage() {
                   placeholder="Enter product price"
                   value={Price}
                   onChange={(e) => setPrice(e.target.value)}
-                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
+                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
                   required
                   min="0"
+                  step="0.01"
                 />
               </div>
 
@@ -247,17 +315,25 @@ function Productpage() {
                   placeholder="Enter product quantity"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
-                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
+                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
                   required
                   min="0"
                 />
               </div>
 
-              
+              <div className="mb-4">
+                <label>Expiry Date</label>
+                <input
+                  type="date"
+                  value={expiryDate}
+                  onChange={(e) => setExpiryDate(e.target.value)}
+                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                />
+              </div>
 
               <button
                 type="submit"
-                className="bg-blue-800 text-white w-full h-12 rounded-lg hover:bg-blue-700 mt-4"
+                className="mt-4 h-12 w-full rounded-lg bg-blue-800 text-white transition hover:bg-blue-700"
               >
                 {selectedProduct ? "Update Product" : "Add Product"}
               </button>
@@ -265,64 +341,69 @@ function Productpage() {
           </div>
         )}
 
+        {/* Product list */}
         <div className="mt-10">
-          <h2 className="text-xl font-semibold mb-4">Product List</h2>
+          <h2 className="mb-4 text-xl font-semibold">Product List</h2>
           <div className="overflow-x-auto">
-            <table className="min-w-full bg-base-100 border mb-24 border-base-300 rounded-lg shadow-md">
+            <table className="min-w-full rounded-lg border border-base-300 bg-base-100 shadow-md">
               <thead className="bg-base-200">
                 <tr>
-                  <th className="px-3 py-2 border w-5">#</th>
-                  <th className="px-3 py-2 border">Name</th>
-                  <th className="px-3 py-2 border">Category</th>
-                  <th className="px-3 py-2 border">Description</th>
-                  <th className="px-3 py-2 border">Quantity</th>
-                  <th className="px-3 py-2 border">Price</th>
-                  <th className="px-3 py-2 border">Date </th>
-                  <th className="px-3 py-2 w-72 border">Operations</th>
+                  <th className="border px-3 py-2">#</th>
+                  <th className="border px-3 py-2">Image</th>
+                  <th className="border px-3 py-2">Name</th>
+                  <th className="border px-3 py-2">Category</th>
+                  <th className="border px-3 py-2">Barcode</th>
+                  <th className="border px-3 py-2">Quantity</th>
+                  <th className="border px-3 py-2">Price</th>
+                  <th className="border px-3 py-2">Expiry</th>
+                  <th className="w-56 border px-3 py-2">Operations</th>
                 </tr>
               </thead>
               <tbody>
-                {Array.isArray(displayProducts) &&
-                displayProducts.length > 0 ? (
-                  displayProducts.map((product, index) => {
-                    // Format the date for display
-                    const formattedDate = product.dateAdded 
-                      ? new Date(product.dateAdded).toLocaleDateString() 
-                      : 'N/A';
-                    
-                    return (
-                      <tr key={product._id}>
-                        <td className="px-3 py-2 border">{index+1}</td>
-                        <td className="px-3 py-2 border">{product.name}</td>
-                        <td className="px-3 py-2 border">
-                          {product.Category?.name || "No Category"}
-                        </td>
-                        <td className="px-3 py-2 border">
-                          {product.Desciption}
-                        </td>
-                        <td className="px-3 py-2 border">{product.quantity}</td>
-                        <td className="px-3 py-2 border">${product.Price}</td>
-                        <td className="px-3 py-2 border"><FormattedTime timestamp={product?.createdAt} /></td>
-                        <td className="px-4 py-2 border">
+                {Array.isArray(displayProducts) && displayProducts.length > 0 ? (
+                  displayProducts.map((product, index) => (
+                    <tr key={product._id}>
+                      <td className="border px-3 py-2">{index + 1}</td>
+                      <td className="border px-3 py-2">
+                        <ProductThumb
+                          url={product.image?.url}
+                          alt={product.name}
+                          className="h-12 w-12"
+                        />
+                      </td>
+                      <td className="border px-3 py-2">{product.name}</td>
+                      <td className="border px-3 py-2">
+                        {product.Category?.name || "No Category"}
+                      </td>
+                      <td className="border px-3 py-2">{product.barcode || "—"}</td>
+                      <td className="border px-3 py-2">{product.quantity}</td>
+                      <td className="border px-3 py-2">${product.Price}</td>
+                      <td className="border px-3 py-2">
+                        {product.expiryDate
+                          ? new Date(product.expiryDate).toLocaleDateString()
+                          : "—"}
+                      </td>
+                      <td className="border px-4 py-2">
+                        <div className="flex gap-2">
                           <button
                             onClick={() => handleremove(product._id)}
-                            className="h-10 w-24 bg-red-500 hover:bg-red-700 rounded-md text-white"
+                            className="h-10 flex-1 rounded-md bg-red-500 text-white hover:bg-red-700"
                           >
                             Remove
                           </button>
                           <button
                             onClick={() => handleEditClick(product)}
-                            className="h-10 w-24 bg-green-500 ml-10 hover:bg-green-700 rounded-md text-white"
+                            className="h-10 flex-1 rounded-md bg-green-500 text-white hover:bg-green-700"
                           >
                             Edit
                           </button>
-                        </td>
-                      </tr>
-                    );
-                  })
+                        </div>
+                      </td>
+                    </tr>
+                  ))
                 ) : (
                   <tr>
-                    <td colSpan="8" className="text-center py-4">
+                    <td colSpan="9" className="py-4 text-center">
                       No products found.
                     </td>
                   </tr>

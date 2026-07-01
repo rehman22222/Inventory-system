@@ -34,11 +34,14 @@ const ProductSchema= new mongoose.Schema({
         unique:true,
         sparse:true
     },
-    image:{
-        type:String,
-
+    expiryDate:{
+        type:Date,
     },
-    supplier: { type: mongoose.Schema.Types.ObjectId, 
+    image:{
+        url:{ type:String },
+        publicId:{ type:String },
+    },
+    supplier: { type: mongoose.Schema.Types.ObjectId,
         ref: "Supplier" },
     createdAt:{
         type:Date,

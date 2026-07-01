@@ -76,6 +76,14 @@ if (useLocalStorage) {
   app.use("/api/stocktransaction", stocktransactionrouter);
 }
 
+// Return JSON (not HTML) for upload/multer errors like oversized or non-image files.
+app.use((err, req, res, next) => {
+  if (err) {
+    return res.status(400).json({ message: err.message || "Upload failed" });
+  }
+  next();
+});
+
 
 
 

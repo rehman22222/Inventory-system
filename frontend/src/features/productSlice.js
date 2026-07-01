@@ -45,11 +45,11 @@ export const Addproduct=createAsyncThunk('product/addproduct',async(product,{rej
   
   export const EditProduct = createAsyncThunk(
     'product/editproduct',
-    async ({ id, updatedData }, { rejectWithValue }) => {
+    async ({ id, formData }, { rejectWithValue }) => {
       try {
         const response = await axiosInstance.put(
           `product/editproduct/${id}`,
-          { productId: id, updatedData },
+          formData,
           { withCredentials: true }
         );
         return response.data;
@@ -161,9 +161,10 @@ extraReducers:(builder)=>{
   })
   .addCase(Addproduct.fulfilled,(state,action)=>{
    state.isproductadd=false
-   state.getallproduct.push(action.payload);
-  
- 
+   const created = action.payload?.product || action.payload;
+   if (Array.isArray(state.getallproduct) && created?._id) {
+     state.getallproduct.push(created);
+   }
   })
   
  
