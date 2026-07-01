@@ -58,7 +58,7 @@ function SignupPage() {
           <div className="mb-8 flex justify-center">
             <img
               src={e360Logo}
-              className="h-16 w-auto object-contain"
+              className="h-20 w-auto object-contain"
               alt="E360 Inventory Suite by Eiretech"
             />
           </div>

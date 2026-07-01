@@ -13,7 +13,7 @@ function Footer() {
           <div className="md:col-span-1">
             <img
               src={e360LogoWhite}
-              className="h-12 w-auto object-contain"
+              className="h-16 w-auto object-contain"
               alt="E360 Inventory Suite by Eiretech"
             />
             <p className="mt-4 text-sm leading-relaxed text-slate-500">

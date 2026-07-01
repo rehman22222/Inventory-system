@@ -78,22 +78,22 @@ function Sidebar() {
 
   return (
     <div className="flex h-screen w-64 flex-col overflow-y-auto bg-base-100 border-r border-base-300 p-6 text-base-content shadow-md">
-      <div className="relative mb-8 flex shrink-0 items-center justify-between">
+      <div className="relative mb-8 shrink-0">
         <img
           src={e360Logo}
-          className="h-11 w-auto object-contain dark:hidden"
+          className="w-full object-contain dark:hidden"
           alt="E360 Inventory Suite by Eiretech"
         />
         <img
           src={e360LogoWhite}
-          className="hidden h-11 w-auto object-contain dark:block"
+          className="hidden w-full object-contain dark:block"
           alt="E360 Inventory Suite by Eiretech"
         />
         <button
           type="button"
           onClick={() => setOpen(false)}
           aria-label="Close menu"
-          className="rounded-md bg-black/10 p-1.5 text-slate-600 transition hover:bg-black/20 lg:hidden"
+          className="absolute -right-2 -top-2 rounded-md bg-base-200 p-1.5 text-base-content/60 transition hover:bg-base-300 lg:hidden"
         >
           <FiX className="text-lg" />
         </button>

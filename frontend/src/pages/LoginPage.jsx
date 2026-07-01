@@ -93,7 +93,7 @@ function LoginPage() {
             <Link to="/" className="inline-flex">
               <img
                 src={e360LogoWhite}
-                className="h-16 w-auto object-contain"
+                className="h-20 w-auto object-contain"
                 alt="E360 Inventory Suite by Eiretech"
               />
             </Link>
