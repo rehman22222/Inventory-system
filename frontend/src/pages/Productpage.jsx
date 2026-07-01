@@ -13,6 +13,7 @@ import {
   EditProduct,
 } from "../features/productSlice";
 import { gettingallCategory } from "../features/categorySlice";
+import ReportButton from "../Components/ReportButton";
 import toast from "react-hot-toast";
 
 // Clean thumbnail with a placeholder fallback when a product has no image.
@@ -48,6 +49,7 @@ function Productpage() {
   const [name, setName] = useState("");
   const [Category, setCategory] = useState("");
   const [Price, setPrice] = useState("");
+  const [costPrice, setCostPrice] = useState("");
   const [quantity, setQuantity] = useState("");
   const [Desciption, setDesciption] = useState("");
   const [barcode, setBarcode] = useState("");
@@ -89,6 +91,7 @@ function Productpage() {
     formData.append("name", name);
     formData.append("Category", Category);
     formData.append("Price", Price);
+    if (costPrice !== "") formData.append("costPrice", costPrice);
     formData.append("quantity", quantity);
     formData.append("Desciption", Desciption);
     if (barcode) formData.append("barcode", barcode);
@@ -135,6 +138,7 @@ function Productpage() {
     setName("");
     setCategory("");
     setPrice("");
+    setCostPrice("");
     setQuantity("");
     setDesciption("");
     setBarcode("");
@@ -148,6 +152,7 @@ function Productpage() {
     setName(product.name);
     setCategory(product.Category?._id || "");
     setPrice(product.Price);
+    setCostPrice(product.costPrice ?? "");
     setQuantity(product.quantity);
     setDesciption(product.Desciption);
     setBarcode(product.barcode || "");
@@ -204,6 +209,11 @@ function Productpage() {
           >
             <IoMdAdd className="mr-2 text-xl" /> Add Product
           </button>
+          <ReportButton
+            reportKey="inventory"
+            label="Inventory Report"
+            className="h-12"
+          />
         </div>
 
         {/* Form drawer */}
@@ -295,14 +305,27 @@ function Productpage() {
               </div>
 
               <div className="mb-4">
-                <label>Price</label>
+                <label>Selling Price</label>
                 <input
                   type="number"
-                  placeholder="Enter product price"
+                  placeholder="Price you sell at"
                   value={Price}
                   onChange={(e) => setPrice(e.target.value)}
                   className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
                   required
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              <div className="mb-4">
+                <label>Cost Price</label>
+                <input
+                  type="number"
+                  placeholder="Price you paid (for profit tracking)"
+                  value={costPrice}
+                  onChange={(e) => setCostPrice(e.target.value)}
+                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
                   min="0"
                   step="0.01"
                 />

@@ -4,6 +4,7 @@ import { socketURL } from "../lib/socket";
 import { useEffect, useState } from "react";
 import { getAllActivityLogs, getsingleUserActivityLogs } from "../features/activitySlice";
 import TopNavbar from "../Components/TopNavbar";
+import ReportButton from "../Components/ReportButton";
 import FormattedTime from "../lib/FormattedTime ";
 
 function Activitylogpage() {
@@ -47,7 +48,10 @@ function Activitylogpage() {
     <div className="bg-base-200 min-h-screen">
       <TopNavbar />
       <div className="mt-10 ml-5">
-        <h1 className="text-xl font-semibold mb-4">Activity Logs</h1>
+        <div className="mb-4 flex items-center justify-between pr-5">
+          <h1 className="text-xl font-semibold">Activity Logs</h1>
+          <ReportButton reportKey="activity" label="Download Activity Report" />
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full bg-base-100 mb-24 border border-base-300 rounded-lg shadow-md">
             <thead className="bg-base-200">

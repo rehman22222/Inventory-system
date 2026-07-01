@@ -9,6 +9,7 @@ import {
   CreateSales,gettingallSales,EditSales, searchsalesdata
 } from "../features/salesSlice";
 import SalesChart from '../lib/Salesgraph';
+import ReportButton from "../Components/ReportButton";
 import toast from "react-hot-toast";
 
 
@@ -34,6 +35,8 @@ function Salespage() {
   const[Status,setStatus]=useState("")
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [selectedSales, setselectedSales] = useState(null);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
 
 
@@ -168,6 +171,45 @@ function Salespage() {
       <div className="mt-12 ml-5">
 
         <SalesChart className=" mb-10" />
+
+        {/* Sales report — date range + profit/loss summary */}
+        <div className="mr-5 mb-8 rounded-xl border border-base-300 bg-base-100 p-5 shadow-sm">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-base-content">Sales Report</h3>
+              <p className="mt-1 text-sm text-base-content/60">
+                Choose a date range (leave blank for all time). CSV includes totals,
+                cost, and profit/loss.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-end gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-base-content/60">From</label>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="h-10 rounded-lg border-2 border-base-300 bg-base-100 px-3 text-sm text-base-content"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-base-content/60">To</label>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="h-10 rounded-lg border-2 border-base-300 bg-base-100 px-3 text-sm text-base-content"
+                />
+              </div>
+              <ReportButton
+                reportKey="sales"
+                label="Download Sales Report"
+                params={{ from: fromDate || undefined, to: toDate || undefined }}
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="flex items-center space-x-4">
           <input
            value={query}

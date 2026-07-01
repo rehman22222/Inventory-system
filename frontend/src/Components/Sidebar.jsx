@@ -9,7 +9,7 @@ import { RxActivityLog, RxDashboard } from "react-icons/rx";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { LuUsers } from "react-icons/lu";
-import { FiFileText, FiX } from "react-icons/fi";
+import { FiX } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { logout } from "../features/authSlice";
 import { useSidebar } from "../lib/SidebarContext";
@@ -30,7 +30,6 @@ const menuByRole = {
     { label: "Sales", path: "sales", icon: MdPointOfSale },
     { label: "Orders", path: "order", icon: FiShoppingCart },
     { label: "Stock", path: "stock-transaction", icon: RiStockLine },
-    { label: "Reports", path: "reports", icon: FiFileText },
     { label: "Notifications", path: "notifications", icon: IoNotificationsOutline },
     { label: "Users", path: "Userstatus", icon: LuUsers },
     { label: "Activity Log", path: "activity-log", icon: RxActivityLog },
@@ -43,7 +42,6 @@ const menuByRole = {
     { label: "Sales", path: "sales", icon: MdPointOfSale },
     { label: "Orders", path: "order", icon: FiShoppingCart },
     { label: "Stock", path: "stock-transaction", icon: RiStockLine },
-    { label: "Reports", path: "reports", icon: FiFileText },
     { label: "Notifications", path: "NotificationPageRead", icon: IoNotificationsOutline },
   ],
   staff: [
@@ -52,7 +50,6 @@ const menuByRole = {
     { label: "Sales", path: "sales", icon: MdPointOfSale },
     { label: "Orders", path: "order", icon: FiShoppingCart },
     { label: "Stock", path: "stock-transaction", icon: RiStockLine },
-    { label: "Reports", path: "reports", icon: FiFileText },
     { label: "Notifications", path: "NotificationPageRead", icon: IoNotificationsOutline },
   ],
 };

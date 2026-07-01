@@ -9,7 +9,7 @@ module.exports.Addproduct=async(req,res)=>{
 
     try {
 
-        const { name, Desciption, Category, Price, quantity, barcode, expiryDate } = req.body;
+        const { name, Desciption, Category, Price, costPrice, quantity, barcode, expiryDate } = req.body;
 
         const required = { name, Category, Desciption, Price, quantity };
         const missing = Object.keys(required).filter(
@@ -20,6 +20,7 @@ module.exports.Addproduct=async(req,res)=>{
         }
 
         const productData = { name, Desciption, Category, Price, quantity };
+        if (costPrice !== undefined && costPrice !== "") productData.costPrice = costPrice;
         if (barcode) productData.barcode = barcode;
         if (expiryDate) productData.expiryDate = expiryDate;
 
@@ -135,7 +136,7 @@ module.exports.Addproduct=async(req,res)=>{
         }
 
         // Apply only the fields that were actually provided.
-        const editable = ["name", "Desciption", "Category", "Price", "quantity", "barcode", "expiryDate"];
+        const editable = ["name", "Desciption", "Category", "Price", "costPrice", "quantity", "barcode", "expiryDate"];
         editable.forEach((field) => {
           if (source[field] !== undefined && source[field] !== "") {
             product[field] = source[field];
