@@ -5,6 +5,7 @@ import { signup } from "../features/authSlice";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
+import Brandmark from "../Components/Brandmark";
 
 function SignupPage() {
   const { Authuser, isUserSignup } = useSelector((state) => state.auth);
@@ -54,9 +55,8 @@ function SignupPage() {
       
       <div className="w-full sm:w-1/2 p-6 flex items-center justify-center bg-white shadow-lg rounded-xl">
         <div className="max-w-md w-full">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">E360 Inventory Suite</h1>
-            <p className="text-gray-600">by Eiretech</p>
+          <div className="mb-8 flex justify-center">
+            <Brandmark tone="dark" iconClass="h-12 w-12" />
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)}>

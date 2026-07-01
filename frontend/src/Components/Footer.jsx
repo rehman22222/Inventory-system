@@ -2,6 +2,7 @@ import React from 'react';
 import { FaFacebook, FaTwitter, FaLinkedin, FaInstagram } from 'react-icons/fa';
 import { FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
+import Brandmark from './Brandmark';
 
 function Footer() {
   return (
@@ -10,9 +11,9 @@ function Footer() {
         <div className="grid gap-12 md:grid-cols-4">
           {/* Brand */}
           <div className="md:col-span-1">
-            <h2 className="text-xl font-black text-white">E360 <span className="text-cyan-400">Inventory Suite</span></h2>
-            <p className="mt-3 text-sm leading-relaxed text-slate-500">
-              By Eiretech. Efficient inventory management for product-based businesses — track stock, manage orders, and sell smarter.
+            <Brandmark tone="light" iconClass="h-10 w-10" />
+            <p className="mt-4 text-sm leading-relaxed text-slate-500">
+              Efficient inventory management for product-based businesses — track stock, manage orders, and sell smarter.
             </p>
             <div className="mt-6 flex gap-4">
               {[

@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 import * as yup from "yup";
 import { FiShield, FiUsers, FiBriefcase } from "react-icons/fi";
 import { login } from "../features/authSlice";
+import Brandmark from "../Components/Brandmark";
 
 const demoAccounts = [
   {
@@ -86,14 +87,11 @@ function LoginPage() {
   return (
     <div className="min-h-screen bg-base-200 text-base-content">
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[1.1fr_0.9fr]">
-        {/* Left panel — always dark by design */}
+        {/* Left panel is always dark by design. */}
         <section className="flex flex-col justify-between bg-slate-950 px-8 py-10 text-white lg:px-14">
           <div>
-            <Link
-              to="/"
-              className="text-sm font-semibold uppercase tracking-[0.24em] text-cyan-300"
-            >
-              E360 Inventory Suite
+            <Link to="/" className="inline-flex">
+              <Brandmark tone="light" iconClass="h-12 w-12" />
             </Link>
 
             <div className="mt-20 max-w-2xl">
@@ -126,7 +124,7 @@ function LoginPage() {
           </div>
         </section>
 
-        {/* Right panel — theme-aware */}
+        {/* Right panel is theme-aware. */}
         <section className="flex items-center justify-center px-6 py-10 lg:px-10">
           <div className="w-full max-w-xl">
             <div className="mb-8">
@@ -202,7 +200,7 @@ function LoginPage() {
                 className="h-12 w-full rounded-lg bg-cyan-700 font-semibold text-white transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:bg-base-300 disabled:text-base-content/40"
                 disabled={isUserLogin}
               >
-                {isUserLogin ? "Signing in…" : "Open Dashboard"}
+                {isUserLogin ? "Signing in..." : "Open Dashboard"}
               </button>
             </form>
 
