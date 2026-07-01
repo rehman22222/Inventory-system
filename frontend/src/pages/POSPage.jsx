@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
   FiCreditCard,
@@ -12,6 +13,7 @@ import {
 } from "react-icons/fi";
 import TopNavbar from "../Components/TopNavbar";
 import axiosInstance from "../lib/axios";
+import useBarcodeScanner from "../lib/useBarcodeScanner";
 import { gettingallproducts } from "../features/productSlice";
 
 const paymentMethods = [
@@ -24,6 +26,7 @@ const paymentMethods = [
 
 function POSPage() {
   const dispatch = useDispatch();
+  const location = useLocation();
   const barcodeRef = useRef(null);
   const { getallproduct } = useSelector((state) => state.product);
   const { Authuser } = useSelector((state) => state.auth);
@@ -103,22 +106,43 @@ function POSPage() {
     });
   };
 
-  const scanBarcode = (event) => {
-    event.preventDefault();
-    const value = barcode.trim();
+  // Shared lookup used by BOTH the barcode input's Enter submit and the global
+  // scanner capture. Finds by barcode (or SKU if present), then adds to cart.
+  const handleScanCode = (rawCode) => {
+    const value = String(rawCode || "").trim();
     if (!value) return;
-    const product = products.find((item) => item.barcode === value);
+    const product = products.find(
+      (item) => item.barcode === value || item.sku === value
+    );
     if (!product) {
-      toast.error("Barcode not found");
-      setBarcode("");
-      barcodeRef.current?.focus();
+      toast.error(`Barcode not found: ${value}`);
       return;
     }
     addToCart(product);
     toast.success(`${product.name} added`);
+  };
+
+  const scanBarcode = (event) => {
+    event.preventDefault();
+    handleScanCode(barcode);
     setBarcode("");
     barcodeRef.current?.focus();
   };
+
+  // Global scanner capture — active only on the Staff POS route. Works even when
+  // the barcode input isn't focused; ignores typing in any editable field.
+  const scannerEnabled = location.pathname
+    .toLowerCase()
+    .startsWith("/staffdashboard/pos");
+
+  useBarcodeScanner(
+    (code) => {
+      handleScanCode(code);
+      // Return focus to the barcode input so subsequent manual scans stay fast.
+      barcodeRef.current?.focus();
+    },
+    { enabled: scannerEnabled }
+  );
 
   const updateQuantity = (productId, nextQuantity) => {
     setReceipt(null);
