@@ -80,7 +80,7 @@ function Sidebar() {
       <div className="relative mb-8 flex shrink-0 items-center justify-between rounded-xl bg-white px-3 py-3">
         <img
           src={e360Logo}
-          className="h-12 w-auto max-w-[170px] object-contain"
+          className="h-10 w-auto object-contain"
           alt="E360 Inventory Suite by Eiretech"
         />
         <button
