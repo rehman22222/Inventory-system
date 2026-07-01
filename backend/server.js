@@ -93,6 +93,22 @@ server.listen(PORT, () => {
   } else {
     MongoDBconfig();
   }
+
+  const cloudinaryReady = Boolean(
+    (process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUD_NAME) &&
+      (process.env.CLOUDINARY_API_KEY || process.env.API_KEY) &&
+      (process.env.CLOUDINARY_API_SECRET || process.env.API_SECRET)
+  );
+  if (cloudinaryReady) {
+    console.log(
+      `[Cloudinary] configured (cloud: ${process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUD_NAME}) — image uploads enabled`
+    );
+  } else {
+    console.warn(
+      "[Cloudinary] NOT configured — image uploads will fail. Set CLOUDINARY_* in backend/.env and restart."
+    );
+  }
+
   console.log(`The server is running at port ${PORT}`);
 });
 
