@@ -11,7 +11,8 @@ try {
 } catch (e) {
   require("../models/ Categorymodel");
 }
-const { buildCsv, formatDate, formatDateTime, money } = require("../libs/csv");
+const { formatDate, formatDateTime, money } = require("../libs/csv");
+const { buildWorkbookBuffer } = require("../libs/excel");
 
 const LOW_STOCK_THRESHOLD = 10;
 
@@ -212,7 +213,7 @@ module.exports.downloadReport = async (req, res) => {
     }
 
     const report = await def.build(req);
-    const csv = buildCsv({
+    const buffer = await buildWorkbookBuffer({
       title: report.title,
       subtitle: report.subtitle,
       generatedBy: `${req.user.name || "User"} (${req.user.role})`,
@@ -221,10 +222,13 @@ module.exports.downloadReport = async (req, res) => {
       summary: report.summary,
     });
 
-    const filename = `${type}-report-${formatDate(new Date())}.csv`;
-    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    const filename = `${type}-report-${formatDate(new Date())}.xlsx`;
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    return res.status(200).send(csv);
+    return res.status(200).send(Buffer.from(buffer));
   } catch (error) {
     console.error("Report generation failed:", error);
     return res.status(500).json({ message: "Failed to generate report", error: error.message });

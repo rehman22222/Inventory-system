@@ -20,9 +20,12 @@ function ReportButton({ reportKey, label = "Download Report", params, className 
       });
       const cd = res.headers["content-disposition"] || "";
       const match = cd.match(/filename="?([^"]+)"?/);
-      const filename = match ? match[1] : `${reportKey}-report.csv`;
+      const filename = match ? match[1] : `${reportKey}-report.xlsx`;
 
-      const url = URL.createObjectURL(new Blob([res.data], { type: "text/csv" }));
+      const type =
+        res.headers["content-type"] ||
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      const url = URL.createObjectURL(new Blob([res.data], { type }));
       const a = document.createElement("a");
       a.href = url;
       a.download = filename;
