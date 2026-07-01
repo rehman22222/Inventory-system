@@ -12,8 +12,8 @@ function ProfilePage() {
   const { Authuser } = useSelector((state) => state.auth);
   const { userdata } = useSelector((state) => state.activity);
   const [images, setImage] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
-console.log(userdata)
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) {
@@ -21,28 +21,27 @@ console.log(userdata)
       return;
     }
 
-
     const storedUser = JSON.parse(localStorage.getItem("user"));
-    if (!storedUser ) {
+    if (!storedUser) {
       toast.error("User not authenticated. Please log in again.");
       return;
     }
-
 
     const reader = new FileReader();
     reader.readAsDataURL(file);
 
     reader.onload = async () => {
       const base64Image = reader.result;
-
+      setUploading(true);
       try {
-        
-        const response = await dispatch(updateProfile(base64Image)).unwrap();
+        const updatedUser = await dispatch(updateProfile(base64Image)).unwrap();
         toast.success("Profile updated successfully");
-        setImage(response?.updatedUser?.ProfilePic); 
+        setImage(updatedUser?.ProfilePic);
       } catch (error) {
         console.error("Error uploading image:", error);
         toast.error(error || "Failed to upload image. Please try again.");
+      } finally {
+        setUploading(false);
       }
     };
 
@@ -51,17 +50,20 @@ console.log(userdata)
     };
   };
 
+  const logs = Array.isArray(userdata?.[0]) ? userdata[0] : [];
+
   return (
-    <div className="min-h-screen bg-base-100 text-gray-900">
+    <div className="min-h-screen bg-base-200 text-base-content">
       <TopNavbar />
-      <div className="container  bg-base-100mx-auto px-6 py-12">
-        <div className=" flex bg-base-100 mt-8">
-      
-          <div className=" bg-base-100 border-gray-600 w-72 rounded-xl shadow-lg p-6 text-center">
-            <div className="border-gray-600 relative mb-6 bg-base-100">
+
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+        <div className="flex flex-col gap-6 lg:flex-row">
+          {/* Profile card */}
+          <div className="w-full rounded-xl border border-base-300 bg-base-100 p-6 text-center shadow-sm lg:w-80 lg:shrink-0">
+            <div className="relative mx-auto mb-6 h-32 w-32">
               <img
-                className="border-4 ml-16 border-blue-500 h-32 w-32 rounded-full object-cover shadow-lg"
-                src={ Authuser?.ProfilePic||images|| image}
+                className="h-32 w-32 rounded-full border-4 border-primary object-cover shadow-lg"
+                src={Authuser?.ProfilePic || images || image}
                 alt="Profile"
               />
               <input
@@ -73,54 +75,81 @@ console.log(userdata)
               />
               <label
                 htmlFor="fileInput"
-                className="absolute bottom-2 right-12 bg-blue-600 p-2 rounded-full cursor-pointer hover:bg-blue-700 transition"
+                className={`absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full text-white shadow-md transition ${
+                  uploading
+                    ? "cursor-wait bg-primary/60"
+                    : "cursor-pointer bg-primary hover:bg-primary/90"
+                }`}
               >
-                <IoCameraOutline className="text-white text-lg" />
+                <IoCameraOutline className="text-lg" />
               </label>
             </div>
 
-          
-            <div className="flex mt-4 ml-12 bg-base-100">
-              <label className="flex text-gray-600 text-sm font-semibold">Name:</label>
-              <p className="bg-base-100 mn-3  text-gray-600 text-lg font-medium">{Authuser?.name || "Guest"}</p>
-            </div>
+            {uploading && (
+              <p className="mb-4 text-sm text-base-content/60">Uploading…</p>
+            )}
 
-            <div className="mt-6 flex ml-12 bg-base-100">
-              <label className="flex text-gray-600 text-sm font-semibold">Email:</label>
-              <p className="bg-base-100   text-gray-600 text-lg font-medium">{Authuser?.email || "Guest@gmail.com"}</p>
-            </div>
-
-            <div className="mt-6 flex ml-12 bg-base-100">
-              <label className="flex text-gray-600 text-sm font-semibold">Role:</label>
-              <p className="bg-base-100  text-gray-600 text-lg font-medium capitalize">{Authuser?.role || "staff"}</p>
+            <div className="space-y-4 text-left">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">
+                  Name
+                </p>
+                <p className="text-base font-medium text-base-content">
+                  {Authuser?.name || "Guest"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">
+                  Email
+                </p>
+                <p className="break-all text-base font-medium text-base-content">
+                  {Authuser?.email || "guest@gmail.com"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">
+                  Role
+                </p>
+                <p className="text-base font-medium capitalize text-base-content">
+                  {Authuser?.role || "staff"}
+                </p>
+              </div>
             </div>
           </div>
 
-      
-          <div className=" rounded-xl bg-base-100 flex flex-col h-96 pt-10 w-5/6 ml-10 overflow-y-auto shadow-md">
-            <h1 className="text-lg  font-semibold  text-gray-600 mb-4 px-4">Recent Activity</h1>
-            <div className="space-y-4 px-4">
-              {userdata && userdata.length > 0 ? (
-                userdata[0].map((log, index) => (
-                  <div key={index} className="border-b bg-base-100 py-4">
-                    <h2 className="text-lg bg-base-100 font-medium text-gray-900">{log.action}</h2>
-                    <p className="text-sm bg-base-100 text-gray-600">{log.description}</p>
-                    <p className="text-sm bg-base-100 text-gray-500">
+          {/* Recent activity */}
+          <div className="flex min-w-0 flex-1 flex-col rounded-xl border border-base-300 bg-base-100 shadow-sm">
+            <h1 className="border-b border-base-300 px-5 py-4 text-lg font-semibold text-base-content">
+              Recent Activity
+            </h1>
+            <div className="max-h-[28rem] space-y-3 overflow-y-auto p-5">
+              {logs.length > 0 ? (
+                logs.map((log, index) => (
+                  <div
+                    key={index}
+                    className="rounded-lg border border-base-300 bg-base-200 p-4"
+                  >
+                    <h2 className="font-medium text-base-content">{log.action}</h2>
+                    <p className="mt-1 text-sm text-base-content/70">{log.description}</p>
+                    <p className="mt-1 text-sm text-base-content/50">
                       Affected part: <span className="font-medium">{log.entity}</span>
                     </p>
-                    <p className="text-sm bg-base-100 text-gray-500">
+                    <p className="text-sm text-base-content/50">
                       IP Address: <span className="font-medium">{log.ipAddress}</span>
                     </p>
-                    <FormattedTime timestamp={log.createdAt} />
+                    <div className="mt-1 text-xs text-base-content/40">
+                      <FormattedTime timestamp={log.createdAt} />
+                    </div>
                   </div>
                 ))
               ) : (
-                <p className="text-center bg-base-100 text-gray-500">No activity logs available</p>
+                <p className="py-4 text-center text-base-content/50">
+                  No activity logs available
+                </p>
               )}
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

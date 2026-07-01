@@ -86,9 +86,10 @@ export const updateProfile = createAsyncThunk(
 
     
       if (updatedData && updatedData.updatedUser) {
-       
-        localStorage.setItem('user', JSON.stringify(updatedData.updatedUser));
-        return updatedData.updatedUser; // Return the updated user object
+        // Merge so we keep fields like token that aren't returned by the update.
+        const mergedUser = { ...storedUser, ...updatedData.updatedUser };
+        localStorage.setItem('user', JSON.stringify(mergedUser));
+        return mergedUser;
       } else {
         throw new Error('Unexpected response structure');
       }
@@ -207,8 +208,7 @@ const authSlice = createSlice({
 
       builder.addCase(updateProfile.fulfilled, (state, action) => {
         state.isupdateProfile = false;
-        state.Authuser = { ...state.Authuser, user: action.payload }; 
-      
+        state.Authuser = { ...state.Authuser, ...action.payload };
       })
       
     

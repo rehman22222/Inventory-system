@@ -157,8 +157,7 @@ module.exports.updateProfile = async (req, res) => {
       try {
        
         const uploadResponse = await Cloundinary.uploader.upload(ProfilePic, {
-          folder: "profile_inventory_system", 
-          upload_preset: "upload", 
+          folder: "profile_inventory_system",
         });
 
         const updatedUser = await User.findOneAndUpdate(

@@ -1,21 +1,8 @@
-import React from 'react'
-import Sidebar from '../Components/Sidebar'
-import { Outlet } from 'react-router-dom';
+import React from 'react';
+import DashboardShell from '../Components/DashboardShell';
+
 function StaffDashboard() {
-  return (
-    <div className="flex bg-base-200 min-h-screen">
-
-      <div className="fixed inset-y-0 left-0">
-        <Sidebar />
-      </div>
-
-     
-      <div className="flex-1 pl-64"> 
-        <Outlet />
-      </div>
-    </div>
-  );
+  return <DashboardShell />;
 }
 
-export default StaffDashboard
-
+export default StaffDashboard;

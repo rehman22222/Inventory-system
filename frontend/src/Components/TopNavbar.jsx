@@ -1,11 +1,14 @@
 import React from "react";
 import { useSelector } from "react-redux";
+import { FiMenu } from "react-icons/fi";
 import image from "../images/user.png";
 import ThemeToggle from "../lib/ThemeToggle";
+import { useSidebar } from "../lib/SidebarContext";
 import { Link } from "react-router-dom";
 
 function TopNavbar() {
   const { Authuser } = useSelector((state) => state.auth);
+  const { toggle } = useSidebar();
   const dashboardPath =
     Authuser?.role === "admin"
       ? "/AdminDashboard"
@@ -15,12 +18,22 @@ function TopNavbar() {
 
   return (
     <div className="bg-base-100 border-b border-base-300">
-      <nav className="flex h-16 w-full items-center justify-between px-6 shadow-sm">
-        <h1 className="text-lg font-semibold text-base-content">
-          Welcome, {Authuser?.name || "Guest"}
-        </h1>
+      <nav className="flex h-16 w-full items-center justify-between px-4 shadow-sm sm:px-6">
+        <div className="flex min-w-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label="Open menu"
+            className="rounded-lg p-2 text-base-content transition hover:bg-base-200 lg:hidden"
+          >
+            <FiMenu className="text-xl" />
+          </button>
+          <h1 className="truncate text-base font-semibold text-base-content sm:text-lg">
+            Welcome, {Authuser?.name || "Guest"}
+          </h1>
+        </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <ThemeToggle />
 
           <Link

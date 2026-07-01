@@ -9,8 +9,10 @@ import { RxActivityLog, RxDashboard } from "react-icons/rx";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { LuUsers } from "react-icons/lu";
+import { FiX } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { logout } from "../features/authSlice";
+import { useSidebar } from "../lib/SidebarContext";
 import logo1 from "../images/logo1.png";
 
 const dashboardPath = {
@@ -57,6 +59,7 @@ function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { Authuser } = useSelector((state) => state.auth);
+  const { setOpen } = useSidebar();
   const role = Authuser?.role || "staff";
   const basePath = dashboardPath[role] || "/StaffDashboard";
   const menuItems = menuByRole[role] || menuByRole.staff;
@@ -74,8 +77,16 @@ function Sidebar() {
 
   return (
     <div className="flex h-screen w-64 flex-col overflow-y-auto bg-base-100 border-r border-base-300 p-6 text-base-content shadow-md">
-      <div className="mb-8 shrink-0 overflow-hidden rounded-lg bg-slate-950 p-4">
+      <div className="relative mb-8 shrink-0 overflow-hidden rounded-lg bg-slate-950 p-4">
         <img src={logo1} className="w-full bg-white" alt="Inventory logo" />
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          aria-label="Close menu"
+          className="absolute right-2 top-2 rounded-md bg-black/30 p-1.5 text-white transition hover:bg-black/50 lg:hidden"
+        >
+          <FiX className="text-lg" />
+        </button>
       </div>
 
       <div className="mb-5 shrink-0 rounded-lg border border-base-300 bg-base-200 p-3 text-sm">
