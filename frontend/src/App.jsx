@@ -11,6 +11,7 @@ import Productpage from "./pages/Productpage";
 import Orderpage from "./pages/Orderpage";
 import Salespage from "./pages/Salespage";
 import POSPage from "./pages/POSPage";
+import Reportspage from "./pages/Reportspage";
 import StockTransaction from "./pages/StockTransaction";
 import Categorypage from "./pages/Categorypage";
 import Notificationpage from "./pages/Notificationpage";
@@ -44,6 +45,7 @@ function App() {
           <Route path="sales" element={protect(<Salespage />, ["admin"])} />
           <Route path="order" element={protect(<Orderpage />, ["admin"])} />
           <Route path="stock-transaction" element={protect(<StockTransaction />, ["admin"])} />
+          <Route path="reports" element={protect(<Reportspage />, ["admin"])} />
           <Route path="notifications" element={protect(<Notificationpage />, ["admin"])} />
           <Route path="Userstatus" element={protect(<Userstatus />, ["admin"])} />
           <Route path="activity-log" element={protect(<Activitylogpage />, ["admin"])} />
@@ -58,6 +60,7 @@ function App() {
           <Route path="sales" element={protect(<Salespage />, ["manager"])} />
           <Route path="order" element={protect(<Orderpage />, ["manager"])} />
           <Route path="stock-transaction" element={protect(<StockTransaction />, ["manager"])} />
+          <Route path="reports" element={protect(<Reportspage />, ["manager"])} />
           <Route path="NotificationPageRead" element={protect(<NotificationPageRead />, ["manager"])} />
           <Route path="Profilepage" element={protect(<Profilepage />, ["manager"])} />
         </Route>
@@ -68,6 +71,7 @@ function App() {
           <Route path="sales" element={protect(<Salespage />, ["staff"])} />
           <Route path="order" element={protect(<Orderpage />, ["staff"])} />
           <Route path="stock-transaction" element={protect(<StockTransaction />, ["staff"])} />
+          <Route path="reports" element={protect(<Reportspage />, ["staff"])} />
           <Route path="NotificationPageRead" element={protect(<NotificationPageRead />, ["staff"])} />
           <Route path="Profilepage" element={protect(<Profilepage />, ["staff"])} />
         </Route>

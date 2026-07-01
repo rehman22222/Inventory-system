@@ -15,6 +15,7 @@ const salesrouter = require('./Routers/salesRouter');
 const supplierrouter = require('./Routers/supplierrouter');
 const stocktransactionrouter = require('./Routers/stocktransactionrouter');
 const posrouter = require("./Routers/posRouter");
+const reportrouter = require("./Routers/reportRouter");
 const localStorageRouter = require("./localStorageRouter");
 
 
@@ -72,6 +73,7 @@ if (useLocalStorage) {
   app.use('/api/inventory', inventoryrouter);
   app.use('/api/sales', salesrouter);
   app.use('/api/pos', posrouter);
+  app.use('/api/reports', reportrouter);
   app.use('/api/supplier', supplierrouter);
   app.use("/api/stocktransaction", stocktransactionrouter);
 }
