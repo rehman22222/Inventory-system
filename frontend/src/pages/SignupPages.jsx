@@ -5,7 +5,7 @@ import { signup } from "../features/authSlice";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import Brandmark from "../Components/Brandmark";
+import e360Logo from "../images/e360-logo.png";
 
 function SignupPage() {
   const { Authuser, isUserSignup } = useSelector((state) => state.auth);
@@ -56,7 +56,11 @@ function SignupPage() {
       <div className="w-full sm:w-1/2 p-6 flex items-center justify-center bg-white shadow-lg rounded-xl">
         <div className="max-w-md w-full">
           <div className="mb-8 flex justify-center">
-            <Brandmark tone="dark" iconClass="h-12 w-12" />
+            <img
+              src={e360Logo}
+              className="h-16 w-auto object-contain"
+              alt="E360 Inventory Suite by Eiretech"
+            />
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)}>

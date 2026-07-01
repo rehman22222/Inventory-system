@@ -2,7 +2,7 @@ import React from 'react';
 import { FaFacebook, FaTwitter, FaLinkedin, FaInstagram } from 'react-icons/fa';
 import { FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
-import Brandmark from './Brandmark';
+import e360Logo from '../images/e360-logo.png';
 
 function Footer() {
   return (
@@ -11,7 +11,13 @@ function Footer() {
         <div className="grid gap-12 md:grid-cols-4">
           {/* Brand */}
           <div className="md:col-span-1">
-            <Brandmark tone="light" iconClass="h-10 w-10" />
+            <span className="inline-flex rounded-lg bg-white px-3 py-2">
+              <img
+                src={e360Logo}
+                className="h-10 w-auto object-contain"
+                alt="E360 Inventory Suite by Eiretech"
+              />
+            </span>
             <p className="mt-4 text-sm leading-relaxed text-slate-500">
               Efficient inventory management for product-based businesses — track stock, manage orders, and sell smarter.
             </p>
