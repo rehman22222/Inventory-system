@@ -116,7 +116,7 @@ function Productpage() {
         setSelectedProduct(null);
         resetForm();
       })
-      .catch(() => toast.error("Failed to update product"));
+      .catch((err) => toast.error(err || "Failed to update product"));
   };
 
   const submitProduct = async (event) => {
@@ -128,7 +128,7 @@ function Productpage() {
         resetForm();
         setIsFormVisible(false);
       })
-      .catch(() => toast.error("Product add unsuccessful"));
+      .catch((err) => toast.error(err || "Product add unsuccessful"));
   };
 
   const resetForm = () => {

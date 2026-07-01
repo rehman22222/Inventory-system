@@ -11,8 +11,12 @@ module.exports.Addproduct=async(req,res)=>{
 
         const { name, Desciption, Category, Price, quantity, barcode, expiryDate } = req.body;
 
-        if (!name|| !Category || !  Desciption|| !Price || !quantity) {
-           return res.status(400).json({ error: "Please provide all product details." });
+        const required = { name, Category, Desciption, Price, quantity };
+        const missing = Object.keys(required).filter(
+          (key) => required[key] === undefined || required[key] === null || String(required[key]).trim() === ""
+        );
+        if (missing.length) {
+          return res.status(400).json({ message: `Missing required field(s): ${missing.join(", ")}` });
         }
 
         const productData = { name, Desciption, Category, Price, quantity };

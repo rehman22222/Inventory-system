@@ -55,7 +55,6 @@ export const Addproduct=createAsyncThunk('product/addproduct',async(product,{rej
         return response.data;
       } catch (error) {
         const errorMessage = error.response?.data?.message || "Failed to update product. Please try again.";
-        toast.error(errorMessage); 
         return rejectWithValue(errorMessage);
       }
     }
