@@ -32,4 +32,20 @@
   td {
     @apply text-base-content;
   }
+
+  /* Landing selection + reduced-motion */
+  ::selection {
+    background: #2a5bff;
+    color: #fff;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
 }

@@ -1,63 +1,123 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { FiMenu, FiX } from 'react-icons/fi';
 import e360LogoWhite from '../images/e360-logo-white.png';
-import ThemeToggle from '../lib/ThemeToggle';
+
+const NAV = [
+  { label: 'Features', href: '#features' },
+  { label: 'Workflow', href: '#workflow' },
+  { label: 'System', href: '#system' },
+  { label: 'FAQ', href: '#faq' },
+];
+
+const TICKER = [
+  'SKUs TRACKED 12,480',
+  'OPEN ORDERS 87',
+  'LOW STOCK 14',
+  'UPTIME 99.98%',
+  'PAYMENT RAILS 05',
+  'ROLES 03',
+  'STOCK VARIANCE ±0',
+];
+
+function NavLink({ href, label, onClick }) {
+  return (
+    <a
+      href={href}
+      onClick={onClick}
+      className="group relative font-mono text-[11px] uppercase tracking-[0.2em] text-paper/60 transition-colors hover:text-paper"
+    >
+      {label}
+      <span className="absolute -bottom-1.5 left-0 h-px w-full origin-left scale-x-0 bg-accent transition-transform duration-300 group-hover:scale-x-100" />
+    </a>
+  );
+}
 
 function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+  const [open, setOpen] = useState(false);
 
   return (
-    <nav
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? 'bg-slate-950/95 shadow-lg shadow-black/30 backdrop-blur-md'
-          : 'bg-slate-950'
-      }`}
-    >
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
-        <Link to="/" className="flex items-center">
-          <img
-            src={e360LogoWhite}
-            className="h-14 w-auto object-contain"
-            alt="E360 Inventory Suite by Eiretech"
-          />
-        </Link>
-
-        <div className="hidden items-center gap-8 text-sm font-medium text-slate-400 md:flex">
-          <a href="#features" className="transition hover:text-white">
-            Features
-          </a>
-          <a href="#how-it-works" className="transition hover:text-white">
-            How it works
-          </a>
-          <a href="#faq" className="transition hover:text-white">
-            FAQ
-          </a>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <ThemeToggle />
-          <Link
-            to="/SignupPage"
-            className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-500 hover:text-white"
-          >
-            Sign up
-          </Link>
-          <Link
-            to="/SignupPage"
-            className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-cyan-500/20 transition hover:bg-cyan-500"
-          >
-            Get Started
-          </Link>
+    <header className="sticky top-0 z-50 bg-ink font-body text-paper">
+      {/* Ticker strip */}
+      <div className="overflow-hidden border-b border-white/10">
+        <div className="flex w-max animate-ticker whitespace-nowrap py-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-paper/40">
+          {[...TICKER, ...TICKER].map((item, i) => (
+            <span key={i} className="flex items-center">
+              <span className="px-6">{item}</span>
+              <span className="text-accent">/</span>
+            </span>
+          ))}
         </div>
       </div>
-    </nav>
+
+      {/* Nav row */}
+      <div className="border-b border-white/10">
+        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <Link to="/" className="flex items-center">
+            <img
+              src={e360LogoWhite}
+              className="h-9 w-auto object-contain"
+              alt="E360 Inventory Suite by Eiretech"
+            />
+          </Link>
+
+          <div className="hidden items-center gap-10 lg:flex">
+            {NAV.map((item) => (
+              <NavLink key={item.href} {...item} />
+            ))}
+          </div>
+
+          <div className="hidden items-center gap-6 lg:flex">
+            <Link
+              to="/LoginPage"
+              className="font-mono text-[11px] uppercase tracking-[0.2em] text-paper/70 transition-colors hover:text-paper"
+            >
+              Sign in
+            </Link>
+            <Link
+              to="/SignupPage"
+              className="border border-accent bg-accent px-6 py-2.5 font-mono text-[11px] uppercase tracking-[0.2em] text-white transition-colors duration-200 hover:bg-transparent hover:text-accent"
+            >
+              Start free
+            </Link>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-label="Toggle menu"
+            className="text-paper lg:hidden"
+          >
+            {open ? <FiX className="text-2xl" /> : <FiMenu className="text-2xl" />}
+          </button>
+        </nav>
+
+        {/* Mobile menu */}
+        {open && (
+          <div className="border-t border-white/10 px-6 py-6 lg:hidden">
+            <div className="flex flex-col gap-5">
+              {NAV.map((item) => (
+                <NavLink key={item.href} {...item} onClick={() => setOpen(false)} />
+              ))}
+              <div className="mt-2 flex items-center gap-4">
+                <Link
+                  to="/LoginPage"
+                  className="font-mono text-[11px] uppercase tracking-[0.2em] text-paper/70"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  to="/SignupPage"
+                  className="border border-accent bg-accent px-6 py-2.5 font-mono text-[11px] uppercase tracking-[0.2em] text-white"
+                >
+                  Start free
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </header>
   );
 }
 

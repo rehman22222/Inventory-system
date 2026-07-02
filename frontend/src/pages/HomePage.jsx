@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../Components/Navbar';
 import Footer from '../Components/Footer';
+import Reveal from '../Components/Reveal';
+import CountUp from '../Components/CountUp';
 import {
   FiPackage,
   FiBarChart2,
@@ -141,140 +143,191 @@ function HomePage() {
   const [openFAQ, setOpenFAQ] = useState(null);
 
   return (
-    <div className="bg-base-100 text-base-content">
+    <div className="bg-base-100 font-body text-base-content">
       <Navbar />
 
-      {/* ─── Hero ─── */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-base-200 to-base-100 dark:from-slate-950 dark:to-slate-950 pb-24 pt-36">
-        {/* Ambient glow orbs */}
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-24 left-1/4 h-[520px] w-[520px] rounded-full bg-cyan-500/8 blur-[130px]" />
-          <div className="absolute top-1/3 right-1/5 h-[400px] w-[400px] rounded-full bg-indigo-500/8 blur-[110px]" />
-          <div className="absolute bottom-0 left-1/2 h-56 w-[700px] -translate-x-1/2 rounded-full bg-violet-500/6 blur-[90px]" />
-        </div>
-
-        {/* Subtle grid */}
+      {/* ─── Hero ─────────────────────────────────────────────── */}
+      <section className="relative overflow-hidden bg-ink text-paper">
+        {/* technical grid backdrop */}
         <div
-          className="pointer-events-none absolute inset-0 opacity-[0.03]"
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.05]"
           style={{
             backgroundImage:
-              'linear-gradient(rgb(148,163,184) 1px,transparent 1px),linear-gradient(90deg,rgb(148,163,184) 1px,transparent 1px)',
-            backgroundSize: '48px 48px',
+              'linear-gradient(#ffffff 1px,transparent 1px),linear-gradient(90deg,#ffffff 1px,transparent 1px)',
+            backgroundSize: '88px 88px',
           }}
         />
 
-        <div className="relative z-10 mx-auto max-w-6xl px-6 text-center">
-          {/* Badge */}
-          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-600 dark:text-cyan-400">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-500 dark:bg-cyan-400" />
-            Trusted by 500+ businesses worldwide
-          </div>
+        <div className="relative mx-auto max-w-7xl border-x border-white/10 px-6">
+          {/* corner crosshairs */}
+          <span aria-hidden className="pointer-events-none absolute -left-[6px] -top-[6px] font-mono text-xs text-paper/40">+</span>
+          <span aria-hidden className="pointer-events-none absolute -right-[6px] -top-[6px] font-mono text-xs text-paper/40">+</span>
+          <span aria-hidden className="pointer-events-none absolute -bottom-[6px] -left-[6px] font-mono text-xs text-paper/40">+</span>
+          <span aria-hidden className="pointer-events-none absolute -bottom-[6px] -right-[6px] font-mono text-xs text-paper/40">+</span>
 
-          {/* Headline */}
-          <h1 className="mb-6 text-5xl font-black leading-[1.06] tracking-tight text-slate-900 dark:text-white md:text-7xl">
-            Inventory management
-            <br />
-            <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent">
-              built for scale
+          {/* section label */}
+          <div className="flex items-center justify-between border-b border-white/10 py-4 font-mono text-[11px] uppercase tracking-[0.25em] text-paper/50">
+            <span>E360 — Inventory Control System</span>
+            <span className="flex items-center gap-2">
+              <span className="inline-block h-1.5 w-1.5 bg-accent" />
+              SYS.01 / Live
             </span>
-          </h1>
-
-          <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-slate-600 dark:text-slate-400">
-            Real-time stock tracking, a built-in POS, multi-role access control, and powerful
-            analytics — everything your team needs to move faster and sell smarter.
-          </p>
-
-          {/* CTAs */}
-          <div className="mb-20 flex flex-wrap items-center justify-center gap-4">
-            <Link
-              to="/SignupPage"
-              className="group inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-cyan-500/25 transition hover:bg-cyan-500"
-            >
-              Get Started Free
-              <FiArrowRight className="transition-transform group-hover:translate-x-1" />
-            </Link>
-            <a
-              href="#features"
-              className="inline-flex items-center gap-2 rounded-xl border border-base-300 px-8 py-4 text-base font-semibold text-base-content transition hover:border-base-content/40 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-white"
-            >
-              Explore Features
-            </a>
           </div>
 
-          {/* Dashboard preview mockup */}
-          <div className="mx-auto max-w-4xl overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-2 shadow-2xl shadow-black/70">
-            <div className="overflow-hidden rounded-xl bg-slate-800">
-              {/* Window chrome */}
-              <div className="flex items-center gap-2 border-b border-slate-700/50 px-5 py-3">
-                <div className="h-3 w-3 rounded-full bg-red-500/70" />
-                <div className="h-3 w-3 rounded-full bg-amber-500/70" />
-                <div className="h-3 w-3 rounded-full bg-emerald-500/70" />
-                <div className="ml-4 h-5 w-40 rounded bg-slate-700" />
-                <div className="ml-auto h-5 w-20 rounded bg-slate-700" />
-              </div>
+          {/* asymmetric headline grid */}
+          <div className="grid grid-cols-1 gap-y-10 py-14 lg:grid-cols-12 lg:gap-x-10 lg:py-20">
+            <div className="lg:col-span-8">
+              <Reveal>
+                <h1
+                  className="font-display font-semibold text-paper"
+                  style={{ fontSize: 'clamp(2.75rem,8.5vw,7.75rem)', lineHeight: 0.92, letterSpacing: '-0.02em' }}
+                >
+                  Inventory,
+                  <br />
+                  measured to
+                  <br />
+                  <span className="text-accent">the unit.</span>
+                </h1>
+              </Reveal>
+            </div>
 
-              <div className="p-5">
-                {/* KPI cards */}
-                <div className="mb-5 grid grid-cols-4 gap-3">
-                  {[
-                    { label: 'Total Products', val: '1,248', color: 'text-cyan-400', trend: '+12%' },
-                    { label: 'Monthly Sales', val: '$48.2K', color: 'text-emerald-400', trend: '+8%' },
-                    { label: 'Low Stock', val: '14', color: 'text-amber-400', trend: '−3 items' },
-                    { label: 'Active Orders', val: '87', color: 'text-violet-400', trend: '+21%' },
-                  ].map((stat) => (
-                    <div key={stat.label} className="rounded-lg bg-slate-700/50 p-3 text-left">
-                      <p className="text-xs text-slate-400">{stat.label}</p>
-                      <p className={`mt-1 text-xl font-bold ${stat.color}`}>{stat.val}</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">{stat.trend} this month</p>
-                    </div>
-                  ))}
+            <div className="flex flex-col justify-end lg:col-span-4 lg:pb-3">
+              <Reveal delay={120}>
+                <p className="max-w-sm text-base leading-relaxed text-paper/60">
+                  Real-time stock, a built-in POS, and role-based control in one system. Close the
+                  month in minutes — with zero guesswork about what you hold.
+                </p>
+                <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <Link
+                    to="/SignupPage"
+                    className="border border-accent bg-accent px-8 py-4 text-center font-mono text-[12px] uppercase tracking-[0.2em] text-white transition-colors duration-200 hover:bg-transparent hover:text-accent"
+                  >
+                    Start free
+                  </Link>
+                  <a
+                    href="#system"
+                    className="group inline-flex items-center gap-2 font-mono text-[12px] uppercase tracking-[0.2em] text-paper/70 transition-colors hover:text-paper"
+                  >
+                    See the system
+                    <span className="transition-transform duration-200 group-hover:translate-x-1">↘</span>
+                  </a>
                 </div>
-
-                {/* Bar chart */}
-                <div className="mb-4 flex h-24 items-end gap-1.5 overflow-hidden rounded-lg bg-slate-700/30 px-4 pb-3 pt-4">
-                  {CHART_BARS.map((h, i) => (
-                    <div
-                      key={i}
-                      className="flex-1 rounded-sm"
-                      style={{
-                        height: `${h}%`,
-                        background: `linear-gradient(to top, rgba(6,182,212,0.8), rgba(99,102,241,0.7))`,
-                        opacity: 0.55 + i * 0.04,
-                      }}
-                    />
-                  ))}
-                </div>
-
-                {/* Mini table */}
-                <div className="space-y-2">
-                  {[
-                    { name: 'Vape Juice 6mg', pct: 75, price: '$12.99' },
-                    { name: 'Disposable Pod', pct: 42, price: '$8.50' },
-                    { name: 'Coil Pack ×5', pct: 90, price: '$24.00' },
-                  ].map((row) => (
-                    <div
-                      key={row.name}
-                      className="flex items-center justify-between rounded bg-slate-700/30 px-4 py-2"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="h-5 w-5 rounded bg-slate-600" />
-                        <span className="text-xs text-slate-300">{row.name}</span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="h-1.5 w-20 overflow-hidden rounded-full bg-slate-600">
-                          <div
-                            className="h-full rounded-full bg-cyan-500"
-                            style={{ width: `${row.pct}%` }}
-                          />
-                        </div>
-                        <span className="w-12 text-right text-xs text-slate-400">{row.price}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              </Reveal>
             </div>
           </div>
+
+          {/* stat row — mono, hairline separated */}
+          <div className="grid grid-cols-2 border-t border-white/10 md:grid-cols-4">
+            {[
+              { render: <><CountUp to={99.98} decimals={2} suffix="%" /></>, label: 'System uptime' },
+              { render: <CountUp to={12480} />, label: 'SKUs tracked' },
+              { render: <CountUp to={87} />, label: 'Open orders' },
+              { render: <CountUp to={5} prefix="0" />, label: 'Payment rails' },
+            ].map((stat, i) => (
+              <div
+                key={stat.label}
+                className={`border-white/10 py-8 ${i % 2 === 1 ? 'border-l' : ''} md:border-l md:first:border-l-0 md:pl-8`}
+              >
+                <div className="font-mono text-3xl font-medium tracking-tight text-paper md:text-4xl">
+                  {stat.render}
+                </div>
+                <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.25em] text-paper/40">
+                  {stat.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* dashboard — data-dense product surface, clipped edge + subtle perspective */}
+        <div className="relative mx-auto max-w-7xl px-6 pb-24 pt-16 lg:pb-28">
+          <Reveal delay={80}>
+            <div className="relative" style={{ perspective: '1600px' }}>
+              <div
+                className="border border-white/12 bg-[#0d0d0d]"
+                style={{
+                  transform: 'rotateX(2.5deg) rotateY(-7deg)',
+                  transformOrigin: 'center left',
+                  clipPath: 'polygon(0 0, 100% 0, 100% 92%, 97% 100%, 0 100%)',
+                }}
+              >
+                {/* panel header */}
+                <div className="flex items-center justify-between border-b border-white/12 px-5 py-3 font-mono text-[10px] uppercase tracking-[0.25em] text-paper/40">
+                  <span>E360 :// Dashboard</span>
+                  <span className="flex items-center gap-2 text-paper/60">
+                    <span className="inline-block h-1.5 w-1.5 bg-accent" /> Live
+                  </span>
+                </div>
+
+                {/* KPI grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4">
+                  {[
+                    { label: 'Total Products', val: '1,248', delta: '+12%' },
+                    { label: 'Monthly Sales', val: '$48.2K', delta: '+8%' },
+                    { label: 'Low Stock', val: '14', delta: '-3' },
+                    { label: 'Active Orders', val: '87', delta: '+21%' },
+                  ].map((kpi, i) => (
+                    <div
+                      key={kpi.label}
+                      className={`border-b border-white/12 p-5 ${i !== 0 ? 'border-l' : ''}`}
+                    >
+                      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-paper/40">
+                        {kpi.label}
+                      </p>
+                      <p className="mt-2 font-mono text-2xl font-medium text-paper">{kpi.val}</p>
+                      <p className="mt-1 font-mono text-[11px] text-accent">{kpi.delta} MTD</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* chart + table */}
+                <div className="grid gap-0 md:grid-cols-2">
+                  <div className="border-b border-white/12 p-5 md:border-b-0 md:border-r">
+                    <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.2em] text-paper/40">
+                      Revenue / 12 mo
+                    </p>
+                    <div className="flex h-32 items-end gap-1.5">
+                      {CHART_BARS.map((h, i) => (
+                        <div
+                          key={i}
+                          className="flex-1"
+                          style={{ height: `${h}%`, background: i === 9 ? '#2A5BFF' : 'rgba(250,250,248,0.18)' }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-5">
+                    <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.2em] text-paper/40">
+                      Top SKUs
+                    </p>
+                    <div className="space-y-3">
+                      {[
+                        { sku: 'VJ-6MG-30', pct: 75, price: '$12.99' },
+                        { sku: 'POD-DISP-01', pct: 42, price: '$8.50' },
+                        { sku: 'COIL-X5', pct: 90, price: '$24.00' },
+                      ].map((row) => (
+                        <div key={row.sku} className="flex items-center gap-4 font-mono text-[11px]">
+                          <span className="w-24 shrink-0 text-paper/70">{row.sku}</span>
+                          <span className="h-1.5 flex-1 bg-white/10">
+                            <span className="block h-full bg-accent" style={{ width: `${row.pct}%` }} />
+                          </span>
+                          <span className="w-14 text-right text-paper/50">{row.price}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* coordinate garnish */}
+              <span className="absolute -left-[6px] -top-[6px] font-mono text-xs text-paper/40">+</span>
+              <span className="pointer-events-none absolute right-6 top-1/2 hidden font-mono text-[10px] uppercase tracking-[0.25em] text-paper/25 lg:block">
+                FIG.01 — LIVE DATA SURFACE
+              </span>
+            </div>
+          </Reveal>
         </div>
       </section>
 
