@@ -52,11 +52,11 @@ function Navbar() {
 
       {/* Nav row */}
       <div className="border-b border-white/10">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
           <Link to="/" className="flex items-center">
             <img
               src={e360LogoWhite}
-              className="h-12 w-auto object-contain"
+              className="h-16 w-auto object-contain"
               alt="E360 Inventory Suite by Eiretech"
             />
           </Link>
