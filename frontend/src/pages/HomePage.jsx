@@ -348,46 +348,108 @@ function HomePage() {
         </div>
       </section>
 
-      {/* ─── Features ─── */}
-      <section id="features" className="bg-base-200 py-28">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="mb-16 text-center">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-base-300 bg-base-100 px-4 py-2 text-sm font-medium text-base-content/60">
-              <FiZap className="text-cyan-500" />
-              Powerful Features
-            </div>
-            <h2 className="text-4xl font-black text-base-content md:text-5xl">
-              Everything you need,
-              <br />
-              nothing you don't
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-base-content/60">
-              Built for product-based businesses that demand speed, accuracy, and seamless team
-              coordination.
-            </p>
+      {/* ─── 02 / Features — bordered index ──────────────────────── */}
+      <section id="features" className="scroll-mt-28 bg-ink text-paper">
+        <div className="mx-auto max-w-7xl border-x border-white/10 px-6">
+          <div className="flex items-center justify-between border-b border-white/10 py-4 font-mono text-[11px] uppercase tracking-[0.25em] text-paper/50">
+            <span>02 / Features</span>
+            <span>06 Modules</span>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map((feature) => (
-              <div
-                key={feature.title}
-                className={`group rounded-2xl border border-base-300 bg-base-100 p-8 transition duration-300 hover:-translate-y-1 hover:shadow-xl ${feature.accent}`}
-              >
-                <div
-                  className={`mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl ${feature.iconBg}`}
+          <div className="grid grid-cols-1 gap-8 py-14 lg:grid-cols-12 lg:py-20">
+            <div className="lg:col-span-7">
+              <Reveal>
+                <h2
+                  className="font-display font-semibold text-paper"
+                  style={{ fontSize: 'clamp(2rem,5vw,4.25rem)', lineHeight: 0.98, letterSpacing: '-0.02em' }}
                 >
-                  <feature.icon className={`text-xl ${feature.iconColor}`} />
+                  Six systems.
+                  <br />
+                  One source of truth.
+                </h2>
+              </Reveal>
+            </div>
+            <div className="flex items-end lg:col-span-5">
+              <Reveal delay={100}>
+                <p className="max-w-md text-base leading-relaxed text-paper/60">
+                  Stock, sales, procurement, and people — run from one platform that updates the
+                  instant anything moves. No spreadsheets to reconcile, no tabs to keep in sync.
+                </p>
+              </Reveal>
+            </div>
+          </div>
+
+          <div className="border-t border-white/10">
+            {[
+              {
+                no: '01',
+                tag: 'RT-STOCK',
+                title: 'Real-time stock tracking',
+                desc: 'Every sale, transfer, and return updates counts the instant it happens. Low-stock thresholds fire before you run out — not after an angry customer tells you.',
+              },
+              {
+                no: '02',
+                tag: 'ACCESS',
+                title: 'Role-based access',
+                desc: 'Admin, Manager, and Staff each see exactly their remit and nothing else. Permissions are scoped per role and enforced on every route, not just hidden in the UI.',
+              },
+              {
+                no: '03',
+                tag: 'POS',
+                title: 'Built-in point of sale',
+                desc: 'Scan, charge, print. Cash, card, bank transfer, Easypaisa or JazzCash — and stock deducts itself the moment the sale closes.',
+              },
+              {
+                no: '04',
+                tag: 'ANALYTICS',
+                title: 'Sales & analytics',
+                desc: 'Revenue, best-sellers, and profit on live charts. Pull a clean, formatted spreadsheet for any date range in a single click.',
+              },
+              {
+                no: '05',
+                tag: 'SUPPLY',
+                title: 'Suppliers & orders',
+                desc: 'Track who supplies what, raise purchase orders, and reconcile stock-in against deliveries — the whole procurement loop on one screen.',
+              },
+              {
+                no: '06',
+                tag: 'AUDIT',
+                title: 'Full activity log',
+                desc: 'Who changed what, when, and from which IP. Every action is timestamped and attributed, so nothing on the system happens off the record.',
+              },
+            ].map((f, i) => (
+              <Reveal key={f.no} delay={i * 50}>
+                <div className="group relative grid grid-cols-12 items-baseline gap-y-2 border-b border-white/10 py-8 transition-colors duration-200 hover:bg-white/[0.03]">
+                  <span
+                    aria-hidden
+                    className="absolute left-0 top-0 h-full w-[2px] origin-top scale-y-0 bg-accent transition-transform duration-300 group-hover:scale-y-100"
+                  />
+                  <div className="col-span-3 pl-4 md:col-span-2 md:pl-6">
+                    <span className="font-mono text-sm text-paper/40 transition-colors group-hover:text-accent">
+                      {f.no}
+                    </span>
+                    <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.2em] text-paper/30">
+                      {f.tag}
+                    </span>
+                  </div>
+                  <h3 className="col-span-9 font-display text-2xl text-paper md:col-span-4 md:text-[1.7rem]">
+                    {f.title}
+                  </h3>
+                  <p className="col-span-12 text-sm leading-relaxed text-paper/55 md:col-span-5 md:pl-6">
+                    {f.desc}
+                  </p>
+                  <div className="hidden text-paper/30 transition-all duration-200 group-hover:translate-x-1 group-hover:text-accent md:col-span-1 md:flex md:justify-end md:pr-6">
+                    ↘
+                  </div>
                 </div>
-                <h3 className="mb-2 text-lg font-bold text-base-content">{feature.title}</h3>
-                <p className="text-sm leading-relaxed text-base-content/60">{feature.description}</p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
       {/* ─── How it works ─── */}
-      <section id="how-it-works" className="bg-base-100 py-28">
+      <section id="workflow" className="scroll-mt-28 bg-base-100 py-28">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mb-16 text-center">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-base-300 bg-base-200 px-4 py-2 text-sm font-medium text-base-content/60">
@@ -427,7 +489,7 @@ function HomePage() {
       </section>
 
       {/* ─── Highlights strip ─── */}
-      <section className="bg-base-200 py-16">
+      <section id="system" className="scroll-mt-28 bg-base-200 py-16">
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid gap-4 md:grid-cols-3">
             {[
@@ -468,7 +530,7 @@ function HomePage() {
       </section>
 
       {/* ─── FAQ ─── */}
-      <section id="faq" className="bg-base-100 py-28">
+      <section id="faq" className="scroll-mt-28 bg-base-100 py-28">
         <div className="mx-auto max-w-3xl px-6">
           <div className="mb-12 text-center">
             <h2 className="text-4xl font-black text-base-content">Frequently Asked Questions</h2>

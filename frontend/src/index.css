@@ -5,6 +5,7 @@
 @layer base {
   html {
     transition: background-color 0.2s ease, color 0.2s ease;
+    scroll-behavior: smooth;
   }
 
   body {
@@ -40,6 +41,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
     *,
     *::before,
     *::after {
