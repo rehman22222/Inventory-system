@@ -56,7 +56,7 @@ function Navbar() {
           <Link to="/" className="flex items-center">
             <img
               src={e360LogoWhite}
-              className="h-9 w-auto object-contain"
+              className="h-12 w-auto object-contain"
               alt="E360 Inventory Suite by Eiretech"
             />
           </Link>

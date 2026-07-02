@@ -147,27 +147,27 @@ function HomePage() {
       <Navbar />
 
       {/* ─── Hero ─────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-ink text-paper">
+      <section className="relative overflow-hidden bg-paper text-ink">
         {/* technical grid backdrop */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.05]"
+          className="pointer-events-none absolute inset-0 opacity-[0.06]"
           style={{
             backgroundImage:
-              'linear-gradient(#ffffff 1px,transparent 1px),linear-gradient(90deg,#ffffff 1px,transparent 1px)',
+              'linear-gradient(#000000 1px,transparent 1px),linear-gradient(90deg,#000000 1px,transparent 1px)',
             backgroundSize: '88px 88px',
           }}
         />
 
-        <div className="relative mx-auto max-w-7xl border-x border-white/10 px-6">
+        <div className="relative mx-auto max-w-7xl border-x border-black/10 px-6">
           {/* corner crosshairs */}
-          <span aria-hidden className="pointer-events-none absolute -left-[6px] -top-[6px] font-mono text-xs text-paper/40">+</span>
-          <span aria-hidden className="pointer-events-none absolute -right-[6px] -top-[6px] font-mono text-xs text-paper/40">+</span>
-          <span aria-hidden className="pointer-events-none absolute -bottom-[6px] -left-[6px] font-mono text-xs text-paper/40">+</span>
-          <span aria-hidden className="pointer-events-none absolute -bottom-[6px] -right-[6px] font-mono text-xs text-paper/40">+</span>
+          <span aria-hidden className="pointer-events-none absolute -left-[6px] -top-[6px] font-mono text-xs text-ink/30">+</span>
+          <span aria-hidden className="pointer-events-none absolute -right-[6px] -top-[6px] font-mono text-xs text-ink/30">+</span>
+          <span aria-hidden className="pointer-events-none absolute -bottom-[6px] -left-[6px] font-mono text-xs text-ink/30">+</span>
+          <span aria-hidden className="pointer-events-none absolute -bottom-[6px] -right-[6px] font-mono text-xs text-ink/30">+</span>
 
           {/* section label */}
-          <div className="flex items-center justify-between border-b border-white/10 py-4 font-mono text-[11px] uppercase tracking-[0.25em] text-paper/50">
+          <div className="flex items-center justify-between border-b border-black/10 py-4 font-mono text-[11px] uppercase tracking-[0.25em] text-ink/50">
             <span>E360 — Inventory Control System</span>
             <span className="flex items-center gap-2">
               <span className="inline-block h-1.5 w-1.5 bg-accent" />
@@ -180,7 +180,7 @@ function HomePage() {
             <div className="lg:col-span-8">
               <Reveal>
                 <h1
-                  className="font-display font-semibold text-paper"
+                  className="font-display font-semibold text-ink"
                   style={{ fontSize: 'clamp(2.75rem,8.5vw,7.75rem)', lineHeight: 0.92, letterSpacing: '-0.02em' }}
                 >
                   Inventory,
@@ -194,7 +194,7 @@ function HomePage() {
 
             <div className="flex flex-col justify-end lg:col-span-4 lg:pb-3">
               <Reveal delay={120}>
-                <p className="max-w-sm text-base leading-relaxed text-paper/60">
+                <p className="max-w-sm text-base leading-relaxed text-ink/60">
                   Real-time stock, a built-in POS, and role-based control in one system. Close the
                   month in minutes — with zero guesswork about what you hold.
                 </p>
@@ -207,7 +207,7 @@ function HomePage() {
                   </Link>
                   <a
                     href="#system"
-                    className="group inline-flex items-center gap-2 font-mono text-[12px] uppercase tracking-[0.2em] text-paper/70 transition-colors hover:text-paper"
+                    className="group inline-flex items-center gap-2 font-mono text-[12px] uppercase tracking-[0.2em] text-ink/70 transition-colors hover:text-ink"
                   >
                     See the system
                     <span className="transition-transform duration-200 group-hover:translate-x-1">↘</span>
@@ -218,7 +218,7 @@ function HomePage() {
           </div>
 
           {/* stat row — mono, hairline separated */}
-          <div className="grid grid-cols-2 border-t border-white/10 md:grid-cols-4">
+          <div className="grid grid-cols-2 border-t border-black/10 md:grid-cols-4">
             {[
               { render: <><CountUp to={99.98} decimals={2} suffix="%" /></>, label: 'System uptime' },
               { render: <CountUp to={12480} />, label: 'SKUs tracked' },
@@ -227,12 +227,12 @@ function HomePage() {
             ].map((stat, i) => (
               <div
                 key={stat.label}
-                className={`border-white/10 py-8 ${i % 2 === 1 ? 'border-l' : ''} md:border-l md:first:border-l-0 md:pl-8`}
+                className={`border-black/10 py-8 ${i % 2 === 1 ? 'border-l' : ''} md:border-l md:first:border-l-0 md:pl-8`}
               >
-                <div className="font-mono text-3xl font-medium tracking-tight text-paper md:text-4xl">
+                <div className="font-mono text-3xl font-medium tracking-tight text-ink md:text-4xl">
                   {stat.render}
                 </div>
-                <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.25em] text-paper/40">
+                <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.25em] text-ink/40">
                   {stat.label}
                 </div>
               </div>
