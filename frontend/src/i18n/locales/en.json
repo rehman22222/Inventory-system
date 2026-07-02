@@ -1,0 +1,86 @@
+{
+  "lang": { "label": "Language" },
+  "nav": {
+    "features": "Features",
+    "workflow": "Workflow",
+    "system": "System",
+    "faq": "FAQ",
+    "signin": "Sign in",
+    "startFree": "Start free"
+  },
+  "hero": {
+    "label": "Inventory Control System",
+    "headline": "Inventory, measured to",
+    "accent": "the unit.",
+    "sub": "Real-time stock, a built-in POS, and role-based control in one system. Close the month in minutes — with zero guesswork about what you hold.",
+    "cta": "Start free",
+    "secondary": "See the system",
+    "s_uptime": "System uptime",
+    "s_skus": "SKUs tracked",
+    "s_orders": "Open orders",
+    "s_rails": "Payment rails"
+  },
+  "features": {
+    "label": "Features",
+    "title": "Six systems. One source of truth.",
+    "intro": "Stock, sales, procurement, and people — run from one platform that updates the instant anything moves. No spreadsheets to reconcile, no tabs to keep in sync.",
+    "items": [
+      { "title": "Real-time stock tracking", "desc": "Every sale, transfer, and return updates counts the instant it happens. Low-stock thresholds fire before you run out — not after an angry customer tells you." },
+      { "title": "Role-based access", "desc": "Admin, Manager, and Staff each see exactly their remit and nothing else. Permissions are scoped per role and enforced on every route, not just hidden in the UI." },
+      { "title": "Built-in point of sale", "desc": "Scan, charge, print. Cash, card, bank transfer, Easypaisa or JazzCash — and stock deducts itself the moment the sale closes." },
+      { "title": "Sales & analytics", "desc": "Revenue, best-sellers, and profit on live charts. Pull a clean, formatted spreadsheet for any date range in a single click." },
+      { "title": "Suppliers & orders", "desc": "Track who supplies what, raise purchase orders, and reconcile stock-in against deliveries — the whole procurement loop on one screen." },
+      { "title": "Full activity log", "desc": "Who changed what, when, and from which IP. Every action is timestamped and attributed, so nothing on the system happens off the record." }
+    ]
+  },
+  "workflow": {
+    "label": "Workflow",
+    "title": "Live in an afternoon. Not a quarter.",
+    "intro": "There is no six-week onboarding. Load your catalog, start selling, and read your numbers the same day — three moves, in order.",
+    "steps": [
+      { "title": "Set up your catalog", "desc": "Import products, categories, and suppliers in bulk, or add them as you go. Barcodes optional. You have a working store the same afternoon — not next quarter." },
+      { "title": "Run the day", "desc": "Sell on the POS, move stock between shelves, raise purchase orders. The whole team works in one place while counts stay exact, automatically." },
+      { "title": "Read the signals", "desc": "Watch revenue, margins, and low-stock in real time. Export the exact numbers your accountant asks for, on demand — no manual tallying." }
+    ]
+  },
+  "system": {
+    "label": "System",
+    "title": "Built like infrastructure,",
+    "accent": "not a spreadsheet.",
+    "intro": "The parts that keep your data correct and your team accountable — engineered in, not bolted on.",
+    "specs": [
+      "JWT in HTTP-only cookies, role-guarded on every route.",
+      "Socket.IO pushes stock, orders, and alerts to every open session.",
+      "MongoDB with a local-storage fallback for offline counters.",
+      "Formatted .xlsx reports for sales, inventory, and audit — any range.",
+      "Full audit trail, IP-attributed, immutable once written."
+    ]
+  },
+  "faq": {
+    "label": "Questions",
+    "title": "Answers, on the record.",
+    "helpPre": "Still deciding? Write to",
+    "helpLink": "support@e360.app",
+    "items": [
+      { "q": "What exactly is E360?", "a": "A single system for product businesses: real-time stock, a built-in POS, analytics, supplier and order management, multi-role access, and a full audit log — no add-ons required." },
+      { "q": "What user roles are supported?", "a": "Three, each with scoped permissions: Admin (full system), Manager (inventory, reports, suppliers), and Staff (POS and daily operations). Roles are enforced server-side, not just hidden." },
+      { "q": "Does it include a point of sale?", "a": "Yes. The POS handles barcode scanning, five payment methods (cash, card, bank transfer, Easypaisa, JazzCash), receipts, and automatic stock deduction on checkout." },
+      { "q": "Can it run without internet?", "a": "A local-storage mode keeps the counters working offline. The default mode uses a cloud database with real-time Socket.IO updates across sessions." },
+      { "q": "Is there a free trial?", "a": "Yes — sign up and use every feature with no card and no artificial limits during the trial." }
+    ]
+  },
+  "cta": {
+    "title": "Start counting",
+    "accent": "properly.",
+    "sub": "Create an account and load your first products in minutes. No card, no limits during the trial.",
+    "primary": "Create free account",
+    "signin": "Sign in"
+  },
+  "footer": {
+    "tagline": "One precise system for stock, sales, and suppliers. Built by Eiretech for product businesses that can't afford to guess.",
+    "colProduct": "Product",
+    "colContact": "Contact",
+    "product": ["Dashboard", "Products", "Point of Sale", "Analytics", "Reports"],
+    "rights": "E360 Inventory Suite · Eiretech"
+  }
+}

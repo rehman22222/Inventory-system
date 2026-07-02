@@ -1,17 +1,7 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { FaTwitter, FaLinkedinIn, FaGithub } from 'react-icons/fa';
 import e360LogoWhite from '../images/e360-logo-white.png';
-
-const COLUMNS = [
-  {
-    heading: 'Product',
-    links: ['Dashboard', 'Products', 'Point of Sale', 'Analytics', 'Reports'],
-  },
-  {
-    heading: 'Company',
-    links: ['About', 'Blog', 'Careers', 'Privacy', 'Terms'],
-  },
-];
 
 function FooterLink({ children }) {
   return (
@@ -23,6 +13,8 @@ function FooterLink({ children }) {
 }
 
 function Footer() {
+  const { t } = useTranslation();
+  const productLinks = t('footer.product', { returnObjects: true }) || [];
   return (
     <footer className="bg-ink font-body text-paper">
       <div className="mx-auto max-w-7xl border-x border-white/10 px-6">
@@ -30,16 +22,13 @@ function Footer() {
         <div className="grid grid-cols-1 gap-10 border-b border-white/10 py-12 md:grid-cols-12">
           <div className="md:col-span-6">
             <img src={e360LogoWhite} className="h-14 w-auto object-contain" alt="E360 Inventory Suite by Eiretech" />
-            <p className="mt-5 max-w-xs text-sm leading-relaxed text-paper/50">
-              One precise system for stock, sales, and suppliers. Built by Eiretech for product
-              businesses that can't afford to guess.
-            </p>
+            <p className="mt-5 max-w-xs text-sm leading-relaxed text-paper/50">{t('footer.tagline')}</p>
           </div>
 
           <div className="md:col-span-3">
-            <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.25em] text-paper/40">Product</p>
+            <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.25em] text-paper/40">{t('footer.colProduct')}</p>
             <ul className="space-y-3">
-              {COLUMNS[0].links.map((l) => (
+              {productLinks.map((l) => (
                 <li key={l}>
                   <FooterLink>{l}</FooterLink>
                 </li>
@@ -48,7 +37,7 @@ function Footer() {
           </div>
 
           <div className="md:col-span-3">
-            <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.25em] text-paper/40">Contact</p>
+            <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.25em] text-paper/40">{t('footer.colContact')}</p>
             <ul className="space-y-3 font-mono text-xs text-paper/55">
               <li>support@e360.app</li>
               <li>+022 338 983 902</li>
@@ -70,7 +59,7 @@ function Footer() {
 
         {/* Bottom — colophon line */}
         <div className="flex flex-col gap-3 py-6 font-mono text-[10px] uppercase tracking-[0.25em] text-paper/40 md:flex-row md:items-center md:justify-between">
-          <span>© {new Date().getFullYear()} E360 Inventory Suite · Eiretech</span>
+          <span>© {new Date().getFullYear()} {t('footer.rights')}</span>
           <span className="flex items-center gap-2">
             <span className="inline-block h-1.5 w-1.5 bg-accent" />
             SYS.STATUS — OPERATIONAL · v1.0

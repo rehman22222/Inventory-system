@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { FiMenu, FiX } from 'react-icons/fi';
 import e360LogoWhite from '../images/e360-logo-white.png';
+import LanguageSwitcher from './LanguageSwitcher';
 
 const NAV = [
-  { label: 'Features', href: '#features' },
-  { label: 'Workflow', href: '#workflow' },
-  { label: 'System', href: '#system' },
-  { label: 'FAQ', href: '#faq' },
+  { key: 'features', href: '#features' },
+  { key: 'workflow', href: '#workflow' },
+  { key: 'system', href: '#system' },
+  { key: 'faq', href: '#faq' },
 ];
 
 const TICKER = [
@@ -34,10 +36,11 @@ function NavLink({ href, label, onClick }) {
 }
 
 function Navbar() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 bg-ink font-body text-paper">
+    <header className="sticky top-0 z-50 bg-ink font-body text-paper" dir="ltr">
       {/* Ticker strip */}
       <div className="overflow-hidden border-b border-white/10">
         <div className="flex w-max animate-ticker whitespace-nowrap py-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-paper/40">
@@ -63,33 +66,38 @@ function Navbar() {
 
           <div className="hidden items-center gap-10 lg:flex">
             {NAV.map((item) => (
-              <NavLink key={item.href} {...item} />
+              <NavLink key={item.href} href={item.href} label={t(`nav.${item.key}`)} />
             ))}
           </div>
 
           <div className="hidden items-center gap-6 lg:flex">
+            <LanguageSwitcher tone="dark" />
+            <span className="h-4 w-px bg-white/15" />
             <Link
               to="/LoginPage"
               className="font-mono text-[11px] uppercase tracking-[0.2em] text-paper/70 transition-colors hover:text-paper"
             >
-              Sign in
+              {t('nav.signin')}
             </Link>
             <Link
               to="/SignupPage"
               className="border border-accent bg-accent px-6 py-2.5 font-mono text-[11px] uppercase tracking-[0.2em] text-white transition-colors duration-200 hover:bg-transparent hover:text-accent"
             >
-              Start free
+              {t('nav.startFree')}
             </Link>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-label="Toggle menu"
-            className="text-paper lg:hidden"
-          >
-            {open ? <FiX className="text-2xl" /> : <FiMenu className="text-2xl" />}
-          </button>
+          <div className="flex items-center gap-4 lg:hidden">
+            <LanguageSwitcher tone="dark" />
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              aria-label="Toggle menu"
+              className="text-paper"
+            >
+              {open ? <FiX className="text-2xl" /> : <FiMenu className="text-2xl" />}
+            </button>
+          </div>
         </nav>
 
         {/* Mobile menu */}
@@ -97,20 +105,25 @@ function Navbar() {
           <div className="border-t border-white/10 px-6 py-6 lg:hidden">
             <div className="flex flex-col gap-5">
               {NAV.map((item) => (
-                <NavLink key={item.href} {...item} onClick={() => setOpen(false)} />
+                <NavLink
+                  key={item.href}
+                  href={item.href}
+                  label={t(`nav.${item.key}`)}
+                  onClick={() => setOpen(false)}
+                />
               ))}
               <div className="mt-2 flex items-center gap-4">
                 <Link
                   to="/LoginPage"
                   className="font-mono text-[11px] uppercase tracking-[0.2em] text-paper/70"
                 >
-                  Sign in
+                  {t('nav.signin')}
                 </Link>
                 <Link
                   to="/SignupPage"
                   className="border border-accent bg-accent px-6 py-2.5 font-mono text-[11px] uppercase tracking-[0.2em] text-white"
                 >
-                  Start free
+                  {t('nav.startFree')}
                 </Link>
               </div>
             </div>
