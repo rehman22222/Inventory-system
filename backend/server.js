@@ -61,6 +61,12 @@ app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ limit: "15mb", extended: true }));
 app.set("io", io);
 app.use(cookieParser());
+
+// Lightweight health check — used for uptime/warm-up pings (e.g. Render free tier).
+app.get(["/health", "/api/health"], (req, res) => {
+  res.status(200).json({ status: "ok", uptime: process.uptime() });
+});
+
 if (useLocalStorage) {
   app.use("/api", localStorageRouter(app));
 } else {
