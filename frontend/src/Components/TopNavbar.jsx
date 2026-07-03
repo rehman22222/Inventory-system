@@ -1,5 +1,6 @@
 import React from "react";
 import { useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 import { FiMenu } from "react-icons/fi";
 import image from "../images/user.png";
 import ThemeToggle from "../lib/ThemeToggle";
@@ -7,6 +8,7 @@ import { useSidebar } from "../lib/SidebarContext";
 import { Link } from "react-router-dom";
 
 function TopNavbar() {
+  const { t } = useTranslation();
   const { Authuser } = useSelector((state) => state.auth);
   const { toggle } = useSidebar();
   const dashboardPath =
@@ -29,7 +31,7 @@ function TopNavbar() {
             <FiMenu className="text-xl" />
           </button>
           <h1 className="truncate text-base font-semibold text-base-content sm:text-lg">
-            Welcome, {Authuser?.name || "Guest"}
+            {t("topnav.welcome", { name: Authuser?.name || t("topnav.guest") })}
           </h1>
         </div>
 
@@ -47,10 +49,10 @@ function TopNavbar() {
             />
             <div className="hidden text-left sm:block">
               <p className="text-sm font-medium text-base-content leading-tight">
-                {Authuser?.name || "Guest"}
+                {Authuser?.name || t("topnav.guest")}
               </p>
               <p className="text-xs capitalize text-base-content/60">
-                {Authuser?.role || "Visitor"}
+                {Authuser?.role || t("topnav.visitor")}
               </p>
             </div>
           </Link>

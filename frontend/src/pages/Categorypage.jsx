@@ -11,6 +11,7 @@ import TopNavbar from "../Components/TopNavbar";
 
 import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 import { gettingallCategory,CreateCategory , RemoveCategory,SearchCategory } from "../features/categorySlice";
 import toast from "react-hot-toast";
 
@@ -22,6 +23,7 @@ function Categorypage() {
 
 
   
+  const { t } = useTranslation();
   const { getallCategory, iscreatedCategory,  searchdata } = useSelector((state) => state.category);
   const dispatch = useDispatch();
   const [query, setquery] = useState("");
@@ -65,10 +67,10 @@ function Categorypage() {
     dispatch( RemoveCategory (categoryId))
       .unwrap()
       .then(() => {
-        toast.success("category removed successfully");
+        toast.success(t("categories.removed"));
       })
       .catch((error) => {
-        toast.error(error || "Failed to categoryproduct");
+        toast.error(error || t("categories.removeFail"));
       });
   };
 
@@ -82,11 +84,11 @@ function Categorypage() {
     dispatch( CreateCategory( CategoryData))
       .unwrap()
       .then(() => {
-        toast.success(" CategoryData added successfully");
+        toast.success(t("categories.added"));
         resetForm();
       })
       .catch(() => {
-        toast.error(" CategoryData add unsuccessful");
+        toast.error(t("categories.addFail"));
       });
   };
 
@@ -115,7 +117,7 @@ function Categorypage() {
 
          <div className="mt-10 flex ">
       <div className="bg-blue-950 w-56 rounded-xl  ml-10 block h-24">
-          <h1 className="text-white ml-12 block pt-5 font-bold">Total Category</h1>
+          <h1 className="text-white ml-12 block pt-5 font-bold">{t("categories.totalCategory")}</h1>
           <p className="text-white font-bold  pt-2  ml-24">{getallCategory?.length || "0"}</p>
 
         </div>
@@ -127,14 +129,14 @@ function Categorypage() {
       <input type='text' 
        value={query}
        onChange={(e) => setquery(e.target.value)}
-      placeholder='Search the category' 
+      placeholder={t("categories.searchPlaceholder")}
       className="w-full ml-10 mt-20 md:w-96 h-12 pl-4 pr-12 border-2 border-base-300 rounded-lg bg-base-100 text-base-content"/>
       <div className='flex mt-20'>
       <button onClick={()=>{
            setIsFormVisible(true);
            setSelectedProduct(null);
 
-      }} className="bg-blue-800 ml-10 text-white w-40 h-12 rounded-lg flex items-center justify-center"><IoMdAdd className='text-xl mr-3'/>Add Category</button>
+      }} className="bg-blue-800 ml-10 text-white w-40 h-12 rounded-lg flex items-center justify-center"><IoMdAdd className='text-xl mr-3'/>{t("categories.addCategory")}</button>
       </div>
 
       </div>
@@ -150,15 +152,15 @@ function Categorypage() {
             </div>
 
             <h1 className="text-xl font-semibold mb-4">
-              {selectedProduct ? "Edit Product" : "Add Product"}
+              {selectedProduct ? t("categories.editCategory") : t("categories.addCategoryTitle")}
             </h1>
 
             <form onSubmit={ submitCategory}>
               <div className="mb-4">
-                <label>Name</label>
+                <label>{t("common.name")}</label>
                 <input
                   value={name}
-                  placeholder="Enter product name"
+                  placeholder={t("categories.namePlaceholder")}
                   onChange={(e) => setname(e.target.value)}
                   type="text"
                   className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
@@ -168,10 +170,10 @@ function Categorypage() {
               
 
               <div className="mb-4">
-                <label>Description</label>
+                <label>{t("common.description")}</label>
                 <input
                   value={description}
-                  placeholder="Enter product description"
+                  placeholder={t("categories.descPlaceholder")}
                   onChange={(e) => setdescription(e.target.value)}
                   type="text"
                   className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
@@ -186,24 +188,24 @@ function Categorypage() {
                 type="submit"
                 className="bg-blue-800 text-white w-full h-12 rounded-lg hover:bg-blue-700 mt-4"
               >
-                {selectedProduct ? "Update Category " : "Add Category "}
+                {selectedProduct ? t("categories.updateCategory") : t("categories.addCategoryTitle")}
               </button>
             </form>
           </div>
         )}
 
         <div className="mt-10">
-          <h2 className="text-xl ml-10 font-semibold mb-4">Category List</h2>
+          <h2 className="text-xl ml-10 font-semibold mb-4">{t("categories.categoryList")}</h2>
           <div className="overflow-x-auto">
             <table className="min-w-full ml-10 bg-base-100 border mb-24 border-base-300 rounded-lg shadow-md">
               <thead className="bg-base-200">
                 <tr>
                 <th className="px-3 py-2 bg-base-100 border w-5">#</th>
-                  <th className="px-3 py-2 bg-base-100 border">Name</th>
-                  <th className="px-3 py-2 bg-base-100 border">Total Product</th>
-                  <th className="px-3 py-2 bg-base-100 border">Description</th>
-                  <th className="px-3 py-2 bg-base-100 border">Created At</th>
-                  <th className="px-3 py-2 bg-base-100 w-72 border">Operations</th>
+                  <th className="px-3 py-2 bg-base-100 border">{t("common.name")}</th>
+                  <th className="px-3 py-2 bg-base-100 border">{t("categories.totalProduct")}</th>
+                  <th className="px-3 py-2 bg-base-100 border">{t("common.description")}</th>
+                  <th className="px-3 py-2 bg-base-100 border">{t("categories.createdAt")}</th>
+                  <th className="px-3 py-2 bg-base-100 w-72 border">{t("common.operations")}</th>
                 </tr>
               </thead>
               <tbody className='bg-base-100'>
@@ -229,13 +231,13 @@ function Categorypage() {
                          
                           className="h-10 w-24 bg-red-500 hover:bg-red-700 rounded-md text-white"
                         >
-                          Remove
+                          {t("common.remove")}
                         </button>
                         <button
-                    
+
                           className="h-10 w-24 bg-green-500 ml-10 hover:bg-green-700 rounded-md text-white"
                         >
-                          Edit
+                          {t("common.edit")}
                         </button>
                       </td>
                     </tr>
@@ -243,7 +245,7 @@ function Categorypage() {
                 ) : (
                   <tr>
                     <td colSpan="5" className="text-center bg-base-100 py-4">
-                      No Category found.
+                      {t("categories.noCategory")}
                     </td>
                   </tr>
                 )}

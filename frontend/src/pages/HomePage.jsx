@@ -72,7 +72,7 @@ function HomePage() {
                 <p className="max-w-sm text-base leading-relaxed text-ink/60">{t('hero.sub')}</p>
                 <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
                   <Link
-                    to="/SignupPage"
+                    to="/LoginPage"
                     className="border border-accent bg-accent px-8 py-4 text-center font-mono text-[12px] uppercase tracking-[0.2em] text-white transition-colors duration-200 hover:bg-transparent hover:text-accent"
                   >
                     {t('hero.cta')}
@@ -351,7 +351,7 @@ function HomePage() {
                 <p className="max-w-sm text-base leading-relaxed text-paper/60 lg:text-end">{t('cta.sub')}</p>
                 <div className="mt-8 flex flex-col gap-4 sm:flex-row lg:justify-end">
                   <Link
-                    to="/SignupPage"
+                    to="/LoginPage"
                     className="border border-accent bg-accent px-8 py-4 text-center font-mono text-[12px] uppercase tracking-[0.2em] text-white transition-colors duration-200 hover:bg-transparent hover:text-accent"
                   >
                     {t('cta.primary')}

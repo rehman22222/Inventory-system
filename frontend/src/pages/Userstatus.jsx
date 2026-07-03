@@ -3,6 +3,7 @@ import TopNavbar from "../Components/TopNavbar";
 import { IoMdAdd } from "react-icons/io";
 import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 import { TiDelete } from "react-icons/ti";
 import image from "../images/user.png";
 import {
@@ -15,6 +16,7 @@ import toast from "react-hot-toast";
 import  UserRoleChart from '../lib/Usersgraph'
 
 function Userstatus() {
+  const { t } = useTranslation();
   const { staffuser, manageruser, adminuser } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const { Authuser } = useSelector((state) => state.auth);
@@ -32,10 +34,10 @@ function Userstatus() {
 
     dispatch(removeusers(UserId))
     .then(()=>{
-      toast.success("user remove successffully")
+      toast.success(t("users.removed"))
     })
     .catch((err)=>{
-      toast.error("error in remove user")
+      toast.error(t("users.removeFail"))
     })
 
   }
@@ -46,7 +48,7 @@ function Userstatus() {
       <div className="flex">
       <div className=" bg-base-100 mt-10 ml-10 w-72 overflow-auto rounded-lg">
         <div className=" bg-base-100 p-4 rounded-lg shadow-md mb-4">
-          <h2 className="text-lg bg-base-100 font-semibold mb-2">Manager</h2>
+          <h2 className="text-lg bg-base-100 font-semibold mb-2">{t("users.manager")}</h2>
           {manageruser?.length > 0 ? (
             manageruser.map((user, index) => (
               <div key={index} className="flex bg-base-100 items-center space-x-4 p-2 border-b">
@@ -59,12 +61,12 @@ function Userstatus() {
               </div>
             ))
           ) : (
-            <p className="text-base-content/50">No users available.</p>
+            <p className="text-base-content/50">{t("users.noUsers")}</p>
           )}
         </div>
 
         <div className="bg-base-100 p-4 rounded-lg shadow-md mb-4">
-          <h2 className="text-lg bg-base-100 font-semibold mb-2">Admin User</h2>
+          <h2 className="text-lg bg-base-100 font-semibold mb-2">{t("users.adminUser")}</h2>
           {adminuser?.length > 0 ? (
             adminuser.map((user, index) => (
               <div key={index} className="flex bg-base-100 items-center space-x-4 p-2 border-b">
@@ -78,12 +80,12 @@ function Userstatus() {
               </div>
             ))
           ) : (
-            <p className="text-base-content/50">No users available.</p>
+            <p className="text-base-content/50">{t("users.noUsers")}</p>
           )}
         </div>
 
         <div className=" bg-base-100 p-4 rounded-lg shadow-md mb-4">
-          <h2 className="text-lg bg-base-100 font-semibold mb-2">Staff User</h2>
+          <h2 className="text-lg bg-base-100 font-semibold mb-2">{t("users.staffUser")}</h2>
           {staffuser?.length > 0 ? (
             staffuser.map((user, index) => (
               <div key={index} className="flex bg-base-100 items-center space-x-4 p-2 border-b">
@@ -96,7 +98,7 @@ function Userstatus() {
               </div>
             ))
           ) : (
-            <p className="text-base-content/50">No users available.</p>
+            <p className="text-base-content/50">{t("users.noUsers")}</p>
           )}
         </div>
       </div>

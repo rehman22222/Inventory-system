@@ -1,4 +1,5 @@
 import { useDispatch, useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 import { io } from "socket.io-client";
 import { socketURL } from "../lib/socket";
 import { useEffect, useState } from "react";
@@ -8,6 +9,7 @@ import ReportButton from "../Components/ReportButton";
 import FormattedTime from "../lib/FormattedTime ";
 
 function Activitylogpage() {
+  const { t } = useTranslation();
   const [logs, setLogs] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const logsPerPage = 10;
@@ -49,21 +51,21 @@ function Activitylogpage() {
       <TopNavbar />
       <div className="mt-10 ml-5">
         <div className="mb-4 flex items-center justify-between pr-5">
-          <h1 className="text-xl font-semibold">Activity Logs</h1>
-          <ReportButton reportKey="activity" label="Download Activity Report" />
+          <h1 className="text-xl font-semibold">{t("activity.title")}</h1>
+          <ReportButton reportKey="activity" label={t("activity.downloadReport")} />
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full bg-base-100 mb-24 border border-base-300 rounded-lg shadow-md">
             <thead className="bg-base-200">
               <tr>
                 <th className="px-3 py-2 border w-5">#</th>
-                <th className="px-3 py-2 border">Name</th>
-                <th className="px-3 py-2 border">Email</th>
-                <th className="px-3 py-2 border">Action</th>
-                <th className="px-3 py-2 border">Affected Part</th>
-                <th className="px-3 py-2 border">Description</th>
-                <th className="px-3 py-2 border">Time</th>
-                <th className="px-3 py-2 border">IP Address</th>
+                <th className="px-3 py-2 border">{t("common.name")}</th>
+                <th className="px-3 py-2 border">{t("common.email")}</th>
+                <th className="px-3 py-2 border">{t("activity.action")}</th>
+                <th className="px-3 py-2 border">{t("activity.affectedPart")}</th>
+                <th className="px-3 py-2 border">{t("common.description")}</th>
+                <th className="px-3 py-2 border">{t("activity.time")}</th>
+                <th className="px-3 py-2 border">{t("activity.ipAddress")}</th>
               </tr>
             </thead>
             <tbody>
@@ -85,7 +87,7 @@ function Activitylogpage() {
               ) : (
                 <tr>
                   <td colSpan="8" className="text-center py-4">
-                    <p>No activity logs available</p>
+                    <p>{t("activity.noLogs")}</p>
                   </td>
                 </tr>
               )}
@@ -99,7 +101,7 @@ function Activitylogpage() {
             onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
           >
-            Prev
+            {t("activity.prev")}
           </button>
           {[...Array(totalPages)].map((_, index) => (
             <button
@@ -115,7 +117,7 @@ function Activitylogpage() {
             onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
             disabled={currentPage === totalPages}
           >
-            Next
+            {t("activity.next")}
           </button>
         </div>
       </div>

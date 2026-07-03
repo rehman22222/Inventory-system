@@ -28,17 +28,18 @@ function DashboardShell() {
           }`}
         />
 
-        {/* Sidebar: drawer on mobile, fixed rail on lg+ */}
+        {/* Sidebar: drawer on mobile, fixed rail on lg+.
+            Uses logical `start`/`ps` so it flips to the right side under RTL. */}
         <div
-          className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 lg:translate-x-0 ${
-            open ? "translate-x-0" : "-translate-x-full"
+          className={`fixed inset-y-0 start-0 z-50 transform transition-transform duration-300 lg:translate-x-0 ${
+            open ? "translate-x-0" : "-translate-x-full rtl:translate-x-full"
           }`}
         >
           <Sidebar />
         </div>
 
         {/* Content — min-w-0 lets inner tables scroll instead of overflowing */}
-        <div className="min-w-0 flex-1 lg:pl-72">
+        <div className="min-w-0 flex-1 lg:ps-72">
           <Outlet />
         </div>
       </div>

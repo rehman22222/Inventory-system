@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { useTranslation } from "react-i18next";
 import {
   FiActivity,
   FiAlertTriangle,
@@ -30,6 +31,7 @@ const currency = new Intl.NumberFormat("en-US", {
 });
 
 function Dashboardpage() {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const { staffuser, manageruser, adminuser } = useSelector((state) => state.auth);
   const { recentuser } = useSelector((state) => state.activity);
@@ -99,33 +101,33 @@ function Dashboardpage() {
 
   const kpis = [
     {
-      label: "Sales Revenue",
+      label: t("dashboard.salesRevenue"),
       value: currency.format(analytics.revenue),
-      meta: `${analytics.sales.length} completed records`,
+      meta: t("dashboard.completedRecords", { count: analytics.sales.length }),
       icon: FiDollarSign,
       color: "text-emerald-700 dark:text-emerald-400",
       bg: "bg-emerald-50 dark:bg-emerald-900/20",
     },
     {
-      label: "Inventory Value",
+      label: t("dashboard.inventoryValue"),
       value: currency.format(analytics.inventoryValue),
-      meta: `${analytics.products.length} active products`,
+      meta: t("dashboard.activeProducts", { count: analytics.products.length }),
       icon: FiBox,
       color: "text-cyan-700 dark:text-cyan-400",
       bg: "bg-cyan-50 dark:bg-cyan-900/20",
     },
     {
-      label: "Open Orders",
+      label: t("dashboard.openOrders"),
       value: analytics.orders.length,
-      meta: `${analytics.orderStatus.pending || 0} pending review`,
+      meta: t("dashboard.pendingReview", { count: analytics.orderStatus.pending || 0 }),
       icon: FiShoppingCart,
       color: "text-indigo-700 dark:text-indigo-400",
       bg: "bg-indigo-50 dark:bg-indigo-900/20",
     },
     {
-      label: "Low Stock",
+      label: t("dashboard.lowStock"),
       value: analytics.lowStock.length,
-      meta: "Items at or below 10 units",
+      meta: t("dashboard.lowStockMeta"),
       icon: FiAlertTriangle,
       color: "text-amber-700 dark:text-amber-400",
       bg: "bg-amber-50 dark:bg-amber-900/20",
@@ -133,9 +135,9 @@ function Dashboardpage() {
   ];
 
   const statusRows = [
-    { label: "Pending", value: analytics.orderStatus.pending || 0, color: "bg-amber-500" },
-    { label: "Shipped", value: analytics.orderStatus.shipped || 0, color: "bg-cyan-500" },
-    { label: "Delivered", value: analytics.orderStatus.delivered || 0, color: "bg-emerald-500" },
+    { label: t("dashboard.pending"), value: analytics.orderStatus.pending || 0, color: "bg-amber-500" },
+    { label: t("dashboard.shipped"), value: analytics.orderStatus.shipped || 0, color: "bg-cyan-500" },
+    { label: t("dashboard.delivered"), value: analytics.orderStatus.delivered || 0, color: "bg-emerald-500" },
   ];
   const maxStatus = Math.max(...statusRows.map((row) => row.value), 1);
 
@@ -149,14 +151,13 @@ function Dashboardpage() {
           <div className="grid gap-6 p-7 lg:grid-cols-[1.4fr_0.8fr] lg:items-end">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-cyan-300">
-                Live Inventory Overview
+                {t("dashboard.overviewLabel")}
               </p>
               <h1 className="mt-3 text-3xl font-bold tracking-tight lg:text-4xl">
-                Dashboard analytics
+                {t("dashboard.title")}
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-                A quick operational view of stock health, revenue, orders, users, and recent
-                inventory activity.
+                {t("dashboard.subtitle")}
               </p>
             </div>
 
@@ -164,17 +165,17 @@ function Dashboardpage() {
               <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                 <FiUsers className="mb-3 text-cyan-300" />
                 <p className="text-2xl font-bold">{analytics.users}</p>
-                <p className="text-xs text-slate-300">Team users</p>
+                <p className="text-xs text-slate-300">{t("dashboard.teamUsers")}</p>
               </div>
               <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                 <FiLayers className="mb-3 text-emerald-300" />
                 <p className="text-2xl font-bold">{analytics.categories.length}</p>
-                <p className="text-xs text-slate-300">Categories</p>
+                <p className="text-xs text-slate-300">{t("dashboard.categories")}</p>
               </div>
               <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                 <FiTrendingUp className="mb-3 text-amber-300" />
                 <p className="text-2xl font-bold">{analytics.sales.length}</p>
-                <p className="text-xs text-slate-300">Sales records</p>
+                <p className="text-xs text-slate-300">{t("dashboard.salesRecords")}</p>
               </div>
             </div>
           </div>
@@ -214,9 +215,9 @@ function Dashboardpage() {
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium uppercase tracking-[0.14em] text-base-content/50">
-                  Order Pipeline
+                  {t("dashboard.orderPipeline")}
                 </p>
-                <h2 className="mt-2 text-xl font-semibold text-base-content">Status breakdown</h2>
+                <h2 className="mt-2 text-xl font-semibold text-base-content">{t("dashboard.statusBreakdown")}</h2>
               </div>
               <FiShoppingCart className="text-2xl text-base-content/30" />
             </div>
@@ -241,9 +242,9 @@ function Dashboardpage() {
             </div>
 
             <div className="mt-8 rounded-lg bg-base-200 p-4">
-              <p className="text-sm font-medium text-base-content/70">Recommended focus</p>
+              <p className="text-sm font-medium text-base-content/70">{t("dashboard.recommendedFocus")}</p>
               <p className="mt-1 text-sm text-base-content/50">
-                Review pending orders and replenish low-stock products before the next sales cycle.
+                {t("dashboard.recommendedFocusText")}
               </p>
             </div>
           </div>
@@ -256,10 +257,10 @@ function Dashboardpage() {
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium uppercase tracking-[0.14em] text-base-content/50">
-                  Stock Watchlist
+                  {t("dashboard.stockWatchlist")}
                 </p>
                 <h2 className="mt-2 text-xl font-semibold text-base-content">
-                  Low inventory items
+                  {t("dashboard.lowInventoryItems")}
                 </h2>
               </div>
               <FiAlertTriangle className="text-2xl text-amber-500" />
@@ -275,17 +276,17 @@ function Dashboardpage() {
                     <div>
                       <p className="font-medium text-base-content">{product.name}</p>
                       <p className="text-sm text-base-content/50">
-                        {product.Category?.name || "Uncategorized"}
+                        {product.Category?.name || t("dashboard.uncategorized")}
                       </p>
                     </div>
                     <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-                      {product.quantity} left
+                      {t("dashboard.left", { count: product.quantity })}
                     </span>
                   </div>
                 ))
               ) : (
                 <p className="rounded-lg bg-emerald-50 p-4 text-sm text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400">
-                  All products are above the low-stock threshold.
+                  {t("dashboard.allAboveThreshold")}
                 </p>
               )}
             </div>
@@ -296,9 +297,9 @@ function Dashboardpage() {
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium uppercase tracking-[0.14em] text-base-content/50">
-                  Audit Trail
+                  {t("dashboard.auditTrail")}
                 </p>
-                <h2 className="mt-2 text-xl font-semibold text-base-content">Recent activity</h2>
+                <h2 className="mt-2 text-xl font-semibold text-base-content">{t("dashboard.recentActivity")}</h2>
               </div>
               <FiActivity className="text-2xl text-cyan-500" />
             </div>
@@ -325,7 +326,7 @@ function Dashboardpage() {
                       </div>
                       <div className="mt-3 flex items-center gap-2 text-xs text-base-content/50">
                         <FiClock />
-                        <span>{log.userId?.name || "System"}</span>
+                        <span>{log.userId?.name || t("dashboard.system")}</span>
                         <span>-</span>
                         <FormattedTime timestamp={log.createdAt} />
                       </div>
@@ -334,7 +335,7 @@ function Dashboardpage() {
                 ))
               ) : (
                 <p className="rounded-lg bg-base-200 p-4 text-sm text-base-content/50">
-                  No recent activity logs found.
+                  {t("dashboard.noRecentLogs")}
                 </p>
               )}
             </div>

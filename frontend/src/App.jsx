@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import HomePage from "./pages/HomePage";
-import SignupPage from "./pages/SignupPages";
 import ServicePage from "./pages/ServicePage";
 import LoginPage from "./pages/LoginPage";
 import Profilepage from "./pages/Profilepage";
@@ -33,8 +32,10 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<ServicePage />} />
-        <Route path="/SignupPage" element={<SignupPage />} />
         <Route path="/LoginPage" element={<LoginPage />} />
+
+        {/* Standalone full-screen POS terminal — opens outside the dashboard shell */}
+        <Route path="/pos" element={protect(<POSPage />, ["admin", "manager", "staff"])} />
 
         <Route path="/AdminDashboard" element={protect(<AdminDashboard />, ["admin"])}>
           <Route index element={protect(<Dashboardpage />, ["admin"])} />
@@ -64,7 +65,6 @@ function App() {
 
         <Route path="/StaffDashboard" element={protect(<StaffDashboard />, ["staff"])}>
           <Route index element={protect(<Dashboardpage />, ["staff"])} />
-          <Route path="pos" element={protect(<POSPage />, ["staff"])} />
           <Route path="sales" element={protect(<Salespage />, ["staff"])} />
           <Route path="order" element={protect(<Orderpage />, ["staff"])} />
           <Route path="stock-transaction" element={protect(<StockTransaction />, ["staff"])} />

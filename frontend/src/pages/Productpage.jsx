@@ -4,6 +4,7 @@ import { IoMdAdd } from "react-icons/io";
 import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
 import { FiImage } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 import FormattedTime from "../lib/FormattedTime ";
 import {
   Addproduct,
@@ -40,6 +41,7 @@ const toDateInput = (value) =>
   value ? new Date(value).toISOString().split("T")[0] : "";
 
 function Productpage() {
+  const { t } = useTranslation();
   const { getallproduct, editedProduct, isproductadd, searchdata } = useSelector(
     (state) => state.product
   );
@@ -79,7 +81,7 @@ function Productpage() {
     const file = e.target.files[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file");
+      toast.error(t("products.selectImageError"));
       return;
     }
     setImageFile(file);
@@ -103,8 +105,8 @@ function Productpage() {
   const handleremove = async (productId) => {
     dispatch(Removeproduct(productId))
       .unwrap()
-      .then(() => toast.success("Product removed successfully"))
-      .catch((error) => toast.error(error || "Failed to remove product"));
+      .then(() => toast.success(t("products.removed")))
+      .catch((error) => toast.error(error || t("products.removeFail")));
   };
 
   const handleEditSubmit = (event) => {
@@ -114,12 +116,12 @@ function Productpage() {
     dispatch(EditProduct({ id: selectedProduct._id, formData: buildFormData() }))
       .unwrap()
       .then(() => {
-        toast.success("Product updated successfully");
+        toast.success(t("products.updated"));
         setIsFormVisible(false);
         setSelectedProduct(null);
         resetForm();
       })
-      .catch((err) => toast.error(err || "Failed to update product"));
+      .catch((err) => toast.error(err || t("products.updateFail")));
   };
 
   const submitProduct = async (event) => {
@@ -127,11 +129,11 @@ function Productpage() {
     dispatch(Addproduct(buildFormData()))
       .unwrap()
       .then(() => {
-        toast.success("Product added successfully");
+        toast.success(t("products.added"));
         resetForm();
         setIsFormVisible(false);
       })
-      .catch((err) => toast.error(err || "Product add unsuccessful"));
+      .catch((err) => toast.error(err || t("products.addFail")));
   };
 
   const resetForm = () => {
@@ -181,15 +183,15 @@ function Productpage() {
         {/* Summary cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-xl bg-slate-950 p-5 text-white shadow-sm">
-            <h1 className="text-sm font-semibold text-slate-300">Total Products</h1>
+            <h1 className="text-sm font-semibold text-slate-300">{t("products.totalProducts")}</h1>
             <p className="mt-2 text-2xl font-bold">{getallproduct?.length || 0}</p>
           </div>
           <div className="rounded-xl bg-slate-950 p-5 text-white shadow-sm">
-            <h1 className="text-sm font-semibold text-slate-300">Total Store Value</h1>
+            <h1 className="text-sm font-semibold text-slate-300">{t("products.totalStoreValue")}</h1>
             <p className="mt-2 text-2xl font-bold">${totalValue.toFixed(2)}</p>
           </div>
           <div className="rounded-xl bg-slate-950 p-5 text-white shadow-sm">
-            <h1 className="text-sm font-semibold text-slate-300">Total Categories</h1>
+            <h1 className="text-sm font-semibold text-slate-300">{t("products.totalCategories")}</h1>
             <p className="mt-2 text-2xl font-bold">{getallCategory?.length || 0}</p>
           </div>
         </div>
@@ -201,17 +203,17 @@ function Productpage() {
             value={query}
             onChange={(e) => setquery(e.target.value)}
             className="h-12 w-full flex-1 rounded-lg border-2 border-base-300 bg-base-100 pl-4 pr-4 text-base-content sm:max-w-md"
-            placeholder="Search products…"
+            placeholder={t("products.searchPlaceholder")}
           />
           <button
             onClick={openAddForm}
             className="flex h-12 items-center justify-center rounded-lg bg-blue-800 px-6 text-white transition hover:bg-blue-700"
           >
-            <IoMdAdd className="mr-2 text-xl" /> Add Product
+            <IoMdAdd className="mr-2 text-xl" /> {t("products.addProduct")}
           </button>
           <ReportButton
             reportKey="inventory"
-            label="Inventory Report"
+            label={t("products.inventoryReport")}
             className="h-12"
           />
         </div>
@@ -227,13 +229,13 @@ function Productpage() {
             </div>
 
             <h1 className="mb-4 text-xl font-semibold">
-              {selectedProduct ? "Edit Product" : "Add Product"}
+              {selectedProduct ? t("products.editProduct") : t("products.addProduct")}
             </h1>
 
             <form onSubmit={selectedProduct ? handleEditSubmit : submitProduct}>
               {/* Image */}
               <div className="mb-4">
-                <label className="mb-2 block text-sm font-medium">Product Image</label>
+                <label className="mb-2 block text-sm font-medium">{t("products.productImage")}</label>
                 <div className="flex items-center gap-4">
                   <ProductThumb
                     url={imagePreview}
@@ -241,7 +243,7 @@ function Productpage() {
                     className="h-16 w-16 border border-base-300"
                   />
                   <label className="cursor-pointer rounded-lg border border-base-300 bg-base-200 px-3 py-2 text-sm hover:bg-base-300">
-                    {imagePreview ? "Change" : "Upload"}
+                    {imagePreview ? t("products.change") : t("products.upload")}
                     <input
                       type="file"
                       accept="image/*"
@@ -253,10 +255,10 @@ function Productpage() {
               </div>
 
               <div className="mb-4">
-                <label>Name</label>
+                <label>{t("common.name")}</label>
                 <input
                   value={name}
-                  placeholder="Enter product name"
+                  placeholder={t("products.namePlaceholder")}
                   onChange={(e) => setName(e.target.value)}
                   type="text"
                   className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
@@ -265,14 +267,14 @@ function Productpage() {
               </div>
 
               <div className="mb-4">
-                <label>Category</label>
+                <label>{t("common.category")}</label>
                 <select
                   value={Category}
                   onChange={(e) => setCategory(e.target.value)}
                   className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
                   required
                 >
-                  <option value="">Select a category</option>
+                  <option value="">{t("products.selectCategory")}</option>
                   {getallCategory?.map((category) => (
                     <option key={category._id} value={category._id}>
                       {category.name}
@@ -282,10 +284,10 @@ function Productpage() {
               </div>
 
               <div className="mb-4">
-                <label>Description</label>
+                <label>{t("common.description")}</label>
                 <input
                   value={Desciption}
-                  placeholder="Enter product description"
+                  placeholder={t("products.descPlaceholder")}
                   onChange={(e) => setDesciption(e.target.value)}
                   type="text"
                   className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
@@ -294,10 +296,10 @@ function Productpage() {
               </div>
 
               <div className="mb-4">
-                <label>Barcode</label>
+                <label>{t("common.barcode")}</label>
                 <input
                   value={barcode}
-                  placeholder="Scan or enter barcode"
+                  placeholder={t("products.barcodePlaceholder")}
                   onChange={(e) => setBarcode(e.target.value)}
                   type="text"
                   className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
@@ -305,10 +307,10 @@ function Productpage() {
               </div>
 
               <div className="mb-4">
-                <label>Selling Price</label>
+                <label>{t("products.sellingPrice")}</label>
                 <input
                   type="number"
-                  placeholder="Price you sell at"
+                  placeholder={t("products.sellingPricePlaceholder")}
                   value={Price}
                   onChange={(e) => setPrice(e.target.value)}
                   className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
@@ -319,10 +321,10 @@ function Productpage() {
               </div>
 
               <div className="mb-4">
-                <label>Cost Price</label>
+                <label>{t("products.costPrice")}</label>
                 <input
                   type="number"
-                  placeholder="Price you paid (for profit tracking)"
+                  placeholder={t("products.costPricePlaceholder")}
                   value={costPrice}
                   onChange={(e) => setCostPrice(e.target.value)}
                   className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
@@ -332,10 +334,10 @@ function Productpage() {
               </div>
 
               <div className="mb-4">
-                <label>Quantity</label>
+                <label>{t("common.quantity")}</label>
                 <input
                   type="number"
-                  placeholder="Enter product quantity"
+                  placeholder={t("products.quantityPlaceholder")}
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                   className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
@@ -345,7 +347,7 @@ function Productpage() {
               </div>
 
               <div className="mb-4">
-                <label>Expiry Date</label>
+                <label>{t("products.expiryDate")}</label>
                 <input
                   type="date"
                   value={expiryDate}
@@ -358,7 +360,7 @@ function Productpage() {
                 type="submit"
                 className="mt-4 h-12 w-full rounded-lg bg-blue-800 text-white transition hover:bg-blue-700"
               >
-                {selectedProduct ? "Update Product" : "Add Product"}
+                {selectedProduct ? t("products.updateProduct") : t("products.addProduct")}
               </button>
             </form>
           </div>
@@ -366,20 +368,20 @@ function Productpage() {
 
         {/* Product list */}
         <div className="mt-10">
-          <h2 className="mb-4 text-xl font-semibold">Product List</h2>
+          <h2 className="mb-4 text-xl font-semibold">{t("products.productList")}</h2>
           <div className="overflow-x-auto">
             <table className="min-w-full rounded-lg border border-base-300 bg-base-100 shadow-md">
               <thead className="bg-base-200">
                 <tr>
                   <th className="border px-3 py-2">#</th>
-                  <th className="border px-3 py-2">Image</th>
-                  <th className="border px-3 py-2">Name</th>
-                  <th className="border px-3 py-2">Category</th>
-                  <th className="border px-3 py-2">Barcode</th>
-                  <th className="border px-3 py-2">Quantity</th>
-                  <th className="border px-3 py-2">Price</th>
-                  <th className="border px-3 py-2">Expiry</th>
-                  <th className="w-56 border px-3 py-2">Operations</th>
+                  <th className="border px-3 py-2">{t("common.image")}</th>
+                  <th className="border px-3 py-2">{t("common.name")}</th>
+                  <th className="border px-3 py-2">{t("common.category")}</th>
+                  <th className="border px-3 py-2">{t("common.barcode")}</th>
+                  <th className="border px-3 py-2">{t("common.quantity")}</th>
+                  <th className="border px-3 py-2">{t("common.price")}</th>
+                  <th className="border px-3 py-2">{t("products.expiry")}</th>
+                  <th className="w-56 border px-3 py-2">{t("common.operations")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -396,7 +398,7 @@ function Productpage() {
                       </td>
                       <td className="border px-3 py-2">{product.name}</td>
                       <td className="border px-3 py-2">
-                        {product.Category?.name || "No Category"}
+                        {product.Category?.name || t("products.noCategory")}
                       </td>
                       <td className="border px-3 py-2">{product.barcode || "—"}</td>
                       <td className="border px-3 py-2">{product.quantity}</td>
@@ -412,13 +414,13 @@ function Productpage() {
                             onClick={() => handleremove(product._id)}
                             className="h-10 flex-1 rounded-md bg-red-500 text-white hover:bg-red-700"
                           >
-                            Remove
+                            {t("common.remove")}
                           </button>
                           <button
                             onClick={() => handleEditClick(product)}
                             className="h-10 flex-1 rounded-md bg-green-500 text-white hover:bg-green-700"
                           >
-                            Edit
+                            {t("common.edit")}
                           </button>
                         </div>
                       </td>
@@ -427,7 +429,7 @@ function Productpage() {
                 ) : (
                   <tr>
                     <td colSpan="9" className="py-4 text-center">
-                      No products found.
+                      {t("products.noProducts")}
                     </td>
                   </tr>
                 )}

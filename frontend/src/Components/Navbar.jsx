@@ -80,7 +80,7 @@ function Navbar() {
               {t('nav.signin')}
             </Link>
             <Link
-              to="/SignupPage"
+              to="/LoginPage"
               className="border border-accent bg-accent px-6 py-2.5 font-mono text-[11px] uppercase tracking-[0.2em] text-white transition-colors duration-200 hover:bg-transparent hover:text-accent"
             >
               {t('nav.startFree')}
@@ -120,7 +120,7 @@ function Navbar() {
                   {t('nav.signin')}
                 </Link>
                 <Link
-                  to="/SignupPage"
+                  to="/LoginPage"
                   className="border border-accent bg-accent px-6 py-2.5 font-mono text-[11px] uppercase tracking-[0.2em] text-white"
                 >
                   {t('nav.startFree')}

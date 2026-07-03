@@ -3,6 +3,7 @@ import TopNavbar from "../Components/TopNavbar";
 import { IoMdAdd } from "react-icons/io";
 import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 import {gettingallproducts} from '../features/productSlice'
 import FormattedTime from "../lib/FormattedTime ";
 import {
@@ -15,6 +16,7 @@ import toast from "react-hot-toast";
 
 
 function Salespage() {
+  const { t } = useTranslation();
   const {   getallsales, searchdata,
      } = useSelector(
     (state) => state.sales
@@ -88,14 +90,14 @@ function Salespage() {
   dispatch(EditSales({ salesId: selectedSales._id, updatedData }))
     .unwrap()
     .then(() => {
-      toast.success("Sale updated successfully");
+      toast.success(t("sales.updated"));
       setIsFormVisible(false);
       setselectedSales(null);
       resetForm();
     })
     .catch((error) => {
-      console.error("Error updating sale:", error); 
-      toast.error("Failed to update sale");
+      console.error("Error updating sale:", error);
+      toast.error(t("sales.updateFail"));
     });
 };
 
@@ -114,11 +116,11 @@ function Salespage() {
     dispatch(CreateSales(salesData))
       .unwrap()
       .then(() => {
-        toast.success("Sales added successfully");
+        toast.success(t("sales.added"));
         resetForm();
       })
       .catch(() => {
-        toast.error("Sales add unsuccessful");
+        toast.error(t("sales.addFail"));
       });
   };
   
@@ -176,15 +178,14 @@ function Salespage() {
         <div className="mr-5 mb-8 rounded-xl border border-base-300 bg-base-100 p-5 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-base-content">Sales Report</h3>
+              <h3 className="text-lg font-semibold text-base-content">{t("sales.reportTitle")}</h3>
               <p className="mt-1 text-sm text-base-content/60">
-                Choose a date range (leave blank for all time). CSV includes totals,
-                cost, and profit/loss.
+                {t("sales.reportSub")}
               </p>
             </div>
             <div className="flex flex-wrap items-end gap-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-base-content/60">From</label>
+                <label className="mb-1 block text-xs font-medium text-base-content/60">{t("sales.from")}</label>
                 <input
                   type="date"
                   value={fromDate}
@@ -193,7 +194,7 @@ function Salespage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-base-content/60">To</label>
+                <label className="mb-1 block text-xs font-medium text-base-content/60">{t("sales.to")}</label>
                 <input
                   type="date"
                   value={toDate}
@@ -203,7 +204,7 @@ function Salespage() {
               </div>
               <ReportButton
                 reportKey="sales"
-                label="Download Sales Report"
+                label={t("sales.downloadReport")}
                 params={{ from: fromDate || undefined, to: toDate || undefined }}
               />
             </div>
@@ -216,7 +217,7 @@ function Salespage() {
            onChange={(e)=>setquery(e.target.value)}
             type="text"
             className="w-full md:w-96 h-12 pl-4 pr-12 border-2 border-base-300 rounded-lg bg-base-100 text-base-content"
-            placeholder="Enter your product"
+            placeholder={t("sales.searchPlaceholder")}
           />
           <button
             onClick={() => {
@@ -225,7 +226,7 @@ function Salespage() {
             }}
             className="bg-blue-800 text-white w-40 h-12 rounded-lg flex items-center justify-center"
           >
-            <IoMdAdd className="text-xl mr-2" /> Add Sales
+            <IoMdAdd className="text-xl mr-2" /> {t("sales.addSales")}
           </button>
         </div>
 
@@ -239,15 +240,15 @@ function Salespage() {
             </div>
 
             <h1 className="text-xl font-semibold mb-4">
-              {selectedSales ? "Edit Sales" : "Add Sales"}
+              {selectedSales ? t("sales.editSales") : t("sales.addSales")}
             </h1>
 
             <form onSubmit={selectedSales ? handleEditSubmit : submitsales}>
               <div className="mb-4">
-                <label>Name</label>
+                <label>{t("common.name")}</label>
                 <input
                   value={name}
-                  placeholder="Enter product name"
+                  placeholder={t("sales.namePlaceholder")}
                   onChange={(e) => setName(e.target.value)}
                   type="text"
                   className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
@@ -255,13 +256,13 @@ function Salespage() {
               </div>
 
               <div className="mb-4 ">
-                <label>Product</label>
+                <label>{t("sales.product")}</label>
                 <select
                   value={Product}
                   onChange={(e) => setProduct(e.target.value)}
                   className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
                 >
-                  <option value="">Select a Product</option>
+                  <option value="">{t("sales.selectProduct")}</option>
                   {getallproduct?.map((product) => (
                     <option key={product._id} value={product._id}>
                       {product.name}
@@ -271,10 +272,10 @@ function Salespage() {
               </div>
 
               <div className="mb-4">
-                <label>Price</label>
+                <label>{t("common.price")}</label>
                 <input
                   type="number"
-                  placeholder="Enter product price"
+                  placeholder={t("sales.pricePlaceholder")}
                   value={Price}
                   onChange={(e) => setPrice(e.target.value)}
                   className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
@@ -282,10 +283,10 @@ function Salespage() {
               </div>
 
               <div className="mb-4">
-                <label>Quantity</label>
+                <label>{t("common.quantity")}</label>
                 <input
                   type="number"
-                  placeholder="Enter product quantity"
+                  placeholder={t("sales.quantityPlaceholder")}
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                   className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
@@ -294,37 +295,37 @@ function Salespage() {
          
 
               <div className="mb-4">
-                <label>Payment</label>
+                <label>{t("sales.payment")}</label>
                 <select className="w-full h-10 px-2 border-2 rounded-lg mt-2"
                  value={Payment} onChange={(e)=>setPayment(e.target.value)}>
-                  <option value="">Select Payment Method</option>
-                  <option value={"cash"}>cash</option>
-                  <option value={"creditcard"}>creditcard</option>
-                  <option value={"banktransfer"}>banktransfer</option>
-                
+                  <option value="">{t("sales.selectPayment")}</option>
+                  <option value={"cash"}>{t("common.payments.cash")}</option>
+                  <option value={"creditcard"}>{t("common.payments.creditcard")}</option>
+                  <option value={"banktransfer"}>{t("common.payments.banktransfer")}</option>
+
                 </select>
               </div>
 
 
               <div className="mb-4">
-                <label>payment Status</label>
+                <label>{t("sales.paymentStatus")}</label>
                 <select className="w-full h-10 px-2 border-2 rounded-lg mt-2" value={paymentStatus} onChange={(e)=>setpaymentStatus(e.target.value)}>
-                  <option value="">Select Payment Status</option>
-                  <option value={"pending"}>pending</option>
-                  <option value={"paid"}>paid</option>
-                
+                  <option value="">{t("sales.selectPaymentStatus")}</option>
+                  <option value={"pending"}>{t("common.statuses.pending")}</option>
+                  <option value={"paid"}>{t("common.statuses.paid")}</option>
+
                 </select>
               </div>
 
 
               <div className="mb-4">
-                <label>Status</label>
+                <label>{t("sales.statusLabel")}</label>
                 <select className="w-full h-10 px-2 border-2 rounded-lg mt-2" value={Status} onChange={(e)=>setStatus(e.target.value)}>
-                  <option value="">Select Status</option>
-                  <option value={"pending"}>pending</option>
-                  <option value={"completed"}>completed</option>
-                  <option value={"cancelled"}>cancelled</option>
-                
+                  <option value="">{t("sales.selectStatus")}</option>
+                  <option value={"pending"}>{t("common.statuses.pending")}</option>
+                  <option value={"completed"}>{t("common.statuses.completed")}</option>
+                  <option value={"cancelled"}>{t("common.statuses.cancelled")}</option>
+
                 </select>
               </div>
 
@@ -333,27 +334,27 @@ function Salespage() {
                 type="submit"
                 className="bg-blue-800 text-white w-full h-12 rounded-lg hover:bg-blue-700 mt-4"
               >
-                    {selectedSales ? "Edit sales" : "Add sales"}
+                    {selectedSales ? t("sales.editSalesBtn") : t("sales.addSalesBtn")}
               </button>
             </form>
           </div>
         )}
 
         <div className="mt-10">
-          <h2 className="text-xl font-semibold mb-4">Sales List</h2>
+          <h2 className="text-xl font-semibold mb-4">{t("sales.salesList")}</h2>
           <div className="overflow-x-auto">
             <table className="min-w-full bg-base-100 border mb-24 border-base-300 rounded-lg shadow-md">
               <thead className="bg-base-200">
                 <tr>
                 <th className="px-3 py-2 border w-5 bg-base-100">#</th>
-                  <th className="px-3 py-2 border bg-base-100">Customer Name</th>
-                  <th className="px-3 py-2 border bg-base-100">Product</th>
-                  <th className="px-3 py-2 border bg-base-100">Total Amount</th>
-                  <th className="px-3 py-2 border bg-base-100">Status</th>
-                  <th className="px-3 py-2  border bg-base-100">Date</th>
-                  <th className="px-3 py-2 border bg-base-100">Payment Method</th>
-                  <th className="px-3 py-2 border bg-base-100">Payment Status</th>
-                  <th className="px-3 py-2  border bg-base-100">Operation</th>
+                  <th className="px-3 py-2 border bg-base-100">{t("sales.customerName")}</th>
+                  <th className="px-3 py-2 border bg-base-100">{t("sales.product")}</th>
+                  <th className="px-3 py-2 border bg-base-100">{t("sales.totalAmount")}</th>
+                  <th className="px-3 py-2 border bg-base-100">{t("sales.statusLabel")}</th>
+                  <th className="px-3 py-2  border bg-base-100">{t("common.date")}</th>
+                  <th className="px-3 py-2 border bg-base-100">{t("sales.paymentMethod")}</th>
+                  <th className="px-3 py-2 border bg-base-100">{t("sales.paymentStatus")}</th>
+                  <th className="px-3 py-2  border bg-base-100">{t("common.operations")}</th>
                 </tr>
               </thead>
               <tbody className="bg-base-100">
@@ -365,22 +366,20 @@ function Salespage() {
                       <td className="px-3 py-2 border">{sales?.customerName
                       }</td>
                       <td className="px-3 py-2 border">
-                      {sales.products?.product?.name || "No Product"}
+                      {sales.products?.product?.name || t("sales.noProduct")}
                       </td>
                       <td className="px-3 py-2 border">
                        $ {sales?.totalAmount}
                       </td>
-                     
-                      <td className="px-3 py-2 border">
-                        {sales?.status
-                        }
-                      </td>
-                      <td className="px-3 py-2 border">< FormattedTime  timestamp={sales?.createdAt}/></td>
-                      <td className="px-3 py-2 border">{sales?.paymentMethod}</td>
 
                       <td className="px-3 py-2 border">
-                        {sales?.paymentStatus
-                        || "hwllomd"}
+                        {sales?.status ? t(`common.statuses.${sales.status}`, sales.status) : ""}
+                      </td>
+                      <td className="px-3 py-2 border">< FormattedTime  timestamp={sales?.createdAt}/></td>
+                      <td className="px-3 py-2 border">{sales?.paymentMethod ? t(`common.payments.${sales.paymentMethod}`, sales.paymentMethod) : ""}</td>
+
+                      <td className="px-3 py-2 border">
+                        {sales?.paymentStatus ? t(`common.statuses.${sales.paymentStatus}`, sales.paymentStatus) : ""}
                       </td>
 
                       <td className="px-4  py-2 border">
@@ -388,7 +387,7 @@ function Salespage() {
                          onClick={()=> handleEditClick(sales)}
                           className="h-10 w-24 bg-green-500 ml-10 hover:bg-green-700 rounded-md text-white"
                         >
-                          Edit
+                          {t("common.edit")}
                         </button>
                       </td>
                     </tr>
@@ -396,7 +395,7 @@ function Salespage() {
                 ) : (
                   <tr>
                     <td colSpan="5" className=" bg-base-100 text-center py-4">
-                      No sales found.
+                      {t("sales.noSales")}
                     </td>
                   </tr>
                 )}

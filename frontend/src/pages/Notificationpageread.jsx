@@ -1,12 +1,14 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { getAllNotifications } from "../features/notificationSlice"; 
+import { useTranslation } from "react-i18next";
+import { getAllNotifications } from "../features/notificationSlice";
 import { io } from "socket.io-client";
 import { socketURL } from "../lib/socket";
 import FormattedTime from "../lib/FormattedTime ";
 import image from "../images/user.png";
 import TopNavbar from "../Components/TopNavbar";
 function NotificationPageRead() {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const { notifications } = useSelector((state) => state.notification);
   const { Authuser } = useSelector((state) => state.auth);
@@ -35,7 +37,7 @@ function NotificationPageRead() {
     <div className="bg-base-100 min-h-screen">
         <TopNavbar />
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">Notifications</h1>
+        <h1 className="text-2xl font-bold mb-6">{t("notifications.title")}</h1>
         
         <div className="space-y-4">
           {notifications.length > 0 ? (
@@ -60,7 +62,7 @@ function NotificationPageRead() {
             ))
           ) : (
             <div className="text-center py-8 text-gray-500">
-              No notifications available
+              {t("notifications.noNotificationsAvailable")}
             </div>
           )}
         </div>

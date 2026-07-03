@@ -3,14 +3,16 @@ import TopNavbar from "../Components/TopNavbar";
 import { IoMdAdd } from "react-icons/io";
 import { MdClose } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 import image from "../images/user.png";
-import { createNotification, getAllNotifications, deleteNotification } from "../features/notificationSlice"; 
+import { createNotification, getAllNotifications, deleteNotification } from "../features/notificationSlice";
 import { io } from "socket.io-client";
 import { socketURL } from "../lib/socket";
 import toast from 'react-hot-toast';
 import FormattedTime from "../lib/FormattedTime ";
 
 function NotificationPage() {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const { notifications } = useSelector((state) => state.notification);
   const { Authuser } = useSelector((state) => state.auth);
@@ -71,12 +73,12 @@ function NotificationPage() {
 
     dispatch(createNotification(NotificationData))
       .then(() => {
-        toast.success("Notification added successfully");
+        toast.success(t("notifications.added"));
         resetForm();
         setIsFormVisible(false);
       })
       .catch(() => {
-        toast.error("Failed to add notification");
+        toast.error(t("notifications.addFail"));
       });
   };
 
@@ -86,19 +88,19 @@ function NotificationPage() {
 
       <div className="max-w-3xl bg-base-100 mx-auto mt-10">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Notifications</h1>
+          <h1 className="text-2xl font-bold">{t("notifications.title")}</h1>
           <button
             onClick={() => setIsFormVisible(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-700 transition"
           >
-            <IoMdAdd className="text-xl mr-2" /> Add Notification
+            <IoMdAdd className="text-xl mr-2" /> {t("notifications.addNotification")}
           </button>
         </div>
 
         {isFormVisible && (
           <div className="p-6 rounded-lg bg-base-100 shadow-md mb-6">
             <div className="flex bg-base-100 justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Add Notification</h2>
+              <h2 className="text-xl font-semibold">{t("notifications.addNotification")}</h2>
               <MdClose 
                 className="text-2xl cursor-pointer" 
                 onClick={() => setIsFormVisible(false)} 
@@ -106,23 +108,23 @@ function NotificationPage() {
             </div>
             <form onSubmit={submitNotification}>
               <div className="mb-4">
-                <label className="block font-medium">Title</label>
+                <label className="block font-medium">{t("notifications.titleLabel")}</label>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   type="text"
                   className="w-full h-10 px-3 border rounded-lg mt-2"
-                  placeholder="Enter title"
+                  placeholder={t("notifications.titlePlaceholder")}
                   required
                 />
               </div>
               <div className="mb-4">
-                <label className="block font-medium">Description</label>
+                <label className="block font-medium">{t("notifications.descLabel")}</label>
                 <textarea
                   value={type}
                   onChange={(e) => setType(e.target.value)}
                   className="w-full h-24 px-3 border rounded-lg mt-2"
-                  placeholder="Enter description"
+                  placeholder={t("notifications.descPlaceholder")}
                   required
                 ></textarea>
               </div>
@@ -130,7 +132,7 @@ function NotificationPage() {
                 type="submit"
                 className="bg-blue-600 text-white w-full h-12 rounded-lg hover:bg-blue-700 transition"
               >
-                Add Notification
+                {t("notifications.addNotification")}
               </button>
             </form>
           </div>
@@ -162,7 +164,7 @@ function NotificationPage() {
               </div>
             ))
           ) : (
-            <p className="text-center text-base-content/50 py-4">No notifications found.</p>
+            <p className="text-center text-base-content/50 py-4">{t("notifications.noNotifications")}</p>
           )}
         </div>
       </div>

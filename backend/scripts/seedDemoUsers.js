@@ -4,22 +4,24 @@ require("dotenv").config();
 
 const User = require("../models/Usermodel");
 
+// Hardcoded login accounts for the client demo. Share these credentials with
+// the client; run `npm run seed` after setting MONGODB_URL to create them.
 const demoUsers = [
   {
-    name: "Demo Admin",
-    email: "admin@example.com",
+    name: "Administrator",
+    email: "admin@e360.app",
     password: "Admin@123",
     role: "admin",
   },
   {
-    name: "Demo Manager",
-    email: "manager@example.com",
+    name: "Store Manager",
+    email: "manager@e360.app",
     password: "Manager@123",
     role: "manager",
   },
   {
-    name: "Demo Staff",
-    email: "staff@example.com",
+    name: "Store Staff",
+    email: "staff@e360.app",
     password: "Staff@123",
     role: "staff",
   },

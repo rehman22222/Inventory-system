@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import TopNavbar from "../Components/TopNavbar";
 import { useDispatch, useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 import { IoMdAdd } from "react-icons/io";
 import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
 import { signup } from "../features/authSlice";
@@ -20,7 +21,7 @@ import { gettingallproducts } from "../features/productSlice";
 import { gettingallCategory } from "../features/categorySlice";
 
 function Orderpage() {
- 
+  const { t } = useTranslation();
   const {
     getorder,
     isgetorder,
@@ -100,13 +101,13 @@ function Orderpage() {
     dispatch( updatestatusOrder({ OrderId: selectedOrder._id,  updatedData }))
       .unwrap()
       .then(() => {
-        toast.success("Order updated successfully");
+        toast.success(t("orders.updated"));
         setIsFormVisible(false);
         setselectedOrder(null);
         resetForm();
       })
       .catch(() => {
-        toast.error("Failed to update Order");
+        toast.error(t("orders.updateFail"));
       });
   };
 
@@ -115,7 +116,7 @@ function Orderpage() {
   
 
     if (!Product || !Price || !quantity) {
-      toast.error("Product, Price and Quantity are required");
+      toast.error(t("orders.requiredFields"));
       return;
     }
   
@@ -132,11 +133,11 @@ function Orderpage() {
   
     try {
       const result = await dispatch(createdOrder(orderData)).unwrap();
-      toast.success("Order created successfully");
+      toast.success(t("orders.created"));
       resetForm();
     } catch (error) {
       console.error("Order creation failed:", error);
-      toast.error(error.message || "Failed to create order");
+      toast.error(error.message || t("orders.createFail"));
     }
   };
 
@@ -162,10 +163,10 @@ function Orderpage() {
     dispatch( Removedorder(OrderId))
       .unwrap()
       .then(() => {
-        toast.success("Order removed successfully");
+        toast.success(t("orders.removed"));
       })
       .catch((error) => {
-        toast.error(error || "Failed to remove Order");
+        toast.error(error || t("orders.removeFail"));
       });
   };
 
@@ -190,7 +191,7 @@ function Orderpage() {
             value={query}
             onChange={(e) => setquery(e.target.value)}
             className="w-full md:w-96 h-12 pl-4 pr-12 border-2 border-base-300 rounded-lg bg-base-100 text-base-content"
-            placeholder="Enter your order"
+            placeholder={t("orders.searchPlaceholder")}
           />
           <button
             onClick={() => {
@@ -199,7 +200,7 @@ function Orderpage() {
             }}
             className="bg-blue-800 text-white w-40 h-12 rounded-lg flex items-center justify-center"
           >
-            <IoMdAdd className="text-xl mr-2" /> Add Order
+            <IoMdAdd className="text-xl mr-2" /> {t("orders.addOrder")}
           </button>
         </div>
 
@@ -213,18 +214,18 @@ function Orderpage() {
             </div>
 
             <h1 className="text-xl font-semibold mb-4">
-              {selectedOrder ? "Edit Order" : "Add Order"}
+              {selectedOrder ? t("orders.editOrder") : t("orders.addOrder")}
             </h1>
 
             <form onSubmit={selectedOrder ? handleEditSubmit : submitOrder}>
               <div className="mb-4">
-                <label>Product</label>
+                <label>{t("orders.product")}</label>
                 <select
                   value={Product}
                   onChange={(e) => setProduct(e.target.value)}
                   className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
                 >
-                  <option value="">Select a Product</option>
+                  <option value="">{t("orders.selectProduct")}</option>
                   {getallproduct?.map((product) => (
                     <option key={product._id} value={product._id}>
                       {product.name}
@@ -234,10 +235,10 @@ function Orderpage() {
               </div>
 
               <div className="mb-4">
-                <label>Description</label>
+                <label>{t("common.description")}</label>
                 <input
                   value={Description}
-                  placeholder="Enter order description"
+                  placeholder={t("orders.descPlaceholder")}
                   onChange={(e) => setDescription(e.target.value)}
                   type="text"
                   className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
@@ -245,10 +246,10 @@ function Orderpage() {
               </div>
 
               <div className="mb-4">
-                <label>Price</label>
+                <label>{t("common.price")}</label>
                 <input
                   type="number"
-                  placeholder="Enter order Price"
+                  placeholder={t("orders.pricePlaceholder")}
                   value={Price}
                   onChange={(e) => setPrice(e.target.value)}
                   className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
@@ -256,10 +257,10 @@ function Orderpage() {
               </div>
 
               <div className="mb-4">
-                <label>Quantity</label>
+                <label>{t("common.quantity")}</label>
                 <input
                   type="number"
-                  placeholder="Enter order quantity"
+                  placeholder={t("orders.quantityPlaceholder")}
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                   className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
@@ -267,16 +268,16 @@ function Orderpage() {
               </div>
 
               <div className="mb-4">
-                <label className="block">status</label>
+                <label className="block">{t("orders.status")}</label>
                 <select
                   className="mt-3 w-72 h-10 mb-6"
                   value={status}
                   onChange={(e) => setstatus(e.target.value)}
                 >
-                   <option value="">Select a status</option>
-                  <option value="pending">Pending</option>
-                  <option value="shipped">Shipped</option>
-                  <option value="delivered">Delivered</option>
+                   <option value="">{t("orders.selectStatus")}</option>
+                  <option value="pending">{t("common.statuses.pending")}</option>
+                  <option value="shipped">{t("common.statuses.shipped")}</option>
+                  <option value="delivered">{t("common.statuses.delivered")}</option>
                 </select>
               </div>
 
@@ -284,28 +285,28 @@ function Orderpage() {
                 type="submit"
                 className="bg-blue-800 text-white w-full h-12 rounded-lg hover:bg-blue-700 mt-4"
               >
-                {selectedOrder ? "Update order" : "Add order"}
+                {selectedOrder ? t("orders.updateOrder") : t("orders.addOrderBtn")}
               </button>
             </form>
           </div>
         )}
 
         <div className="mt-10">
-          <h2 className="text-xl font-semibold mb-4">Order List</h2>
+          <h2 className="text-xl font-semibold mb-4">{t("orders.orderList")}</h2>
           <div className="overflow-x-auto">
             <table className="min-w-full bg-base-100 border mb-24 border-base-300 rounded-lg shadow-md">
               <thead className="bg-base-200">
                 <tr className="bg-base-100">
                   <th className="px-3 py-2 bg-base-100 border w-5">#</th>
-                  <th className="px-3 py-2 bg-base-100 border">Product </th>
-                  <th className="px-3 py-2 bg-base-100 border">qunatity</th>
-                  <th className="px-3 py-2 bg-base-100 border">Price</th>
-                  <th className="px-3 py-2 bg-base-100 border">Description</th>
-                  <th className="px-3 py-2  bg-base-100  border">totalAmount</th>
-                  <th className="px-3 py-2 bg-base-100  border">status</th>
-                  <th className="px-3 py-2 bg-base-100 border">Created by</th>
-                  <th className="px-3 py-2 bg-base-100 border">time stamp</th>
-                  <th className="px-3 py-2 bg-base-100 border">Operations</th>
+                  <th className="px-3 py-2 bg-base-100 border">{t("orders.product")}</th>
+                  <th className="px-3 py-2 bg-base-100 border">{t("orders.quantity")}</th>
+                  <th className="px-3 py-2 bg-base-100 border">{t("common.price")}</th>
+                  <th className="px-3 py-2 bg-base-100 border">{t("common.description")}</th>
+                  <th className="px-3 py-2  bg-base-100  border">{t("orders.totalAmount")}</th>
+                  <th className="px-3 py-2 bg-base-100  border">{t("orders.status")}</th>
+                  <th className="px-3 py-2 bg-base-100 border">{t("orders.createdBy")}</th>
+                  <th className="px-3 py-2 bg-base-100 border">{t("orders.timestamp")}</th>
+                  <th className="px-3 py-2 bg-base-100 border">{t("common.operations")}</th>
                 </tr>
               </thead>
 
@@ -329,7 +330,7 @@ function Orderpage() {
                       <td className="px-3 py-2 border">{order?.Description}</td>
                  
                       <td className="px-3 py-2 border">{order?.totalAmount}</td>
-                      <td className="px-3 py-2 border">{order?.status}</td>
+                      <td className="px-3 py-2 border">{order?.status ? t(`common.statuses.${order.status}`, order.status) : ""}</td>
                       <td className="px-3 py-2 border">{order.user?.name}</td>
                       <td className="px-3 py-2 border">
                         <FormattedTime timestamp={order?.createdAt} />
@@ -339,14 +340,14 @@ function Orderpage() {
                           onClick={() => handleremove(order._id)}
                           className="h-10 w-24 bg-red-500 hover:bg-red-700 rounded-md text-white"
                         >
-                          Remove
+                          {t("common.remove")}
                         </button>
-    
+
                         <button
                           onClick={() => handleEditClick(order)}
                           className="h-10 w-24 bg-green-500 ml-10 hover:bg-green-700 rounded-md text-white"
                         >
-                          Edit
+                          {t("common.edit")}
                         </button>
                       </td>
                     </tr>
@@ -354,7 +355,7 @@ function Orderpage() {
                 ) : (
                   <tr>
                     <td colSpan="5" className="bg-base-100 text-center py-4">
-                      No Order found.
+                      {t("orders.noOrder")}
                     </td>
                   </tr>
                 )}

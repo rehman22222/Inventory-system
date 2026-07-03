@@ -7,7 +7,8 @@ import { LANGUAGES } from "../i18n";
  * Language switcher. Changing the language is persisted (localStorage) and
  * applied app-wide via i18next + <html lang/dir>, so every page follows it.
  *
- * @param {"dark"|"light"} tone  color scheme of the surrounding surface
+ * @param {"dark"|"light"|"auto"} tone  color scheme of the surrounding surface.
+ *   "auto" follows the active DaisyUI theme (base-content/base-100).
  */
 export default function LanguageSwitcher({ tone = "dark" }) {
   const { i18n } = useTranslation();
@@ -31,9 +32,18 @@ export default function LanguageSwitcher({ tone = "dark" }) {
   };
 
   const dark = tone === "dark";
-  const triggerColor = dark ? "text-paper/70 hover:text-paper" : "text-ink/70 hover:text-ink";
-  const panelBg = dark ? "bg-ink border-white/15 text-paper" : "bg-paper border-black/15 text-ink";
-  const rowHover = dark ? "hover:bg-white/[0.06]" : "hover:bg-black/[0.05]";
+  const auto = tone === "auto";
+  const triggerColor = auto
+    ? "text-base-content/70 hover:text-base-content"
+    : dark
+    ? "text-paper/70 hover:text-paper"
+    : "text-ink/70 hover:text-ink";
+  const panelBg = auto
+    ? "bg-base-100 border-base-300 text-base-content"
+    : dark
+    ? "bg-ink border-white/15 text-paper"
+    : "bg-paper border-black/15 text-ink";
+  const rowHover = auto ? "hover:bg-base-200" : dark ? "hover:bg-white/[0.06]" : "hover:bg-black/[0.05]";
 
   return (
     <div ref={ref} className="relative">

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 import TopNavbar from "../Components/TopNavbar";
 import { IoCameraOutline } from "react-icons/io5";
 import image from "../images/user.png";
@@ -8,6 +9,7 @@ import toast from "react-hot-toast";
 import FormattedTime from "../lib/FormattedTime ";
 
 function ProfilePage() {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const { Authuser } = useSelector((state) => state.auth);
   const { userdata } = useSelector((state) => state.activity);
@@ -17,13 +19,13 @@ function ProfilePage() {
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) {
-      toast.error("No file selected");
+      toast.error(t("profile.noFileSelected"));
       return;
     }
 
     const storedUser = JSON.parse(localStorage.getItem("user"));
     if (!storedUser) {
-      toast.error("User not authenticated. Please log in again.");
+      toast.error(t("profile.notAuthenticated"));
       return;
     }
 
@@ -35,18 +37,18 @@ function ProfilePage() {
       setUploading(true);
       try {
         const updatedUser = await dispatch(updateProfile(base64Image)).unwrap();
-        toast.success("Profile updated successfully");
+        toast.success(t("profile.updated"));
         setImage(updatedUser?.ProfilePic);
       } catch (error) {
         console.error("Error uploading image:", error);
-        toast.error(error || "Failed to upload image. Please try again.");
+        toast.error(error || t("profile.uploadFail"));
       } finally {
         setUploading(false);
       }
     };
 
     reader.onerror = () => {
-      toast.error("Error reading file");
+      toast.error(t("profile.readError"));
     };
   };
 
@@ -86,29 +88,29 @@ function ProfilePage() {
             </div>
 
             {uploading && (
-              <p className="mb-4 text-sm text-base-content/60">Uploading…</p>
+              <p className="mb-4 text-sm text-base-content/60">{t("profile.uploading")}</p>
             )}
 
             <div className="space-y-4 text-left">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">
-                  Name
+                  {t("common.name")}
                 </p>
                 <p className="text-base font-medium text-base-content">
-                  {Authuser?.name || "Guest"}
+                  {Authuser?.name || t("profile.guest")}
                 </p>
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">
-                  Email
+                  {t("common.email")}
                 </p>
                 <p className="break-all text-base font-medium text-base-content">
-                  {Authuser?.email || "guest@gmail.com"}
+                  {Authuser?.email || t("profile.guestEmail")}
                 </p>
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">
-                  Role
+                  {t("common.role")}
                 </p>
                 <p className="text-base font-medium capitalize text-base-content">
                   {Authuser?.role || "staff"}
@@ -120,7 +122,7 @@ function ProfilePage() {
           {/* Recent activity */}
           <div className="flex min-w-0 flex-1 flex-col rounded-xl border border-base-300 bg-base-100 shadow-sm">
             <h1 className="border-b border-base-300 px-5 py-4 text-lg font-semibold text-base-content">
-              Recent Activity
+              {t("profile.recentActivity")}
             </h1>
             <div className="max-h-[28rem] space-y-3 overflow-y-auto p-5">
               {logs.length > 0 ? (
@@ -132,10 +134,10 @@ function ProfilePage() {
                     <h2 className="font-medium text-base-content">{log.action}</h2>
                     <p className="mt-1 text-sm text-base-content/70">{log.description}</p>
                     <p className="mt-1 text-sm text-base-content/50">
-                      Affected part: <span className="font-medium">{log.entity}</span>
+                      {t("profile.affectedPart")} <span className="font-medium">{log.entity}</span>
                     </p>
                     <p className="text-sm text-base-content/50">
-                      IP Address: <span className="font-medium">{log.ipAddress}</span>
+                      {t("profile.ipAddress")} <span className="font-medium">{log.ipAddress}</span>
                     </p>
                     <div className="mt-1 text-xs text-base-content/40">
                       <FormattedTime timestamp={log.createdAt} />
@@ -144,7 +146,7 @@ function ProfilePage() {
                 ))
               ) : (
                 <p className="py-4 text-center text-base-content/50">
-                  No activity logs available
+                  {t("profile.noLogs")}
                 </p>
               )}
             </div>

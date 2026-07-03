@@ -8,6 +8,7 @@ import { IoNotificationsOutline } from "react-icons/io5";
 import { RxActivityLog, RxDashboard } from "react-icons/rx";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 import { LuUsers } from "react-icons/lu";
 import { FiX } from "react-icons/fi";
 import toast from "react-hot-toast";
@@ -22,40 +23,43 @@ const dashboardPath = {
   staff: "/StaffDashboard",
 };
 
+// `label` is an i18n key under the `sidebar` namespace, resolved at render.
 const menuByRole = {
   admin: [
-    { label: "Dashboard", path: "", icon: RxDashboard },
-    { label: "Products", path: "product", icon: AiOutlineProduct },
-    { label: "Categories", path: "category", icon: MdOutlineCategory },
-    { label: "Suppliers", path: "supplier", icon: TfiSupport },
-    { label: "Sales", path: "sales", icon: MdPointOfSale },
-    { label: "Orders", path: "order", icon: FiShoppingCart },
-    { label: "Stock", path: "stock-transaction", icon: RiStockLine },
-    { label: "Notifications", path: "notifications", icon: IoNotificationsOutline },
-    { label: "Users", path: "Userstatus", icon: LuUsers },
-    { label: "Activity Log", path: "activity-log", icon: RxActivityLog },
+    { label: "sidebar.dashboard", path: "", icon: RxDashboard },
+    { label: "sidebar.products", path: "product", icon: AiOutlineProduct },
+    { label: "sidebar.categories", path: "category", icon: MdOutlineCategory },
+    { label: "sidebar.suppliers", path: "supplier", icon: TfiSupport },
+    { label: "sidebar.sales", path: "sales", icon: MdPointOfSale },
+    { label: "sidebar.orders", path: "order", icon: FiShoppingCart },
+    { label: "sidebar.stock", path: "stock-transaction", icon: RiStockLine },
+    { label: "sidebar.notifications", path: "notifications", icon: IoNotificationsOutline },
+    { label: "sidebar.users", path: "Userstatus", icon: LuUsers },
+    { label: "sidebar.activityLog", path: "activity-log", icon: RxActivityLog },
   ],
   manager: [
-    { label: "Dashboard", path: "", icon: RxDashboard },
-    { label: "Products", path: "product", icon: AiOutlineProduct },
-    { label: "Categories", path: "category", icon: MdOutlineCategory },
-    { label: "Suppliers", path: "supplier", icon: TfiSupport },
-    { label: "Sales", path: "sales", icon: MdPointOfSale },
-    { label: "Orders", path: "order", icon: FiShoppingCart },
-    { label: "Stock", path: "stock-transaction", icon: RiStockLine },
-    { label: "Notifications", path: "NotificationPageRead", icon: IoNotificationsOutline },
+    { label: "sidebar.dashboard", path: "", icon: RxDashboard },
+    { label: "sidebar.products", path: "product", icon: AiOutlineProduct },
+    { label: "sidebar.categories", path: "category", icon: MdOutlineCategory },
+    { label: "sidebar.suppliers", path: "supplier", icon: TfiSupport },
+    { label: "sidebar.sales", path: "sales", icon: MdPointOfSale },
+    { label: "sidebar.orders", path: "order", icon: FiShoppingCart },
+    { label: "sidebar.stock", path: "stock-transaction", icon: RiStockLine },
+    { label: "sidebar.notifications", path: "NotificationPageRead", icon: IoNotificationsOutline },
   ],
   staff: [
-    { label: "Dashboard", path: "", icon: RxDashboard },
-    { label: "POS", path: "pos", icon: FiCreditCard },
-    { label: "Sales", path: "sales", icon: MdPointOfSale },
-    { label: "Orders", path: "order", icon: FiShoppingCart },
-    { label: "Stock", path: "stock-transaction", icon: RiStockLine },
-    { label: "Notifications", path: "NotificationPageRead", icon: IoNotificationsOutline },
+    { label: "sidebar.dashboard", path: "", icon: RxDashboard },
+    // POS opens as a standalone full-screen terminal (same tab, so browser Back works).
+    { label: "sidebar.pos", to: "/pos", icon: FiCreditCard },
+    { label: "sidebar.sales", path: "sales", icon: MdPointOfSale },
+    { label: "sidebar.orders", path: "order", icon: FiShoppingCart },
+    { label: "sidebar.stock", path: "stock-transaction", icon: RiStockLine },
+    { label: "sidebar.notifications", path: "NotificationPageRead", icon: IoNotificationsOutline },
   ],
 };
 
 function Sidebar() {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -68,11 +72,11 @@ function Sidebar() {
   const handleLogout = async () => {
     dispatch(logout())
       .then(() => {
-        toast.success("Logged out successfully");
+        toast.success(t("sidebar.loggedOut"));
         navigate("/");
       })
       .catch(() => {
-        toast.error("Error logging out");
+        toast.error(t("sidebar.logoutError"));
       });
   };
 
@@ -100,14 +104,16 @@ function Sidebar() {
       </div>
 
       <div className="mb-5 shrink-0 rounded-lg border border-base-300 bg-base-200 p-3 text-sm">
-        <p className="font-semibold text-base-content">{Authuser?.name || "User"}</p>
+        <p className="font-semibold text-base-content">{Authuser?.name || t("sidebar.user")}</p>
         <p className="mt-0.5 capitalize text-base-content/60">{role}</p>
       </div>
 
       <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1">
         {menuItems.map((item) => {
           const Icon = item.icon;
-          const to = item.path ? `${basePath}/${item.path}` : basePath;
+          // `to` may be an absolute app path (e.g. the POS terminal) or a
+          // dashboard-relative path built from basePath.
+          const to = item.to || (item.path ? `${basePath}/${item.path}` : basePath);
           const isActive = location.pathname === to;
 
           return (
@@ -121,7 +127,7 @@ function Sidebar() {
               }`}
             >
               <Icon className="shrink-0 text-lg" />
-              <span>{item.label}</span>
+              <span>{t(item.label)}</span>
             </Link>
           );
         })}
@@ -133,7 +139,7 @@ function Sidebar() {
         className="mt-4 flex shrink-0 items-center gap-3 rounded-lg border-t border-base-300 px-3 py-4 text-left text-sm font-semibold text-base-content/60 transition hover:text-red-500"
       >
         <FiLogOut className="text-lg" />
-        Logout
+        {t("sidebar.logout")}
       </button>
     </div>
   );
