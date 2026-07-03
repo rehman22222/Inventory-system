@@ -120,6 +120,18 @@ server.listen(PORT, () => {
   console.log(`The server is running at port ${PORT}`);
 });
 
-
+// Keep-alive: Render's free tier sleeps after ~15 min without inbound traffic.
+// Ping our own /health every 13 min so the instance stays warm. Uses
+// RENDER_EXTERNAL_URL (auto-set by Render); a no-op locally where it's absent.
+const keepAliveUrl = process.env.RENDER_EXTERNAL_URL;
+if (keepAliveUrl) {
+  const PING_INTERVAL_MS = 13 * 60 * 1000;
+  setInterval(() => {
+    fetch(`${keepAliveUrl}/health`)
+      .then((res) => console.log(`[keep-alive] /health -> ${res.status}`))
+      .catch((err) => console.warn(`[keep-alive] ping failed: ${err.message}`));
+  }, PING_INTERVAL_MS);
+  console.log(`[keep-alive] enabled — pinging ${keepAliveUrl}/health every 13 min`);
+}
 
 module.exports = { io, server};
