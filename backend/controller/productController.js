@@ -9,9 +9,30 @@ module.exports.Addproduct=async(req,res)=>{
 
     try {
 
-        const { name, Desciption, Category, Price, costPrice, quantity, barcode, expiryDate } = req.body;
+        const {
+          name,
+          Desciption,
+          Category,
+          Price,
+          costPrice,
+          quantity,
+          barcode,
+          expiryDate,
+        } = req.body;
 
-        const required = { name, Category, Desciption, Price, quantity };
+        const cleanedBarcode =
+          typeof barcode === "string" ? barcode.trim() : barcode;
+        const productName = typeof name === "string" ? name.trim() : name;
+        const productDescription =
+          typeof Desciption === "string" ? Desciption.trim() : Desciption;
+
+        const required = {
+          name: productName,
+          Category,
+          Desciption: productDescription,
+          Price,
+          quantity,
+        };
         const missing = Object.keys(required).filter(
           (key) => required[key] === undefined || required[key] === null || String(required[key]).trim() === ""
         );
@@ -19,9 +40,15 @@ module.exports.Addproduct=async(req,res)=>{
           return res.status(400).json({ message: `Missing required field(s): ${missing.join(", ")}` });
         }
 
-        const productData = { name, Desciption, Category, Price, quantity };
+        const productData = {
+          name: productName,
+          Desciption: productDescription,
+          Category,
+          Price,
+          quantity,
+        };
         if (costPrice !== undefined && costPrice !== "") productData.costPrice = costPrice;
-        if (barcode) productData.barcode = barcode;
+        if (cleanedBarcode) productData.barcode = cleanedBarcode;
         if (expiryDate) productData.expiryDate = expiryDate;
 
         // Upload image to Cloudinary from the backend; store only url + publicId.
@@ -36,7 +63,7 @@ module.exports.Addproduct=async(req,res)=>{
        await logActivity({
 
      action:"Add Product",
-      description:`Product ${name} was added`,
+      description:`Product ${productName} was added`,
       entity:"product",
       entityId:createdProduct._id,
       userId:userId,
@@ -65,13 +92,6 @@ module.exports.Addproduct=async(req,res)=>{
           const totalProduct=await Product.countDocuments({})
      
             
-            if (!Products || Products.length === 0) {
-                return res.status(404).json({ message: "Products not found" });
-            }
-
-            
-
-    
             res.status(200).json({Products,totalProduct});  
         } catch (error) {
             res.status(500).json({ message: "Error getting products", error: error.message });
@@ -139,9 +159,13 @@ module.exports.Addproduct=async(req,res)=>{
         const editable = ["name", "Desciption", "Category", "Price", "costPrice", "quantity", "barcode", "expiryDate"];
         editable.forEach((field) => {
           if (source[field] !== undefined && source[field] !== "") {
-            product[field] = source[field];
+            product[field] =
+              typeof source[field] === "string" ? source[field].trim() : source[field];
           }
         });
+        if (!product.barcode) {
+          product.barcode = undefined;
+        }
 
         // Replace the image if a new file was uploaded, deleting the old one.
         if (req.file) {
@@ -187,7 +211,7 @@ module.exports.SearchProduct = async (req, res) => {
       const products = await Product.find({
         $or: [
           { name: { $regex: query, $options: "i" } },
-          { Description: { $regex: query, $options: "i" } },
+          { Desciption: { $regex: query, $options: "i" } },
        
           { 'Category.name': { $regex: query, $options: 'i' } },
         ],
@@ -207,10 +231,6 @@ module.exports.SearchProduct = async (req, res) => {
     const topProducts = await Product.find({})
       .sort({ quantity: -1 }) 
       .limit(10); 
-
-    if (!topProducts || topProducts.length === 0) {
-      return res.status(404).json({ message: "No products found" });
-    }
 
     res.status(200).json({ success: true, topProducts });
   } catch (error) {

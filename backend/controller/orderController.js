@@ -90,10 +90,6 @@ const getOrder = async (req, res) => {
   .populate("Product.product", "name ProductModelrice ") 
   .populate("user", "name email"); 
 
-        if (!orders || orders.length === 0) {
-            return res.status(404).json({ message: "No orders found" });
-        }
-
         res.status(200).json(orders);
     } catch (error) {
         res.status(500).json({ message: "Error getting orders", error: error.message });

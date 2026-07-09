@@ -81,11 +81,6 @@ module.exports.getCategory = async (req, res) => {
   try {
     const allCategory = await Category.find({});
 
-    if (!allCategory || allCategory.length === 0) {
-      return res.status(404).json({ message: "Categories not found" });
-    }
-
-   
     const categoriesWithCount = await Promise.all(
       allCategory.map(async (category) => {
         const count = await Product.countDocuments({ Category: category._id }); 

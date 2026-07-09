@@ -1,11 +1,11 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axiosInstance from "../lib/axios";
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 
 
 const initialState={
-    getallproduct:null,
+    getallproduct:[],
     isallproductget:false,
     isproductadd:false,
     isproductremove:false,
@@ -121,7 +121,6 @@ extraReducers:(builder)=>{
   .addCase(gettingallproducts.fulfilled, (state, action) => {
     state.isallproductget = false;
     state.getallproduct = action.payload.Products || [];
-    toast.success("Products fetched successfully");
   })
   
  
@@ -161,6 +160,9 @@ extraReducers:(builder)=>{
   .addCase(Addproduct.fulfilled,(state,action)=>{
    state.isproductadd=false
    const created = action.payload?.product || action.payload;
+   if (!Array.isArray(state.getallproduct)) {
+     state.getallproduct = [];
+   }
    if (Array.isArray(state.getallproduct) && created?._id) {
      state.getallproduct.push(created);
    }

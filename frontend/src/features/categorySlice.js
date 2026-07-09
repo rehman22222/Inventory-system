@@ -1,9 +1,8 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axiosInstance from "../lib/axios";
-import toast from 'react-hot-toast';
 
 const initialState = {
-  getallCategory: null,
+  getallCategory: [],
   isgetallCategory: false,
   iscreatedCategory: false,
   iscategoryremove:false,
@@ -79,7 +78,7 @@ const categorySlice = createSlice({
       })
       .addCase(gettingallCategory.fulfilled, (state, action) => {
         state.isgetallCategory = false;
-        state.getallCategory = action.payload.categoriesWithCount ;
+        state.getallCategory = action.payload.categoriesWithCount || [];
 
       })
       
@@ -96,6 +95,9 @@ const categorySlice = createSlice({
       })
       .addCase(CreateCategory.fulfilled, (state, action) => {
         state.iscreatedCategory = false;
+        if (!Array.isArray(state.getallCategory)) {
+          state.getallCategory = [];
+        }
         state.getallCategory.push(action.payload);
    
       })
@@ -117,7 +119,7 @@ const categorySlice = createSlice({
     
       .addCase(RemoveCategory.fulfilled, (state, action) => {
         state.iscategoryremove = true;
-        state.getallCategory= state.getallCategory.filter(category => category ._id !== action.meta.arg);
+        state.getallCategory = (state.getallCategory || []).filter(category => category._id !== action.meta.arg);
    
       })
       
