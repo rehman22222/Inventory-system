@@ -210,7 +210,10 @@
     "logout": "লগ আউট",
     "user": "ব্যবহারকারী",
     "loggedOut": "সফলভাবে লগ আউট হয়েছে",
-    "logoutError": "লগ আউট করতে ত্রুটি"
+    "logoutError": "লগ আউট করতে ত্রুটি",
+    "vouchers": "ভাউচার",
+    "support": "সহায়তা",
+    "tickets": "টিকিট"
   },
   "topnav": {
     "welcome": "স্বাগতম, {{name}}",
@@ -408,7 +411,154 @@
     "itemsCount": "{{count}} আইটেম",
     "discountLabel": "ছাড়",
     "exit": "প্রস্থান",
-    "openTerminal": "পিওএস টার্মিনাল খুলুন"
+    "openTerminal": "পিওএস টার্মিনাল খুলুন",
+    "closeOrder": "অর্ডার সম্পন্ন করুন",
+    "noProducts": "এই বিভাগে কোনো পণ্য নেই",
+    "rail": {
+      "refund": "রিফান্ড",
+      "void": "বিক্রয় বাতিল",
+      "suspend": "স্থগিত",
+      "resume": "পুনরায় শুরু",
+      "productSearch": "পণ্য খুঁজুন",
+      "discount": "ছাড়",
+      "vouchers": "ভাউচার",
+      "saleHistory": "বিক্রয় ইতিহাস",
+      "enterCode": "কোড দিন",
+      "send": "সংরক্ষণ"
+    },
+    "table": {
+      "product": "পণ্য",
+      "rate": "দর",
+      "qty": "পরিমাণ",
+      "total": "মোট",
+      "increase": "পরিমাণ বাড়ান",
+      "decrease": "পরিমাণ কমান",
+      "remove": "লাইন সরান"
+    },
+    "keypad": {
+      "clear": "মুছুন",
+      "hint": "সংখ্যা লিখুন, X চাপুন, তারপর পণ্য বাছুন",
+      "qtyPending": "x{{count}}"
+    },
+    "status": {
+      "user": "ব্যবহারকারী",
+      "till": "টিল",
+      "counter": "কাউন্টার",
+      "stdPrices": "সাধারণ মূল্য",
+      "online": "অনলাইন",
+      "offline": "অফলাইন"
+    },
+    "refund": {
+      "title": "লেনদেন ফেরত",
+      "subtitle": "রসিদ খুঁজুন, তারপর ফেরতযোগ্য পণ্য বাছুন",
+      "receiptPlaceholder": "রসিদ নম্বর, যেমন POS-000123",
+      "find": "খুঁজুন",
+      "notFound": "রসিদ পাওয়া যায়নি",
+      "refundable": "{{sold}} এর মধ্যে {{count}} ফেরতযোগ্য",
+      "refunding": "ফেরত",
+      "confirm": "ফেরত নিশ্চিত করুন",
+      "cancel": "বাতিল",
+      "done": "{{amount}} ফেরত দেওয়া হয়েছে",
+      "failed": "ফেরত ব্যর্থ",
+      "selectSomething": "অন্তত একটি পণ্য বাছুন",
+      "reasonPlaceholder": "কারণ (ঐচ্ছিক)",
+      "status": "অবস্থা"
+    },
+    "void": {
+      "confirm": "রসিদ {{receiptNo}} বাতিল করবেন? স্টক ফেরত যাবে।",
+      "done": "রসিদ {{receiptNo}} বাতিল হয়েছে",
+      "failed": "এই রসিদ বাতিল করা যায়নি",
+      "notAllowed": "সম্পন্ন বিক্রয় কেবল অ্যাডমিন বা ম্যানেজার বাতিল করতে পারেন"
+    },
+    "voucher": {
+      "title": "ভাউচার",
+      "subtitle": "গ্রাহকের কোড প্রয়োগ করুন বা নতুন তৈরি করুন",
+      "applyTab": "কোড প্রয়োগ",
+      "generateTab": "নতুন তৈরি",
+      "code": "ভাউচার কোড",
+      "codePlaceholder": "SAVE10",
+      "apply": "ভাউচার প্রয়োগ",
+      "applied": "ভাউচার প্রয়োগ হয়েছে — {{amount}} ছাড়",
+      "invalid": "এই ভাউচার ব্যবহার করা যাবে না",
+      "remove": "সরান",
+      "worth": "এই বিক্রয়ে {{amount}} ছাড়",
+      "againstSubtotal": "{{amount}} উপমোটের বিপরীতে",
+      "type": "ধরন",
+      "typeAmount": "পরিমাণ",
+      "typePercent": "শতাংশ (%)",
+      "amountValue": "পরিমাণ ছাড়",
+      "percentValue": "শতাংশ ছাড়",
+      "minSpend": "ন্যূনতম ক্রয়",
+      "usageLimit": "ব্যবহারের সীমা",
+      "expires": "মেয়াদ",
+      "generate": "ভাউচার তৈরি",
+      "generated": "ভাউচার {{code}} তৈরি হয়েছে",
+      "generateFailed": "ভাউচার তৈরি করা যায়নি",
+      "missingFields": "কোড ও মান দিন"
+    },
+    "discountModal": {
+      "title": "ছাড়",
+      "apply": "প্রয়োগ",
+      "clear": "ছাড় সরান",
+      "preview": "ছাড়"
+    },
+    "unknownBarcode": {
+      "title": "অজানা বারকোড",
+      "subtitle": "{{barcode}} এখনও কোনো পণ্যের সাথে যুক্ত নয়",
+      "linkTab": "বিদ্যমান পণ্যে যুক্ত করুন",
+      "createTab": "নতুন পণ্য তৈরি",
+      "searchPlaceholder": "পণ্যের নাম খুঁজুন",
+      "noMatches": "কোনো পণ্য মেলেনি",
+      "linked": "বারকোড {{name}} এর সাথে যুক্ত হয়েছে",
+      "linkFailed": "বারকোড যুক্ত করা যায়নি",
+      "name": "পণ্যের নাম",
+      "price": "মূল্য",
+      "openingStock": "প্রারম্ভিক স্টক",
+      "category": "বিভাগ",
+      "selectCategory": "বিভাগ বাছুন",
+      "barcodeLabel": "বারকোড",
+      "createAndAdd": "তৈরি করে বিক্রয়ে যোগ করুন",
+      "created": "{{name}} তৈরি হয়েছে",
+      "createFailed": "এই পণ্য তৈরি করা যায়নি",
+      "missingFields": "নাম, মূল্য ও বিভাগ প্রয়োজন"
+    },
+    "history": {
+      "title": "বিক্রয় ইতিহাস",
+      "subtitle": "সাম্প্রতিক রসিদ",
+      "empty": "এখনও কোনো বিক্রয় নেই",
+      "failed": "ইতিহাস লোড করা যায়নি",
+      "items": "{{count}} টি পণ্য",
+      "reprint": "পুনরায় প্রিন্ট",
+      "refund": "ফেরত"
+    },
+    "held": {
+      "title": "স্থগিত বিক্রয়",
+      "subtitle": "সংরক্ষিত ঝুড়ি, যেকোনো টিলে পাওয়া যাবে",
+      "failed": "স্থগিত বিক্রয় লোড করা যায়নি",
+      "deleteFailed": "এই বিক্রয় মুছে ফেলা যায়নি",
+      "delete": "মুছুন"
+    },
+    "enterCode": {
+      "title": "বারকোড বা কোড দিন",
+      "placeholder": "স্ক্যান ব্যর্থ? কোড টাইপ করুন"
+    },
+    "categories": "বিভাগ",
+    "taxLabel": "কর",
+    "taxRateHint": "করের হার % — দোকান নির্ধারণ করে",
+    "searchResults": "অনুসন্ধান ফলাফল",
+    "payment": {
+      "title": "পেমেন্ট নিন",
+      "subtitle": "গ্রাহক যা দিয়েছেন তা লিখুন",
+      "paid": "পরিশোধিত",
+      "remaining": "বাকি",
+      "add": "যোগ করুন",
+      "complete": "বিক্রয় সম্পন্ন",
+      "removeTender": "এই পেমেন্ট সরান",
+      "hint": "একাধিক পেমেন্ট যোগ করে বিল ভাগ করুন — কিছু নগদ, বাকিটা কার্ডে।",
+      "giveChange": "{{amount}} ফেরত দিন",
+      "roundOff": "রাউন্ড অফ"
+    },
+    "currencyHint": "এই টিলের মুদ্রা"
   },
   "sales": {
     "reportTitle": "বিক্রয় রিপোর্ট",
@@ -441,7 +591,15 @@
     "updated": "বিক্রয় সফলভাবে আপডেট হয়েছে",
     "updateFail": "বিক্রয় আপডেট করতে ব্যর্থ",
     "added": "বিক্রয় সফলভাবে যোগ করা হয়েছে",
-    "addFail": "বিক্রয় যোগ করা ব্যর্থ"
+    "addFail": "বিক্রয় যোগ করা ব্যর্থ",
+    "overrideTitle": "Admin sales total override",
+    "overrideSub": "Current selected report total is ${{total}}. Saving here rewrites matching sale records directly.",
+    "overrideTarget": "New report total",
+    "overrideApply": "Rewrite records",
+    "overrideSaving": "Updating...",
+    "overrideInvalid": "Enter a valid total",
+    "overrideSuccess": "{{count}} sale records updated. New total: ${{total}}",
+    "overrideFail": "Could not update sales total"
   },
   "orders": {
     "searchPlaceholder": "আপনার অর্ডার লিখুন",
@@ -531,7 +689,16 @@
     "staffUser": "স্টাফ ব্যবহারকারী",
     "noUsers": "কোনো ব্যবহারকারী নেই।",
     "removed": "ব্যবহারকারী সফলভাবে সরানো হয়েছে",
-    "removeFail": "ব্যবহারকারী সরাতে ত্রুটি"
+    "removeFail": "ব্যবহারকারী সরাতে ত্রুটি",
+    "createTitle": "ব্যবহারকারী যোগ করুন",
+    "createSub": "শুধু অ্যাডমিন ম্যানেজার ও স্টাফ অ্যাকাউন্ট তৈরি করতে পারেন",
+    "name": "নাম",
+    "email": "ইমেইল",
+    "password": "পাসওয়ার্ড",
+    "passwordHint": "কমপক্ষে ৬ অক্ষর",
+    "role": "ভূমিকা",
+    "create": "তৈরি করুন",
+    "creating": "তৈরি হচ্ছে…"
   },
   "activity": {
     "title": "কার্যকলাপ লগ",
@@ -557,5 +724,113 @@
     "updated": "প্রোফাইল সফলভাবে আপডেট হয়েছে",
     "uploadFail": "ছবি আপলোড করতে ব্যর্থ। অনুগ্রহ করে আবার চেষ্টা করুন।",
     "readError": "ফাইল পড়তে ত্রুটি"
+  },
+  "vouchers": {
+    "title": "ভাউচার",
+    "sub": "ছাড়ের কোড যা ক্যাশিয়ার টিলে প্রয়োগ করতে পারেন",
+    "code": "কোড",
+    "type": "ধরন",
+    "typeAmount": "পরিমাণ",
+    "typePercent": "শতাংশ (%)",
+    "amountValue": "পরিমাণ ছাড়",
+    "percentValue": "শতাংশ ছাড়",
+    "minSpend": "ন্যূনতম ক্রয়",
+    "usageLimit": "ব্যবহারের সীমা",
+    "expires": "মেয়াদ",
+    "create": "ভাউচার তৈরি",
+    "creating": "তৈরি হচ্ছে…",
+    "value": "মান",
+    "used": "ব্যবহৃত",
+    "status": "অবস্থা",
+    "actions": "কার্য",
+    "loading": "ভাউচার লোড হচ্ছে…",
+    "empty": "এখনও কোনো ভাউচার নেই",
+    "never": "কখনও নয়",
+    "disable": "নিষ্ক্রিয়",
+    "delete": "মুছুন",
+    "statuses": {
+      "active": "সক্রিয়",
+      "used": "ব্যবহৃত",
+      "expired": "মেয়াদোত্তীর্ণ",
+      "disabled": "নিষ্ক্রিয়"
+    }
+  },
+  "support": {
+    "title": "সহায়তা",
+    "sub": "আগে FAQ দেখুন — উত্তর না পেলে টিকিট পাঠান, আমরা দেখব।",
+    "faqTitle": "সাধারণ প্রশ্ন",
+    "raiseTitle": "টিকিট পাঠান",
+    "subject": "বিষয়",
+    "subjectPlaceholder": "সমস্যার সংক্ষিপ্ত বিবরণ",
+    "category": "বিভাগ",
+    "priority": "অগ্রাধিকার",
+    "message": "কী হয়েছে?",
+    "messagePlaceholder": "আপনি কী করছিলেন, কী আশা করেছিলেন, আর আসলে কী হয়েছে লিখুন।",
+    "send": "টিকিট পাঠান",
+    "sending": "পাঠানো হচ্ছে…",
+    "myTickets": "আমার টিকিট",
+    "noTickets": "এখনও কোনো টিকিট নেই।",
+    "loading": "লোড হচ্ছে…",
+    "reply": "উত্তর",
+    "replyPlaceholder": "উত্তর লিখুন…",
+    "vendor": "সহায়তা",
+    "categories": {
+      "bug": "কিছু ভাঙা",
+      "feature": "নতুন ফিচার",
+      "billing": "বিলিং",
+      "question": "প্রশ্ন",
+      "other": "অন্যান্য"
+    },
+    "priorities": {
+      "low": "কম",
+      "normal": "সাধারণ",
+      "high": "উচ্চ",
+      "urgent": "জরুরি"
+    },
+    "statuses": {
+      "open": "খোলা",
+      "in-progress": "চলমান",
+      "resolved": "সমাধান",
+      "closed": "বন্ধ"
+    },
+    "markAs": {
+      "open": "পুনরায় খুলুন",
+      "in-progress": "চলমান",
+      "resolved": "সমাধান",
+      "closed": "বন্ধ"
+    },
+    "faq": {
+      "barcode": {
+        "q": "A barcode does not scan — what do I do?",
+        "a": "Scan it anyway. The till will tell you the barcode is unknown and offer to link it to an existing product or create a new one. Once linked, that barcode works forever."
+      },
+      "refund": {
+        "q": "How do I refund only part of a receipt?",
+        "a": "POS → Refund Transaction → enter the receipt number → set the quantity to return on each line. Stock goes back automatically and the receipt is marked partially refunded."
+      },
+      "voucher": {
+        "q": "How do I create a discount code?",
+        "a": "Vouchers page (admin/manager). Choose a fixed € amount or a percentage, set a minimum spend, expiry and usage limit. The cashier applies it from the POS Vouchers button."
+      },
+      "users": {
+        "q": "How do I add a cashier?",
+        "a": "Users page → Add a user → choose the Staff role. Staff can only see the dashboard and the till."
+      },
+      "reports": {
+        "q": "Why does my report show a negative row?",
+        "a": "That is a refund. Refunds are recorded as negative sales so revenue, cost and profit all net out correctly."
+      },
+      "offline": {
+        "q": "The site is slow to load first thing in the morning.",
+        "a": "The server sleeps when idle on the free hosting tier and takes a few seconds to wake. Raise a ticket if you want us to move it to an always-on plan."
+      }
+    }
+  },
+  "superadmin": {
+    "title": "সহায়তা টিকিট",
+    "sub": "প্রতিটি অ্যাডমিনের পাঠানো টিকিট",
+    "refresh": "রিফ্রেশ",
+    "all": "সব",
+    "noTickets": "কোনো টিকিট নেই।"
   }
 }

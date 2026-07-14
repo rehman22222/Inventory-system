@@ -5,7 +5,7 @@ const crypto = require("crypto");
 
 const dataDir = path.join(__dirname, "data");
 const dataFile = path.join(dataDir, "local-store.json");
-const storeVersion = 3;
+const storeVersion = 4;
 
 const now = () => new Date().toISOString();
 const id = () => crypto.randomBytes(12).toString("hex");
@@ -104,6 +104,9 @@ function initialStore() {
       { _id: "not-5003", name: "Demo mode active", type: "MongoDB is skipped. Data is stored in backend/data/local-store.json.", createdAt: daysAgo(4), updatedAt: daysAgo(4) },
     ],
     activityLogs,
+    receipts: [],
+    vouchers: [],
+    heldSales: [],
     inventories: products.map((product) => ({
       _id: `inv-${product._id}`,
       product: product._id,
@@ -194,6 +197,44 @@ function addActivity(store, action, description, entity, entityId, userId = "man
   };
   store.activityLogs.unshift(log);
   return log;
+}
+
+const money = (value) => Math.round(Number(value || 0) * 100) / 100;
+
+function voucherDiscountFor(voucher, subtotal) {
+  const amount =
+    voucher.type === "percent"
+      ? (Number(subtotal) * Number(voucher.value)) / 100
+      : Number(voucher.value);
+  return money(Math.max(0, Math.min(amount, Number(subtotal))));
+}
+
+function voucherRejection(voucher, subtotal) {
+  if (voucher.status === "disabled") return "This voucher has been disabled";
+  if (voucher.status === "used" || Number(voucher.usedCount || 0) >= Number(voucher.usageLimit || 1))
+    return "This voucher has already been used";
+  if (voucher.expiresAt && new Date(voucher.expiresAt).getTime() < Date.now())
+    return "This voucher has expired";
+  if (Number(subtotal) < Number(voucher.minSpend || 0))
+    return `This voucher needs a minimum spend of ${voucher.minSpend}`;
+  return null;
+}
+
+function reportDayRange(from, to) {
+  const startSource = from || to || new Date();
+  const endSource = to || from || startSource;
+  const start = new Date(
+    typeof startSource === "string" ? `${startSource}T00:00:00.000` : startSource
+  );
+  const end = new Date(
+    typeof endSource === "string" ? `${endSource}T23:59:59.999` : endSource
+  );
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
 }
 
 function nextReceiptNo(store) {
@@ -332,6 +373,42 @@ function localStorageRouter(app) {
     res.json({ success: true, topProducts: [...store.products].sort((a, b) => b.quantity - a.quantity).slice(0, 10) });
   });
 
+  router.get("/product/barcode/:code", (req, res) => {
+    const store = readStore();
+    const code = String(req.params.code || "").trim();
+    const product = store.products.find((record) => record.barcode === code);
+
+    if (!product) {
+      return res.status(404).json({ message: "No product with this barcode", barcode: code });
+    }
+
+    res.json({ product: populateProduct(store, product) });
+  });
+
+  // "Learn on scan": link a freshly scanned barcode to an existing product.
+  router.put("/product/:productId/barcode", (req, res) => {
+    const store = readStore();
+    const barcode = String(req.body?.barcode || "").trim();
+
+    if (!barcode) return res.status(400).json({ message: "Barcode is required" });
+
+    const clash = store.products.find((record) => record.barcode === barcode);
+    if (clash && clash._id !== req.params.productId) {
+      return res.status(400).json({ message: `Barcode already belongs to ${clash.name}` });
+    }
+
+    const product = store.products.find((record) => record._id === req.params.productId);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    product.barcode = barcode;
+    product.updatedAt = now();
+
+    addActivity(store, "Attach Barcode", `Barcode ${barcode} linked to ${product.name}.`, "product", product._id);
+    writeStore(store);
+
+    res.json({ message: "Barcode linked successfully", product: populateProduct(store, product) });
+  });
+
   router.get("/supplier/getallsupplier", (_req, res) => {
     const store = readStore();
     res.json(store.suppliers.map((supplier) => ({
@@ -407,6 +484,105 @@ function localStorageRouter(app) {
     const store = readStore();
     res.json({ success: true, sales: store.sales.map((sale) => populateSale(store, sale)) });
   });
+  router.patch("/sales/override-report-total", (req, res) => {
+    const store = readStore();
+    const { from, to, targetTotal } = req.body;
+    const range = reportDayRange(from, to);
+    const target = money(targetTotal);
+
+    if (!range) return res.status(400).json({ success: false, message: "Invalid date range" });
+    if (!Number.isFinite(Number(targetTotal)) || target < 0) {
+      return res.status(400).json({ success: false, message: "Target total must be a valid positive number" });
+    }
+
+    const sales = store.sales
+      .filter((sale) => {
+        const createdAt = new Date(sale.createdAt);
+        return createdAt >= range.start && createdAt <= range.end;
+      })
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+    if (sales.length === 0) {
+      return res.status(404).json({ success: false, message: "No sale records found for this date range" });
+    }
+
+    const adjustable = sales.filter(
+      (sale) => sale.source !== "refund" && Number(sale.totalAmount || 0) > 0
+    );
+    const adjustableIds = new Set(adjustable.map((sale) => sale._id));
+    const fixedTotal = money(
+      sales
+        .filter((sale) => !adjustableIds.has(sale._id))
+        .reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0)
+    );
+    const currentTotal = money(sales.reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0));
+    const currentAdjustableTotal = money(
+      adjustable.reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0)
+    );
+    const desiredAdjustableTotal = money(target - fixedTotal);
+
+    if (desiredAdjustableTotal < 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Target total cannot be lower than fixed refund/negative records (${fixedTotal})`,
+      });
+    }
+    if (adjustable.length === 0 || currentAdjustableTotal <= 0) {
+      return res.status(400).json({ success: false, message: "No positive sale rows are available to rewrite" });
+    }
+
+    const factor = desiredAdjustableTotal / currentAdjustableTotal;
+    let remaining = desiredAdjustableTotal;
+    const changedSales = [];
+
+    adjustable.forEach((sale, index) => {
+      const previousTotalAmount = money(sale.totalAmount);
+      const previousUnitPrice = money(sale.products?.price || 0);
+      const nextTotalAmount =
+        index === adjustable.length - 1 ? money(remaining) : money(previousTotalAmount * factor);
+      const quantity = Number(sale.products?.quantity || 1) || 1;
+      const nextUnitPrice = money(nextTotalAmount / quantity);
+
+      remaining = money(remaining - nextTotalAmount);
+      sale.totalAmount = nextTotalAmount;
+      sale.products.price = nextUnitPrice;
+      sale.discount = money(Number(sale.discount || 0) * factor);
+      sale.tax = money(Number(sale.tax || 0) * factor);
+      sale.reportOverride = {
+        previousTotalAmount,
+        previousUnitPrice,
+        targetReportTotal: target,
+        factor,
+        changedByName: "Demo Admin",
+        changedAt: now(),
+      };
+      sale.updatedAt = now();
+      changedSales.push({ saleId: sale._id, previousTotalAmount, totalAmount: sale.totalAmount });
+    });
+
+    addActivity(
+      store,
+      "Override Sales Report Total",
+      `Sales total changed from ${currentTotal} to ${target}.`,
+      "order",
+      null,
+      "admin-demo"
+    );
+    writeStore(store);
+
+    res.json({
+      success: true,
+      message: "Sales records updated to match the requested report total",
+      previousTotal: currentTotal,
+      targetTotal: target,
+      updatedTotal: money(
+        fixedTotal + changedSales.reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0)
+      ),
+      updatedCount: changedSales.length,
+      fixedTotal,
+      changedSales,
+    });
+  });
   router.post("/sales/createsales", (req, res) => {
     const store = readStore();
     const product = store.products.find((item) => item._id === req.body.products?.product);
@@ -441,7 +617,11 @@ function localStorageRouter(app) {
       cashierName = "Demo Cashier",
       items = [],
       paymentMethod,
+      payments,
       discount = 0,
+      discountType = "amount",
+      voucherCode,
+      amountTendered,
       taxRate = 0,
       taxEnabled = false,
     } = req.body;
@@ -450,7 +630,13 @@ function localStorageRouter(app) {
       return res.status(400).json({ message: "Cart is empty" });
     }
 
-    if (!paymentMethod) {
+    const tenders = Array.isArray(payments)
+      ? payments
+          .map((entry) => ({ method: entry.method, amount: money(entry.amount) }))
+          .filter((entry) => entry.method && entry.amount > 0)
+      : [];
+
+    if (tenders.length === 0 && !paymentMethod) {
       return res.status(400).json({ message: "Payment method is required" });
     }
 
@@ -476,19 +662,75 @@ function localStorageRouter(app) {
       }
     }
 
-    const receiptNumber = nextReceiptNo(store);
-    let subtotal = 0;
-    const receiptItems = [];
-
-    for (const item of items) {
+    // Prices come from the store, never from the request body.
+    const lines = items.map((item) => {
       const product = store.products.find((record) => record._id === item.product);
       const quantity = Number(item.quantity);
-      const price = Number(item.price || product.Price || 0);
-      const lineTotal = quantity * price;
-      subtotal += lineTotal;
+      const price = money(product.Price);
+      return { product, quantity, price, lineTotal: money(price * quantity) };
+    });
+
+    const subtotal = money(lines.reduce((sum, line) => sum + line.lineTotal, 0));
+
+    let voucher = null;
+    let voucherDiscount = 0;
+
+    if (voucherCode) {
+      voucher = store.vouchers.find(
+        (record) => record.code === String(voucherCode).trim().toUpperCase()
+      );
+
+      if (!voucher) {
+        return res.status(400).json({ message: "Voucher not found" });
+      }
+
+      const reason = voucherRejection(voucher, subtotal);
+      if (reason) return res.status(400).json({ message: reason });
+
+      voucherDiscount = voucherDiscountFor(voucher, subtotal);
+    }
+
+    const afterVoucher = Math.max(subtotal - voucherDiscount, 0);
+    const rawManual =
+      discountType === "percent"
+        ? (afterVoucher * Number(discount || 0)) / 100
+        : Number(discount || 0);
+    const manualDiscount = money(Math.max(0, Math.min(rawManual, afterVoucher)));
+
+    const totalDiscount = money(voucherDiscount + manualDiscount);
+    const taxableAmount = Math.max(subtotal - totalDiscount, 0);
+    const tax = money(taxEnabled ? taxableAmount * Number(taxRate || 0) : 0);
+    const total = money(taxableAmount + tax);
+
+    const paid = tenders.length > 0 ? money(tenders.reduce((sum, e) => sum + e.amount, 0)) : null;
+
+    if (paid !== null && paid + 0.001 < total) {
+      return res.status(400).json({
+        message: `Short by ${money(total - paid)} — take the rest before closing the sale`,
+        total,
+        paid,
+        remaining: money(total - paid),
+      });
+    }
+
+    const settledWith =
+      tenders.length === 0 ? paymentMethod : tenders.length === 1 ? tenders[0].method : "split";
+
+    const receiptNumber = nextReceiptNo(store);
+    const receiptItems = [];
+    const saleIds = [];
+
+    for (const line of lines) {
+      const { product, quantity, price, lineTotal } = line;
 
       product.quantity = Number(product.quantity) - quantity;
       product.updatedAt = now();
+
+      // Spread discount and tax across the lines so the Sale rows sum to the
+      // receipt total.
+      const share = subtotal > 0 ? lineTotal / subtotal : 0;
+      const lineDiscount = money(totalDiscount * share);
+      const lineTax = money(tax * share);
 
       const sale = {
         _id: id(),
@@ -501,11 +743,11 @@ function localStorageRouter(app) {
           quantity,
           price,
         },
-        totalAmount: lineTotal,
-        discount: 0,
-        tax: 0,
+        totalAmount: money(lineTotal - lineDiscount + lineTax),
+        discount: lineDiscount,
+        tax: lineTax,
         paymentStatus: "paid",
-        paymentMethod,
+        paymentMethod: settledWith,
         status: "completed",
         source: "pos",
         createdAt: now(),
@@ -513,6 +755,7 @@ function localStorageRouter(app) {
       };
 
       store.sales.unshift(sale);
+      saleIds.push(sale._id);
 
       store.stockTransactions.unshift({
         _id: id(),
@@ -546,10 +789,47 @@ function localStorageRouter(app) {
       });
     }
 
-    const safeDiscount = Math.min(Number(discount || 0), subtotal);
-    const taxableAmount = Math.max(subtotal - safeDiscount, 0);
-    const tax = taxEnabled ? taxableAmount * Number(taxRate || 0) : 0;
-    const total = taxableAmount + tax;
+    if (voucher) {
+      voucher.usedCount = Number(voucher.usedCount || 0) + 1;
+      voucher.redeemedAt = now();
+      voucher.redeemedOn = receiptNumber;
+      if (voucher.usedCount >= Number(voucher.usageLimit || 1)) voucher.status = "used";
+    }
+
+    const tendered =
+      paid !== null
+        ? paid
+        : amountTendered === undefined || amountTendered === null
+        ? undefined
+        : money(amountTendered);
+
+    const receipt = {
+      _id: id(),
+      receiptNo: receiptNumber,
+      cashier: cashierId,
+      cashierName,
+      customerName,
+      items: receiptItems,
+      subtotal,
+      discount: totalDiscount,
+      discountType,
+      voucher: voucher ? { code: voucher.code, voucherId: voucher._id, amount: voucherDiscount } : undefined,
+      taxEnabled,
+      taxRate: Number(taxRate || 0),
+      tax,
+      total,
+      payments: tenders,
+      paymentMethod: settledWith,
+      amountTendered: tendered,
+      changeDue: tendered === undefined ? undefined : money(Math.max(0, tendered - total)),
+      status: "completed",
+      refunds: [],
+      saleIds,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+
+    store.receipts.unshift(receipt);
 
     addActivity(
       store,
@@ -565,18 +845,294 @@ function localStorageRouter(app) {
     res.status(201).json({
       success: true,
       message: "POS checkout completed",
-      receipt: {
-        receiptNo: receiptNumber,
-        customerName,
-        cashierName,
-        paymentMethod,
-        items: receiptItems,
-        subtotal,
-        discount: safeDiscount,
-        tax,
-        total,
+      receipt,
+    });
+  });
+
+  router.get("/pos/receipts", (req, res) => {
+    const store = readStore();
+    const limit = Math.min(Number(req.query.limit || 25), 100);
+    res.json({ receipts: store.receipts.slice(0, limit) });
+  });
+
+  router.get("/pos/receipt/:receiptNo", (req, res) => {
+    const store = readStore();
+    const receipt = store.receipts.find(
+      (record) => record.receiptNo === String(req.params.receiptNo).toUpperCase()
+    );
+    if (!receipt) return res.status(404).json({ message: "Receipt not found" });
+    res.json({ receipt });
+  });
+
+  const applyRefund = (store, receipt, requested, reason, isVoid) => {
+    const already = new Map();
+    receipt.refunds.forEach((refund) =>
+      refund.items.forEach((item) =>
+        already.set(item.product, (already.get(item.product) || 0) + Number(item.quantity || 0))
+      )
+    );
+
+    const lines = [];
+
+    for (const item of receipt.items) {
+      const outstanding = item.quantity - (already.get(item.product) || 0);
+      const match = requested.find((entry) => String(entry.product) === item.product);
+      const quantity = requested.length === 0 ? outstanding : match ? Number(match.quantity || 0) : 0;
+
+      if (quantity <= 0) continue;
+
+      if (quantity > outstanding) {
+        return {
+          error: `Cannot refund ${quantity} x ${item.name} — only ${outstanding} left on this receipt`,
+        };
+      }
+
+      const ratio = receipt.subtotal ? receipt.total / receipt.subtotal : 1;
+      lines.push({
+        product: item.product,
+        name: item.name,
+        quantity,
+        price: item.price,
+        lineTotal: money(item.price * quantity * ratio),
+      });
+    }
+
+    if (lines.length === 0) return { error: "Nothing left to refund on this receipt" };
+
+    const amount = money(lines.reduce((sum, line) => sum + line.lineTotal, 0));
+    const reference = `RFD-${receipt.receiptNo}`;
+
+    lines.forEach((line) => {
+      const product = store.products.find((record) => record._id === line.product);
+      if (product) {
+        product.quantity = Number(product.quantity) + line.quantity;
+        product.updatedAt = now();
+      }
+
+      store.stockTransactions.unshift({
+        _id: id(),
+        product: line.product,
+        type: "Stock-in",
+        quantity: line.quantity,
+        reference,
+        transactionDate: now(),
         createdAt: now(),
-      },
+        updatedAt: now(),
+      });
+
+      store.sales.unshift({
+        _id: id(),
+        customerName: receipt.customerName,
+        receiptNo: reference,
+        cashier: receipt.cashier,
+        cashierName: receipt.cashierName,
+        products: { product: line.product, quantity: line.quantity, price: line.price },
+        totalAmount: -line.lineTotal,
+        paymentStatus: "paid",
+        paymentMethod: receipt.paymentMethod,
+        status: "cancelled",
+        source: "refund",
+        createdAt: now(),
+        updatedAt: now(),
+      });
+    });
+
+    receipt.refunds.push({
+      at: now(),
+      by: receipt.cashier,
+      byName: receipt.cashierName,
+      reason: reason || (isVoid ? "void" : "refund"),
+      amount,
+      items: lines,
+    });
+
+    const after = new Map();
+    receipt.refunds.forEach((refund) =>
+      refund.items.forEach((item) =>
+        after.set(item.product, (after.get(item.product) || 0) + Number(item.quantity || 0))
+      )
+    );
+    const fully = receipt.items.every((item) => (after.get(item.product) || 0) >= item.quantity);
+
+    receipt.status = isVoid ? "voided" : fully ? "refunded" : "partially-refunded";
+    receipt.updatedAt = now();
+
+    return { amount, lines };
+  };
+
+  router.post("/pos/refund", (req, res) => {
+    const store = readStore();
+    const { receiptNo, items = [], reason } = req.body;
+
+    const receipt = store.receipts.find(
+      (record) => record.receiptNo === String(receiptNo || "").toUpperCase()
+    );
+
+    if (!receipt) return res.status(404).json({ message: "Receipt not found" });
+    if (receipt.status === "voided" || receipt.status === "refunded") {
+      return res.status(400).json({ message: `This receipt is already ${receipt.status}` });
+    }
+
+    const result = applyRefund(store, receipt, items, reason, false);
+    if (result.error) return res.status(400).json({ message: result.error });
+
+    addActivity(store, "POS Refund", `Refunded ${result.amount} on receipt ${receipt.receiptNo}.`, "order", receipt._id);
+    writeStore(store);
+
+    res.json({
+      success: true,
+      message: `Refunded ${result.amount}`,
+      receiptNo: receipt.receiptNo,
+      status: receipt.status,
+      amount: result.amount,
+      items: result.lines,
+    });
+  });
+
+  router.post("/pos/void/:receiptNo", (req, res) => {
+    const store = readStore();
+    const receipt = store.receipts.find(
+      (record) => record.receiptNo === String(req.params.receiptNo).toUpperCase()
+    );
+
+    if (!receipt) return res.status(404).json({ message: "Receipt not found" });
+    if (receipt.status !== "completed") {
+      return res.status(400).json({ message: `This receipt is already ${receipt.status}` });
+    }
+
+    const result = applyRefund(store, receipt, [], req.body?.reason || "void", true);
+    if (result.error) return res.status(400).json({ message: result.error });
+
+    addActivity(store, "POS Void", `Voided receipt ${receipt.receiptNo}.`, "order", receipt._id);
+    writeStore(store);
+
+    res.json({ success: true, message: `Receipt ${receipt.receiptNo} voided`, amount: result.amount, status: receipt.status });
+  });
+
+  router.post("/pos/hold", (req, res) => {
+    const store = readStore();
+    const { items = [] } = req.body;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "Cannot suspend an empty sale" });
+    }
+
+    const held = { _id: id(), cashierName: "Demo Cashier", ...req.body, createdAt: now(), updatedAt: now() };
+    store.heldSales.unshift(held);
+    writeStore(store);
+
+    res.status(201).json({ success: true, held });
+  });
+
+  router.get("/pos/held", (_req, res) => {
+    const store = readStore();
+    res.json({ held: store.heldSales });
+  });
+
+  router.delete("/pos/held/:heldId", (req, res) => {
+    const store = readStore();
+    const before = store.heldSales.length;
+    store.heldSales = store.heldSales.filter((sale) => sale._id !== req.params.heldId);
+
+    if (store.heldSales.length === before) {
+      return res.status(404).json({ message: "Held sale not found" });
+    }
+
+    writeStore(store);
+    res.json({ success: true, message: "Held sale removed" });
+  });
+
+  router.post("/voucher/create", (req, res) => {
+    const store = readStore();
+    const { code, type, value, minSpend, expiresAt, usageLimit } = req.body;
+
+    if (!code || !String(code).trim()) return res.status(400).json({ message: "Voucher code is required" });
+    if (type !== "amount" && type !== "percent") {
+      return res.status(400).json({ message: "Voucher type must be amount or percent" });
+    }
+    if (!Number(value) || Number(value) <= 0) {
+      return res.status(400).json({ message: "Voucher value must be greater than zero" });
+    }
+
+    const normalized = String(code).trim().toUpperCase();
+
+    if (store.vouchers.some((voucher) => voucher.code === normalized)) {
+      return res.status(400).json({ message: "A voucher with this code already exists" });
+    }
+
+    const voucher = {
+      _id: id(),
+      code: normalized,
+      type,
+      value: Number(value),
+      minSpend: Number(minSpend || 0),
+      expiresAt: expiresAt || undefined,
+      usageLimit: Number(usageLimit || 1),
+      usedCount: 0,
+      status: "active",
+      createdAt: now(),
+      updatedAt: now(),
+    };
+
+    store.vouchers.unshift(voucher);
+    writeStore(store);
+
+    res.status(201).json({ message: "Voucher created successfully", voucher });
+  });
+
+  router.get("/voucher/all", (_req, res) => {
+    const store = readStore();
+    res.json({ vouchers: store.vouchers });
+  });
+
+  router.put("/voucher/:voucherId/disable", (req, res) => {
+    const store = readStore();
+    const voucher = store.vouchers.find((record) => record._id === req.params.voucherId);
+
+    if (!voucher) return res.status(404).json({ message: "Voucher not found" });
+
+    voucher.status = "disabled";
+    voucher.updatedAt = now();
+    writeStore(store);
+
+    res.json({ message: "Voucher disabled", voucher });
+  });
+
+  router.delete("/voucher/:voucherId", (req, res) => {
+    const store = readStore();
+    const before = store.vouchers.length;
+    store.vouchers = store.vouchers.filter((voucher) => voucher._id !== req.params.voucherId);
+
+    if (store.vouchers.length === before) return res.status(404).json({ message: "Voucher not found" });
+
+    writeStore(store);
+    res.json({ message: "Voucher deleted successfully" });
+  });
+
+  router.post("/voucher/validate", (req, res) => {
+    const store = readStore();
+    const { code, subtotal: rawSubtotal } = req.body || {};
+
+    if (!code || !String(code).trim()) {
+      return res.status(400).json({ valid: false, message: "Voucher code is required" });
+    }
+
+    const subtotal = Number(rawSubtotal || 0);
+    const voucher = store.vouchers.find(
+      (record) => record.code === String(code).trim().toUpperCase()
+    );
+
+    if (!voucher) return res.status(404).json({ valid: false, message: "Voucher not found" });
+
+    const reason = voucherRejection(voucher, subtotal);
+    if (reason) return res.status(400).json({ valid: false, message: reason });
+
+    res.json({
+      valid: true,
+      code: voucher.code,
+      type: voucher.type,
+      value: voucher.value,
+      computedDiscount: voucherDiscountFor(voucher, subtotal),
     });
   });
 

@@ -6,68 +6,76 @@ const logActivity = require('../libs/logger');
 
 
 
+// Self-registration is closed. This is a private shop system: a stranger who
+// could sign themselves up — even as staff — would get the till, the whole
+// product catalogue and every authmiddleware-only endpoint. Accounts are created
+// by an admin through /createuser (and the vendor account by a script).
 module.exports.signup = async (req, res) => {
-  try {
-    const { name, email, password, ProfilePic, role } = req.body;
+  return res.status(403).json({
+    error: "Self-registration is disabled. Ask your administrator to create an account for you.",
+  });
+};
 
-  
-    const duplicatedUser = await User.findOne({ email });
-    if (duplicatedUser) {
-      return res.status(400).json({ error: "User already exists" });
+
+
+
+
+// Admin-only account creation. This is the ONLY way a manager or staff account
+// comes into existence — self-signup is always staff.
+module.exports.createUser = async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+
+    if (!name?.trim() || !email?.trim() || !password) {
+      return res.status(400).json({ message: "Name, email and password are required" });
     }
 
+    if (role !== "manager" && role !== "staff") {
+      return res.status(400).json({ message: "Role must be manager or staff" });
+    }
 
-    const hashedpassword = await bcrypt.hash(password, 10);
+    if (String(password).length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
 
+    const existing = await User.findOne({ email: email.trim().toLowerCase() });
 
+    if (existing) {
+      return res.status(400).json({ message: "A user with this email already exists" });
+    }
 
-
-
-    const newUser = new User({
-      name,
-      email,
-      password: hashedpassword,
-      ProfilePic:"",
+    const created = await User.create({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      password: await bcrypt.hash(password, 10),
       role,
-    });
-
-
-    const savedUser = await newUser.save();
-    const token = await generateToken(savedUser, res);
-
-   
-   
-
-
-    res.status(201).json({
-      message: "Signup successful",
-      savedUser: {
-        id: savedUser._id,
-        name: savedUser.name,
-        email: savedUser.email,
-        role: savedUser.role,
-        ProfilePic: savedUser.ProfilePic,
-        token,
-       
-      },
+      ProfilePic: "",
     });
 
     await logActivity({
-      action: "User Signup",
-      description: `User ${name} signed up.`,
+      action: "Create User",
+      description: `${role} account created for ${created.name}.`,
       entity: "user",
-      entityId: savedUser._id,
-      userId: savedUser._id,
+      entityId: created._id,
+      userId: req.user?._id,
       ipAddress: req.ip,
     });
 
-
+    return res.status(201).json({
+      message: `${role} created successfully`,
+      user: {
+        _id: created._id,
+        name: created.name,
+        email: created.email,
+        role: created.role,
+        ProfilePic: created.ProfilePic,
+        createdAt: created.createdAt,
+      },
+    });
   } catch (error) {
-    console.error("Error during signup:", error.message);
-    res.status(400).json({ error: "Error during signup: " + error.message });
+    return res.status(500).json({ message: error.message || "Error creating user" });
   }
 };
-
 
 
 module.exports.login=async(req,res)=>{
@@ -243,6 +251,11 @@ module.exports.removeuser = async (req, res) => {
 
     if (!UserId) {
       return res.status(400).json({ message: "User ID is required" });
+    }
+
+    // An admin locking themselves out of their own system helps nobody.
+    if (String(UserId) === String(req.user?._id)) {
+      return res.status(400).json({ message: "You cannot delete your own account" });
     }
 
     const deleteUser = await User.findByIdAndDelete(UserId);

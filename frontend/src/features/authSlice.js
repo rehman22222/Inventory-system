@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 const initialState = {
   Authuser: JSON.parse(localStorage.getItem("user")) || null, 
   isUserSignup: false,
+  iscreatinguser: false,
   staffuser:null,
   manageruser:null,
   adminuser:null,
@@ -24,6 +25,22 @@ export const signup = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Signup failed");
+    }
+  }
+);
+
+// Admin creating a manager or staff account. Unlike signup, this does not touch
+// the current session — the admin stays logged in as themselves.
+export const createUser = createAsyncThunk(
+  "auth/createuser",
+  async (payload, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post("auth/createuser", payload, {
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Could not create user");
     }
   }
 );
@@ -176,7 +193,28 @@ const authSlice = createSlice({
 
       })
 
-      
+      .addCase(createUser.pending, (state) => {
+        state.iscreatinguser = true;
+      })
+      .addCase(createUser.fulfilled, (state, action) => {
+        state.iscreatinguser = false;
+        const user = action.payload.user;
+
+        // Drop the new account straight into the list it belongs to.
+        if (user?.role === "manager") {
+          state.manageruser = [user, ...(Array.isArray(state.manageruser) ? state.manageruser : [])];
+        } else if (user?.role === "staff") {
+          state.staffuser = [user, ...(Array.isArray(state.staffuser) ? state.staffuser : [])];
+        }
+
+        toast.success(action.payload.message || "User created");
+      })
+      .addCase(createUser.rejected, (state, action) => {
+        state.iscreatinguser = false;
+        toast.error(action.payload || "Could not create user");
+      })
+
+
       .addCase(login.pending, (state) => {
         state.isUserLogin = true;
       })

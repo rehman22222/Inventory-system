@@ -1,7 +1,7 @@
 import React from "react";
 import { AiOutlineProduct } from "react-icons/ai";
 import { RiStockLine } from "react-icons/ri";
-import { FiCreditCard, FiLogOut, FiShoppingCart } from "react-icons/fi";
+import { FiCreditCard, FiInbox, FiLifeBuoy, FiLogOut, FiShoppingCart, FiTag } from "react-icons/fi";
 import { MdOutlineCategory, MdPointOfSale } from "react-icons/md";
 import { TfiSupport } from "react-icons/tfi";
 import { IoNotificationsOutline } from "react-icons/io5";
@@ -15,9 +15,10 @@ import toast from "react-hot-toast";
 import { logout } from "../features/authSlice";
 import { useSidebar } from "../lib/SidebarContext";
 import e360Logo from "../images/e360-logo.png";
-import e360LogoWhite from "../images/e360-logo-white.png";
+import e360LogoDark from "../images/e360-logo-dark.png";
 
 const dashboardPath = {
+  superadmin: "/SuperAdmin",
   admin: "/AdminDashboard",
   manager: "/ManagerDashboard",
   staff: "/StaffDashboard",
@@ -25,36 +26,42 @@ const dashboardPath = {
 
 // `label` is an i18n key under the `sidebar` namespace, resolved at render.
 const menuByRole = {
+  // The vendor console: support tickets and nothing else.
+  superadmin: [
+    { label: "sidebar.tickets", path: "tickets", icon: FiInbox },
+  ],
   admin: [
     { label: "sidebar.dashboard", path: "", icon: RxDashboard },
+    { label: "sidebar.pos", to: "/pos", icon: FiCreditCard },
     { label: "sidebar.products", path: "product", icon: AiOutlineProduct },
     { label: "sidebar.categories", path: "category", icon: MdOutlineCategory },
     { label: "sidebar.suppliers", path: "supplier", icon: TfiSupport },
     { label: "sidebar.sales", path: "sales", icon: MdPointOfSale },
     { label: "sidebar.orders", path: "order", icon: FiShoppingCart },
+    { label: "sidebar.vouchers", path: "vouchers", icon: FiTag },
     { label: "sidebar.stock", path: "stock-transaction", icon: RiStockLine },
     { label: "sidebar.notifications", path: "notifications", icon: IoNotificationsOutline },
     { label: "sidebar.users", path: "Userstatus", icon: LuUsers },
     { label: "sidebar.activityLog", path: "activity-log", icon: RxActivityLog },
+    { label: "sidebar.support", path: "support", icon: FiLifeBuoy },
   ],
   manager: [
     { label: "sidebar.dashboard", path: "", icon: RxDashboard },
+    { label: "sidebar.pos", to: "/pos", icon: FiCreditCard },
     { label: "sidebar.products", path: "product", icon: AiOutlineProduct },
     { label: "sidebar.categories", path: "category", icon: MdOutlineCategory },
     { label: "sidebar.suppliers", path: "supplier", icon: TfiSupport },
     { label: "sidebar.sales", path: "sales", icon: MdPointOfSale },
     { label: "sidebar.orders", path: "order", icon: FiShoppingCart },
+    { label: "sidebar.vouchers", path: "vouchers", icon: FiTag },
     { label: "sidebar.stock", path: "stock-transaction", icon: RiStockLine },
     { label: "sidebar.notifications", path: "NotificationPageRead", icon: IoNotificationsOutline },
   ],
+  // Staff work the till and nothing else.
   staff: [
     { label: "sidebar.dashboard", path: "", icon: RxDashboard },
     // POS opens as a standalone full-screen terminal (same tab, so browser Back works).
     { label: "sidebar.pos", to: "/pos", icon: FiCreditCard },
-    { label: "sidebar.sales", path: "sales", icon: MdPointOfSale },
-    { label: "sidebar.orders", path: "order", icon: FiShoppingCart },
-    { label: "sidebar.stock", path: "stock-transaction", icon: RiStockLine },
-    { label: "sidebar.notifications", path: "NotificationPageRead", icon: IoNotificationsOutline },
   ],
 };
 
@@ -89,7 +96,7 @@ function Sidebar() {
           alt="E360 Inventory Suite by Eiretech"
         />
         <img
-          src={e360LogoWhite}
+          src={e360LogoDark}
           className="hidden w-full object-contain dark:block"
           alt="E360 Inventory Suite by Eiretech"
         />

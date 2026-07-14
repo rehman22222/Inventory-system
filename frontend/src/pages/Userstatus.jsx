@@ -10,16 +10,20 @@ import {
   staffUser,
   managerUser,
   adminUser,
-  removeusers
+  removeusers,
+  createUser
 } from "../features/authSlice";
 import toast from "react-hot-toast";
 import  UserRoleChart from '../lib/Usersgraph'
 
+const EMPTY_USER = { name: "", email: "", password: "", role: "staff" };
+
 function Userstatus() {
   const { t } = useTranslation();
-  const { staffuser, manageruser, adminuser } = useSelector((state) => state.auth);
+  const { staffuser, manageruser, adminuser, iscreatinguser } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const { Authuser } = useSelector((state) => state.auth);
+  const [form, setForm] = useState(EMPTY_USER);
 
   useEffect(() => {
     dispatch(staffUser());
@@ -42,9 +46,86 @@ function Userstatus() {
 
   }
 
+  const submitNewUser = async (event) => {
+    event.preventDefault();
+
+    const result = await dispatch(createUser(form));
+
+    if (!result.error) setForm(EMPTY_USER);
+  };
+
+  const field =
+    "w-full rounded-lg border border-base-300 bg-base-100 px-3 py-2 text-sm outline-none focus:border-primary";
+  const label = "mb-1 block text-xs font-semibold uppercase text-base-content/60";
+
   return (
     <div className="min-h-screen bg-base-100">
       <TopNavbar />
+
+      {/* Only an admin can mint an account, and only manager/staff ones. */}
+      <form
+        onSubmit={submitNewUser}
+        className="mx-10 mt-8 grid gap-4 rounded-lg border border-base-300 bg-base-100 p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-5"
+      >
+        <div className="sm:col-span-2 lg:col-span-5">
+          <h2 className="text-lg font-semibold">{t("users.createTitle")}</h2>
+          <p className="mt-0.5 text-sm text-base-content/60">{t("users.createSub")}</p>
+        </div>
+
+        <div>
+          <label className={label}>{t("users.name")}</label>
+          <input
+            value={form.name}
+            onChange={(event) => setForm({ ...form, name: event.target.value })}
+            className={field}
+          />
+        </div>
+
+        <div>
+          <label className={label}>{t("users.email")}</label>
+          <input
+            type="email"
+            value={form.email}
+            onChange={(event) => setForm({ ...form, email: event.target.value })}
+            className={field}
+          />
+        </div>
+
+        <div>
+          <label className={label}>{t("users.password")}</label>
+          <input
+            type="password"
+            value={form.password}
+            onChange={(event) => setForm({ ...form, password: event.target.value })}
+            placeholder={t("users.passwordHint")}
+            className={field}
+          />
+        </div>
+
+        <div>
+          <label className={label}>{t("users.role")}</label>
+          <select
+            value={form.role}
+            onChange={(event) => setForm({ ...form, role: event.target.value })}
+            className={field}
+          >
+            <option value="staff">{t("users.staff")}</option>
+            <option value="manager">{t("users.manager")}</option>
+          </select>
+        </div>
+
+        <div className="flex items-end">
+          <button
+            type="submit"
+            disabled={iscreatinguser}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-content transition hover:opacity-90 disabled:opacity-50"
+          >
+            <IoMdAdd className="text-lg" />
+            {iscreatinguser ? t("users.creating") : t("users.create")}
+          </button>
+        </div>
+      </form>
+
       <div className="flex">
       <div className=" bg-base-100 mt-10 ml-10 w-72 overflow-auto rounded-lg">
         <div className=" bg-base-100 p-4 rounded-lg shadow-md mb-4">

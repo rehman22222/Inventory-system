@@ -1,6 +1,27 @@
 const Sale = require("../models/Salesmodel");
 const ProductModel = require('../models/Productmodel');
+const logActivity = require("../libs/logger");
 
+const money = (value) => Math.round(Number(value || 0) * 100) / 100;
+
+const dayRange = (from, to) => {
+  const startSource = from || to || new Date();
+  const endSource = to || from || startSource;
+  const start = new Date(
+    typeof startSource === "string" ? `${startSource}T00:00:00.000` : startSource
+  );
+  const end = new Date(
+    typeof endSource === "string" ? `${endSource}T23:59:59.999` : endSource
+  );
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return null;
+  }
+
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+};
 
 module.exports.createSale = async (req, res) => {
   try {
@@ -129,6 +150,139 @@ module.exports.updateSale = async (req, res) => {
     });
   }
 }
+
+module.exports.overrideSalesReportTotal = async (req, res) => {
+  try {
+    const { from, to, targetTotal } = req.body;
+    const range = dayRange(from, to);
+    const target = money(targetTotal);
+
+    if (!range) {
+      return res.status(400).json({ success: false, message: "Invalid date range" });
+    }
+
+    if (!Number.isFinite(Number(targetTotal)) || target < 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Target total must be a valid positive number",
+      });
+    }
+
+    const sales = await Sale.find({
+      createdAt: { $gte: range.start, $lte: range.end },
+    }).sort({ createdAt: 1 });
+
+    if (sales.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No sale records found for this date range",
+      });
+    }
+
+    const adjustable = sales.filter(
+      (sale) => sale.source !== "refund" && Number(sale.totalAmount || 0) > 0
+    );
+    const fixedTotal = money(
+      sales
+        .filter((sale) => !adjustable.some((item) => String(item._id) === String(sale._id)))
+        .reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0)
+    );
+    const currentTotal = money(sales.reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0));
+    const currentAdjustableTotal = money(
+      adjustable.reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0)
+    );
+    const desiredAdjustableTotal = money(target - fixedTotal);
+
+    if (desiredAdjustableTotal < 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Target total cannot be lower than fixed refund/negative records (${fixedTotal})`,
+      });
+    }
+
+    if (adjustable.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No positive sale rows are available to rewrite",
+      });
+    }
+
+    if (currentAdjustableTotal <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Current sale total is zero, so it cannot be scaled",
+      });
+    }
+
+    const factor = desiredAdjustableTotal / currentAdjustableTotal;
+    let remaining = desiredAdjustableTotal;
+    const changedSales = [];
+
+    for (let index = 0; index < adjustable.length; index += 1) {
+      const sale = adjustable[index];
+      const previousTotalAmount = money(sale.totalAmount);
+      const previousUnitPrice = money(sale.products?.price || 0);
+      const isLast = index === adjustable.length - 1;
+      const nextTotalAmount = isLast ? money(remaining) : money(previousTotalAmount * factor);
+      const quantity = Number(sale.products?.quantity || 1) || 1;
+      const nextUnitPrice = money(nextTotalAmount / quantity);
+
+      remaining = money(remaining - nextTotalAmount);
+
+      sale.totalAmount = nextTotalAmount;
+      sale.products.price = nextUnitPrice;
+      sale.discount = money(Number(sale.discount || 0) * factor);
+      sale.tax = money(Number(sale.tax || 0) * factor);
+      sale.reportOverride = {
+        previousTotalAmount,
+        previousUnitPrice,
+        targetReportTotal: target,
+        factor,
+        changedBy: req.user?._id,
+        changedByName: req.user?.name,
+        changedAt: new Date(),
+      };
+      sale.markModified("products");
+      await sale.save();
+
+      changedSales.push({
+        saleId: sale._id,
+        previousTotalAmount,
+        totalAmount: sale.totalAmount,
+      });
+    }
+
+    await logActivity({
+      action: "Override Sales Report Total",
+      description: `Sales total changed from ${currentTotal} to ${target} for ${range.start.toISOString().slice(0, 10)} - ${range.end.toISOString().slice(0, 10)}.`,
+      entity: "order",
+      userId: req.user?._id,
+      ipAddress: req.ip,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Sales records updated to match the requested report total",
+      from: range.start,
+      to: range.end,
+      previousTotal: currentTotal,
+      targetTotal: target,
+      updatedTotal: money(
+        fixedTotal + changedSales.reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0)
+      ),
+      updatedCount: changedSales.length,
+      fixedTotal,
+      changedSales,
+    });
+  } catch (error) {
+    console.error("Error overriding sales report total:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error overriding sales report total",
+      error: error.message,
+    });
+  }
+};
 
 
 module.exports.SearchSales = async (req, res) => {

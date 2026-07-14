@@ -6,7 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as yup from "yup";
 import { login } from "../features/authSlice";
-import e360LogoWhite from "../images/e360-logo-white.png";
+import e360LogoDark from "../images/e360-logo-dark.png";
 
 function LoginPage() {
   const { t } = useTranslation();
@@ -35,7 +35,9 @@ function LoginPage() {
       .unwrap()
       .then((response) => {
         const role = response?.user?.role || response?.savedUser?.role;
-        if (role === "staff") {
+        if (role === "superadmin") {
+          navigator("/SuperAdmin");
+        } else if (role === "staff") {
           navigator("/StaffDashboard");
         } else if (role === "admin") {
           navigator("/AdminDashboard");
@@ -56,7 +58,7 @@ function LoginPage() {
           <div>
             <Link to="/" className="inline-flex">
               <img
-                src={e360LogoWhite}
+                src={e360LogoDark}
                 className="h-20 w-auto object-contain"
                 alt="E360 Inventory Suite by Eiretech"
               />

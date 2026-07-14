@@ -51,7 +51,11 @@ async function buildSales(req) {
   let totalCost = 0;
 
   const rows = sales.map((s) => {
-    const qty = Number(s.products?.quantity || 0);
+    // Refund rows reverse an earlier sale: the goods came back, so their value
+    // AND their cost must be subtracted, not added.
+    const sign = s.source === "refund" ? -1 : 1;
+
+    const qty = sign * Number(s.products?.quantity || 0);
     const unitPrice = Number(s.products?.price || 0);
     const unitCost = Number(s.products?.product?.costPrice || 0);
     const lineTotal = unitPrice * qty;
@@ -59,9 +63,9 @@ async function buildSales(req) {
     const lineProfit = lineTotal - lineCost;
 
     grossSales += lineTotal;
-    totalDiscount += Number(s.discount || 0);
-    totalTax += Number(s.tax || 0);
-    netRevenue += Number(s.totalAmount || 0);
+    totalDiscount += sign * Number(s.discount || 0);
+    totalTax += sign * Number(s.tax || 0);
+    netRevenue += Number(s.totalAmount || 0); // already signed
     totalCost += lineCost;
 
     return [

@@ -15,6 +15,8 @@ const salesrouter = require('./Routers/salesRouter');
 const supplierrouter = require('./Routers/supplierrouter');
 const stocktransactionrouter = require('./Routers/stocktransactionrouter');
 const posrouter = require("./Routers/posRouter");
+const voucherrouter = require("./Routers/voucherRouter");
+const ticketrouter = require("./Routers/ticketRouter");
 const reportrouter = require("./Routers/reportRouter");
 const localStorageRouter = require("./localStorageRouter");
 
@@ -32,14 +34,14 @@ const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000,https:
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
-    methods: ["GET", "POST","PUT","DELETE"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
   },
 });
 
 app.use(cors({
   origin: allowedOrigins,
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   credentials: true,
 }));
 
@@ -79,6 +81,8 @@ if (useLocalStorage) {
   app.use('/api/inventory', inventoryrouter);
   app.use('/api/sales', salesrouter);
   app.use('/api/pos', posrouter);
+  app.use('/api/voucher', voucherrouter);
+  app.use('/api/ticket', ticketrouter);
   app.use('/api/reports', reportrouter);
   app.use('/api/supplier', supplierrouter);
   app.use("/api/stocktransaction", stocktransactionrouter);

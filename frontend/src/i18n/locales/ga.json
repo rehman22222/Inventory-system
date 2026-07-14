@@ -210,7 +210,10 @@
     "logout": "Logáil Amach",
     "user": "Úsáideoir",
     "loggedOut": "Logáilte amach go rathúil",
-    "logoutError": "Earráid ag logáil amach"
+    "logoutError": "Earráid ag logáil amach",
+    "vouchers": "Dearbháin",
+    "support": "Tacaíocht",
+    "tickets": "Ticéid"
   },
   "topnav": {
     "welcome": "Fáilte, {{name}}",
@@ -408,7 +411,154 @@
     "itemsCount": "{{count}} mír",
     "discountLabel": "Lascaine",
     "exit": "Scoir",
-    "openTerminal": "Oscail Teirminéal POS"
+    "openTerminal": "Oscail Teirminéal POS",
+    "closeOrder": "Dún an tOrdú",
+    "noProducts": "Níl aon táirge sa chatagóir seo",
+    "rail": {
+      "refund": "Aisíocaíocht",
+      "void": "Cuir Díolachán ar Neamhní",
+      "suspend": "Cuir ar Fionraí",
+      "resume": "Atosaigh",
+      "productSearch": "Cuardaigh Táirge",
+      "discount": "Lascaine",
+      "vouchers": "Dearbháin",
+      "saleHistory": "Stair Díolacháin",
+      "enterCode": "Cuir Cód Isteach",
+      "send": "Sábháil"
+    },
+    "table": {
+      "product": "Táirge",
+      "rate": "Ráta",
+      "qty": "Méid",
+      "total": "Iomlán",
+      "increase": "Méadaigh an méid",
+      "decrease": "Laghdaigh an méid",
+      "remove": "Bain an líne"
+    },
+    "keypad": {
+      "clear": "Glan",
+      "hint": "Clóscríobh uimhir, brúigh X, ansin tapáil táirge",
+      "qtyPending": "x{{count}}"
+    },
+    "status": {
+      "user": "Úsáideoir",
+      "till": "Scipéad",
+      "counter": "Cuntar",
+      "stdPrices": "Gnáthphraghsanna",
+      "online": "Ar líne",
+      "offline": "As líne"
+    },
+    "refund": {
+      "title": "Aisíoc idirbheart",
+      "subtitle": "Aimsigh admháil, ansin roghnaigh na míreanna a fhilleann",
+      "receiptPlaceholder": "Uimhir admhála, m.sh. POS-000123",
+      "find": "Aimsigh",
+      "notFound": "Admháil gan aimsiú",
+      "refundable": "{{count}} as {{sold}} inaisíoctha",
+      "refunding": "Á aisíoc",
+      "confirm": "Deimhnigh an aisíocaíocht",
+      "cancel": "Cealaigh",
+      "done": "{{amount}} aisíoctha",
+      "failed": "Theip ar an aisíocaíocht",
+      "selectSomething": "Roghnaigh mír amháin ar a laghad",
+      "reasonPlaceholder": "Cúis (roghnach)",
+      "status": "Stádas"
+    },
+    "void": {
+      "confirm": "Cuir admháil {{receiptNo}} ar neamhní? Fillfear an stoc.",
+      "done": "Admháil {{receiptNo}} curtha ar neamhní",
+      "failed": "Níorbh fhéidir an admháil a chur ar neamhní",
+      "notAllowed": "Ní féidir ach le riarthóir nó bainisteoir díolachán críochnaithe a chealú"
+    },
+    "voucher": {
+      "title": "Dearbháin",
+      "subtitle": "Cuir cód an chustaiméara i bhfeidhm, nó cruthaigh ceann nua",
+      "applyTab": "Cuir cód i bhfeidhm",
+      "generateTab": "Cruthaigh",
+      "code": "Cód dearbháin",
+      "codePlaceholder": "SAVE10",
+      "apply": "Cuir an dearbhán i bhfeidhm",
+      "applied": "Dearbhán curtha i bhfeidhm — {{amount}} as",
+      "invalid": "Ní féidir an dearbhán seo a úsáid",
+      "remove": "Bain",
+      "worth": "Fiú {{amount}} ar an díolachán seo",
+      "againstSubtotal": "In aghaidh fo-iomlán {{amount}}",
+      "type": "Cineál",
+      "typeAmount": "Méid",
+      "typePercent": "Céatadán (%)",
+      "amountValue": "Méid lascaine",
+      "percentValue": "Céatadán lascaine",
+      "minSpend": "Íoschaiteachas",
+      "usageLimit": "Teorainn úsáide",
+      "expires": "In éag",
+      "generate": "Cruthaigh dearbhán",
+      "generated": "Dearbhán {{code}} cruthaithe",
+      "generateFailed": "Níorbh fhéidir an dearbhán a chruthú",
+      "missingFields": "Cuir cód agus luach isteach"
+    },
+    "discountModal": {
+      "title": "Lascaine",
+      "apply": "Cuir i bhfeidhm",
+      "clear": "Glan an lascaine",
+      "preview": "Lascaine"
+    },
+    "unknownBarcode": {
+      "title": "Barrachód anaithnid",
+      "subtitle": "Níl {{barcode}} nasctha le táirge ar bith fós",
+      "linkTab": "Nasc le táirge atá ann",
+      "createTab": "Cruthaigh táirge nua",
+      "searchPlaceholder": "Cuardaigh de réir ainm táirge",
+      "noMatches": "Níl aon táirge ag teacht leis sin",
+      "linked": "Barrachód nasctha le {{name}}",
+      "linkFailed": "Níorbh fhéidir an barrachód a nascadh",
+      "name": "Ainm an táirge",
+      "price": "Praghas",
+      "openingStock": "Stoc tosaigh",
+      "category": "Catagóir",
+      "selectCategory": "Roghnaigh catagóir",
+      "barcodeLabel": "Barrachód",
+      "createAndAdd": "Cruthaigh agus cuir leis an díolachán",
+      "created": "{{name}} cruthaithe",
+      "createFailed": "Níorbh fhéidir an táirge a chruthú",
+      "missingFields": "Tá ainm, praghas agus catagóir riachtanach"
+    },
+    "history": {
+      "title": "Stair díolacháin",
+      "subtitle": "Na hadmhálacha is déanaí",
+      "empty": "Níl aon díolachán ann fós",
+      "failed": "Níorbh fhéidir an stair a lódáil",
+      "items": "{{count}} mír",
+      "reprint": "Athphriontáil",
+      "refund": "Aisíoc"
+    },
+    "held": {
+      "title": "Díolacháin ar fionraí",
+      "subtitle": "Ciseáin pháirceáilte, ar fáil ag aon scipéad",
+      "failed": "Níorbh fhéidir na díolacháin ar fionraí a lódáil",
+      "deleteFailed": "Níorbh fhéidir an díolachán seo a bhaint",
+      "delete": "Scrios"
+    },
+    "enterCode": {
+      "title": "Cuir barrachód nó cód isteach",
+      "placeholder": "Theip ar an scanadh? Clóscríobh an cód"
+    },
+    "categories": "Catagóirí",
+    "taxLabel": "Cáin",
+    "taxRateHint": "Ráta cánach % — socraithe ag an siopa",
+    "searchResults": "Torthaí cuardaigh",
+    "payment": {
+      "title": "Glac íocaíocht",
+      "subtitle": "Taifead an méid a thug an custaiméir duit",
+      "paid": "Íoctha",
+      "remaining": "Fágtha",
+      "add": "Cuir leis",
+      "complete": "Críochnaigh an díolachán",
+      "removeTender": "Bain an íocaíocht seo",
+      "hint": "Roinn an bille le níos mó ná íocaíocht amháin — cuid in airgead, an chuid eile ar chárta.",
+      "giveChange": "Tabhair {{amount}} sóinseáil",
+      "roundOff": "Slánaigh suas"
+    },
+    "currencyHint": "Airgeadra taispeána don scipéad seo"
   },
   "sales": {
     "reportTitle": "Tuairisc Díolacháin",
@@ -441,7 +591,15 @@
     "updated": "Nuashonraíodh an díolachán go rathúil",
     "updateFail": "Theip ar nuashonrú an díolacháin",
     "added": "Cuireadh na díolacháin leis go rathúil",
-    "addFail": "Theip ar chur leis na díolacháin"
+    "addFail": "Theip ar chur leis na díolacháin",
+    "overrideTitle": "Admin sales total override",
+    "overrideSub": "Current selected report total is ${{total}}. Saving here rewrites matching sale records directly.",
+    "overrideTarget": "New report total",
+    "overrideApply": "Rewrite records",
+    "overrideSaving": "Updating...",
+    "overrideInvalid": "Enter a valid total",
+    "overrideSuccess": "{{count}} sale records updated. New total: ${{total}}",
+    "overrideFail": "Could not update sales total"
   },
   "orders": {
     "searchPlaceholder": "Cuir isteach d'ordú",
@@ -531,7 +689,16 @@
     "staffUser": "Úsáideoir Foirne",
     "noUsers": "Níl aon úsáideoirí ar fáil.",
     "removed": "Baineadh an t-úsáideoir go rathúil",
-    "removeFail": "Earráid ag baint úsáideora"
+    "removeFail": "Earráid ag baint úsáideora",
+    "createTitle": "Cuir úsáideoir leis",
+    "createSub": "Ní féidir ach le riarthóir cuntais bhainisteora agus foirne a chruthú",
+    "name": "Ainm",
+    "email": "Ríomhphost",
+    "password": "Pasfhocal",
+    "passwordHint": "6 charachtar ar a laghad",
+    "role": "Ról",
+    "create": "Cruthaigh úsáideoir",
+    "creating": "Á chruthú…"
   },
   "activity": {
     "title": "Logaí Gníomhaíochta",
@@ -557,5 +724,113 @@
     "updated": "Nuashonraíodh an phróifíl go rathúil",
     "uploadFail": "Theip ar uaslódáil na híomhá. Bain triail eile as le do thoil.",
     "readError": "Earráid ag léamh an chomhaid"
+  },
+  "vouchers": {
+    "title": "Dearbháin",
+    "sub": "Cóid lascaine is féidir le hairgeadóirí a chur i bhfeidhm ag an scipéad",
+    "code": "Cód",
+    "type": "Cineál",
+    "typeAmount": "Méid",
+    "typePercent": "Céatadán (%)",
+    "amountValue": "Méid lascaine",
+    "percentValue": "Céatadán lascaine",
+    "minSpend": "Íoschaiteachas",
+    "usageLimit": "Teorainn úsáide",
+    "expires": "In éag",
+    "create": "Cruthaigh dearbhán",
+    "creating": "Á chruthú…",
+    "value": "Luach",
+    "used": "Úsáidte",
+    "status": "Stádas",
+    "actions": "Gníomhartha",
+    "loading": "Dearbháin á lódáil…",
+    "empty": "Níl aon dearbhán ann fós",
+    "never": "Riamh",
+    "disable": "Díchumasaigh",
+    "delete": "Scrios",
+    "statuses": {
+      "active": "Gníomhach",
+      "used": "Úsáidte",
+      "expired": "As dáta",
+      "disabled": "Díchumasaithe"
+    }
+  },
+  "support": {
+    "title": "Tacaíocht",
+    "sub": "Féach ar na CCanna ar dtús — mura bhfreagraítear tú, cuir ticéad chugainn.",
+    "faqTitle": "Ceisteanna coitianta",
+    "raiseTitle": "Cuir ticéad isteach",
+    "subject": "Ábhar",
+    "subjectPlaceholder": "Achoimre ghearr ar an bhfadhb",
+    "category": "Catagóir",
+    "priority": "Tosaíocht",
+    "message": "Cad a tharla?",
+    "messagePlaceholder": "Inis dúinn cad a bhí ar siúl agat, cad a bhí súil agat leis, agus cad a tharla i ndáiríre.",
+    "send": "Seol ticéad",
+    "sending": "Á sheoladh…",
+    "myTickets": "Mo thicéid",
+    "noTickets": "Níl aon ticéad curtha isteach agat fós.",
+    "loading": "Á lódáil…",
+    "reply": "Freagair",
+    "replyPlaceholder": "Scríobh freagra…",
+    "vendor": "Tacaíocht",
+    "categories": {
+      "bug": "Tá rud éigin briste",
+      "feature": "Iarratas gné",
+      "billing": "Billeáil",
+      "question": "Ceist",
+      "other": "Eile"
+    },
+    "priorities": {
+      "low": "Íseal",
+      "normal": "Gnáth",
+      "high": "Ard",
+      "urgent": "Práinneach"
+    },
+    "statuses": {
+      "open": "Oscailte",
+      "in-progress": "Ar siúl",
+      "resolved": "Réitithe",
+      "closed": "Dúnta"
+    },
+    "markAs": {
+      "open": "Athoscail",
+      "in-progress": "Ar siúl",
+      "resolved": "Réitigh",
+      "closed": "Dún"
+    },
+    "faq": {
+      "barcode": {
+        "q": "A barcode does not scan — what do I do?",
+        "a": "Scan it anyway. The till will tell you the barcode is unknown and offer to link it to an existing product or create a new one. Once linked, that barcode works forever."
+      },
+      "refund": {
+        "q": "How do I refund only part of a receipt?",
+        "a": "POS → Refund Transaction → enter the receipt number → set the quantity to return on each line. Stock goes back automatically and the receipt is marked partially refunded."
+      },
+      "voucher": {
+        "q": "How do I create a discount code?",
+        "a": "Vouchers page (admin/manager). Choose a fixed € amount or a percentage, set a minimum spend, expiry and usage limit. The cashier applies it from the POS Vouchers button."
+      },
+      "users": {
+        "q": "How do I add a cashier?",
+        "a": "Users page → Add a user → choose the Staff role. Staff can only see the dashboard and the till."
+      },
+      "reports": {
+        "q": "Why does my report show a negative row?",
+        "a": "That is a refund. Refunds are recorded as negative sales so revenue, cost and profit all net out correctly."
+      },
+      "offline": {
+        "q": "The site is slow to load first thing in the morning.",
+        "a": "The server sleeps when idle on the free hosting tier and takes a few seconds to wake. Raise a ticket if you want us to move it to an always-on plan."
+      }
+    }
+  },
+  "superadmin": {
+    "title": "Ticéid tacaíochta",
+    "sub": "Gach ticéad ó riarthóirí siopa",
+    "refresh": "Athnuaigh",
+    "all": "Uile",
+    "noTickets": "Níl aon ticéad ann."
   }
 }

@@ -11,12 +11,13 @@ function TopNavbar() {
   const { t } = useTranslation();
   const { Authuser } = useSelector((state) => state.auth);
   const { toggle } = useSidebar();
-  const dashboardPath =
-    Authuser?.role === "admin"
-      ? "/AdminDashboard"
-      : Authuser?.role === "staff"
-      ? "/StaffDashboard"
-      : "/ManagerDashboard";
+  const dashboardByRole = {
+    superadmin: "/SuperAdmin",
+    admin: "/AdminDashboard",
+    manager: "/ManagerDashboard",
+    staff: "/StaffDashboard",
+  };
+  const dashboardPath = dashboardByRole[Authuser?.role] || "/ManagerDashboard";
 
   return (
     <div className="bg-base-100 border-b border-base-300">

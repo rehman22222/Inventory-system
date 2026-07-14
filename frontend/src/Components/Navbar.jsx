@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { FiMenu, FiX } from 'react-icons/fi';
-import e360LogoWhite from '../images/e360-logo-white.png';
+import logo2 from '../images/e360-logo-dark.png';
 import LanguageSwitcher from './LanguageSwitcher';
 
 const NAV = [
@@ -40,7 +40,7 @@ function Navbar() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 bg-ink font-body text-paper" dir="ltr">
+    <header className="sticky top-0 z-50 bg-[#08090A] font-body text-paper" dir="ltr">
       {/* Ticker strip */}
       <div className="overflow-hidden border-b border-white/10">
         <div className="flex w-max animate-ticker whitespace-nowrap py-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-paper/40">
@@ -58,8 +58,8 @@ function Navbar() {
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
           <Link to="/" className="flex items-center">
             <img
-              src={e360LogoWhite}
-              className="h-16 w-auto object-contain"
+              src={logo2}
+              className="h-32 w-auto object-contain"
               alt="E360 Inventory Suite by Eiretech"
             />
           </Link>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaTwitter, FaLinkedinIn, FaGithub } from 'react-icons/fa';
-import e360LogoWhite from '../images/e360-logo-white.png';
+import e360LogoDark from '../images/e360-logo-dark.png';
 
 function FooterLink({ children }) {
   return (
@@ -21,7 +21,7 @@ function Footer() {
         {/* Top — brand + status */}
         <div className="grid grid-cols-1 gap-10 border-b border-white/10 py-12 md:grid-cols-12">
           <div className="md:col-span-6">
-            <img src={e360LogoWhite} className="h-14 w-auto object-contain" alt="E360 Inventory Suite by Eiretech" />
+            <img src={e360LogoDark} className="h-14 w-auto object-contain" alt="E360 Inventory Suite by Eiretech" />
             <p className="mt-5 max-w-xs text-sm leading-relaxed text-paper/50">{t('footer.tagline')}</p>
           </div>
 

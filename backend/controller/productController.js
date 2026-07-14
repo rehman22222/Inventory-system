@@ -1,3 +1,4 @@
+const mongoose = require('mongoose')
 const Product=require('../models/Productmodel')
 
 const logActivity=require('../libs/logger')
@@ -212,17 +213,89 @@ module.exports.SearchProduct = async (req, res) => {
         $or: [
           { name: { $regex: query, $options: "i" } },
           { Desciption: { $regex: query, $options: "i" } },
-       
-          { 'Category.name': { $regex: query, $options: 'i' } },
+          { barcode: { $regex: query, $options: "i" } },
         ],
-      });
-  
+      }).populate("Category");
+
       res.json(products);
     } catch (error) {
       res.status(500).json({ message: "Error finding product", error: error.message });
     }
   };
-  
+
+
+// Exact barcode match — what the POS scanner calls on every scan.
+module.exports.getProductByBarcode = async (req, res) => {
+  try {
+    const code = String(req.params.code || "").trim();
+
+    if (!code) {
+      return res.status(400).json({ message: "Barcode is required" });
+    }
+
+    const product = await Product.findOne({ barcode: code }).populate("Category");
+
+    if (!product) {
+      return res.status(404).json({ message: "No product with this barcode", barcode: code });
+    }
+
+    return res.status(200).json({ product });
+  } catch (error) {
+    return res.status(500).json({ message: "Error finding product", error: error.message });
+  }
+};
+
+
+// "Learn on scan": attach a freshly scanned barcode to a product that doesn't
+// have one yet. This is how the imported PLU-only catalogue gains real barcodes
+// during normal trading.
+module.exports.attachBarcode = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const barcode = String(req.body?.barcode || "").trim();
+
+    if (!barcode) {
+      return res.status(400).json({ message: "Barcode is required" });
+    }
+
+    // Otherwise a bad id throws a CastError and surfaces as a 500.
+    if (!mongoose.isValidObjectId(productId)) {
+      return res.status(400).json({ message: "Invalid product id" });
+    }
+
+    const clash = await Product.findOne({ barcode });
+
+    if (clash && String(clash._id) !== String(productId)) {
+      return res
+        .status(400)
+        .json({ message: `Barcode already belongs to ${clash.name}`, product: clash });
+    }
+
+    const product = await Product.findByIdAndUpdate(
+      productId,
+      { barcode },
+      { new: true }
+    ).populate("Category");
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    await logActivity({
+      action: "Attach Barcode",
+      description: `Barcode ${barcode} linked to ${product.name}.`,
+      entity: "product",
+      entityId: product._id,
+      userId: req.user?._id,
+      ipAddress: req.ip,
+    });
+
+    return res.status(200).json({ message: "Barcode linked successfully", product });
+  } catch (error) {
+    return res.status(500).json({ message: "Error linking barcode", error: error.message });
+  }
+};
+
 
 
 

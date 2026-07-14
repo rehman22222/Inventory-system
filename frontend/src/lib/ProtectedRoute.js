@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 
 const dashboardByRole = {
+  superadmin: "/SuperAdmin",
   admin: "/AdminDashboard",
   manager: "/ManagerDashboard",
   staff: "/StaffDashboard",

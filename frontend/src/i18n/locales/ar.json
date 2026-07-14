@@ -210,7 +210,10 @@
     "logout": "تسجيل الخروج",
     "user": "مستخدم",
     "loggedOut": "تم تسجيل الخروج بنجاح",
-    "logoutError": "خطأ في تسجيل الخروج"
+    "logoutError": "خطأ في تسجيل الخروج",
+    "vouchers": "القسائم",
+    "support": "الدعم",
+    "tickets": "التذاكر"
   },
   "topnav": {
     "welcome": "مرحباً، {{name}}",
@@ -408,7 +411,154 @@
     "itemsCount": "{{count}} عناصر",
     "discountLabel": "الخصم",
     "exit": "خروج",
-    "openTerminal": "فتح جهاز نقطة البيع"
+    "openTerminal": "فتح جهاز نقطة البيع",
+    "closeOrder": "إتمام الطلب",
+    "noProducts": "لا توجد منتجات في هذه الفئة",
+    "rail": {
+      "refund": "استرداد",
+      "void": "إلغاء البيع",
+      "suspend": "تعليق",
+      "resume": "استئناف",
+      "productSearch": "بحث المنتجات",
+      "discount": "خصم",
+      "vouchers": "قسائم",
+      "saleHistory": "سجل المبيعات",
+      "enterCode": "إدخال رمز",
+      "send": "حفظ"
+    },
+    "table": {
+      "product": "المنتج",
+      "rate": "السعر",
+      "qty": "الكمية",
+      "total": "الإجمالي",
+      "increase": "زيادة الكمية",
+      "decrease": "تقليل الكمية",
+      "remove": "حذف السطر"
+    },
+    "keypad": {
+      "clear": "مسح",
+      "hint": "اكتب رقماً، اضغط X، ثم اختر منتجاً",
+      "qtyPending": "x{{count}}"
+    },
+    "status": {
+      "user": "المستخدم",
+      "till": "الصندوق",
+      "counter": "الكاونتر",
+      "stdPrices": "الأسعار العادية",
+      "online": "متصل",
+      "offline": "غير متصل"
+    },
+    "refund": {
+      "title": "استرداد معاملة",
+      "subtitle": "ابحث عن الإيصال، ثم اختر ما سيُسترد",
+      "receiptPlaceholder": "رقم الإيصال، مثل POS-000123",
+      "find": "بحث",
+      "notFound": "الإيصال غير موجود",
+      "refundable": "{{count}} من {{sold}} قابلة للاسترداد",
+      "refunding": "الاسترداد",
+      "confirm": "تأكيد الاسترداد",
+      "cancel": "إلغاء",
+      "done": "تم استرداد {{amount}}",
+      "failed": "فشل الاسترداد",
+      "selectSomething": "اختر عنصراً واحداً على الأقل",
+      "reasonPlaceholder": "السبب (اختياري)",
+      "status": "الحالة"
+    },
+    "void": {
+      "confirm": "إلغاء الإيصال {{receiptNo}}؟ سيُعاد المخزون.",
+      "done": "تم إلغاء الإيصال {{receiptNo}}",
+      "failed": "تعذر إلغاء هذا الإيصال",
+      "notAllowed": "لا يمكن إلغاء بيع مكتمل إلا للمدير أو المسؤول"
+    },
+    "voucher": {
+      "title": "القسائم",
+      "subtitle": "طبّق رمز العميل أو أنشئ قسيمة جديدة",
+      "applyTab": "تطبيق الرمز",
+      "generateTab": "إنشاء",
+      "code": "رمز القسيمة",
+      "codePlaceholder": "SAVE10",
+      "apply": "تطبيق القسيمة",
+      "applied": "تم تطبيق القسيمة — خصم {{amount}}",
+      "invalid": "لا يمكن استخدام هذه القسيمة",
+      "remove": "إزالة",
+      "worth": "خصم {{amount}} على هذا البيع",
+      "againstSubtotal": "على مجموع فرعي قدره {{amount}}",
+      "type": "النوع",
+      "typeAmount": "مبلغ",
+      "typePercent": "نسبة (%)",
+      "amountValue": "قيمة الخصم",
+      "percentValue": "نسبة الخصم",
+      "minSpend": "الحد الأدنى للشراء",
+      "usageLimit": "حد الاستخدام",
+      "expires": "تنتهي في",
+      "generate": "إنشاء قسيمة",
+      "generated": "تم إنشاء القسيمة {{code}}",
+      "generateFailed": "تعذر إنشاء القسيمة",
+      "missingFields": "أدخل الرمز والقيمة"
+    },
+    "discountModal": {
+      "title": "خصم",
+      "apply": "تطبيق",
+      "clear": "إزالة الخصم",
+      "preview": "الخصم"
+    },
+    "unknownBarcode": {
+      "title": "باركود غير معروف",
+      "subtitle": "{{barcode}} غير مرتبط بأي منتج بعد",
+      "linkTab": "ربط بمنتج موجود",
+      "createTab": "إنشاء منتج جديد",
+      "searchPlaceholder": "ابحث باسم المنتج",
+      "noMatches": "لا توجد منتجات مطابقة",
+      "linked": "تم ربط الباركود بـ {{name}}",
+      "linkFailed": "تعذر ربط هذا الباركود",
+      "name": "اسم المنتج",
+      "price": "السعر",
+      "openingStock": "المخزون الافتتاحي",
+      "category": "الفئة",
+      "selectCategory": "اختر فئة",
+      "barcodeLabel": "الباركود",
+      "createAndAdd": "إنشاء وإضافة إلى البيع",
+      "created": "تم إنشاء {{name}}",
+      "createFailed": "تعذر إنشاء هذا المنتج",
+      "missingFields": "الاسم والسعر والفئة مطلوبة"
+    },
+    "history": {
+      "title": "سجل المبيعات",
+      "subtitle": "أحدث الإيصالات",
+      "empty": "لا توجد مبيعات بعد",
+      "failed": "تعذر تحميل السجل",
+      "items": "{{count}} عناصر",
+      "reprint": "إعادة الطباعة",
+      "refund": "استرداد"
+    },
+    "held": {
+      "title": "المبيعات المعلقة",
+      "subtitle": "سلال محفوظة، متاحة على أي صندوق",
+      "failed": "تعذر تحميل المبيعات المعلقة",
+      "deleteFailed": "تعذر حذف هذه المبيعة",
+      "delete": "حذف"
+    },
+    "enterCode": {
+      "title": "أدخل باركود أو رمزاً",
+      "placeholder": "فشل المسح؟ اكتب الرمز"
+    },
+    "categories": "الفئات",
+    "taxLabel": "الضريبة",
+    "taxRateHint": "نسبة الضريبة % — يحددها المتجر",
+    "searchResults": "نتائج البحث",
+    "payment": {
+      "title": "استلام الدفع",
+      "subtitle": "سجّل ما دفعه العميل فعلاً",
+      "paid": "المدفوع",
+      "remaining": "المتبقي",
+      "add": "إضافة",
+      "complete": "إتمام البيع",
+      "removeTender": "إزالة هذه الدفعة",
+      "hint": "قسّم الفاتورة بإضافة أكثر من دفعة — جزء نقداً والباقي بالبطاقة.",
+      "giveChange": "أعطِ {{amount}} باقي",
+      "roundOff": "تقريب"
+    },
+    "currencyHint": "عملة العرض لهذا الصندوق"
   },
   "sales": {
     "reportTitle": "تقرير المبيعات",
@@ -441,7 +591,15 @@
     "updated": "تم تحديث البيع بنجاح",
     "updateFail": "فشل في تحديث البيع",
     "added": "تمت إضافة المبيعات بنجاح",
-    "addFail": "فشلت إضافة المبيعات"
+    "addFail": "فشلت إضافة المبيعات",
+    "overrideTitle": "Admin sales total override",
+    "overrideSub": "Current selected report total is ${{total}}. Saving here rewrites matching sale records directly.",
+    "overrideTarget": "New report total",
+    "overrideApply": "Rewrite records",
+    "overrideSaving": "Updating...",
+    "overrideInvalid": "Enter a valid total",
+    "overrideSuccess": "{{count}} sale records updated. New total: ${{total}}",
+    "overrideFail": "Could not update sales total"
   },
   "orders": {
     "searchPlaceholder": "أدخل طلبك",
@@ -531,7 +689,16 @@
     "staffUser": "مستخدم موظف",
     "noUsers": "لا يوجد مستخدمون.",
     "removed": "تمت إزالة المستخدم بنجاح",
-    "removeFail": "خطأ في إزالة المستخدم"
+    "removeFail": "خطأ في إزالة المستخدم",
+    "createTitle": "إضافة مستخدم",
+    "createSub": "المسؤول وحده يمكنه إنشاء حسابات المدير والموظفين",
+    "name": "الاسم",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "passwordHint": "٦ أحرف على الأقل",
+    "role": "الدور",
+    "create": "إنشاء مستخدم",
+    "creating": "جارٍ الإنشاء…"
   },
   "activity": {
     "title": "سجلات النشاط",
@@ -557,5 +724,113 @@
     "updated": "تم تحديث الملف الشخصي بنجاح",
     "uploadFail": "فشل في رفع الصورة. يرجى المحاولة مرة أخرى.",
     "readError": "خطأ في قراءة الملف"
+  },
+  "vouchers": {
+    "title": "القسائم",
+    "sub": "رموز خصم يمكن للكاشير تطبيقها عند الصندوق",
+    "code": "الرمز",
+    "type": "النوع",
+    "typeAmount": "مبلغ",
+    "typePercent": "نسبة (%)",
+    "amountValue": "قيمة الخصم",
+    "percentValue": "نسبة الخصم",
+    "minSpend": "الحد الأدنى للشراء",
+    "usageLimit": "حد الاستخدام",
+    "expires": "تنتهي في",
+    "create": "إنشاء قسيمة",
+    "creating": "جارٍ الإنشاء…",
+    "value": "القيمة",
+    "used": "مستخدمة",
+    "status": "الحالة",
+    "actions": "إجراءات",
+    "loading": "جارٍ تحميل القسائم…",
+    "empty": "لا توجد قسائم بعد",
+    "never": "أبداً",
+    "disable": "تعطيل",
+    "delete": "حذف",
+    "statuses": {
+      "active": "نشطة",
+      "used": "مستخدمة",
+      "expired": "منتهية",
+      "disabled": "معطلة"
+    }
+  },
+  "support": {
+    "title": "الدعم",
+    "sub": "راجع الأسئلة الشائعة أولاً — إن لم تجد إجابة فأرسل تذكرة وسنطّلع عليها.",
+    "faqTitle": "الأسئلة الشائعة",
+    "raiseTitle": "إرسال تذكرة",
+    "subject": "الموضوع",
+    "subjectPlaceholder": "ملخص قصير للمشكلة",
+    "category": "الفئة",
+    "priority": "الأولوية",
+    "message": "ماذا حدث؟",
+    "messagePlaceholder": "اذكر ما كنت تفعله، وما توقعته، وما حدث فعلاً.",
+    "send": "إرسال التذكرة",
+    "sending": "جارٍ الإرسال…",
+    "myTickets": "تذاكري",
+    "noTickets": "لا توجد تذاكر بعد.",
+    "loading": "جارٍ التحميل…",
+    "reply": "رد",
+    "replyPlaceholder": "اكتب رداً…",
+    "vendor": "الدعم",
+    "categories": {
+      "bug": "هناك خلل",
+      "feature": "طلب ميزة",
+      "billing": "الفوترة",
+      "question": "سؤال",
+      "other": "أخرى"
+    },
+    "priorities": {
+      "low": "منخفضة",
+      "normal": "عادية",
+      "high": "عالية",
+      "urgent": "عاجلة"
+    },
+    "statuses": {
+      "open": "مفتوحة",
+      "in-progress": "قيد المعالجة",
+      "resolved": "تم الحل",
+      "closed": "مغلقة"
+    },
+    "markAs": {
+      "open": "إعادة فتح",
+      "in-progress": "قيد المعالجة",
+      "resolved": "حل",
+      "closed": "إغلاق"
+    },
+    "faq": {
+      "barcode": {
+        "q": "A barcode does not scan — what do I do?",
+        "a": "Scan it anyway. The till will tell you the barcode is unknown and offer to link it to an existing product or create a new one. Once linked, that barcode works forever."
+      },
+      "refund": {
+        "q": "How do I refund only part of a receipt?",
+        "a": "POS → Refund Transaction → enter the receipt number → set the quantity to return on each line. Stock goes back automatically and the receipt is marked partially refunded."
+      },
+      "voucher": {
+        "q": "How do I create a discount code?",
+        "a": "Vouchers page (admin/manager). Choose a fixed € amount or a percentage, set a minimum spend, expiry and usage limit. The cashier applies it from the POS Vouchers button."
+      },
+      "users": {
+        "q": "How do I add a cashier?",
+        "a": "Users page → Add a user → choose the Staff role. Staff can only see the dashboard and the till."
+      },
+      "reports": {
+        "q": "Why does my report show a negative row?",
+        "a": "That is a refund. Refunds are recorded as negative sales so revenue, cost and profit all net out correctly."
+      },
+      "offline": {
+        "q": "The site is slow to load first thing in the morning.",
+        "a": "The server sleeps when idle on the free hosting tier and takes a few seconds to wake. Raise a ticket if you want us to move it to an always-on plan."
+      }
+    }
+  },
+  "superadmin": {
+    "title": "تذاكر الدعم",
+    "sub": "كل تذكرة أرسلها مسؤول متجر",
+    "refresh": "تحديث",
+    "all": "الكل",
+    "noTickets": "لا توجد تذاكر."
   }
 }

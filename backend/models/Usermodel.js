@@ -21,7 +21,9 @@ const UserSchema= new mongoose.Schema({
     }, 
     role:{
         type:String,
-        enum:['admin','manager','staff'],
+        // "superadmin" is the vendor (us), not the shop. It is never created
+        // through the app — only by scripts/createSuperAdmin.js.
+        enum:['superadmin','admin','manager','staff'],
         default:'staff',
     
     },

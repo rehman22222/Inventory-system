@@ -210,7 +210,10 @@
     "logout": "لاگ آؤٹ",
     "user": "صارف",
     "loggedOut": "کامیابی سے لاگ آؤٹ ہو گیا",
-    "logoutError": "لاگ آؤٹ میں خرابی"
+    "logoutError": "لاگ آؤٹ میں خرابی",
+    "vouchers": "واؤچرز",
+    "support": "سپورٹ",
+    "tickets": "ٹکٹس"
   },
   "topnav": {
     "welcome": "خوش آمدید، {{name}}",
@@ -408,7 +411,154 @@
     "itemsCount": "{{count}} آئٹمز",
     "discountLabel": "رعایت",
     "exit": "باہر نکلیں",
-    "openTerminal": "پی او ایس ٹرمینل کھولیں"
+    "openTerminal": "پی او ایس ٹرمینل کھولیں",
+    "closeOrder": "آرڈر مکمل کریں",
+    "noProducts": "اس زمرے میں کوئی پروڈکٹ نہیں",
+    "rail": {
+      "refund": "رقم واپسی",
+      "void": "سیل منسوخ",
+      "suspend": "روکیں",
+      "resume": "دوبارہ شروع",
+      "productSearch": "پروڈکٹ تلاش",
+      "discount": "رعایت",
+      "vouchers": "واؤچرز",
+      "saleHistory": "سیل ہسٹری",
+      "enterCode": "کوڈ درج کریں",
+      "send": "محفوظ کریں"
+    },
+    "table": {
+      "product": "پروڈکٹ",
+      "rate": "قیمت",
+      "qty": "تعداد",
+      "total": "کل",
+      "increase": "تعداد بڑھائیں",
+      "decrease": "تعداد کم کریں",
+      "remove": "لائن ہٹائیں"
+    },
+    "keypad": {
+      "clear": "صاف",
+      "hint": "نمبر لکھیں، X دبائیں، پھر پروڈکٹ منتخب کریں",
+      "qtyPending": "x{{count}}"
+    },
+    "status": {
+      "user": "صارف",
+      "till": "ٹل",
+      "counter": "کاؤنٹر",
+      "stdPrices": "عام قیمتیں",
+      "online": "آن لائن",
+      "offline": "آف لائن"
+    },
+    "refund": {
+      "title": "ٹرانزیکشن واپسی",
+      "subtitle": "رسید تلاش کریں، پھر واپس ہونے والی اشیاء منتخب کریں",
+      "receiptPlaceholder": "رسید نمبر، مثلاً POS-000123",
+      "find": "تلاش",
+      "notFound": "رسید نہیں ملی",
+      "refundable": "{{sold}} میں سے {{count}} واپس ہو سکتے ہیں",
+      "refunding": "واپسی",
+      "confirm": "واپسی کی تصدیق",
+      "cancel": "منسوخ",
+      "done": "{{amount}} واپس کر دیے گئے",
+      "failed": "واپسی ناکام",
+      "selectSomething": "کم از کم ایک آئٹم منتخب کریں",
+      "reasonPlaceholder": "وجہ (اختیاری)",
+      "status": "حالت"
+    },
+    "void": {
+      "confirm": "رسید {{receiptNo}} منسوخ کریں؟ اسٹاک واپس ہو جائے گا۔",
+      "done": "رسید {{receiptNo}} منسوخ ہو گئی",
+      "failed": "یہ رسید منسوخ نہیں ہو سکی",
+      "notAllowed": "مکمل شدہ سیل صرف ایڈمن یا مینیجر منسوخ کر سکتا ہے"
+    },
+    "voucher": {
+      "title": "واؤچرز",
+      "subtitle": "گاہک کا کوڈ لگائیں، یا نیا واؤچر بنائیں",
+      "applyTab": "کوڈ لگائیں",
+      "generateTab": "نیا بنائیں",
+      "code": "واؤچر کوڈ",
+      "codePlaceholder": "SAVE10",
+      "apply": "واؤچر لگائیں",
+      "applied": "واؤچر لگ گیا — {{amount}} رعایت",
+      "invalid": "یہ واؤچر استعمال نہیں ہو سکتا",
+      "remove": "ہٹائیں",
+      "worth": "اس سیل پر {{amount}} کی رعایت",
+      "againstSubtotal": "{{amount}} کے سب ٹوٹل پر",
+      "type": "قسم",
+      "typeAmount": "رقم",
+      "typePercent": "فیصد (%)",
+      "amountValue": "رقم کی رعایت",
+      "percentValue": "فیصد رعایت",
+      "minSpend": "کم از کم خریداری",
+      "usageLimit": "استعمال کی حد",
+      "expires": "میعاد",
+      "generate": "واؤچر بنائیں",
+      "generated": "واؤچر {{code}} بن گیا",
+      "generateFailed": "واؤچر نہیں بن سکا",
+      "missingFields": "کوڈ اور قیمت درج کریں"
+    },
+    "discountModal": {
+      "title": "رعایت",
+      "apply": "لاگو کریں",
+      "clear": "رعایت ہٹائیں",
+      "preview": "رعایت"
+    },
+    "unknownBarcode": {
+      "title": "نامعلوم بارکوڈ",
+      "subtitle": "{{barcode}} ابھی کسی پروڈکٹ سے منسلک نہیں",
+      "linkTab": "موجودہ پروڈکٹ سے جوڑیں",
+      "createTab": "نیا پروڈکٹ بنائیں",
+      "searchPlaceholder": "پروڈکٹ کا نام تلاش کریں",
+      "noMatches": "کوئی پروڈکٹ نہیں ملا",
+      "linked": "بارکوڈ {{name}} سے جڑ گیا",
+      "linkFailed": "بارکوڈ منسلک نہیں ہو سکا",
+      "name": "پروڈکٹ کا نام",
+      "price": "قیمت",
+      "openingStock": "ابتدائی اسٹاک",
+      "category": "زمرہ",
+      "selectCategory": "زمرہ منتخب کریں",
+      "barcodeLabel": "بارکوڈ",
+      "createAndAdd": "بنائیں اور سیل میں شامل کریں",
+      "created": "{{name}} بن گیا",
+      "createFailed": "یہ پروڈکٹ نہیں بن سکا",
+      "missingFields": "نام، قیمت اور زمرہ ضروری ہیں"
+    },
+    "history": {
+      "title": "سیل ہسٹری",
+      "subtitle": "حالیہ رسیدیں",
+      "empty": "ابھی کوئی سیل نہیں",
+      "failed": "ہسٹری لوڈ نہیں ہو سکی",
+      "items": "{{count}} اشیاء",
+      "reprint": "دوبارہ پرنٹ",
+      "refund": "واپسی"
+    },
+    "held": {
+      "title": "رکی ہوئی سیلز",
+      "subtitle": "محفوظ شدہ باسکٹ، ہر ٹل پر دستیاب",
+      "failed": "رکی ہوئی سیلز لوڈ نہیں ہو سکیں",
+      "deleteFailed": "یہ سیل حذف نہیں ہو سکی",
+      "delete": "حذف کریں"
+    },
+    "enterCode": {
+      "title": "بارکوڈ یا کوڈ درج کریں",
+      "placeholder": "اسکین ناکام؟ کوڈ ٹائپ کریں"
+    },
+    "categories": "زمرے",
+    "taxLabel": "ٹیکس",
+    "taxRateHint": "ٹیکس کی شرح % — دکان خود مقرر کرے",
+    "searchResults": "تلاش کے نتائج",
+    "payment": {
+      "title": "ادائیگی وصول کریں",
+      "subtitle": "گاہک نے جو دیا وہ درج کریں",
+      "paid": "ادا شدہ",
+      "remaining": "باقی",
+      "add": "شامل کریں",
+      "complete": "سیل مکمل کریں",
+      "removeTender": "یہ ادائیگی ہٹائیں",
+      "hint": "ایک سے زیادہ ادائیگیاں شامل کر کے بل تقسیم کریں — کچھ کیش، باقی کارڈ پر۔",
+      "giveChange": "{{amount}} واپس دیں",
+      "roundOff": "راؤنڈ آف"
+    },
+    "currencyHint": "اس ٹل کی کرنسی"
   },
   "sales": {
     "reportTitle": "فروخت رپورٹ",
@@ -441,7 +591,15 @@
     "updated": "فروخت کامیابی سے اپ ڈیٹ ہو گئی",
     "updateFail": "فروخت اپ ڈیٹ کرنے میں ناکام",
     "added": "فروخت کامیابی سے شامل ہو گئی",
-    "addFail": "فروخت شامل کرنا ناکام"
+    "addFail": "فروخت شامل کرنا ناکام",
+    "overrideTitle": "????? ???? ???? ???? ????",
+    "overrideSub": "????? ????? ?? ?????? ???? ${{total}} ??? ????? ???? ?? ?????? ??? ??????? ???? ???? ??? ????? ???",
+    "overrideTarget": "??? ????? ????",
+    "overrideApply": "??????? ?????? ?????",
+    "overrideSaving": "?? ??? ?? ??? ??...",
+    "overrideInvalid": "???? ???? ??? ????",
+    "overrideSuccess": "{{count}} ??? ??????? ?? ??? ?? ???? ??? ????: ${{total}}",
+    "overrideFail": "???? ???? ?? ??? ???? ?? ???"
   },
   "orders": {
     "searchPlaceholder": "اپنا آرڈر درج کریں",
@@ -531,7 +689,16 @@
     "staffUser": "اسٹاف صارف",
     "noUsers": "کوئی صارف دستیاب نہیں۔",
     "removed": "صارف کامیابی سے ہٹا دیا گیا",
-    "removeFail": "صارف ہٹانے میں خرابی"
+    "removeFail": "صارف ہٹانے میں خرابی",
+    "createTitle": "صارف شامل کریں",
+    "createSub": "صرف ایڈمن مینیجر اور اسٹاف اکاؤنٹ بنا سکتا ہے",
+    "name": "نام",
+    "email": "ای میل",
+    "password": "پاس ورڈ",
+    "passwordHint": "کم از کم 6 حروف",
+    "role": "کردار",
+    "create": "صارف بنائیں",
+    "creating": "بن رہا ہے…"
   },
   "activity": {
     "title": "سرگرمی لاگز",
@@ -557,5 +724,113 @@
     "updated": "پروفائل کامیابی سے اپ ڈیٹ ہو گئی",
     "uploadFail": "تصویر اپ لوڈ کرنے میں ناکام۔ براہ کرم دوبارہ کوشش کریں۔",
     "readError": "فائل پڑھنے میں خرابی"
+  },
+  "vouchers": {
+    "title": "واؤچرز",
+    "sub": "رعایتی کوڈ جو کیشئر ٹل پر لگا سکتے ہیں",
+    "code": "کوڈ",
+    "type": "قسم",
+    "typeAmount": "رقم",
+    "typePercent": "فیصد (%)",
+    "amountValue": "رقم کی رعایت",
+    "percentValue": "فیصد رعایت",
+    "minSpend": "کم از کم خریداری",
+    "usageLimit": "استعمال کی حد",
+    "expires": "میعاد",
+    "create": "واؤچر بنائیں",
+    "creating": "بن رہا ہے…",
+    "value": "قیمت",
+    "used": "استعمال شدہ",
+    "status": "حالت",
+    "actions": "اعمال",
+    "loading": "واؤچرز لوڈ ہو رہے ہیں…",
+    "empty": "ابھی کوئی واؤچر نہیں",
+    "never": "کبھی نہیں",
+    "disable": "غیر فعال",
+    "delete": "حذف",
+    "statuses": {
+      "active": "فعال",
+      "used": "استعمال شدہ",
+      "expired": "میعاد ختم",
+      "disabled": "غیر فعال"
+    }
+  },
+  "support": {
+    "title": "سپورٹ",
+    "sub": "پہلے FAQ دیکھیں — جواب نہ ملے تو ٹکٹ بھیجیں، ہم دیکھ لیں گے۔",
+    "faqTitle": "عام سوالات",
+    "raiseTitle": "ٹکٹ بھیجیں",
+    "subject": "موضوع",
+    "subjectPlaceholder": "مسئلے کا مختصر خلاصہ",
+    "category": "قسم",
+    "priority": "ترجیح",
+    "message": "کیا ہوا؟",
+    "messagePlaceholder": "بتائیں آپ کیا کر رہے تھے، کیا توقع تھی، اور اصل میں کیا ہوا۔",
+    "send": "ٹکٹ بھیجیں",
+    "sending": "بھیجا جا رہا ہے…",
+    "myTickets": "میرے ٹکٹس",
+    "noTickets": "ابھی کوئی ٹکٹ نہیں۔",
+    "loading": "لوڈ ہو رہا ہے…",
+    "reply": "جواب",
+    "replyPlaceholder": "جواب لکھیں…",
+    "vendor": "سپورٹ",
+    "categories": {
+      "bug": "کچھ خراب ہے",
+      "feature": "نئی سہولت",
+      "billing": "بلنگ",
+      "question": "سوال",
+      "other": "دیگر"
+    },
+    "priorities": {
+      "low": "کم",
+      "normal": "عام",
+      "high": "زیادہ",
+      "urgent": "فوری"
+    },
+    "statuses": {
+      "open": "کھلا",
+      "in-progress": "زیرِ عمل",
+      "resolved": "حل شدہ",
+      "closed": "بند"
+    },
+    "markAs": {
+      "open": "دوبارہ کھولیں",
+      "in-progress": "زیرِ عمل",
+      "resolved": "حل کریں",
+      "closed": "بند کریں"
+    },
+    "faq": {
+      "barcode": {
+        "q": "A barcode does not scan — what do I do?",
+        "a": "Scan it anyway. The till will tell you the barcode is unknown and offer to link it to an existing product or create a new one. Once linked, that barcode works forever."
+      },
+      "refund": {
+        "q": "How do I refund only part of a receipt?",
+        "a": "POS → Refund Transaction → enter the receipt number → set the quantity to return on each line. Stock goes back automatically and the receipt is marked partially refunded."
+      },
+      "voucher": {
+        "q": "How do I create a discount code?",
+        "a": "Vouchers page (admin/manager). Choose a fixed € amount or a percentage, set a minimum spend, expiry and usage limit. The cashier applies it from the POS Vouchers button."
+      },
+      "users": {
+        "q": "How do I add a cashier?",
+        "a": "Users page → Add a user → choose the Staff role. Staff can only see the dashboard and the till."
+      },
+      "reports": {
+        "q": "Why does my report show a negative row?",
+        "a": "That is a refund. Refunds are recorded as negative sales so revenue, cost and profit all net out correctly."
+      },
+      "offline": {
+        "q": "The site is slow to load first thing in the morning.",
+        "a": "The server sleeps when idle on the free hosting tier and takes a few seconds to wake. Raise a ticket if you want us to move it to an always-on plan."
+      }
+    }
+  },
+  "superadmin": {
+    "title": "سپورٹ ٹکٹس",
+    "sub": "ہر ایڈمن کے بھیجے گئے ٹکٹس",
+    "refresh": "ریفریش",
+    "all": "سب",
+    "noTickets": "کوئی ٹکٹ نہیں۔"
   }
 }

@@ -2,6 +2,61 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Receipt printing: window.print() would otherwise print the whole terminal.
+   Hide everything except #receipt and size it for an 80mm thermal roll. */
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 4mm;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #receipt,
+  #receipt * {
+    visibility: visible;
+  }
+
+  #receipt {
+    display: block !important;
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0;
+    width: 72mm;
+    color: #000;
+    background: #fff;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  #receipt h1 {
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  #receipt table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  #receipt td:last-child {
+    text-align: right;
+  }
+
+  #receipt hr {
+    border-top: 1px dashed #000;
+    margin: 4px 0;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
+
 @layer base {
   html {
     transition: background-color 0.2s ease, color 0.2s ease;

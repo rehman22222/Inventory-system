@@ -7,7 +7,9 @@
     "start": "node server",
     "dev": "nodemon server",
     "seed": "node scripts/seedDemoUsers.js",
-    "seed:mongo": "node scripts/seedMongoDemoData.js"
+    "seed:mongo": "node scripts/seedMongoDemoData.js",
+    "seed:pos": "node scripts/seedPosDemo.js",
+    "create-superadmin": "node scripts/createSuperAdmin.js"
   },
   "author": "",
   "license": "ISC",

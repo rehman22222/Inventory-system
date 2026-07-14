@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import {gettingallproducts} from '../features/productSlice'
 import FormattedTime from "../lib/FormattedTime ";
 import {
-  CreateSales,gettingallSales,EditSales, searchsalesdata
+  CreateSales,gettingallSales,EditSales, searchsalesdata, OverrideSalesReportTotal
 } from "../features/salesSlice";
 import SalesChart from '../lib/Salesgraph';
 import ReportButton from "../Components/ReportButton";
@@ -18,9 +18,11 @@ import toast from "react-hot-toast";
 function Salespage() {
   const { t } = useTranslation();
   const {   getallsales, searchdata,
+     isoverridingReportTotal,
      } = useSelector(
     (state) => state.sales
   );
+  const { Authuser } = useSelector((state) => state.auth);
 
   const { getallproduct } = useSelector(
     (state) => state.product
@@ -39,6 +41,7 @@ function Salespage() {
   const [selectedSales, setselectedSales] = useState(null);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [overrideTargetTotal, setOverrideTargetTotal] = useState("");
 
 
 
@@ -150,6 +153,63 @@ function Salespage() {
     setStatus(sales.status);
     setIsFormVisible(true); 
   };
+
+  const getReportRange = () => {
+    const base = fromDate || toDate || new Date().toISOString().slice(0, 10);
+    return {
+      from: fromDate || base,
+      to: toDate || base,
+    };
+  };
+
+  const isInReportRange = (sale) => {
+    const { from, to } = getReportRange();
+    const createdAt = new Date(sale?.createdAt);
+    const start = new Date(`${from}T00:00:00.000`);
+    const end = new Date(`${to}T23:59:59.999`);
+    return createdAt >= start && createdAt <= end;
+  };
+
+  const reportCurrentTotal = Array.isArray(getallsales)
+    ? getallsales
+        .filter(isInReportRange)
+        .reduce((sum, sale) => sum + Number(sale?.totalAmount || 0), 0)
+    : 0;
+
+  const submitReportOverride = async (event) => {
+    event.preventDefault();
+    const target = Number(overrideTargetTotal);
+
+    if (!Number.isFinite(target) || target < 0) {
+      toast.error(t("sales.overrideInvalid"));
+      return;
+    }
+
+    const range = getReportRange();
+
+    try {
+      const result = await dispatch(
+        OverrideSalesReportTotal({
+          from: range.from,
+          to: range.to,
+          targetTotal: target,
+        })
+      ).unwrap();
+      toast.success(
+        t("sales.overrideSuccess", {
+          count: result.updatedCount,
+          total: Number(result.updatedTotal).toFixed(2),
+        })
+      );
+      setOverrideTargetTotal("");
+      dispatch(gettingallSales());
+      if (query.trim() !== "") {
+        dispatch(searchsalesdata(query));
+      }
+    } catch (error) {
+      toast.error(error || t("sales.overrideFail"));
+    }
+  };
  
 
 
@@ -183,7 +243,7 @@ function Salespage() {
                 {t("sales.reportSub")}
               </p>
             </div>
-            <div className="flex flex-wrap items-end gap-3">
+             <div className="flex flex-wrap items-end gap-3">
               <div>
                 <label className="mb-1 block text-xs font-medium text-base-content/60">{t("sales.from")}</label>
                 <input
@@ -209,6 +269,46 @@ function Salespage() {
               />
             </div>
           </div>
+          {Authuser?.role === "admin" && (
+            <form
+              onSubmit={submitReportOverride}
+              className="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-900/10"
+            >
+              <div className="mb-3">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                  {t("sales.overrideTitle")}
+                </p>
+                <p className="mt-1 text-xs text-amber-700/80 dark:text-amber-200/70">
+                  {t("sales.overrideSub", {
+                    total: reportCurrentTotal.toFixed(2),
+                  })}
+                </p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-[180px_auto] md:items-end">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-base-content/60">
+                    {t("sales.overrideTarget")}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={overrideTargetTotal}
+                    onChange={(event) => setOverrideTargetTotal(event.target.value)}
+                    className="h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3 text-sm text-base-content"
+                    placeholder="50000"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={isoverridingReportTotal}
+                  className="h-10 rounded-lg bg-amber-600 px-4 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-50"
+                >
+                  {isoverridingReportTotal ? t("sales.overrideSaving") : t("sales.overrideApply")}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
 
         <div className="flex items-center space-x-4">

@@ -59,6 +59,48 @@ module.exports.authmiddleware = async (req, res, next) => {
 
 
 
+// The vendor account. Never created through the app.
+module.exports.superadminmiddleware = (req, res, next) => {
+  if (req.user?.role !== "superadmin") {
+    return res.status(403).json({ message: "Access denied. Super admin only." });
+  }
+
+  next();
+};
+
+
+
+// Shop admins raise support tickets; the vendor answers them.
+module.exports.adminOrSuperadmin = (req, res, next) => {
+  const role = req.user?.role;
+
+  if (role !== "admin" && role !== "superadmin") {
+    return res.status(403).json({ message: "Access denied. Admin only." });
+  }
+
+  next();
+};
+
+
+
+// managermiddleware is a strict role equality check, so an admin fails it.
+// Guards that should accept either elevated role use this instead.
+module.exports.adminOrManager = (req, res, next) => {
+  const role = req.user?.role;
+
+  if (!role) {
+    return res.status(403).json({ message: "Access denied." });
+  }
+
+  if (role !== "admin" && role !== "manager") {
+    return res.status(403).json({ message: "Access denied. Admin or manager role required." });
+  }
+
+  next();
+};
+
+
+
 module.exports.managermiddleware=async(req,res,next)=>{
     const user=req.user
     try {

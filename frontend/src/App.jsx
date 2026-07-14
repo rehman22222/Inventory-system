@@ -17,6 +17,10 @@ import Supplierpage from "./pages/Supplierpage";
 import Activitylogpage from "./pages/Activitylogpage";
 import Dashboardpage from "./pages/Dashboardpage";
 import Userstatus from "./pages/Userstatus";
+import Voucherpage from "./pages/Voucherpage";
+import Supportpage from "./pages/Supportpage";
+import SuperAdminDashboard from "./pages/SuperAdminDashboard";
+import SuperAdminTickets from "./pages/SuperAdminTickets";
 import NotificationPageRead from "./pages/Notificationpageread";
 import ProtectedRoute from "./lib/ProtectedRoute";
 import { Toaster } from "react-hot-toast";
@@ -45,6 +49,8 @@ function App() {
           <Route path="sales" element={protect(<Salespage />, ["admin"])} />
           <Route path="order" element={protect(<Orderpage />, ["admin"])} />
           <Route path="stock-transaction" element={protect(<StockTransaction />, ["admin"])} />
+          <Route path="vouchers" element={protect(<Voucherpage />, ["admin"])} />
+          <Route path="support" element={protect(<Supportpage />, ["admin"])} />
           <Route path="notifications" element={protect(<Notificationpage />, ["admin"])} />
           <Route path="Userstatus" element={protect(<Userstatus />, ["admin"])} />
           <Route path="activity-log" element={protect(<Activitylogpage />, ["admin"])} />
@@ -59,16 +65,21 @@ function App() {
           <Route path="sales" element={protect(<Salespage />, ["manager"])} />
           <Route path="order" element={protect(<Orderpage />, ["manager"])} />
           <Route path="stock-transaction" element={protect(<StockTransaction />, ["manager"])} />
+          <Route path="vouchers" element={protect(<Voucherpage />, ["manager"])} />
           <Route path="NotificationPageRead" element={protect(<NotificationPageRead />, ["manager"])} />
           <Route path="Profilepage" element={protect(<Profilepage />, ["manager"])} />
         </Route>
 
+        {/* The vendor's own console — the shop never sees this. */}
+        <Route path="/SuperAdmin" element={protect(<SuperAdminDashboard />, ["superadmin"])}>
+          <Route index element={protect(<SuperAdminTickets />, ["superadmin"])} />
+          <Route path="tickets" element={protect(<SuperAdminTickets />, ["superadmin"])} />
+          <Route path="Profilepage" element={protect(<Profilepage />, ["superadmin"])} />
+        </Route>
+
+        {/* Staff only get the dashboard, the till, and their own profile. */}
         <Route path="/StaffDashboard" element={protect(<StaffDashboard />, ["staff"])}>
           <Route index element={protect(<Dashboardpage />, ["staff"])} />
-          <Route path="sales" element={protect(<Salespage />, ["staff"])} />
-          <Route path="order" element={protect(<Orderpage />, ["staff"])} />
-          <Route path="stock-transaction" element={protect(<StockTransaction />, ["staff"])} />
-          <Route path="NotificationPageRead" element={protect(<NotificationPageRead />, ["staff"])} />
           <Route path="Profilepage" element={protect(<Profilepage />, ["staff"])} />
         </Route>
       </Routes>

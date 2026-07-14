@@ -210,7 +210,10 @@
     "logout": "Logout",
     "user": "User",
     "loggedOut": "Logged out successfully",
-    "logoutError": "Error logging out"
+    "logoutError": "Error logging out",
+    "vouchers": "Vouchers",
+    "support": "Support",
+    "tickets": "Tickets"
   },
   "topnav": {
     "welcome": "Welcome, {{name}}",
@@ -408,7 +411,154 @@
     "itemsCount": "{{count}} items",
     "discountLabel": "Discount",
     "exit": "Exit",
-    "openTerminal": "Open POS Terminal"
+    "openTerminal": "Open POS Terminal",
+    "closeOrder": "Close Order",
+    "noProducts": "No products in this category",
+    "rail": {
+      "refund": "Refund Transaction",
+      "void": "Void Sale",
+      "suspend": "Suspend",
+      "resume": "Resume",
+      "productSearch": "Product Search",
+      "discount": "Discount",
+      "vouchers": "Vouchers",
+      "saleHistory": "Sale History",
+      "enterCode": "Enter Code",
+      "send": "Send"
+    },
+    "table": {
+      "product": "Product",
+      "rate": "Rate",
+      "qty": "Qty",
+      "total": "Total",
+      "increase": "Increase quantity",
+      "decrease": "Decrease quantity",
+      "remove": "Remove line"
+    },
+    "keypad": {
+      "clear": "CE",
+      "hint": "Type a number, press X, then tap a product",
+      "qtyPending": "x{{count}}"
+    },
+    "status": {
+      "user": "User",
+      "till": "Till",
+      "counter": "Counter",
+      "stdPrices": "Std. Prices",
+      "online": "Online",
+      "offline": "Offline"
+    },
+    "refund": {
+      "title": "Refund transaction",
+      "subtitle": "Find a receipt, then choose what goes back",
+      "receiptPlaceholder": "Receipt number, e.g. POS-000123",
+      "find": "Find",
+      "notFound": "Receipt not found",
+      "refundable": "{{count}} of {{sold}} refundable",
+      "refunding": "Refunding",
+      "confirm": "Confirm refund",
+      "cancel": "Cancel",
+      "done": "Refunded {{amount}}",
+      "failed": "Refund failed",
+      "selectSomething": "Choose at least one item to refund",
+      "reasonPlaceholder": "Reason (optional)",
+      "status": "Status"
+    },
+    "void": {
+      "confirm": "Void receipt {{receiptNo}}? Stock will be returned.",
+      "done": "Receipt {{receiptNo}} voided",
+      "failed": "Could not void this receipt",
+      "notAllowed": "Only an admin or manager can void a completed sale"
+    },
+    "voucher": {
+      "title": "Vouchers",
+      "subtitle": "Apply a customer's code, or cut a new one",
+      "applyTab": "Apply code",
+      "generateTab": "Generate",
+      "code": "Voucher code",
+      "codePlaceholder": "SAVE10",
+      "apply": "Apply voucher",
+      "applied": "Voucher applied — {{amount}} off",
+      "invalid": "This voucher cannot be used",
+      "remove": "Remove",
+      "worth": "Worth {{amount}} on this sale",
+      "againstSubtotal": "Against a subtotal of {{amount}}",
+      "type": "Type",
+      "typeAmount": "Amount",
+      "typePercent": "Percent (%)",
+      "amountValue": "Amount off",
+      "percentValue": "Percent off",
+      "minSpend": "Min spend",
+      "usageLimit": "Usage limit",
+      "expires": "Expires",
+      "generate": "Generate voucher",
+      "generated": "Voucher {{code}} created",
+      "generateFailed": "Could not create voucher",
+      "missingFields": "Enter a code and a value"
+    },
+    "discountModal": {
+      "title": "Discount",
+      "apply": "Apply",
+      "clear": "Clear discount",
+      "preview": "Discount"
+    },
+    "unknownBarcode": {
+      "title": "Unknown barcode",
+      "subtitle": "{{barcode}} is not linked to any product yet",
+      "linkTab": "Link to existing product",
+      "createTab": "Create new product",
+      "searchPlaceholder": "Search by product name",
+      "noMatches": "No products match that search",
+      "linked": "Barcode linked to {{name}}",
+      "linkFailed": "Could not link this barcode",
+      "name": "Product name",
+      "price": "Price",
+      "openingStock": "Opening stock",
+      "category": "Category",
+      "selectCategory": "Choose a category",
+      "barcodeLabel": "Barcode",
+      "createAndAdd": "Create and add to sale",
+      "created": "{{name}} created",
+      "createFailed": "Could not create this product",
+      "missingFields": "Name, price and category are required"
+    },
+    "history": {
+      "title": "Sale history",
+      "subtitle": "The most recent receipts from this shop",
+      "empty": "No sales yet",
+      "failed": "Could not load sale history",
+      "items": "{{count}} items",
+      "reprint": "Reprint",
+      "refund": "Refund"
+    },
+    "held": {
+      "title": "Suspended sales",
+      "subtitle": "Parked baskets, available on any till",
+      "failed": "Could not load suspended sales",
+      "deleteFailed": "Could not remove this suspended sale",
+      "delete": "Delete"
+    },
+    "enterCode": {
+      "title": "Enter a barcode or code",
+      "placeholder": "Scan failed? Type the code"
+    },
+    "categories": "Categories",
+    "taxLabel": "Tax",
+    "taxRateHint": "Tax rate % — set by the shop",
+    "searchResults": "Search results",
+    "payment": {
+      "title": "Take payment",
+      "subtitle": "Record what the customer actually hands over",
+      "paid": "Paid",
+      "remaining": "Remaining",
+      "add": "Add",
+      "complete": "Complete sale",
+      "removeTender": "Remove this payment",
+      "hint": "Split the bill by adding more than one payment — part cash, the rest on card.",
+      "giveChange": "Give {{amount}} change",
+      "roundOff": "Round off"
+    },
+    "currencyHint": "Display currency for this till"
   },
   "sales": {
     "reportTitle": "Sales Report",
@@ -441,7 +591,15 @@
     "updated": "Sale updated successfully",
     "updateFail": "Failed to update sale",
     "added": "Sales added successfully",
-    "addFail": "Sales add unsuccessful"
+    "addFail": "Sales add unsuccessful",
+    "overrideTitle": "Admin sales total override",
+    "overrideSub": "Current selected report total is ${{total}}. Saving here rewrites matching sale records directly.",
+    "overrideTarget": "New report total",
+    "overrideApply": "Rewrite records",
+    "overrideSaving": "Updating...",
+    "overrideInvalid": "Enter a valid total",
+    "overrideSuccess": "{{count}} sale records updated. New total: ${{total}}",
+    "overrideFail": "Could not update sales total"
   },
   "orders": {
     "searchPlaceholder": "Enter your order",
@@ -531,7 +689,16 @@
     "staffUser": "Staff User",
     "noUsers": "No users available.",
     "removed": "User removed successfully",
-    "removeFail": "Error removing user"
+    "removeFail": "Error removing user",
+    "createTitle": "Add a user",
+    "createSub": "Only an admin can create manager and staff accounts",
+    "name": "Name",
+    "email": "Email",
+    "password": "Password",
+    "passwordHint": "At least 6 characters",
+    "role": "Role",
+    "create": "Create user",
+    "creating": "Creating…"
   },
   "activity": {
     "title": "Activity Logs",
@@ -557,5 +724,113 @@
     "updated": "Profile updated successfully",
     "uploadFail": "Failed to upload image. Please try again.",
     "readError": "Error reading file"
+  },
+  "vouchers": {
+    "title": "Vouchers",
+    "sub": "Discount codes your cashiers can apply at the till",
+    "code": "Code",
+    "type": "Type",
+    "typeAmount": "Amount",
+    "typePercent": "Percent (%)",
+    "amountValue": "Amount off",
+    "percentValue": "Percent off",
+    "minSpend": "Min spend",
+    "usageLimit": "Usage limit",
+    "expires": "Expires",
+    "create": "Create voucher",
+    "creating": "Creating…",
+    "value": "Value",
+    "used": "Used",
+    "status": "Status",
+    "actions": "Actions",
+    "loading": "Loading vouchers…",
+    "empty": "No vouchers yet",
+    "never": "Never",
+    "disable": "Disable",
+    "delete": "Delete",
+    "statuses": {
+      "active": "Active",
+      "used": "Used",
+      "expired": "Expired",
+      "disabled": "Disabled"
+    }
+  },
+  "support": {
+    "title": "Support",
+    "sub": "Check the FAQ first — if it does not answer you, raise a ticket and we will see it.",
+    "faqTitle": "Frequently asked",
+    "faq": {
+      "barcode": {
+        "q": "A barcode does not scan — what do I do?",
+        "a": "Scan it anyway. The till will tell you the barcode is unknown and offer to link it to an existing product or create a new one. Once linked, that barcode works forever."
+      },
+      "refund": {
+        "q": "How do I refund only part of a receipt?",
+        "a": "POS → Refund Transaction → enter the receipt number → set the quantity to return on each line. Stock goes back automatically and the receipt is marked partially refunded."
+      },
+      "voucher": {
+        "q": "How do I create a discount code?",
+        "a": "Vouchers page (admin/manager). Choose a fixed € amount or a percentage, set a minimum spend, expiry and usage limit. The cashier applies it from the POS Vouchers button."
+      },
+      "users": {
+        "q": "How do I add a cashier?",
+        "a": "Users page → Add a user → choose the Staff role. Staff can only see the dashboard and the till."
+      },
+      "reports": {
+        "q": "Why does my report show a negative row?",
+        "a": "That is a refund. Refunds are recorded as negative sales so revenue, cost and profit all net out correctly."
+      },
+      "offline": {
+        "q": "The site is slow to load first thing in the morning.",
+        "a": "The server sleeps when idle on the free hosting tier and takes a few seconds to wake. Raise a ticket if you want us to move it to an always-on plan."
+      }
+    },
+    "raiseTitle": "Raise a ticket",
+    "subject": "Subject",
+    "subjectPlaceholder": "Short summary of the problem",
+    "category": "Category",
+    "priority": "Priority",
+    "message": "What happened?",
+    "messagePlaceholder": "Tell us what you were doing, what you expected, and what actually happened.",
+    "send": "Send ticket",
+    "sending": "Sending…",
+    "myTickets": "My tickets",
+    "noTickets": "You have not raised any tickets yet.",
+    "loading": "Loading…",
+    "reply": "Reply",
+    "replyPlaceholder": "Write a reply…",
+    "vendor": "Support",
+    "categories": {
+      "bug": "Something is broken",
+      "feature": "Feature request",
+      "billing": "Billing",
+      "question": "Question",
+      "other": "Other"
+    },
+    "priorities": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "statuses": {
+      "open": "Open",
+      "in-progress": "In progress",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    },
+    "markAs": {
+      "open": "Reopen",
+      "in-progress": "In progress",
+      "resolved": "Resolve",
+      "closed": "Close"
+    }
+  },
+  "superadmin": {
+    "title": "Support tickets",
+    "sub": "Every ticket raised by a shop admin",
+    "refresh": "Refresh",
+    "all": "All",
+    "noTickets": "No tickets here."
   }
 }
