@@ -37,6 +37,23 @@ export const gettingallCategory = createAsyncThunk(
 
 
 
+export const UpdateCategory = createAsyncThunk(
+  'category/updatecategory',
+  async ({ CategoryId, changes }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.put(
+        `category/updateCategory/${CategoryId}`,
+        changes,
+        { withCredentials: true }
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Category update failed");
+    }
+  }
+);
+
+
 export const RemoveCategory = createAsyncThunk(
   'category/removecategory',
   async (CategoryId, { rejectWithValue }) => {
@@ -108,6 +125,16 @@ const categorySlice = createSlice({
 
 
 
+
+
+      .addCase(UpdateCategory.fulfilled, (state, action) => {
+        const updated = action.payload.category;
+        if (updated) {
+          state.getallCategory = (state.getallCategory || []).map((category) =>
+            category._id === updated._id ? { ...category, ...updated } : category
+          );
+        }
+      })
 
 
       .addCase(RemoveCategory.pending,(state)=>{

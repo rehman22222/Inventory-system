@@ -51,7 +51,8 @@ function UnknownBarcodeModal({ barcode, products, categories, onResolved, onClos
   const createProduct = async (event) => {
     event.preventDefault();
 
-    if (!form.name.trim() || !form.Price || !form.Category) {
+    // Only name and price are required now — category is optional.
+    if (!form.name.trim() || !form.Price) {
       toast.error(t("pos.unknownBarcode.missingFields"));
       return;
     }
@@ -60,14 +61,14 @@ function UnknownBarcodeModal({ barcode, products, categories, onResolved, onClos
     try {
       const payload = new FormData();
       payload.append("name", form.name.trim());
-      // Desciption (sic) is required by the product schema; default it to the name.
-      payload.append("Desciption", form.name.trim());
-      payload.append("Category", form.Category);
+      if (form.Category) payload.append("Category", form.Category);
       payload.append("Price", form.Price);
       payload.append("quantity", form.quantity || "0");
       payload.append("barcode", barcode);
 
-      const response = await axiosInstance.post("product/addproduct", payload);
+      // The till's own create path: open to every cashier, unlike the
+      // catalogue's addproduct, which is restricted to the owner side.
+      const response = await axiosInstance.post("product/quick-add", payload);
       toast.success(t("pos.unknownBarcode.created", { name: form.name.trim() }));
       onResolved(response.data.product);
     } catch (error) {

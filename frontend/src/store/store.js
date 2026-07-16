@@ -10,7 +10,10 @@ import notificationReducer from  "../features/notificationSlice"
 import stocktransactionReducer from '../features/stocktransactionSlice'
 import salesReducer from "../features/salesSlice"
 import voucherReducer from "../features/voucherSlice"
+import dealReducer from "../features/dealSlice"
+import dayClosingReducer from "../features/dayClosingSlice"
 import ticketReducer from "../features/ticketSlice"
+import approvalReducer from "../features/approvalSlice"
 
 const store=configureStore({
     reducer:{
@@ -24,7 +27,10 @@ const store=configureStore({
         stocktransaction:stocktransactionReducer,
         sales:salesReducer,
         voucher:voucherReducer,
-        ticket:ticketReducer
+        deal:dealReducer,
+        dayClosing:dayClosingReducer,
+        ticket:ticketReducer,
+        approval:approvalReducer
     }
 })
 export default store;

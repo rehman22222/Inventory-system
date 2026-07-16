@@ -59,7 +59,8 @@ module.exports.authmiddleware = async (req, res, next) => {
 
 
 
-// The vendor account. Never created through the app.
+// The owner account. Sits above admin: support inbox, approvals queue and user
+// management all live here. Never created through the app.
 module.exports.superadminmiddleware = (req, res, next) => {
   if (req.user?.role !== "superadmin") {
     return res.status(403).json({ message: "Access denied. Super admin only." });
@@ -70,12 +71,14 @@ module.exports.superadminmiddleware = (req, res, next) => {
 
 
 
-// Shop admins raise support tickets; the vendor answers them.
+// The owner side of the shop: admins raise tickets and requests, superadmin
+// answers them. Also guards the handed-over day-closing batches — cashiers
+// (manager/staff) must not be able to read back what they handed over.
 module.exports.adminOrSuperadmin = (req, res, next) => {
   const role = req.user?.role;
 
   if (role !== "admin" && role !== "superadmin") {
-    return res.status(403).json({ message: "Access denied. Admin only." });
+    return res.status(403).json({ message: "Access denied. Admin or super admin only." });
   }
 
   next();
@@ -84,7 +87,8 @@ module.exports.adminOrSuperadmin = (req, res, next) => {
 
 
 // managermiddleware is a strict role equality check, so an admin fails it.
-// Guards that should accept either elevated role use this instead.
+// Guards for elevated till actions (refund/void) use this. Superadmin sits
+// above admin, so it is allowed too.
 module.exports.adminOrManager = (req, res, next) => {
   const role = req.user?.role;
 
@@ -92,7 +96,7 @@ module.exports.adminOrManager = (req, res, next) => {
     return res.status(403).json({ message: "Access denied." });
   }
 
-  if (role !== "admin" && role !== "manager") {
+  if (role !== "superadmin" && role !== "admin" && role !== "manager") {
     return res.status(403).json({ message: "Access denied. Admin or manager role required." });
   }
 

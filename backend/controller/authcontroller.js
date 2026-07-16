@@ -20,61 +20,99 @@ module.exports.signup = async (req, res) => {
 
 
 
-// Admin-only account creation. This is the ONLY way a manager or staff account
-// comes into existence — self-signup is always staff.
-module.exports.createUser = async (req, res) => {
-  try {
-    const { name, email, password, role } = req.body;
+const publicUser = (user) => ({
+  _id: user._id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  ProfilePic: user.ProfilePic,
+  createdAt: user.createdAt,
+});
 
-    if (!name?.trim() || !email?.trim() || !password) {
-      return res.status(400).json({ message: "Name, email and password are required" });
-    }
-
-    if (role !== "manager" && role !== "staff") {
-      return res.status(400).json({ message: "Role must be manager or staff" });
-    }
-
-    if (String(password).length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
-    }
-
-    const existing = await User.findOne({ email: email.trim().toLowerCase() });
-
-    if (existing) {
-      return res.status(400).json({ message: "A user with this email already exists" });
-    }
-
-    const created = await User.create({
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      password: await bcrypt.hash(password, 10),
-      role,
-      ProfilePic: "",
-    });
-
-    await logActivity({
-      action: "Create User",
-      description: `${role} account created for ${created.name}.`,
-      entity: "user",
-      entityId: created._id,
-      userId: req.user?._id,
-      ipAddress: req.ip,
-    });
-
-    return res.status(201).json({
-      message: `${role} created successfully`,
-      user: {
-        _id: created._id,
-        name: created.name,
-        email: created.email,
-        role: created.role,
-        ProfilePic: created.ProfilePic,
-        createdAt: created.createdAt,
-      },
-    });
-  } catch (error) {
-    return res.status(500).json({ message: error.message || "Error creating user" });
+// Shared account-creation logic. Both the superadmin's direct endpoint and the
+// approval executor call this, so the rules live in one place. `allowedRoles`
+// is who the *caller* is permitted to create.
+module.exports.createUserRecord = async ({ name, email, password, role }, allowedRoles, actor) => {
+  if (!name?.trim() || !email?.trim() || !password) {
+    return { ok: false, status: 400, message: "Name, email and password are required" };
   }
+
+  if (!allowedRoles.includes(role)) {
+    return { ok: false, status: 400, message: `Role must be one of: ${allowedRoles.join(", ")}` };
+  }
+
+  if (String(password).length < 6) {
+    return { ok: false, status: 400, message: "Password must be at least 6 characters" };
+  }
+
+  const existing = await User.findOne({ email: email.trim().toLowerCase() });
+
+  if (existing) {
+    return { ok: false, status: 400, message: "A user with this email already exists" };
+  }
+
+  const created = await User.create({
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+    password: await bcrypt.hash(password, 10),
+    role,
+    ProfilePic: "",
+  });
+
+  await logActivity({
+    action: "Create User",
+    description: `${role} account created for ${created.name}.`,
+    entity: "user",
+    entityId: created._id,
+    userId: actor?._id,
+    ipAddress: actor?.ip,
+  });
+
+  return { ok: true, status: 201, message: `${role} created successfully`, user: created };
+};
+
+// Shared deletion logic.
+module.exports.deleteUserRecord = async (userId, actor) => {
+  if (!userId) {
+    return { ok: false, status: 400, message: "User ID is required" };
+  }
+
+  if (actor?._id && String(userId) === String(actor._id)) {
+    return { ok: false, status: 400, message: "You cannot delete your own account" };
+  }
+
+  const deleted = await User.findByIdAndDelete(userId);
+
+  if (!deleted) {
+    return { ok: false, status: 404, message: "User not found" };
+  }
+
+  await logActivity({
+    action: "Delete User",
+    description: `${deleted.role} account ${deleted.name} was deleted.`,
+    entity: "user",
+    entityId: deleted._id,
+    userId: actor?._id,
+    ipAddress: actor?.ip,
+  });
+
+  return { ok: true, status: 200, message: "User deleted successfully", user: deleted };
+};
+
+// Direct account creation — only the superadmin (top of the shop) may create
+// accounts without approval. Admins go through the approval workflow.
+module.exports.createUser = async (req, res) => {
+  const result = await module.exports.createUserRecord(
+    req.body,
+    ["admin", "manager", "staff"],
+    { _id: req.user?._id, ip: req.ip }
+  );
+
+  if (!result.ok) {
+    return res.status(result.status).json({ message: result.message });
+  }
+
+  return res.status(201).json({ message: result.message, user: publicUser(result.user) });
 };
 
 
@@ -82,8 +120,11 @@ module.exports.login=async(req,res)=>{
     try {
         
      const {email,password}=req.body;
-     const ipAddress = req.ip; 
-     const duplicatedUser=await User.findOne({email})
+     const ipAddress = req.ip;
+     // Accounts are stored with a lowercased email, so the login lookup has to
+     // normalise too — otherwise "Admin@Shop.ie" never matches "admin@shop.ie"
+     // and the user is told "no user found" for a perfectly good address.
+     const duplicatedUser=await User.findOne({ email: String(email || "").trim().toLowerCase() })
 
      if(!duplicatedUser){
 
@@ -245,26 +286,15 @@ module.exports.adminuser = async (req, res) => {
 
 
 
+// Direct deletion — superadmin only. Admins request it through the approval flow.
 module.exports.removeuser = async (req, res) => {
   try {
-    const { UserId } = req.params;
+    const result = await module.exports.deleteUserRecord(req.params.UserId, {
+      _id: req.user?._id,
+      ip: req.ip,
+    });
 
-    if (!UserId) {
-      return res.status(400).json({ message: "User ID is required" });
-    }
-
-    // An admin locking themselves out of their own system helps nobody.
-    if (String(UserId) === String(req.user?._id)) {
-      return res.status(400).json({ message: "You cannot delete your own account" });
-    }
-
-    const deleteUser = await User.findByIdAndDelete(UserId);
-
-    if (!deleteUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    return res.status(200).json({ message: "User deleted successfully" });
+    return res.status(result.status).json({ message: result.message });
   } catch (error) {
     console.error("Error deleting user:", error);
     return res.status(500).json({ message: "Internal server error" });

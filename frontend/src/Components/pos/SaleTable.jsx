@@ -1,12 +1,19 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { FiMinus, FiPlus, FiShoppingBag, FiX } from "react-icons/fi";
+import { FiMinus, FiPlus, FiShoppingBag, FiTag, FiX } from "react-icons/fi";
 import { currency } from "./posUtils";
 
 const COLS = "grid-cols-[1fr_60px_92px_88px] sm:grid-cols-[1fr_92px_104px_110px]";
 
 // The middle sale panel: the running list of lines on this transaction.
-function SaleTable({ cart, selectedId, onSelect, onQuantityChange, onRemove }) {
+function SaleTable({
+  cart,
+  selectedId,
+  dealProductIds,
+  onSelect,
+  onQuantityChange,
+  onRemove,
+}) {
   const { t } = useTranslation();
 
   return (
@@ -29,6 +36,7 @@ function SaleTable({ cart, selectedId, onSelect, onQuantityChange, onRemove }) {
         ) : (
           cart.map((item) => {
             const active = selectedId === item.productId;
+            const inDeal = dealProductIds?.has(String(item.productId));
 
             return (
               <div
@@ -41,7 +49,15 @@ function SaleTable({ cart, selectedId, onSelect, onQuantityChange, onRemove }) {
                 }`}
               >
                 <div className="min-w-0">
-                  <p className="truncate font-medium text-slate-100">{item.name}</p>
+                  <p className="flex items-center gap-1.5 truncate font-medium text-slate-100">
+                    <span className="truncate">{item.name}</span>
+                    {inDeal && (
+                      <span className="inline-flex shrink-0 items-center gap-1 bg-fuchsia-950 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-fuchsia-300 ring-1 ring-fuchsia-800">
+                        <FiTag className="h-2.5 w-2.5" />
+                        {t("pos.dealTag")}
+                      </span>
+                    )}
+                  </p>
                   <p className="truncate font-mono text-[11px] text-slate-600">
                     {item.barcode || item.category || t("pos.uncategorized")}
                   </p>

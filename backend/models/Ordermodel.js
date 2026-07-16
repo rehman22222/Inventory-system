@@ -15,9 +15,14 @@ const OrderSchema= new mongoose.Schema({
         required:true,
 
     },
-   Product:{
+   // An order is a basket, not a single line. `price` is the shelf price at the
+   // time the order was placed, copied from the product — never sent by the
+   // client.
+   Products:[{
+    _id:false,
     product:{type:mongoose.Schema.Types.ObjectId,
-        ref:"Product"},
+        ref:"Product",
+        required:true},
     quantity:{
         type:Number,
            required:true
@@ -26,8 +31,9 @@ const OrderSchema= new mongoose.Schema({
         type:Number,
         required:true
     }
-   },
-    
+   }],
+
+
    totalAmount:{
     type:Number,
     required:true,

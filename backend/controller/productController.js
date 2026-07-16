@@ -1,8 +1,13 @@
 const mongoose = require('mongoose')
 const Product=require('../models/Productmodel')
+const Category=require('../models/ Categorymodel')
 
 const logActivity=require('../libs/logger')
 const { uploadImage, deleteImage } = require('../libs/cloudinaryImage')
+const { ean13FromSequence } = require('../libs/barcode')
+const { nextSequence } = require('../models/Countermodel')
+
+const RANDOM_CATEGORY = "Random";
 
 module.exports.Addproduct=async(req,res)=>{
   const userId=req.user._id;
@@ -13,10 +18,12 @@ module.exports.Addproduct=async(req,res)=>{
         const {
           name,
           Desciption,
+          shelfLabel,
           Category,
           Price,
           costPrice,
           quantity,
+          lowStockThreshold,
           barcode,
           expiryDate,
         } = req.body;
@@ -26,14 +33,11 @@ module.exports.Addproduct=async(req,res)=>{
         const productName = typeof name === "string" ? name.trim() : name;
         const productDescription =
           typeof Desciption === "string" ? Desciption.trim() : Desciption;
+        const cleanedShelfLabel =
+          typeof shelfLabel === "string" ? shelfLabel.trim() : shelfLabel;
 
-        const required = {
-          name: productName,
-          Category,
-          Desciption: productDescription,
-          Price,
-          quantity,
-        };
+        // Only name and price are mandatory now.
+        const required = { name: productName, Price };
         const missing = Object.keys(required).filter(
           (key) => required[key] === undefined || required[key] === null || String(required[key]).trim() === ""
         );
@@ -41,13 +45,20 @@ module.exports.Addproduct=async(req,res)=>{
           return res.status(400).json({ message: `Missing required field(s): ${missing.join(", ")}` });
         }
 
-        const productData = {
-          name: productName,
-          Desciption: productDescription,
-          Category,
-          Price,
-          quantity,
-        };
+        // Shelf label, when given, is letters/numbers (plus - and space).
+        if (cleanedShelfLabel && !/^[A-Za-z0-9][A-Za-z0-9\- ]*$/.test(cleanedShelfLabel)) {
+          return res
+            .status(400)
+            .json({ message: "Shelf label must be letters and numbers only" });
+        }
+
+        const productData = { name: productName, Price };
+        if (productDescription) productData.Desciption = productDescription;
+        if (Category) productData.Category = Category;
+        if (quantity !== undefined && quantity !== "") productData.quantity = quantity;
+        if (lowStockThreshold !== undefined && lowStockThreshold !== "")
+          productData.lowStockThreshold = Number(lowStockThreshold);
+        if (cleanedShelfLabel) productData.shelfLabel = cleanedShelfLabel;
         if (costPrice !== undefined && costPrice !== "") productData.costPrice = costPrice;
         if (cleanedBarcode) productData.barcode = cleanedBarcode;
         if (expiryDate) productData.expiryDate = expiryDate;
@@ -83,6 +94,25 @@ module.exports.Addproduct=async(req,res)=>{
         res.status(500).json({ message: error.message || "Error in creating product" });
      }
     }
+
+// The till's "learn on scan" path. Building the catalogue is restricted to the
+// owner side, but a cashier who scans an item the system has never seen must be
+// able to ring it through with the customer still standing there — so this stays
+// open to every role. It is deliberately narrower than Addproduct: no barcode,
+// no quick add.
+module.exports.quickAddProduct = async (req, res) => {
+  const barcode =
+    typeof req.body?.barcode === "string" ? req.body.barcode.trim() : "";
+
+  if (!barcode) {
+    return res
+      .status(400)
+      .json({ message: "Quick add is for scanned items — a barcode is required" });
+  }
+
+  return module.exports.Addproduct(req, res);
+};
+
 
     module.exports.getProduct = async (req, res) => {
         try {
@@ -157,7 +187,7 @@ module.exports.Addproduct=async(req,res)=>{
         }
 
         // Apply only the fields that were actually provided.
-        const editable = ["name", "Desciption", "Category", "Price", "costPrice", "quantity", "barcode", "expiryDate"];
+        const editable = ["name", "Desciption", "shelfLabel", "Category", "Price", "costPrice", "quantity", "lowStockThreshold", "barcode", "expiryDate"];
         editable.forEach((field) => {
           if (source[field] !== undefined && source[field] !== "") {
             product[field] =
@@ -293,6 +323,94 @@ module.exports.attachBarcode = async (req, res) => {
     return res.status(200).json({ message: "Barcode linked successfully", product });
   } catch (error) {
     return res.status(500).json({ message: "Error linking barcode", error: error.message });
+  }
+};
+
+
+// The permanent "Random" category — created on demand, flagged as a system
+// category so it can't be deleted from the UI.
+const ensureRandomCategory = async () => {
+  let category = await Category.findOne({ name: RANDOM_CATEGORY });
+
+  if (!category) {
+    category = await Category.create({
+      name: RANDOM_CATEGORY,
+      description: "System category for generated price-point barcodes",
+      system: true,
+    });
+  } else if (!category.system) {
+    category.system = true;
+    await category.save();
+  }
+
+  return category;
+};
+
+
+// Generate a batch of price-point products with fresh EAN-13 barcodes, split
+// across the given price tiers. A shop can print these labels for generic items
+// that have no manufacturer barcode; scanning one rings up that price.
+module.exports.generateRandomBarcodes = async (req, res) => {
+  try {
+    const count = Math.floor(Number(req.body?.count || 0));
+    const tiers = (Array.isArray(req.body?.tiers) && req.body.tiers.length > 0
+      ? req.body.tiers
+      : [5, 10, 15]
+    )
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value) && value > 0);
+
+    if (!Number.isFinite(count) || count < 1 || count > 500) {
+      return res.status(400).json({ message: "Count must be between 1 and 500" });
+    }
+    if (tiers.length === 0) {
+      return res.status(400).json({ message: "At least one valid price tier is required" });
+    }
+
+    const category = await ensureRandomCategory();
+
+    // Spread the count as evenly as possible across the tiers.
+    const created = [];
+    for (let index = 0; index < count; index += 1) {
+      const price = tiers[index % tiers.length];
+      const seq = await nextSequence("randomBarcode");
+      const barcode = ean13FromSequence(seq);
+
+      const product = await Product.create({
+        name: `Random €${price} #${String(seq).padStart(4, "0")}`,
+        Desciption: "Generated price-point item",
+        Category: category._id,
+        Price: price,
+        // Effectively unlimited — a price-point label can be scanned any number
+        // of times, so it should never fall out of stock.
+        quantity: 100000,
+        lowStockThreshold: 0,
+        barcode,
+      });
+
+      created.push({
+        _id: product._id,
+        name: product.name,
+        Price: product.Price,
+        barcode: product.barcode,
+      });
+    }
+
+    await logActivity({
+      action: "Generate Barcodes",
+      description: `Generated ${created.length} random price-point barcodes.`,
+      entity: "product",
+      userId: req.user?._id,
+      ipAddress: req.ip,
+    });
+
+    return res.status(201).json({
+      message: `Generated ${created.length} barcodes`,
+      category: { _id: category._id, name: category.name },
+      products: created,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message || "Could not generate barcodes" });
   }
 };
 

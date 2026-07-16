@@ -1,20 +1,20 @@
 const express=require("express")
 const router=express.Router()
 const {createCategory,RemoveCategory,getCategory,updateCategory,Searchcategory}=require('../controller/categorycontroller')
-const {authmiddleware,adminmiddleware,managermiddleware}=require('../middleware/Authmiddleware')
+const {authmiddleware,adminOrManager,adminOrSuperadmin}=require('../middleware/Authmiddleware')
 
 
 
-router.post("/createcategory",authmiddleware,createCategory)
+// Building the catalogue is the owner side's job.
+router.post("/createcategory",authmiddleware,adminOrSuperadmin,createCategory)
 router.get("/getcategory",getCategory)
 router.get("/searchcategory",authmiddleware,Searchcategory)
 
 
-router.delete("/removecategory/:CategoryId",authmiddleware,RemoveCategory)
-router.put("/updateCategory",authmiddleware,updateCategory)
-
-
-
+// A manager runs the shop day to day, so they can tidy categories up — just not
+// invent new ones.
+router.delete("/removecategory/:CategoryId",authmiddleware,adminOrManager,RemoveCategory)
+router.put("/updateCategory/:CategoryId",authmiddleware,adminOrManager,updateCategory)
 
 
 

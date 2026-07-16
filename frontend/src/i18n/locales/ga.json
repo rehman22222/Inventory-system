@@ -37,7 +37,7 @@
       },
       {
         "title": "Pointe díola ionsuite",
-        "desc": "Scan, gearr, priontáil. Airgead, cárta, aistriú bainc, Easypaisa nó JazzCash — agus baintear an stoc go huathoibríoch nuair a dhúntar an díol."
+        "desc": "Scan, gearr, priontáil. Airgead, cárta nó sparán — agus baintear an stoc go huathoibríoch nuair a dhúntar an díol."
       },
       {
         "title": "Díolacháin agus anailís",
@@ -101,7 +101,7 @@
       },
       {
         "q": "An bhfuil pointe díola san áireamh?",
-        "a": "Tá. Láimhseálann an pointe díola scanadh barrachóid, cúig mhodh íocaíochta (airgead, cárta, aistriú bainc, Easypaisa, JazzCash), admhálacha, agus baint stoic go huathoibríoch ag an tseiceáil amach."
+        "a": "Tá. Láimhseálann an pointe díola scanadh barrachóid, trí mhodh íocaíochta (airgead, cárta, sparán), íocaíochtaí roinnte, admhálacha, agus baint stoic go huathoibríoch ag an tseiceáil amach."
       },
       {
         "q": "An féidir leis rith gan idirlíon?",
@@ -184,13 +184,9 @@
       "unpaid": "Neamhíoctha"
     },
     "payments": {
-      "cash": "Airgead Tirim",
-      "creditcard": "Cárta Creidmheasa",
-      "banktransfer": "Aistriú Bainc",
-      "easypaisa": "Easypaisa",
-      "jazzcash": "JazzCash",
-      "card": "Cárta",
-      "bank": "Banc"
+      "cash": "Airgead",
+      "creditcard": "Cárta",
+      "wallet": "Sparán"
     },
     "phone": "Fón",
     "address": "Seoladh"
@@ -213,7 +209,10 @@
     "logoutError": "Earráid ag logáil amach",
     "vouchers": "Dearbháin",
     "support": "Tacaíocht",
-    "tickets": "Ticéid"
+    "tickets": "Ticéid",
+    "approvals": "Ceaduithe",
+    "myRequests": "M'Iarratais",
+    "dayClosings": "Dúnadh Lae"
   },
   "topnav": {
     "welcome": "Fáilte, {{name}}",
@@ -244,7 +243,9 @@
     "invalidEmail": "Ríomhphost neamhbhailí",
     "emailRequired": "Tá ríomhphost riachtanach",
     "passwordMin": "Caithfidh pasfhocal a bheith 6 charachtar ar a laghad",
-    "passwordRequired": "Tá pasfhocal riachtanach"
+    "passwordRequired": "Tá pasfhocal riachtanach",
+    "showPassword": "Taispeáin an focal faire",
+    "hidePassword": "Folaigh an focal faire"
   },
   "signup": {
     "namePlaceholder": "D'ainm",
@@ -328,7 +329,13 @@
     "removed": "Baineadh an táirge go rathúil",
     "removeFail": "Theip ar bhaint an táirge",
     "updateFail": "Theip ar nuashonrú an táirge",
-    "addFail": "Theip ar chur leis an táirge"
+    "addFail": "Theip ar chur leis an táirge",
+    "shelfLabel": "Lipéad seilfe",
+    "shelfLabelPlaceholder": "m.sh. A12",
+    "shelfLabelHint": "Litreacha agus uimhreacha (suíomh margaíochta). Roghnach.",
+    "shelfLabelInvalid": "Ní mór don lipéad seilfe litreacha agus uimhreacha amháin a bheith ann.",
+    "lowStockThreshold": "Tairseach stoic íseal",
+    "lowStockThresholdHint": "Foláireamh nuair a thiteann an stoc go dtí seo nó faoina bhun. Réamhshocrú 10."
   },
   "categories": {
     "totalCategory": "Catagóir Iomlán",
@@ -346,7 +353,10 @@
     "removed": "Baineadh an chatagóir go rathúil",
     "removeFail": "Theip ar bhaint na catagóire",
     "added": "Cuireadh an chatagóir leis go rathúil",
-    "addFail": "Theip ar chur leis an gcatagóir"
+    "addFail": "Theip ar chur leis an gcatagóir",
+    "nameRequired": "Tá ainm catagóire ag teastáil",
+    "updated": "Catagóir nuashonraithe",
+    "updateFail": "Níorbh fhéidir an chatagóir a nuashonrú"
   },
   "pos": {
     "title": "Pointe Díola",
@@ -412,7 +422,7 @@
     "discountLabel": "Lascaine",
     "exit": "Scoir",
     "openTerminal": "Oscail Teirminéal POS",
-    "closeOrder": "Dún an tOrdú",
+    "closeOrder": "Gearr",
     "noProducts": "Níl aon táirge sa chatagóir seo",
     "rail": {
       "refund": "Aisíocaíocht",
@@ -424,7 +434,8 @@
       "vouchers": "Dearbháin",
       "saleHistory": "Stair Díolacháin",
       "enterCode": "Cuir Cód Isteach",
-      "send": "Sábháil"
+      "send": "Ar Feitheamh",
+      "dayClosing": "Dún an Lá"
     },
     "table": {
       "product": "Táirge",
@@ -529,7 +540,15 @@
       "failed": "Níorbh fhéidir an stair a lódáil",
       "items": "{{count}} mír",
       "reprint": "Athphriontáil",
-      "refund": "Aisíoc"
+      "refund": "Aisíoc",
+      "changePayment": "Athraigh an íocaíocht",
+      "splitPayment": "Roinnte",
+      "addPayment": "Cuir íocaíocht leis",
+      "mustTotal": "Caithfidh {{total}} a bheith san iomlán",
+      "savePayment": "Sábháil",
+      "paymentChanged": "Íocaíocht nuashonraithe",
+      "changeFailed": "Níorbh fhéidir an íocaíocht a athrú",
+      "lockedHint": "Tugtha ar láimh ag dúnadh an lae — ní féidir é a athrú"
     },
     "held": {
       "title": "Díolacháin ar fionraí",
@@ -558,7 +577,48 @@
       "giveChange": "Tabhair {{amount}} sóinseáil",
       "roundOff": "Slánaigh suas"
     },
-    "currencyHint": "Airgeadra taispeána don scipéad seo"
+    "currencyHint": "Airgeadra taispeána don scipéad seo",
+    "receiptDoc": {
+      "order": "Ordú",
+      "orderType": "Cineál ordaithe",
+      "date": "Dáta",
+      "placedBy": "Cláraithe ag",
+      "price": "Praghas",
+      "payments": "Íocaíochtaí"
+    },
+    "productSearch": {
+      "title": "Cuardach táirgí",
+      "subtitle": "Cuardaigh an catalóg iomlán de réir ainm, barrachód nó catagóir",
+      "placeholder": "Clóscríobh ainm táirge, barrachód nó catagóir…",
+      "hint": "Tosaigh ag clóscríobh chun cuardach.",
+      "noResults": "Níl aon táirge ag teacht leis.",
+      "outOfStock": "Díolta",
+      "byAll": "Gach réimse",
+      "byName": "Táirge",
+      "byBarcode": "Barrachód",
+      "byCategory": "Catagóir",
+      "sortName": "Sórtáil: Ainm",
+      "sortPrice": "Sórtáil: Praghas",
+      "sortStock": "Sórtáil: Stoc",
+      "asc": "A → Z",
+      "desc": "Z → A",
+      "allCategories": "Gach catagóir",
+      "code": "Cód",
+      "noCode": "Gan barrachód",
+      "stock": "Stoc",
+      "each": "ceann"
+    },
+    "dealTag": "Margadh",
+    "dealsTile": "Margaí",
+    "dealMissing": "Níl siad sa chatalóg a thuilleadh: {{names}}",
+    "offline": {
+      "queued": "Gan ceangal — díolachán sábháilte, sioncrónófar go huathoibríoch é",
+      "queueFailed": "Níorbh fhéidir an díolachán a shábháil go háitiúil",
+      "pending": "{{count}} le sioncrónú",
+      "syncNow": "Sioncrónaigh anois",
+      "willSyncWhenBack": "Sioncrónófar é nuair a fhillfidh an ceangal",
+      "notSynced": "Gan sioncrónú fós"
+    }
   },
   "sales": {
     "reportTitle": "Tuairisc Díolacháin",
@@ -626,7 +686,14 @@
     "created": "Cruthaíodh an t-ordú go rathúil",
     "createFail": "Theip ar chruthú an ordaithe",
     "removed": "Baineadh an t-ordú go rathúil",
-    "removeFail": "Theip ar bhaint an ordaithe"
+    "removeFail": "Theip ar bhaint an ordaithe",
+    "addProductToOrder": "Cuir táirge leis",
+    "priceAuto": "Tógtha ón táirge — ní féidir é a athrú",
+    "pickProduct": "Roghnaigh táirge ar dtús",
+    "pickQuantity": "Cuir cainníocht isteach",
+    "notEnoughStock": "Níl ach {{count}} de {{name}} i stoc",
+    "inStock": "{{count}} i stoc",
+    "orderTotal": "Iomlán an ordaithe"
   },
   "suppliers": {
     "totalSupplier": "Soláthraí Iomlán",
@@ -698,7 +765,18 @@
     "passwordHint": "6 charachtar ar a laghad",
     "role": "Ról",
     "create": "Cruthaigh úsáideoir",
-    "creating": "Á chruthú…"
+    "creating": "Á chruthú…",
+    "staff": "Foireann",
+    "admin": "Riarthóir",
+    "delete": "Scrios",
+    "deleteConfirm": "Scrios {{name}}? Ní féidir é seo a chur ar ais.",
+    "requestTitle": "Iarr cuntas úsáideora",
+    "requestSub": "Ní féidir le riarthóirí cuntais a chruthú go díreach — ní mór don ard-riarthóir iad a cheadú.",
+    "requestCreate": "Seol iarratas",
+    "requesting": "Á sheoladh…",
+    "requestDeleteConfirm": "Iarr ar an ard-riarthóir {{name}} a scriosadh?",
+    "manageTitle": "Bainistíocht úsáideoirí",
+    "manageSub": "Cruthaigh nó bain cuntaí go díreach — gan cead."
   },
   "activity": {
     "title": "Logaí Gníomhaíochta",
@@ -832,5 +910,131 @@
     "refresh": "Athnuaigh",
     "all": "Uile",
     "noTickets": "Níl aon ticéad ann."
+  },
+  "requests": {
+    "title": "M'iarratais",
+    "sub": "Gníomhartha a sheol tú chuig an ard-riarthóir lena gceadú",
+    "ref": "Tag",
+    "what": "Gníomh",
+    "raised": "Seolta",
+    "status": "Stádas",
+    "note": "Nóta",
+    "loading": "Á lódáil…",
+    "empty": "Níor sheol tú aon iarratas fós.",
+    "statuses": {
+      "pending": "Ar feitheamh",
+      "approved": "Ceadaithe",
+      "rejected": "Diúltaithe",
+      "failed": "Theip"
+    }
+  },
+  "approvals": {
+    "title": "Ceaduithe",
+    "sub": "{{count}} iarratas ar feitheamh",
+    "all": "Uile",
+    "empty": "Faic anseo.",
+    "by": "ó {{name}}",
+    "approve": "Ceadaigh",
+    "reject": "Diúltaigh",
+    "rejectPrompt": "Fáth le {{ref}} a diúltú (roghnach):"
+  },
+  "generate": {
+    "button": "Táirgí Randamacha",
+    "title": "Táirgí Randamacha",
+    "sub": "D'ítimí ginearálta gan barrachód. Cruthaíonn sé táirgí sa chatagóir bhuan Random.",
+    "count": "Cé mhéad?",
+    "tiers": "Leibhéil phraghais",
+    "tiersHint": "Praghsanna scartha le camóg — roinntear an líon go cothrom eatarthu.",
+    "generate": "Gin",
+    "generating": "Á ghiniúint…",
+    "done": "{{count}} barrachód ginte",
+    "failed": "Níorbh fhéidir barrachóid a ghiniúint",
+    "invalidCount": "Cuir líon bailí isteach (1–500)",
+    "invalidTiers": "Cuir praghas bailí amháin ar a laghad isteach",
+    "resultHint": "{{count}} barrachód cruthaithe agus sábháilte. Priontáil lipéid thíos.",
+    "again": "Gin tuilleadh",
+    "print": "Priontáil lipéid",
+    "close": "Dún"
+  },
+  "deals": {
+    "button": "Margaí",
+    "title": "Margaí cnuasaigh",
+    "sub": "Cuir táirgí le chéile le haghaidh lascaine uathoibríoch ag an gcuntar.",
+    "close": "Dún",
+    "name": "Ainm an mhargaidh",
+    "namePlaceholder": "m.sh. Foireann Tosaigh",
+    "discount": "Lascaine (as)",
+    "products": "Táirgí sa mhargadh seo",
+    "searchProducts": "Cuardaigh táirgí de réir ainm nó barrachóid…",
+    "quantity": "Cainníocht",
+    "remove": "Bain",
+    "normalPrice": "Gnáthphraghas",
+    "dealPrice": "Praghas margaidh",
+    "create": "Cruthaigh margadh",
+    "saving": "Á shábháil…",
+    "existing": "Margaí atá ann",
+    "none": "Gan margaí fós.",
+    "active": "Gníomhach",
+    "inactive": "Ar sos",
+    "pause": "Cuir ar sos",
+    "enable": "Cumasaigh",
+    "product": "Táirge",
+    "nameRequired": "Cuir ainm margaidh isteach",
+    "discountRequired": "Cuir lascaine níos mó ná nialas isteach",
+    "minProducts": "Roghnaigh dhá tháirge ar a laghad",
+    "createFailed": "Níorbh fhéidir an margadh a chruthú",
+    "created": "Margadh cruthaithe",
+    "deleted": "Margadh scriosta",
+    "confirmDelete": "Scrios an margadh \"{{name}}\"?",
+    "allCategories": "Gach catagóir",
+    "noMatches": "Níor aimsíodh táirgí",
+    "amountHint": "Méid seasta as an gcnuasach.",
+    "percentHint": "Céatadán as táirgí an mhargaidh seo amháin — ní as an gciseán ar fad.",
+    "percentMax": "Ní féidir le margadh céatadáin dul thar 100%"
+  },
+  "dayClosing": {
+    "title": "Dúnadh an lae",
+    "subtitle": "Tabhair do chuid fáltas ar láimh don riarthóir.",
+    "salesCount": "Díolacháin",
+    "byMethod": "De réir modh íocaíochta",
+    "total": "Iomlán",
+    "refunded": "Aisíoctha",
+    "closeDay": "Dún an lá",
+    "confirmClose": "Tabhair ar láimh",
+    "closingNow": "Á dhúnadh…",
+    "back": "Ar ais",
+    "warning": "Nuair a bheidh sé dúnta, aistreoidh na díolacháin seo chuig an riarthóir agus ní thaispeánfar iad i do stair díolacháin. Ní féidir é seo a chur ar ceal.",
+    "closed": "Lá dúnta — {{reference}}",
+    "closeFailed": "Níorbh fhéidir an lá a dhúnadh",
+    "summaryFailed": "Níorbh fhéidir achoimre an lae a lódáil",
+    "nothingToClose": "Níl aon díolachán oscailte le dúnadh."
+  },
+  "dayClosings": {
+    "title": "Dúnadh lae",
+    "sub": "Fáltais a thug gach airgeadóir ar láimh ag deireadh a seal.",
+    "batches": "Baisceanna",
+    "totalHandedOver": "Iomlán tugtha ar láimh",
+    "reference": "Tagairt",
+    "cashier": "Airgeadóir",
+    "closedAt": "Dúnta ag",
+    "sales": "Díolacháin",
+    "net": "Glan",
+    "gross": "Comhlán",
+    "discount": "Lascaine",
+    "tax": "Cáin",
+    "view": "Amharc",
+    "close": "Dún",
+    "loading": "Á lódáil…",
+    "empty": "Gan dúnadh lae fós.",
+    "receipts": "Admhálacha ({{count}})"
+  },
+  "reports": {
+    "download": "Íoslódáil Tuairisc",
+    "generating": "Á ghiniúint…",
+    "downloaded": "Tuairisc {{format}} íoslódáilte",
+    "failed": "Níorbh fhéidir an tuairisc a ghiniúint",
+    "pdfHint": "Réidh le priontáil nó a sheoladh",
+    "csvHint": "Osclaíonn in aon scarbhileog",
+    "excelHint": "Leabhar oibre formáidithe"
   }
 }

@@ -21,6 +21,10 @@ import Voucherpage from "./pages/Voucherpage";
 import Supportpage from "./pages/Supportpage";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import SuperAdminTickets from "./pages/SuperAdminTickets";
+import MyRequestspage from "./pages/MyRequestspage";
+import ApprovalsPage from "./pages/ApprovalsPage";
+import DayClosingsPage from "./pages/DayClosingsPage";
+import SuperAdminUsers from "./pages/SuperAdminUsers";
 import NotificationPageRead from "./pages/Notificationpageread";
 import ProtectedRoute from "./lib/ProtectedRoute";
 import { Toaster } from "react-hot-toast";
@@ -39,7 +43,7 @@ function App() {
         <Route path="/LoginPage" element={<LoginPage />} />
 
         {/* Standalone full-screen POS terminal — opens outside the dashboard shell */}
-        <Route path="/pos" element={protect(<POSPage />, ["admin", "manager", "staff"])} />
+        <Route path="/pos" element={protect(<POSPage />, ["superadmin", "admin", "manager", "staff"])} />
 
         <Route path="/AdminDashboard" element={protect(<AdminDashboard />, ["admin"])}>
           <Route index element={protect(<Dashboardpage />, ["admin"])} />
@@ -50,9 +54,11 @@ function App() {
           <Route path="order" element={protect(<Orderpage />, ["admin"])} />
           <Route path="stock-transaction" element={protect(<StockTransaction />, ["admin"])} />
           <Route path="vouchers" element={protect(<Voucherpage />, ["admin"])} />
+          <Route path="day-closings" element={protect(<DayClosingsPage />, ["admin"])} />
           <Route path="support" element={protect(<Supportpage />, ["admin"])} />
           <Route path="notifications" element={protect(<Notificationpage />, ["admin"])} />
           <Route path="Userstatus" element={protect(<Userstatus />, ["admin"])} />
+          <Route path="requests" element={protect(<MyRequestspage />, ["admin"])} />
           <Route path="activity-log" element={protect(<Activitylogpage />, ["admin"])} />
           <Route path="Profilepage" element={protect(<Profilepage />, ["admin"])} />
         </Route>
@@ -70,9 +76,14 @@ function App() {
           <Route path="Profilepage" element={protect(<Profilepage />, ["manager"])} />
         </Route>
 
-        {/* The vendor's own console — the shop never sees this. */}
+        {/* The owner console: the shop dashboard, the approvals queue admin
+            raises requests into, user management, day closings and the vendor
+            support inbox — all in one place. */}
         <Route path="/SuperAdmin" element={protect(<SuperAdminDashboard />, ["superadmin"])}>
-          <Route index element={protect(<SuperAdminTickets />, ["superadmin"])} />
+          <Route index element={protect(<Dashboardpage />, ["superadmin"])} />
+          <Route path="approvals" element={protect(<ApprovalsPage />, ["superadmin"])} />
+          <Route path="day-closings" element={protect(<DayClosingsPage />, ["superadmin"])} />
+          <Route path="users" element={protect(<SuperAdminUsers />, ["superadmin"])} />
           <Route path="tickets" element={protect(<SuperAdminTickets />, ["superadmin"])} />
           <Route path="Profilepage" element={protect(<Profilepage />, ["superadmin"])} />
         </Route>

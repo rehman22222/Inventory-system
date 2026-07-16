@@ -12,13 +12,17 @@ const ProductSchema= new mongoose.Schema({
     },
     Desciption:{
         type:String,
-        required:true,
-
+        // Only name and Price are mandatory now; everything else is optional.
+    },
+    // Merchandising shelf label, e.g. "A12" — letters and numbers.
+    shelfLabel:{
+        type:String,
+        trim:true,
     },
     Category:{
         type:mongoose.Schema.Types.ObjectId,
         ref:"Category"
-    }, 
+    },
     Price:{
         type:Number,
         required:true,
@@ -32,6 +36,11 @@ const ProductSchema= new mongoose.Schema({
     quantity:{
         type:Number,
         default:0
+    },
+    // Per-product low-stock threshold. Falls back to 10 where unset.
+    lowStockThreshold:{
+        type:Number,
+        default:10
     },
     barcode:{
         type:String,

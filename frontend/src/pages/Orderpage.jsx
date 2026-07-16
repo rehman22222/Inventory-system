@@ -42,9 +42,73 @@ function Orderpage() {
   const [Product, setProduct] = useState("");
   const [Price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
+  // The basket being built: [{ productId, name, price, quantity, stock }].
+  const [lines, setLines] = useState([]);
   const [Description, setDescription] = useState("");
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [selectedOrder, setselectedOrder] = useState(null);
+
+  // The price is the catalogue's, not something to be typed: picking a product
+  // fills it in, and it stays read-only.
+  const chosenProduct = (Array.isArray(getallproduct) ? getallproduct : []).find(
+    (entry) => entry._id === Product
+  );
+
+  useEffect(() => {
+    setPrice(chosenProduct ? String(chosenProduct.Price ?? "") : "");
+  }, [chosenProduct]);
+
+  const linesTotal = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
+
+  // Add the currently-picked product to the basket. Re-picking the same product
+  // just raises its quantity rather than adding a second row.
+  const addLine = () => {
+    if (!chosenProduct) {
+      toast.error(t("orders.pickProduct"));
+      return;
+    }
+
+    const wanted = Number(quantity);
+    if (!Number.isFinite(wanted) || wanted <= 0) {
+      toast.error(t("orders.pickQuantity"));
+      return;
+    }
+
+    const stock = Number(chosenProduct.quantity || 0);
+    const already = lines.find((line) => line.productId === chosenProduct._id)?.quantity || 0;
+
+    if (already + wanted > stock) {
+      toast.error(t("orders.notEnoughStock", { name: chosenProduct.name, count: stock }));
+      return;
+    }
+
+    setLines((current) => {
+      const existing = current.find((line) => line.productId === chosenProduct._id);
+      if (existing) {
+        return current.map((line) =>
+          line.productId === chosenProduct._id
+            ? { ...line, quantity: line.quantity + wanted }
+            : line
+        );
+      }
+      return [
+        ...current,
+        {
+          productId: chosenProduct._id,
+          name: chosenProduct.name,
+          price: Number(chosenProduct.Price || 0),
+          quantity: wanted,
+          stock,
+        },
+      ];
+    });
+
+    setProduct("");
+    setQuantity("");
+  };
+
+  const removeLine = (productId) =>
+    setLines((current) => current.filter((line) => line.productId !== productId));
 
   useEffect(() => {
     dispatch(gettingallOrder());
@@ -85,19 +149,13 @@ function Orderpage() {
 
     if (!selectedOrder) return;
 
+    // Editing an existing order only moves its status/description — the basket
+    // and its prices are fixed at creation from the catalogue.
     const updatedData = {
-      user: Authuser?.id || " ",
-      description: Description,
+      Description,
       status,
-      products: {
-        
-          product: Product,
-          quantity: Number(quantity),
-          Price: Number(Price),
-        
-      },
     };
-    
+
     dispatch( updatestatusOrder({ OrderId: selectedOrder._id,  updatedData }))
       .unwrap()
       .then(() => {
@@ -113,31 +171,31 @@ function Orderpage() {
 
   const submitOrder = async (event) => {
     event.preventDefault();
-  
 
-    if (!Product || !Price || !quantity) {
+    if (lines.length === 0) {
       toast.error(t("orders.requiredFields"));
       return;
     }
-  
+
     const orderData = {
       user: Authuser?.id || "",
       Description,
       status,
-      Product: {
-        product: Product,  
-        price: Number(Price), 
-        quantity: Number(quantity)
-      }
+      // Price is deliberately not sent — the server reads it from the catalogue.
+      Products: lines.map((line) => ({
+        product: line.productId,
+        quantity: Number(line.quantity),
+      })),
     };
-  
+
     try {
-      const result = await dispatch(createdOrder(orderData)).unwrap();
+      await dispatch(createdOrder(orderData)).unwrap();
       toast.success(t("orders.created"));
       resetForm();
+      setIsFormVisible(false);
     } catch (error) {
       console.error("Order creation failed:", error);
-      toast.error(error.message || t("orders.createFail"));
+      toast.error(error?.message || error || t("orders.createFail"));
     }
   };
 
@@ -145,15 +203,22 @@ function Orderpage() {
     setProduct("");
     setPrice("");
     setQuantity("");
+    setLines([]);
     setDescription("");
     setstatus("");
   };
 
   const handleEditClick = (order) => {
     setselectedOrder(order);
-    setProduct(order.Product.product?._id || "");
-    setPrice(order.Product?.price|| "");
-    setQuantity(order.Product?.quantity|| "");
+    // The basket is read-only once placed; only status/description are editable.
+    setLines(
+      (order.Products || []).map((line) => ({
+        productId: line.product?._id || String(line.product),
+        name: line.product?.name || "",
+        price: Number(line.price || 0),
+        quantity: Number(line.quantity || 0),
+      }))
+    );
     setstatus(order.status|| "");
     setDescription(order.Description|| "");
     setIsFormVisible(true);
@@ -219,22 +284,6 @@ function Orderpage() {
 
             <form onSubmit={selectedOrder ? handleEditSubmit : submitOrder}>
               <div className="mb-4">
-                <label>{t("orders.product")}</label>
-                <select
-                  value={Product}
-                  onChange={(e) => setProduct(e.target.value)}
-                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
-                >
-                  <option value="">{t("orders.selectProduct")}</option>
-                  {getallproduct?.map((product) => (
-                    <option key={product._id} value={product._id}>
-                      {product.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="mb-4">
                 <label>{t("common.description")}</label>
                 <input
                   value={Description}
@@ -245,27 +294,97 @@ function Orderpage() {
                 />
               </div>
 
-              <div className="mb-4">
-                <label>{t("common.price")}</label>
-                <input
-                  type="number"
-                  placeholder={t("orders.pricePlaceholder")}
-                  value={Price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
-                />
-              </div>
+              {/* The basket. Hidden while editing — an order's lines and prices
+                  are fixed once it is placed. */}
+              {!selectedOrder && (
+                <div className="mb-4 rounded-lg border-2 border-base-300 p-3">
+                  <label className="text-sm font-semibold">{t("orders.product")}</label>
 
-              <div className="mb-4">
-                <label>{t("common.quantity")}</label>
-                <input
-                  type="number"
-                  placeholder={t("orders.quantityPlaceholder")}
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
-                />
-              </div>
+                  <select
+                    value={Product}
+                    onChange={(e) => setProduct(e.target.value)}
+                    className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
+                  >
+                    <option value="">{t("orders.selectProduct")}</option>
+                    {getallproduct?.map((product) => (
+                      <option key={product._id} value={product._id}>
+                        {product.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="mt-2 flex gap-2">
+                    <div className="flex-1">
+                      <label className="text-xs text-base-content/60">{t("common.price")}</label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={Price === "" ? "—" : `$${Number(Price).toFixed(2)}`}
+                        title={t("orders.priceAuto")}
+                        className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-1 bg-base-200 text-base-content/70 cursor-not-allowed"
+                      />
+                    </div>
+                    <div className="w-24">
+                      <label className="text-xs text-base-content/60">{t("common.quantity")}</label>
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder="1"
+                        value={quantity}
+                        onChange={(e) => setQuantity(e.target.value)}
+                        className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-1 bg-base-100 text-base-content"
+                      />
+                    </div>
+                  </div>
+
+                  {chosenProduct && (
+                    <p className="mt-1 text-xs text-base-content/50">
+                      {t("orders.inStock", { count: Number(chosenProduct.quantity || 0) })}
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={addLine}
+                    className="mt-2 h-9 w-full rounded-lg border-2 border-blue-800 text-sm font-semibold text-blue-800 transition hover:bg-blue-800 hover:text-white"
+                  >
+                    + {t("orders.addProductToOrder")}
+                  </button>
+                </div>
+              )}
+
+              {lines.length > 0 && (
+                <div className="mb-4 space-y-1.5">
+                  {lines.map((line) => (
+                    <div
+                      key={line.productId}
+                      className="flex items-center gap-2 rounded-lg border border-base-300 bg-base-200/40 px-2 py-1.5 text-sm"
+                    >
+                      <span className="min-w-0 flex-1 truncate">{line.name}</span>
+                      <span className="tabular-nums text-base-content/60">
+                        {line.quantity} × ${line.price.toFixed(2)}
+                      </span>
+                      <span className="w-16 text-end font-semibold tabular-nums">
+                        ${(line.quantity * line.price).toFixed(2)}
+                      </span>
+                      {!selectedOrder && (
+                        <button
+                          type="button"
+                          onClick={() => removeLine(line.productId)}
+                          className="px-1 text-red-500 hover:text-red-700"
+                          aria-label={t("common.remove")}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <div className="flex justify-between border-t border-base-300 px-2 pt-2 text-sm font-bold">
+                    <span>{t("orders.orderTotal")}</span>
+                    <span className="tabular-nums">${linesTotal.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
 
               <div className="mb-4">
                 <label className="block">{t("orders.status")}</label>
@@ -300,7 +419,6 @@ function Orderpage() {
                   <th className="px-3 py-2 bg-base-100 border w-5">#</th>
                   <th className="px-3 py-2 bg-base-100 border">{t("orders.product")}</th>
                   <th className="px-3 py-2 bg-base-100 border">{t("orders.quantity")}</th>
-                  <th className="px-3 py-2 bg-base-100 border">{t("common.price")}</th>
                   <th className="px-3 py-2 bg-base-100 border">{t("common.description")}</th>
                   <th className="px-3 py-2  bg-base-100  border">{t("orders.totalAmount")}</th>
                   <th className="px-3 py-2 bg-base-100  border">{t("orders.status")}</th>
@@ -319,13 +437,25 @@ function Orderpage() {
 
                     <tr key={order?._id} className="bg-base-100">
                       <td className="px-3 py-2 border">{index + 1}</td>
-                      <td className="px-3 py-2 border">book</td>{" "}
-                      
+                      {/* An order is a basket now, so list every line with the
+                          price it was placed at. */}
                       <td className="px-3 py-2 border">
-                        {order.Product?.quantity}
+                        <div className="space-y-0.5">
+                          {(order.Products || []).map((line, i) => (
+                            <div key={i} className="whitespace-nowrap text-sm">
+                              {line.product?.name || "—"}
+                              <span className="ml-1 text-base-content/50">
+                                {line.quantity} × ${Number(line.price || 0).toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </td>
-                      <td className="px-3 py-2 border">
-                        ${order.Product?.price}
+                      <td className="px-3 py-2 border text-center">
+                        {(order.Products || []).reduce(
+                          (sum, line) => sum + Number(line.quantity || 0),
+                          0
+                        )}
                       </td>
                       <td className="px-3 py-2 border">{order?.Description}</td>
                  

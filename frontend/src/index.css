@@ -14,8 +14,14 @@
     visibility: hidden;
   }
 
+  /* The two printable surfaces. They never appear on the same screen (the
+     receipt lives in the POS, the label sheet on the Products page), so both
+     can be unhidden here. Leaving #barcode-sheet out is what made "Print
+     labels" produce a blank page. */
   #receipt,
-  #receipt * {
+  #receipt *,
+  #barcode-sheet,
+  #barcode-sheet * {
     visibility: visible;
   }
 
@@ -27,34 +33,154 @@
     width: 72mm;
     color: #000;
     background: #fff;
-    font-family: "JetBrains Mono", ui-monospace, monospace;
-    font-size: 11px;
-    line-height: 1.4;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 12px;
+    line-height: 1.45;
   }
 
-  #receipt h1 {
-    font-size: 14px;
-    font-weight: 700;
+  #receipt .r-center {
     text-align: center;
   }
+  #receipt .r-shop {
+    font-size: 18px;
+    font-weight: 700;
+  }
+  #receipt .r-addr {
+    font-size: 12px;
+  }
+  #receipt .r-order {
+    margin-top: 6px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  #receipt .r-rule {
+    border-top: 1px dashed #000;
+    margin: 6px 0;
+  }
+  #receipt .r-meta {
+    font-size: 12px;
+  }
+  #receipt .r-strong {
+    font-weight: 700;
+  }
 
-  #receipt table {
+  #receipt .r-table {
     width: 100%;
     border-collapse: collapse;
   }
-
-  #receipt td:last-child {
+  #receipt .r-table th {
+    text-align: left;
+    font-weight: 600;
+    padding-bottom: 3px;
+    border-bottom: 1px solid #000;
+  }
+  #receipt .r-table td {
+    padding: 2px 0;
+    vertical-align: top;
+  }
+  #receipt .r-qty {
+    width: 26px;
+    text-align: left;
+  }
+  #receipt .r-prod {
+    text-align: left;
+  }
+  #receipt .r-num {
     text-align: right;
+    white-space: nowrap;
+    padding-left: 6px;
   }
 
-  #receipt hr {
-    border-top: 1px dashed #000;
-    margin: 4px 0;
+  #receipt .r-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 13px;
+  }
+  #receipt .r-total {
+    font-size: 16px;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+
+  #receipt .r-qrwrap {
+    margin-top: 12px;
+  }
+  #receipt .r-footer {
+    margin-top: 6px;
+    font-size: 11px;
+  }
+
+  /* ── Price-point label sheet (Random Products) ─────────────────────────
+     Printed on a normal sheet; GenerateBarcodesModal overrides @page to A4
+     for this print only. Labels are ~36mm wide, which puts the EAN-13 symbol
+     at roughly 85% of nominal size: small enough to sit on a 3-inch item,
+     but still above the ~80% floor where scanners start failing. Do not
+     shrink these further — an unreadable label costs a sale. */
+  #barcode-sheet {
+    display: block !important;
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0;
+    width: 100%;
+    background: #fff;
+    color: #000;
+  }
+
+  #barcode-sheet .bc-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, 36mm);
+    gap: 4mm 3mm;
+  }
+
+  #barcode-sheet .bc-label {
+    width: 36mm;
+    text-align: center;
+    /* Never let a label be sliced across two pages. */
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #barcode-sheet .bc-price {
+    font-size: 9pt;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 0.5mm;
+  }
+
+  /* The SVG carries its own quiet zone, so it fills the label edge to edge. */
+  #barcode-sheet .bc-svg {
+    width: 100%;
+    height: auto;
+    display: block;
   }
 
   .no-print {
     display: none !important;
   }
+}
+
+/* On-screen preview of a label. The print rules above take over at print time;
+   these just make the sheet legible in the modal. The barcode itself is always
+   rendered on white with black bars — a scanner needs that contrast, so it must
+   not follow the app's dark theme. */
+.bc-label {
+  background: #fff;
+  color: #000;
+  padding: 4px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  text-align: center;
+}
+.bc-price {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.bc-svg {
+  width: 100%;
+  height: auto;
+  display: block;
 }
 
 @layer base {

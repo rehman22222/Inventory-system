@@ -2,10 +2,11 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const { applicableDeals } = require("./libs/deals");
 
 const dataDir = path.join(__dirname, "data");
 const dataFile = path.join(dataDir, "local-store.json");
-const storeVersion = 4;
+const storeVersion = 6;
 
 const now = () => new Date().toISOString();
 const id = () => crypto.randomBytes(12).toString("hex");
@@ -62,15 +63,15 @@ function initialStore() {
     { _id: "prod-charger", barcode: "6291107451241", name: "USB-C Fast Charger", Desciption: "Certified USB-C charging cable", Category: "cat-accessories", Price: 8.99, quantity: 73, supplier: "sup-northline", createdAt: daysAgo(10), updatedAt: daysAgo(2) },
   ];
   const orders = [
-    { _id: "ord-1001", user: "manager-demo", Description: "Online order for starter kit bundle", Product: { product: "prod-vaporx", quantity: 2, price: 59.99 }, totalAmount: 119.98, status: "delivered", createdAt: daysAgo(7), updatedAt: daysAgo(5) },
-    { _id: "ord-1002", user: "staff-demo", Description: "Counter pickup for mint refill", Product: { product: "prod-mint", quantity: 4, price: 15.99 }, totalAmount: 63.96, status: "shipped", createdAt: daysAgo(5), updatedAt: daysAgo(3) },
-    { _id: "ord-1003", user: "manager-demo", Description: "Replacement pods for VIP customer", Product: { product: "prod-pods", quantity: 3, price: 12.99 }, totalAmount: 38.97, status: "pending", createdAt: daysAgo(3), updatedAt: daysAgo(3) },
-    { _id: "ord-1004", user: "admin-demo", Description: "Accessory reorder for front display", Product: { product: "prod-charger", quantity: 5, price: 8.99 }, totalAmount: 44.95, status: "pending", createdAt: daysAgo(1), updatedAt: daysAgo(1) },
+    { _id: "ord-1001", user: "manager-demo", Description: "Online order for starter kit bundle", Products: [{ product: "prod-vaporx", quantity: 2, price: 59.99 }], totalAmount: 119.98, status: "delivered", createdAt: daysAgo(7), updatedAt: daysAgo(5) },
+    { _id: "ord-1002", user: "staff-demo", Description: "Counter pickup for mint refill", Products: [{ product: "prod-mint", quantity: 4, price: 15.99 }], totalAmount: 63.96, status: "shipped", createdAt: daysAgo(5), updatedAt: daysAgo(3) },
+    { _id: "ord-1003", user: "manager-demo", Description: "Replacement pods for VIP customer", Products: [{ product: "prod-pods", quantity: 3, price: 12.99 }], totalAmount: 38.97, status: "pending", createdAt: daysAgo(3), updatedAt: daysAgo(3) },
+    { _id: "ord-1004", user: "admin-demo", Description: "Accessory reorder for front display", Products: [{ product: "prod-charger", quantity: 5, price: 8.99 }], totalAmount: 44.95, status: "pending", createdAt: daysAgo(1), updatedAt: daysAgo(1) },
   ];
   const sales = [
     { _id: "sale-2001", customerName: "Jordan Lee", products: { product: "prod-vaporx", quantity: 1, price: 59.99 }, totalAmount: 59.99, paymentStatus: "paid", paymentMethod: "creditcard", status: "completed", createdAt: daysAgo(6), updatedAt: daysAgo(6) },
     { _id: "sale-2002", customerName: "Avery Smith", products: { product: "prod-mango", quantity: 3, price: 16.99 }, totalAmount: 50.97, paymentStatus: "paid", paymentMethod: "cash", status: "completed", createdAt: daysAgo(5), updatedAt: daysAgo(5) },
-    { _id: "sale-2003", customerName: "Taylor Morgan", products: { product: "prod-pods", quantity: 2, price: 12.99 }, totalAmount: 25.98, paymentStatus: "pending", paymentMethod: "banktransfer", status: "pending", createdAt: daysAgo(4), updatedAt: daysAgo(3) },
+    { _id: "sale-2003", customerName: "Taylor Morgan", products: { product: "prod-pods", quantity: 2, price: 12.99 }, totalAmount: 25.98, paymentStatus: "pending", paymentMethod: "wallet", status: "pending", createdAt: daysAgo(4), updatedAt: daysAgo(3) },
     { _id: "sale-2004", customerName: "Casey Patel", products: { product: "prod-coils", quantity: 4, price: 11.49 }, totalAmount: 45.96, paymentStatus: "paid", paymentMethod: "creditcard", status: "completed", createdAt: daysAgo(2), updatedAt: daysAgo(2) },
     { _id: "sale-2005", customerName: "Riley Chen", products: { product: "prod-disposable", quantity: 2, price: 19.99 }, totalAmount: 39.98, paymentStatus: "paid", paymentMethod: "cash", status: "completed", createdAt: daysAgo(1), updatedAt: daysAgo(1) },
   ];
@@ -106,6 +107,8 @@ function initialStore() {
     activityLogs,
     receipts: [],
     vouchers: [],
+    deals: [],
+    dayClosings: [],
     heldSales: [],
     inventories: products.map((product) => ({
       _id: `inv-${product._id}`,
@@ -153,13 +156,24 @@ function populateProduct(store, product) {
 
 function populateOrder(store, order) {
   if (!order) return order;
+  // An order is a basket (`Products: [...]`); older single-line demo rows are
+  // lifted into the same shape so the page only has to know one.
+  const lines = Array.isArray(order.Products)
+    ? order.Products
+    : order.Product?.product
+    ? [order.Product]
+    : [];
+
   return {
     ...order,
     user: publicUser(store.users.find((user) => user._id === order.user)),
-    Product: {
-      ...order.Product,
-      product: populateProduct(store, store.products.find((product) => product._id === order.Product?.product)),
-    },
+    Products: lines.map((line) => ({
+      ...line,
+      product: populateProduct(
+        store,
+        store.products.find((product) => product._id === String(line.product))
+      ),
+    })),
   };
 }
 
@@ -243,13 +257,86 @@ function nextReceiptNo(store) {
   return `POS-${String(sequence).padStart(6, "0")}`;
 }
 
+function nextDayClosingNo(store) {
+  const sequence = Number(store.dayClosingSequence || 0) + 1;
+  store.dayClosingSequence = sequence;
+  return `DC-${String(sequence).padStart(6, "0")}`;
+}
+
+// Demo mode has no real session; the client sends the `local-<id>` token the
+// demo login handed out, which is enough to tell the cashiers apart.
+function currentUser(store, req) {
+  const token = (req.headers.authorization || "").replace("Bearer local-", "");
+  return store.users.find((user) => user._id === token) || null;
+}
+
+const seesAllSales = (user) => user?.role === "admin" || user?.role === "superadmin";
+
+// Mirrors the real controller: a cashier sees their own not-yet-closed takings.
+function scopeReceipts(store, req) {
+  const user = currentUser(store, req);
+  if (!user || seesAllSales(user)) return store.receipts;
+  return store.receipts.filter(
+    (receipt) => receipt.cashier === user._id && !receipt.dayClosing
+  );
+}
+
+function summariseReceipts(receipts) {
+  const methods = new Map();
+  let gross = 0, discount = 0, tax = 0, net = 0, refunded = 0;
+
+  for (const receipt of receipts) {
+    gross += Number(receipt.subtotal || 0);
+    discount += Number(receipt.discount || 0);
+    tax += Number(receipt.tax || 0);
+    net += Number(receipt.total || 0);
+    refunded += (receipt.refunds || []).reduce((sum, e) => sum + Number(e.amount || 0), 0);
+
+    const hasTenders = Array.isArray(receipt.payments) && receipt.payments.length > 0;
+    const tenders = hasTenders
+      ? receipt.payments.map((t) => ({ method: t.method, amount: Number(t.amount || 0) }))
+      : [{ method: receipt.paymentMethod, amount: Number(receipt.total || 0) }];
+
+    // Change goes back out of the drawer, so it is not takings. Mirrors the
+    // real controller's summarise().
+    const change = hasTenders ? Number(receipt.changeDue || 0) : 0;
+    if (change > 0) {
+      const drawer = tenders.find((t) => t.method === "cash") || tenders[0];
+      if (drawer) drawer.amount = Math.max(0, drawer.amount - change);
+    }
+
+    for (const tender of tenders) {
+      const key = tender.method || "unknown";
+      const current = methods.get(key) || { method: key, amount: 0, count: 0 };
+      current.amount += Number(tender.amount || 0);
+      current.count += 1;
+      methods.set(key, current);
+    }
+  }
+
+  return {
+    receiptCount: receipts.length,
+    gross: money(gross),
+    discount: money(discount),
+    tax: money(tax),
+    net: money(net),
+    refunded: money(refunded),
+    byMethod: [...methods.values()].map((e) => ({ ...e, amount: money(e.amount) })),
+    openedAt: receipts.length ? receipts[receipts.length - 1].createdAt : null,
+  };
+}
+
 function localStorageRouter(app) {
   const router = express.Router();
 
   router.post("/auth/login", (req, res) => {
     const store = readStore();
     const { email, password } = req.body;
-    const user = store.users.find((item) => item.email === email && item.password === password);
+    // Email is case-insensitive, same as the real login. The password is not.
+    const wanted = String(email || "").trim().toLowerCase();
+    const user = store.users.find(
+      (item) => String(item.email).trim().toLowerCase() === wanted && item.password === password
+    );
 
     if (!user) return res.status(400).json({ message: "Invalid demo credentials" });
 
@@ -304,13 +391,69 @@ function localStorageRouter(app) {
     }));
     res.json({ categoriesWithCount });
   });
+  // Mirrors the real controller: name required (description optional), no
+  // duplicate names, and creating is the owner side's job.
+  const sameName = (store, name, exceptId) =>
+    store.categories.find(
+      (record) =>
+        String(record.name).trim().toLowerCase() === String(name).trim().toLowerCase() &&
+        record._id !== exceptId
+    );
+
   router.post("/category/createcategory", (req, res) => {
     const store = readStore();
-    const category = { _id: id(), ...req.body, createdAt: now(), updatedAt: now() };
+    const user = currentUser(store, req);
+    if (user && !["admin", "superadmin"].includes(user.role)) {
+      return res.status(403).json({ message: "Access denied. Admin or super admin only." });
+    }
+
+    const name = String(req.body.name || "").trim();
+    if (!name) return res.status(400).json({ message: "Category name is required" });
+
+    const clash = sameName(store, name);
+    if (clash) return res.status(400).json({ message: `A category called "${clash.name}" already exists` });
+
+    const category = {
+      _id: id(),
+      ...req.body,
+      name,
+      description: String(req.body.description || "").trim(),
+      createdAt: now(),
+      updatedAt: now(),
+    };
     store.categories.push(category);
     addActivity(store, "Add Category", `Category "${category.name}" was added`, "category", category._id);
     writeStore(store);
     res.status(201).json(category);
+  });
+
+  router.put("/category/updateCategory/:CategoryId", (req, res) => {
+    const store = readStore();
+    const category = store.categories.find((record) => record._id === req.params.CategoryId);
+    if (!category) return res.status(404).json({ message: "Category is not found" });
+
+    const source =
+      req.body.updatedCategory && typeof req.body.updatedCategory === "object"
+        ? req.body.updatedCategory
+        : req.body;
+
+    if (source.name !== undefined) {
+      const name = String(source.name).trim();
+      if (!name) return res.status(400).json({ message: "Category name is required" });
+      if (category.system && name.toLowerCase() !== String(category.name).toLowerCase()) {
+        return res.status(400).json({ message: "This is a system category and cannot be renamed" });
+      }
+      const clash = sameName(store, name, category._id);
+      if (clash) return res.status(400).json({ message: `A category called "${clash.name}" already exists` });
+      category.name = name;
+    }
+
+    if (source.description !== undefined) category.description = String(source.description).trim();
+
+    category.updatedAt = now();
+    addActivity(store, "Update Category", `Category "${category.name}" was updated.`, "category", category._id);
+    writeStore(store);
+    res.json({ message: "Category successfully updated", category });
   });
   router.get("/category/searchcategory", (req, res) => {
     const query = String(req.query.query || "").toLowerCase();
@@ -328,23 +471,103 @@ function localStorageRouter(app) {
     const Products = store.products.map((product) => populateProduct(store, product));
     res.json({ Products, totalProduct: Products.length });
   });
-  router.post("/product/addproduct", (req, res) => {
-    const store = readStore();
+  const addProductTo = (store, body) => {
     const product = {
       _id: id(),
-      name: req.body.name,
-      Desciption: req.body.Desciption,
-      Category: req.body.Category,
-      Price: Number(req.body.Price),
-      quantity: Number(req.body.quantity),
-      supplier: req.body.supplier,
+      name: body.name,
+      Desciption: body.Desciption,
+      shelfLabel: body.shelfLabel,
+      Category: body.Category,
+      Price: Number(body.Price),
+      quantity: Number(body.quantity || 0),
+      lowStockThreshold:
+        body.lowStockThreshold !== undefined && body.lowStockThreshold !== ""
+          ? Number(body.lowStockThreshold)
+          : 10,
+      barcode: body.barcode || undefined,
+      supplier: body.supplier,
       createdAt: now(),
       updatedAt: now(),
     };
     store.products.push(product);
     addActivity(store, "Add Product", `Product ${product.name} was added`, "product", product._id);
     writeStore(store);
-    res.status(201).json(populateProduct(store, product));
+    return product;
+  };
+
+  router.post("/product/addproduct", (req, res) => {
+    const store = readStore();
+    const user = currentUser(store, req);
+    // Building the catalogue is the owner side's job.
+    if (user && !["admin", "superadmin"].includes(user.role)) {
+      return res.status(403).json({ message: "Access denied. Admin or super admin only." });
+    }
+    res.status(201).json(populateProduct(store, addProductTo(store, req.body)));
+  });
+
+  // The till's learn-on-scan path — open to every cashier, barcode required.
+  // Returns the real API's { message, product } shape, which the POS modal reads.
+  router.post("/product/quick-add", (req, res) => {
+    const store = readStore();
+    if (!String(req.body.barcode || "").trim()) {
+      return res
+        .status(400)
+        .json({ message: "Quick add is for scanned items — a barcode is required" });
+    }
+    res.status(201).json({
+      message: "Product created successfully",
+      product: populateProduct(store, addProductTo(store, req.body)),
+    });
+  });
+
+  // Generate price-point barcodes into the permanent Random category (demo mode).
+  router.post("/product/generate-random", (req, res) => {
+    const store = readStore();
+    const count = Math.floor(Number(req.body?.count || 0));
+    const tiers = (Array.isArray(req.body?.tiers) && req.body.tiers.length ? req.body.tiers : [5, 10, 15])
+      .map(Number)
+      .filter((v) => Number.isFinite(v) && v > 0);
+
+    if (!count || count < 1 || count > 500) {
+      return res.status(400).json({ message: "Count must be between 1 and 500" });
+    }
+
+    let category = store.categories.find((c) => c.name === "Random");
+    if (!category) {
+      category = { _id: id(), name: "Random", description: "System category", system: true, createdAt: now(), updatedAt: now() };
+      store.categories.push(category);
+    }
+
+    const ean = (seq) => {
+      const payload = `20${String(seq).padStart(10, "0")}`.slice(0, 12);
+      let sum = 0;
+      for (let i = 0; i < 12; i += 1) sum += Number(payload[i]) * (i % 2 === 0 ? 1 : 3);
+      return `${payload}${(10 - (sum % 10)) % 10}`;
+    };
+
+    store.randomSeq = Number(store.randomSeq || 0);
+    const products = [];
+    for (let i = 0; i < count; i += 1) {
+      const price = tiers[i % tiers.length];
+      store.randomSeq += 1;
+      const product = {
+        _id: id(),
+        name: `Random €${price} #${String(store.randomSeq).padStart(4, "0")}`,
+        Desciption: "Generated price-point item",
+        Category: category._id,
+        Price: price,
+        quantity: 100000,
+        lowStockThreshold: 0,
+        barcode: ean(store.randomSeq),
+        createdAt: now(),
+        updatedAt: now(),
+      };
+      store.products.push(product);
+      products.push({ _id: product._id, name: product.name, Price: price, barcode: product.barcode });
+    }
+
+    writeStore(store);
+    res.status(201).json({ message: `Generated ${products.length} barcodes`, category: { _id: category._id, name: category.name }, products });
   });
   router.put("/product/editproduct/:productId", (req, res) => {
     const store = readStore();
@@ -445,12 +668,54 @@ function localStorageRouter(app) {
   router.get("/order/getorders", (_req, res) => res.json(readStore().orders.map((order) => populateOrder(readStore(), order))));
   router.post("/order/createorder", (req, res) => {
     const store = readStore();
-    const product = store.products.find((item) => item._id === req.body.Product?.product);
-    if (!product) return res.status(404).json({ message: "Product not found" });
-    const quantity = Number(req.body.Product.quantity);
-    if (product.quantity < quantity) return res.status(400).json({ message: "Insufficient product quantity" });
-    product.quantity -= quantity;
-    const order = { _id: id(), ...req.body, totalAmount: Number(req.body.Product.price) * quantity, createdAt: now(), updatedAt: now() };
+
+    // Accept the basket shape, and the older single-line shape.
+    const requested = Array.isArray(req.body.Products)
+      ? req.body.Products
+      : req.body.Product?.product
+      ? [req.body.Product]
+      : [];
+
+    if (requested.length === 0) {
+      return res.status(400).json({ message: "Add at least one product to the order" });
+    }
+
+    // Validate the whole basket before deducting any stock.
+    const lines = [];
+    for (const item of requested) {
+      const product = store.products.find((entry) => entry._id === String(item.product));
+      if (!product) return res.status(404).json({ message: "Product not found" });
+
+      const quantity = Number(item.quantity);
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        return res.status(400).json({ message: `Invalid quantity for ${product.name}` });
+      }
+      if (product.quantity < quantity) {
+        return res.status(400).json({
+          message: `Insufficient stock for ${product.name}`,
+          available: product.quantity,
+          requested: quantity,
+        });
+      }
+      // Price comes from the catalogue, never the request body.
+      lines.push({ product: product._id, quantity, price: money(product.Price) });
+    }
+
+    lines.forEach((line) => {
+      const product = store.products.find((entry) => entry._id === line.product);
+      product.quantity -= line.quantity;
+    });
+
+    const order = {
+      _id: id(),
+      user: req.body.user,
+      Description: req.body.Description,
+      status: req.body.status,
+      Products: lines,
+      totalAmount: money(lines.reduce((sum, line) => sum + line.price * line.quantity, 0)),
+      createdAt: now(),
+      updatedAt: now(),
+    };
     store.orders.unshift(order);
     addActivity(store, "Create Order", "Order was created.", "order", order._id, req.body.user || "manager-demo");
     writeStore(store);
@@ -480,9 +745,15 @@ function localStorageRouter(app) {
     res.json(Object.entries(counts).map(([_id, count]) => ({ _id, count })));
   });
 
-  router.get("/sales/getallsales", (_req, res) => {
+  router.get("/sales/getallsales", (req, res) => {
     const store = readStore();
-    res.json({ success: true, sales: store.sales.map((sale) => populateSale(store, sale)) });
+    const user = currentUser(store, req);
+    // Cashiers see only their own not-yet-closed sales, same as the POS history.
+    const scoped =
+      !user || seesAllSales(user)
+        ? store.sales
+        : store.sales.filter((sale) => sale.cashier === user._id && !sale.dayClosing);
+    res.json({ success: true, sales: scoped.map((sale) => populateSale(store, sale)) });
   });
   router.patch("/sales/override-report-total", (req, res) => {
     const store = readStore();
@@ -590,7 +861,18 @@ function localStorageRouter(app) {
     const quantity = Number(req.body.products.quantity);
     if (product.quantity < quantity) return res.status(400).json({ message: "Insufficient product quantity" });
     product.quantity -= quantity;
-    const sale = { _id: id(), ...req.body, totalAmount: quantity * Number(req.body.products.price), createdAt: now(), updatedAt: now() };
+    const seller = currentUser(store, req);
+    const sale = {
+      _id: id(),
+      ...req.body,
+      totalAmount: quantity * Number(req.body.products.price),
+      // So the seller can still find it once per-cashier scoping applies.
+      cashier: seller?._id,
+      cashierName: seller?.name,
+      dayClosing: null,
+      createdAt: now(),
+      updatedAt: now(),
+    };
     store.sales.unshift(sale);
     writeStore(store);
     res.status(201).json({ success: true, message: "Sale created successfully", sale: populateSale(store, sale) });
@@ -605,16 +887,24 @@ function localStorageRouter(app) {
   });
   router.get("/sales/searchdata", (req, res) => {
     const store = readStore();
+    const user = currentUser(store, req);
     const query = String(req.query.query || "").toLowerCase();
-    res.json({ sales: store.sales.map((sale) => populateSale(store, sale)).filter((sale) => String(sale.customerName).toLowerCase().includes(query) || String(sale.paymentMethod).toLowerCase().includes(query)) });
+    // A search must never reach past what this user is allowed to list.
+    const scoped =
+      !user || seesAllSales(user)
+        ? store.sales
+        : store.sales.filter((sale) => sale.cashier === user._id && !sale.dayClosing);
+    res.json({ sales: scoped.map((sale) => populateSale(store, sale)).filter((sale) => String(sale.customerName).toLowerCase().includes(query) || String(sale.paymentMethod).toLowerCase().includes(query)) });
   });
 
   router.post("/pos/checkout", (req, res) => {
     const store = readStore();
+    // The signed-in demo user owns the sale; the body values are only a fallback.
+    const signedIn = currentUser(store, req);
     const {
       customerName = "Walk-in Customer",
-      cashierId = "manager-demo",
-      cashierName = "Demo Cashier",
+      cashierId = signedIn?._id || "manager-demo",
+      cashierName = signedIn?.name || "Demo Cashier",
       items = [],
       paymentMethod,
       payments,
@@ -697,7 +987,19 @@ function localStorageRouter(app) {
         : Number(discount || 0);
     const manualDiscount = money(Math.max(0, Math.min(rawManual, afterVoucher)));
 
-    const totalDiscount = money(voucherDiscount + manualDiscount);
+    // Deals: automatic bundle discounts, computed from the active deals and
+    // applied against whatever balance is left.
+    const cartMap = new Map();
+    for (const line of lines) {
+      const key = String(line.product._id);
+      const seen = cartMap.get(key);
+      cartMap.set(key, { quantity: (seen?.quantity || 0) + line.quantity, price: line.price });
+    }
+    const dealResult = applicableDeals(cartMap, store.deals || []);
+    const dealRoom = Math.max(subtotal - voucherDiscount - manualDiscount, 0);
+    const dealDiscount = money(Math.min(dealResult.total, dealRoom));
+
+    const totalDiscount = money(voucherDiscount + manualDiscount + dealDiscount);
     const taxableAmount = Math.max(subtotal - totalDiscount, 0);
     const tax = money(taxEnabled ? taxableAmount * Number(taxRate || 0) : 0);
     const total = money(taxableAmount + tax);
@@ -813,6 +1115,13 @@ function localStorageRouter(app) {
       subtotal,
       discount: totalDiscount,
       discountType,
+      dealDiscount,
+      deals: dealResult.applied.map((entry) => ({
+        dealId: entry.dealId,
+        name: entry.name,
+        sets: entry.sets,
+        amount: entry.amount,
+      })),
       voucher: voucher ? { code: voucher.code, voucherId: voucher._id, amount: voucherDiscount } : undefined,
       taxEnabled,
       taxRate: Number(taxRate || 0),
@@ -824,6 +1133,8 @@ function localStorageRouter(app) {
       changeDue: tendered === undefined ? undefined : money(Math.max(0, tendered - total)),
       status: "completed",
       refunds: [],
+      // Open until the cashier closes their day and hands it to the admin.
+      dayClosing: null,
       saleIds,
       createdAt: now(),
       updatedAt: now(),
@@ -852,16 +1163,127 @@ function localStorageRouter(app) {
   router.get("/pos/receipts", (req, res) => {
     const store = readStore();
     const limit = Math.min(Number(req.query.limit || 25), 100);
-    res.json({ receipts: store.receipts.slice(0, limit) });
+    res.json({ receipts: scopeReceipts(store, req).slice(0, limit) });
   });
 
   router.get("/pos/receipt/:receiptNo", (req, res) => {
     const store = readStore();
+    const user = currentUser(store, req);
     const receipt = store.receipts.find(
       (record) => record.receiptNo === String(req.params.receiptNo).toUpperCase()
     );
     if (!receipt) return res.status(404).json({ message: "Receipt not found" });
+
+    // Staff only get their own; manager and above can look any receipt up by
+    // its printed number, which is what a counter refund needs.
+    const canLookupAny = !user || seesAllSales(user) || user.role === "manager";
+    if (!canLookupAny && receipt.cashier !== user._id) {
+      return res.status(404).json({ message: "Receipt not found" });
+    }
+
     res.json({ receipt });
+  });
+
+  // --- Day closing ------------------------------------------------------
+  const myOpenReceipts = (store, req) => {
+    const user = currentUser(store, req);
+    if (!user) return [];
+    return store.receipts
+      .filter((receipt) => receipt.cashier === user._id && !receipt.dayClosing)
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  };
+
+  router.get("/pos/day-closing/summary", (req, res) => {
+    const store = readStore();
+    const user = currentUser(store, req);
+    res.json({
+      summary: summariseReceipts(myOpenReceipts(store, req)),
+      cashierName: user?.name,
+    });
+  });
+
+  router.post("/pos/day-closing/close", (req, res) => {
+    const store = readStore();
+    const user = currentUser(store, req);
+    if (!user) return res.status(401).json({ message: "Not signed in" });
+
+    const open = myOpenReceipts(store, req);
+    if (open.length === 0) {
+      return res.status(400).json({ message: "There are no open sales to close" });
+    }
+
+    const summary = summariseReceipts(open);
+    const closing = {
+      _id: id(),
+      reference: nextDayClosingNo(store),
+      cashier: user._id,
+      cashierName: user.name,
+      cashierRole: user.role,
+      openedAt: open[0].createdAt,
+      closedAt: now(),
+      receiptCount: summary.receiptCount,
+      receiptNos: open.map((receipt) => receipt.receiptNo),
+      receipts: open.map((receipt) => receipt._id),
+      gross: summary.gross,
+      discount: summary.discount,
+      tax: summary.tax,
+      net: summary.net,
+      refunded: summary.refunded,
+      byMethod: summary.byMethod,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+
+    if (!store.dayClosings) store.dayClosings = [];
+    store.dayClosings.unshift(closing);
+
+    const closedIds = new Set(open.map((receipt) => receipt._id));
+    const saleIds = new Set(open.flatMap((receipt) => receipt.saleIds || []));
+    store.receipts.forEach((receipt) => {
+      if (closedIds.has(receipt._id)) receipt.dayClosing = closing._id;
+    });
+    store.sales.forEach((sale) => {
+      if (saleIds.has(sale._id)) sale.dayClosing = closing._id;
+    });
+
+    addActivity(
+      store,
+      "POS Day Closing",
+      `${user.name} closed ${summary.receiptCount} sale(s) totalling ${summary.net} as ${closing.reference}.`,
+      "order",
+      closing._id,
+      user._id
+    );
+    writeStore(store);
+
+    res.status(201).json({
+      success: true,
+      message: `Day closed — ${summary.receiptCount} sale(s) handed over`,
+      closing,
+    });
+  });
+
+  router.get("/pos/day-closings", (req, res) => {
+    const store = readStore();
+    const user = currentUser(store, req);
+    if (user && !seesAllSales(user)) {
+      return res.status(403).json({ message: "Access denied. Admin or super admin only." });
+    }
+    const limit = Math.min(Number(req.query.limit || 50), 200);
+    res.json({ closings: (store.dayClosings || []).slice(0, limit) });
+  });
+
+  router.get("/pos/day-closings/:closingId", (req, res) => {
+    const store = readStore();
+    const user = currentUser(store, req);
+    if (user && !seesAllSales(user)) {
+      return res.status(403).json({ message: "Access denied. Admin or super admin only." });
+    }
+    const closing = (store.dayClosings || []).find((record) => record._id === req.params.closingId);
+    if (!closing) return res.status(404).json({ message: "Day closing not found" });
+
+    const receipts = store.receipts.filter((receipt) => closing.receipts.includes(receipt._id));
+    res.json({ closing: { ...closing, receipts } });
   });
 
   const applyRefund = (store, receipt, requested, reason, isVoid) => {
@@ -1134,6 +1556,115 @@ function localStorageRouter(app) {
       value: voucher.value,
       computedDiscount: voucherDiscountFor(voucher, subtotal),
     });
+  });
+
+  // --- Deals (bundle discounts) -----------------------------------------
+  const populateDeal = (store, deal) => ({
+    ...deal,
+    items: (deal.items || []).map((item) => {
+      const product = store.products.find((record) => record._id === String(item.product));
+      return {
+        product: product
+          ? { _id: product._id, name: product.name, Price: product.Price, barcode: product.barcode }
+          : { _id: String(item.product) },
+        quantity: item.quantity,
+      };
+    }),
+  });
+
+  const normaliseDealItems = (store, raw) => {
+    const map = new Map();
+    (Array.isArray(raw) ? raw : []).forEach((entry) => {
+      const pid = String(entry?.product || entry?._id || entry || "").trim();
+      if (!store.products.some((record) => record._id === pid)) return;
+      const quantity = Math.max(1, Math.floor(Number(entry?.quantity || 1)) || 1);
+      map.set(pid, (map.get(pid) || 0) + quantity);
+    });
+    return [...map.entries()].map(([product, quantity]) => ({ product, quantity }));
+  };
+
+  router.get("/deal/all", (_req, res) => {
+    const store = readStore();
+    res.json({ deals: (store.deals || []).map((deal) => populateDeal(store, deal)) });
+  });
+
+  router.post("/deal/create", (req, res) => {
+    const store = readStore();
+    const { name, discount, discountType = "amount", items } = req.body;
+
+    if (!name || !String(name).trim()) return res.status(400).json({ message: "Deal name is required" });
+    if (!Number(discount) || Number(discount) <= 0) {
+      return res.status(400).json({ message: "Deal discount must be greater than zero" });
+    }
+    if (discountType !== "amount" && discountType !== "percent") {
+      return res.status(400).json({ message: "Deal discount type must be amount or percent" });
+    }
+    if (discountType === "percent" && Number(discount) > 100) {
+      return res.status(400).json({ message: "A percentage deal cannot exceed 100%" });
+    }
+
+    const cleanItems = normaliseDealItems(store, items);
+    if (cleanItems.length < 2) {
+      return res.status(400).json({ message: "Pick at least two products for the deal" });
+    }
+
+    if (!store.deals) store.deals = [];
+    const deal = {
+      _id: id(),
+      name: String(name).trim(),
+      discount: Number(discount),
+      discountType,
+      items: cleanItems,
+      active: true,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    store.deals.unshift(deal);
+    writeStore(store);
+
+    res.status(201).json({ message: "Deal created successfully", deal: populateDeal(store, deal) });
+  });
+
+  router.put("/deal/:dealId", (req, res) => {
+    const store = readStore();
+    const deal = (store.deals || []).find((record) => record._id === req.params.dealId);
+    if (!deal) return res.status(404).json({ message: "Deal not found" });
+
+    const { name, discount, discountType, items, active } = req.body;
+    if (name !== undefined) deal.name = String(name).trim();
+    if (discount !== undefined || discountType !== undefined) {
+      const nextType = discountType !== undefined ? discountType : deal.discountType || "amount";
+      const nextAmount = discount !== undefined ? Number(discount) : Number(deal.discount);
+      if (!Number.isFinite(nextAmount) || nextAmount <= 0) {
+        return res.status(400).json({ message: "Deal discount must be greater than zero" });
+      }
+      if (nextType === "percent" && nextAmount > 100) {
+        return res.status(400).json({ message: "A percentage deal cannot exceed 100%" });
+      }
+      deal.discount = nextAmount;
+      deal.discountType = nextType;
+    }
+    if (items !== undefined) {
+      const cleanItems = normaliseDealItems(store, items);
+      if (cleanItems.length < 2) {
+        return res.status(400).json({ message: "Pick at least two products for the deal" });
+      }
+      deal.items = cleanItems;
+    }
+    if (active !== undefined) deal.active = Boolean(active);
+    deal.updatedAt = now();
+    writeStore(store);
+
+    res.json({ message: "Deal updated", deal: populateDeal(store, deal) });
+  });
+
+  router.delete("/deal/:dealId", (req, res) => {
+    const store = readStore();
+    const before = (store.deals || []).length;
+    store.deals = (store.deals || []).filter((deal) => deal._id !== req.params.dealId);
+    if (store.deals.length === before) return res.status(404).json({ message: "Deal not found" });
+    writeStore(store);
+    res.json({ message: "Deal deleted successfully" });
   });
 
   router.get("/stocktransaction/getallStockTransaction", (_req, res) => {

@@ -12,7 +12,7 @@ import TopNavbar from "../Components/TopNavbar";
 import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { gettingallCategory,CreateCategory , RemoveCategory,SearchCategory } from "../features/categorySlice";
+import { gettingallCategory,CreateCategory , UpdateCategory, RemoveCategory,SearchCategory } from "../features/categorySlice";
 import toast from "react-hot-toast";
 
 
@@ -25,13 +25,17 @@ function Categorypage() {
   
   const { t } = useTranslation();
   const { getallCategory, iscreatedCategory,  searchdata } = useSelector((state) => state.category);
+  const { Authuser } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const [query, setquery] = useState("");
+
+  // Creating categories belongs to the owner side; a manager edits and removes.
+  const canAddCategory = ["admin", "superadmin"].includes(Authuser?.role);
 
   const [name, setname] = useState("");
   const [description, setdescription] = useState("");
   const [isFormVisible, setIsFormVisible] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
 
 
@@ -79,17 +83,52 @@ function Categorypage() {
 
   const submitCategory = async (event) => {
     event.preventDefault();
-    const CategoryData = { name, description};
+
+    if (!name.trim()) {
+      toast.error(t("categories.nameRequired"));
+      return;
+    }
+
+    const CategoryData = { name: name.trim(), description: description.trim() };
+
+    // Editing an existing category, or creating a new one.
+    if (selectedCategory) {
+      dispatch(UpdateCategory({ CategoryId: selectedCategory._id, changes: CategoryData }))
+        .unwrap()
+        .then(() => {
+          toast.success(t("categories.updated"));
+          closeForm();
+        })
+        // Surface the real reason (duplicate name, system category, …) rather
+        // than a blanket "failed".
+        .catch((error) => toast.error(error || t("categories.updateFail")));
+      return;
+    }
 
     dispatch( CreateCategory( CategoryData))
       .unwrap()
       .then(() => {
         toast.success(t("categories.added"));
-        resetForm();
+        closeForm();
       })
-      .catch(() => {
-        toast.error(t("categories.addFail"));
+      .catch((error) => {
+        toast.error(error || t("categories.addFail"));
       });
+  };
+
+
+  const openEdit = (category) => {
+    setSelectedCategory(category);
+    setname(category.name || "");
+    setdescription(category.description || "");
+    setIsFormVisible(true);
+  };
+
+
+  const closeForm = () => {
+    setIsFormVisible(false);
+    setSelectedCategory(null);
+    resetForm();
   };
 
 
@@ -132,11 +171,14 @@ function Categorypage() {
       placeholder={t("categories.searchPlaceholder")}
       className="w-full ml-10 mt-20 md:w-96 h-12 pl-4 pr-12 border-2 border-base-300 rounded-lg bg-base-100 text-base-content"/>
       <div className='flex mt-20'>
+      {canAddCategory && (
       <button onClick={()=>{
+           setSelectedCategory(null);
+           resetForm();
            setIsFormVisible(true);
-           setSelectedProduct(null);
 
       }} className="bg-blue-800 ml-10 text-white w-40 h-12 rounded-lg flex items-center justify-center"><IoMdAdd className='text-xl mr-3'/>{t("categories.addCategory")}</button>
+      )}
       </div>
 
       </div>
@@ -146,23 +188,24 @@ function Categorypage() {
           <div className="absolute top-10 right-0 z-50 h-svh w-80 bg-base-100 p-6 border-2 border-base-300 rounded-lg shadow-xl transition-transform transform">
             <div className="text-right">
               <MdKeyboardDoubleArrowLeft
-                onClick={() => setIsFormVisible(false)}
+                onClick={closeForm}
                 className="cursor-pointer text-2xl"
               />
             </div>
 
             <h1 className="text-xl font-semibold mb-4">
-              {selectedProduct ? t("categories.editCategory") : t("categories.addCategoryTitle")}
+              {selectedCategory ? t("categories.editCategory") : t("categories.addCategoryTitle")}
             </h1>
 
             <form onSubmit={ submitCategory}>
               <div className="mb-4">
-                <label>{t("common.name")}</label>
+                <label>{t("common.name")} *</label>
                 <input
                   value={name}
                   placeholder={t("categories.namePlaceholder")}
                   onChange={(e) => setname(e.target.value)}
                   type="text"
+                  required
                   className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
                 />
               </div>
@@ -188,7 +231,7 @@ function Categorypage() {
                 type="submit"
                 className="bg-blue-800 text-white w-full h-12 rounded-lg hover:bg-blue-700 mt-4"
               >
-                {selectedProduct ? t("categories.updateCategory") : t("categories.addCategoryTitle")}
+                {selectedCategory ? t("categories.updateCategory") : t("categories.addCategoryTitle")}
               </button>
             </form>
           </div>
@@ -234,7 +277,7 @@ function Categorypage() {
                           {t("common.remove")}
                         </button>
                         <button
-
+                          onClick={() => openEdit(Category)}
                           className="h-10 w-24 bg-green-500 ml-10 hover:bg-green-700 rounded-md text-white"
                         >
                           {t("common.edit")}

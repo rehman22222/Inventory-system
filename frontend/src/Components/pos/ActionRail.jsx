@@ -14,6 +14,7 @@ const TONES = {
   indigo: "bg-indigo-700 hover:bg-indigo-600 border-indigo-500 text-white",
   violet: "bg-violet-700 hover:bg-violet-600 border-violet-500 text-white",
   cyan: "bg-cyan-700 hover:bg-cyan-600 border-cyan-500 text-white",
+  teal: "bg-teal-700 hover:bg-teal-600 border-teal-500 text-white",
   slate: "bg-slate-600 hover:bg-slate-500 border-slate-400 text-white",
 };
 

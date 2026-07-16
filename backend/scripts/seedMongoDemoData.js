@@ -241,7 +241,7 @@ async function upsertOperations(users, products, suppliers) {
   const saleSeeds = [
     ["POS-DEMO-0001", "Jordan Lee", products.vaporx, 1, 59.99, "creditcard"],
     ["POS-DEMO-0002", "Avery Smith", products.mango, 3, 16.99, "cash"],
-    ["POS-DEMO-0003", "Taylor Morgan", products.pods, 2, 12.99, "banktransfer"],
+    ["POS-DEMO-0003", "Taylor Morgan", products.pods, 2, 12.99, "wallet"],
   ];
 
   for (const [receiptNo, customerName, product, quantity, price, paymentMethod] of saleSeeds) {

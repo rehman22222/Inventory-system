@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FiPrinter, FiWifi, FiWifiOff } from "react-icons/fi";
+import { FiPrinter, FiRefreshCw, FiUploadCloud, FiWifi, FiWifiOff } from "react-icons/fi";
+import { onQueueChange, syncQueue } from "../../lib/offlineQueue";
 
 const Field = ({ label, value }) => (
   <span className="flex items-center gap-1.5">
@@ -15,6 +16,8 @@ function StatusBar({ user, till, onPrint }) {
   const { t } = useTranslation();
   const [now, setNow] = useState(new Date());
   const [online, setOnline] = useState(navigator.onLine);
+  // Sales taken with no line, still waiting to reach the server.
+  const [queue, setQueue] = useState({ count: 0, syncing: false });
 
   useEffect(() => {
     const clock = setInterval(() => setNow(new Date()), 30000);
@@ -30,6 +33,8 @@ function StatusBar({ user, till, onPrint }) {
       window.removeEventListener("offline", down);
     };
   }, []);
+
+  useEffect(() => onQueueChange(setQueue), []);
 
   return (
     <footer className="flex items-center justify-between gap-4 border-t border-slate-800 bg-slate-950 px-4 py-1.5">
@@ -50,6 +55,26 @@ function StatusBar({ user, till, onPrint }) {
       </div>
 
       <div className="flex shrink-0 items-center gap-3">
+        {/* Queued sales are money the server hasn't seen yet — never hide it. */}
+        {queue.count > 0 && (
+          <button
+            type="button"
+            onClick={() => syncQueue()}
+            disabled={queue.syncing || !online}
+            title={
+              online ? t("pos.offline.syncNow") : t("pos.offline.willSyncWhenBack")
+            }
+            className="flex items-center gap-1.5 bg-amber-950 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-300 ring-1 ring-amber-800 transition hover:bg-amber-900 disabled:opacity-60"
+          >
+            {queue.syncing ? (
+              <FiRefreshCw className="h-3 w-3 animate-spin" />
+            ) : (
+              <FiUploadCloud className="h-3 w-3" />
+            )}
+            {t("pos.offline.pending", { count: queue.count })}
+          </button>
+        )}
+
         <span className="hidden font-mono text-[11px] tabular-nums text-slate-400 sm:block">
           {now.toLocaleDateString()}{" "}
           {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}

@@ -14,6 +14,8 @@ import {
   EditProduct,
 } from "../features/productSlice";
 import { gettingallCategory } from "../features/categorySlice";
+import GenerateBarcodesModal from "../Components/GenerateBarcodesModal";
+import DealsModal from "../Components/DealsModal";
 import ReportButton from "../Components/ReportButton";
 import toast from "react-hot-toast";
 
@@ -46,6 +48,13 @@ function Productpage() {
     (state) => state.product
   );
   const { getallCategory } = useSelector((state) => state.category);
+  const { Authuser } = useSelector((state) => state.auth);
+  const isAdmin = Authuser?.role === "admin";
+  // Deals are a merchandising tool — admin and manager can both build them.
+  const canManageDeals = ["admin", "manager", "superadmin"].includes(Authuser?.role);
+  // Adding to the catalogue is the owner side's job; a manager edits and removes.
+  // (The till's unknown-barcode quick add is a separate, open path.)
+  const canAddProduct = ["admin", "superadmin"].includes(Authuser?.role);
   const dispatch = useDispatch();
   const [query, setquery] = useState("");
   const [name, setName] = useState("");
@@ -54,7 +63,11 @@ function Productpage() {
   const [costPrice, setCostPrice] = useState("");
   const [quantity, setQuantity] = useState("");
   const [Desciption, setDesciption] = useState("");
+  const [shelfLabel, setShelfLabel] = useState("");
+  const [lowStockThreshold, setLowStockThreshold] = useState("");
   const [barcode, setBarcode] = useState("");
+  const [showGenerate, setShowGenerate] = useState(false);
+  const [showDeals, setShowDeals] = useState(false);
   const [expiryDate, setExpiryDate] = useState("");
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
@@ -89,18 +102,24 @@ function Productpage() {
   };
 
   const buildFormData = () => {
+    // Only name and price are mandatory; everything else is sent only when set.
     const formData = new FormData();
     formData.append("name", name);
-    formData.append("Category", Category);
     formData.append("Price", Price);
+    if (Category) formData.append("Category", Category);
+    if (Desciption) formData.append("Desciption", Desciption);
+    if (shelfLabel) formData.append("shelfLabel", shelfLabel);
     if (costPrice !== "") formData.append("costPrice", costPrice);
-    formData.append("quantity", quantity);
-    formData.append("Desciption", Desciption);
+    if (quantity !== "") formData.append("quantity", quantity);
+    if (lowStockThreshold !== "") formData.append("lowStockThreshold", lowStockThreshold);
     if (barcode) formData.append("barcode", barcode);
     if (expiryDate) formData.append("expiryDate", expiryDate);
     if (imageFile) formData.append("image", imageFile);
     return formData;
   };
+
+  // Shelf label is optional, but if given it must be letters/numbers.
+  const shelfLabelValid = shelfLabel === "" || /^[A-Za-z0-9][A-Za-z0-9\- ]*$/.test(shelfLabel);
 
   const handleremove = async (productId) => {
     dispatch(Removeproduct(productId))
@@ -112,6 +131,10 @@ function Productpage() {
   const handleEditSubmit = (event) => {
     event.preventDefault();
     if (!selectedProduct) return;
+    if (!shelfLabelValid) {
+      toast.error(t("products.shelfLabelInvalid"));
+      return;
+    }
 
     dispatch(EditProduct({ id: selectedProduct._id, formData: buildFormData() }))
       .unwrap()
@@ -126,6 +149,10 @@ function Productpage() {
 
   const submitProduct = async (event) => {
     event.preventDefault();
+    if (!shelfLabelValid) {
+      toast.error(t("products.shelfLabelInvalid"));
+      return;
+    }
     dispatch(Addproduct(buildFormData()))
       .unwrap()
       .then(() => {
@@ -143,6 +170,8 @@ function Productpage() {
     setCostPrice("");
     setQuantity("");
     setDesciption("");
+    setShelfLabel("");
+    setLowStockThreshold("");
     setBarcode("");
     setExpiryDate("");
     setImageFile(null);
@@ -156,7 +185,9 @@ function Productpage() {
     setPrice(product.Price);
     setCostPrice(product.costPrice ?? "");
     setQuantity(product.quantity);
-    setDesciption(product.Desciption);
+    setDesciption(product.Desciption || "");
+    setShelfLabel(product.shelfLabel || "");
+    setLowStockThreshold(product.lowStockThreshold ?? "");
     setBarcode(product.barcode || "");
     setExpiryDate(toDateInput(product.expiryDate));
     setImageFile(null);
@@ -205,12 +236,30 @@ function Productpage() {
             className="h-12 w-full flex-1 rounded-lg border-2 border-base-300 bg-base-100 pl-4 pr-4 text-base-content sm:max-w-md"
             placeholder={t("products.searchPlaceholder")}
           />
-          <button
-            onClick={openAddForm}
-            className="flex h-12 items-center justify-center rounded-lg bg-blue-800 px-6 text-white transition hover:bg-blue-700"
-          >
-            <IoMdAdd className="mr-2 text-xl" /> {t("products.addProduct")}
-          </button>
+          {canAddProduct && (
+            <button
+              onClick={openAddForm}
+              className="flex h-12 items-center justify-center rounded-lg bg-blue-800 px-6 text-white transition hover:bg-blue-700"
+            >
+              <IoMdAdd className="mr-2 text-xl" /> {t("products.addProduct")}
+            </button>
+          )}
+          {canManageDeals && (
+            <button
+              onClick={() => setShowDeals(true)}
+              className="flex h-12 items-center justify-center rounded-lg border-2 border-blue-800 px-6 font-semibold text-blue-800 transition hover:bg-blue-800 hover:text-white"
+            >
+              {t("deals.button")}
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              onClick={() => setShowGenerate(true)}
+              className="flex h-12 items-center justify-center rounded-lg border-2 border-blue-800 px-6 font-semibold text-blue-800 transition hover:bg-blue-800 hover:text-white"
+            >
+              {t("generate.button")}
+            </button>
+          )}
           <ReportButton
             reportKey="inventory"
             label={t("products.inventoryReport")}
@@ -255,7 +304,7 @@ function Productpage() {
               </div>
 
               <div className="mb-4">
-                <label>{t("common.name")}</label>
+                <label>{t("common.name")} *</label>
                 <input
                   value={name}
                   placeholder={t("products.namePlaceholder")}
@@ -267,12 +316,27 @@ function Productpage() {
               </div>
 
               <div className="mb-4">
+                <label>{t("products.shelfLabel")}</label>
+                <input
+                  value={shelfLabel}
+                  placeholder={t("products.shelfLabelPlaceholder")}
+                  onChange={(e) => setShelfLabel(e.target.value.toUpperCase())}
+                  type="text"
+                  className={`mt-2 h-10 w-full rounded-lg border-2 bg-base-100 px-2 uppercase text-base-content ${
+                    shelfLabelValid ? "border-base-300" : "border-red-500"
+                  }`}
+                />
+                <p className="mt-1 text-xs text-base-content/50">
+                  {shelfLabelValid ? t("products.shelfLabelHint") : t("products.shelfLabelInvalid")}
+                </p>
+              </div>
+
+              <div className="mb-4">
                 <label>{t("common.category")}</label>
                 <select
                   value={Category}
                   onChange={(e) => setCategory(e.target.value)}
                   className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
-                  required
                 >
                   <option value="">{t("products.selectCategory")}</option>
                   {getallCategory?.map((category) => (
@@ -291,7 +355,6 @@ function Productpage() {
                   onChange={(e) => setDesciption(e.target.value)}
                   type="text"
                   className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
-                  required
                 />
               </div>
 
@@ -307,7 +370,7 @@ function Productpage() {
               </div>
 
               <div className="mb-4">
-                <label>{t("products.sellingPrice")}</label>
+                <label>{t("products.sellingPrice")} *</label>
                 <input
                   type="number"
                   placeholder={t("products.sellingPricePlaceholder")}
@@ -341,9 +404,23 @@ function Productpage() {
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                   className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
-                  required
                   min="0"
                 />
+              </div>
+
+              <div className="mb-4">
+                <label>{t("products.lowStockThreshold")}</label>
+                <input
+                  type="number"
+                  placeholder="10"
+                  value={lowStockThreshold}
+                  onChange={(e) => setLowStockThreshold(e.target.value)}
+                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                  min="0"
+                />
+                <p className="mt-1 text-xs text-base-content/50">
+                  {t("products.lowStockThresholdHint")}
+                </p>
               </div>
 
               <div className="mb-4">
@@ -366,6 +443,14 @@ function Productpage() {
           </div>
         )}
 
+        {showGenerate && isAdmin && (
+          <GenerateBarcodesModal onClose={() => setShowGenerate(false)} />
+        )}
+
+        {showDeals && canManageDeals && (
+          <DealsModal onClose={() => setShowDeals(false)} />
+        )}
+
         {/* Product list */}
         <div className="mt-10">
           <h2 className="mb-4 text-xl font-semibold">{t("products.productList")}</h2>
@@ -376,6 +461,7 @@ function Productpage() {
                   <th className="border px-3 py-2">#</th>
                   <th className="border px-3 py-2">{t("common.image")}</th>
                   <th className="border px-3 py-2">{t("common.name")}</th>
+                  <th className="border px-3 py-2">{t("products.shelfLabel")}</th>
                   <th className="border px-3 py-2">{t("common.category")}</th>
                   <th className="border px-3 py-2">{t("common.barcode")}</th>
                   <th className="border px-3 py-2">{t("common.quantity")}</th>
@@ -397,6 +483,7 @@ function Productpage() {
                         />
                       </td>
                       <td className="border px-3 py-2">{product.name}</td>
+                      <td className="border px-3 py-2 font-mono">{product.shelfLabel || "—"}</td>
                       <td className="border px-3 py-2">
                         {product.Category?.name || t("products.noCategory")}
                       </td>
@@ -428,7 +515,7 @@ function Productpage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="9" className="py-4 text-center">
+                    <td colSpan="10" className="py-4 text-center">
                       {t("products.noProducts")}
                     </td>
                   </tr>

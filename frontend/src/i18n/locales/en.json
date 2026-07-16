@@ -37,7 +37,7 @@
       },
       {
         "title": "Built-in point of sale",
-        "desc": "Scan, charge, print. Cash, card, bank transfer, Easypaisa or JazzCash — and stock deducts itself the moment the sale closes."
+        "desc": "Scan, charge, print. Cash, card or wallet — and stock deducts itself the moment the sale closes."
       },
       {
         "title": "Sales & analytics",
@@ -101,7 +101,7 @@
       },
       {
         "q": "Does it include a point of sale?",
-        "a": "Yes. The POS handles barcode scanning, five payment methods (cash, card, bank transfer, Easypaisa, JazzCash), receipts, and automatic stock deduction on checkout."
+        "a": "Yes. The POS handles barcode scanning, three payment methods (cash, card, wallet), split payments, receipts, and automatic stock deduction on checkout."
       },
       {
         "q": "Can it run without internet?",
@@ -185,12 +185,8 @@
     },
     "payments": {
       "cash": "Cash",
-      "creditcard": "Credit Card",
-      "banktransfer": "Bank Transfer",
-      "easypaisa": "Easypaisa",
-      "jazzcash": "JazzCash",
-      "card": "Card",
-      "bank": "Bank"
+      "creditcard": "Card",
+      "wallet": "Wallet"
     },
     "phone": "Phone",
     "address": "Address"
@@ -213,7 +209,10 @@
     "logoutError": "Error logging out",
     "vouchers": "Vouchers",
     "support": "Support",
-    "tickets": "Tickets"
+    "tickets": "Tickets",
+    "approvals": "Approvals",
+    "myRequests": "My Requests",
+    "dayClosings": "Day Closings"
   },
   "topnav": {
     "welcome": "Welcome, {{name}}",
@@ -244,7 +243,9 @@
     "invalidEmail": "Invalid email",
     "emailRequired": "Email is required",
     "passwordMin": "Password must be at least 6 characters",
-    "passwordRequired": "Password is required"
+    "passwordRequired": "Password is required",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "signup": {
     "namePlaceholder": "Your name",
@@ -328,7 +329,13 @@
     "removed": "Product removed successfully",
     "removeFail": "Failed to remove product",
     "updateFail": "Failed to update product",
-    "addFail": "Product add unsuccessful"
+    "addFail": "Product add unsuccessful",
+    "shelfLabel": "Shelf label",
+    "shelfLabelPlaceholder": "e.g. A12",
+    "shelfLabelHint": "Letters and numbers (merchandising location). Optional.",
+    "shelfLabelInvalid": "Shelf label must be letters and numbers only.",
+    "lowStockThreshold": "Low-stock threshold",
+    "lowStockThresholdHint": "Alert when stock falls to this or below. Default 10."
   },
   "categories": {
     "totalCategory": "Total Category",
@@ -346,7 +353,10 @@
     "removed": "Category removed successfully",
     "removeFail": "Failed to remove category",
     "added": "Category added successfully",
-    "addFail": "Category add unsuccessful"
+    "addFail": "Category add unsuccessful",
+    "nameRequired": "Category name is required",
+    "updated": "Category updated",
+    "updateFail": "Could not update the category"
   },
   "pos": {
     "title": "Point of Sale",
@@ -412,7 +422,7 @@
     "discountLabel": "Discount",
     "exit": "Exit",
     "openTerminal": "Open POS Terminal",
-    "closeOrder": "Close Order",
+    "closeOrder": "Charge",
     "noProducts": "No products in this category",
     "rail": {
       "refund": "Refund Transaction",
@@ -424,7 +434,8 @@
       "vouchers": "Vouchers",
       "saleHistory": "Sale History",
       "enterCode": "Enter Code",
-      "send": "Send"
+      "send": "Held",
+      "dayClosing": "Day Closing"
     },
     "table": {
       "product": "Product",
@@ -529,7 +540,15 @@
       "failed": "Could not load sale history",
       "items": "{{count}} items",
       "reprint": "Reprint",
-      "refund": "Refund"
+      "refund": "Refund",
+      "changePayment": "Change payment",
+      "splitPayment": "Split",
+      "addPayment": "Add payment",
+      "mustTotal": "Must total {{total}}",
+      "savePayment": "Save",
+      "paymentChanged": "Payment updated",
+      "changeFailed": "Could not change the payment",
+      "lockedHint": "Handed over at day closing — can no longer be changed"
     },
     "held": {
       "title": "Suspended sales",
@@ -558,7 +577,48 @@
       "giveChange": "Give {{amount}} change",
       "roundOff": "Round off"
     },
-    "currencyHint": "Display currency for this till"
+    "currencyHint": "Display currency for this till",
+    "receiptDoc": {
+      "order": "Order",
+      "orderType": "Order type",
+      "date": "Date",
+      "placedBy": "Placed by",
+      "price": "Price",
+      "payments": "Payments"
+    },
+    "productSearch": {
+      "title": "Product search",
+      "subtitle": "Search the whole catalogue by name, barcode or category",
+      "placeholder": "Type a product name, barcode or category…",
+      "hint": "Start typing to search.",
+      "noResults": "No products match.",
+      "outOfStock": "Out",
+      "byAll": "All fields",
+      "byName": "Product",
+      "byBarcode": "Barcode",
+      "byCategory": "Category",
+      "sortName": "Sort: Name",
+      "sortPrice": "Sort: Price",
+      "sortStock": "Sort: Stock",
+      "asc": "A → Z",
+      "desc": "Z → A",
+      "allCategories": "All categories",
+      "code": "Code",
+      "noCode": "No barcode",
+      "stock": "Stock",
+      "each": "ea"
+    },
+    "dealTag": "Deal",
+    "dealsTile": "Deals",
+    "dealMissing": "Not in the catalogue any more: {{names}}",
+    "offline": {
+      "queued": "No connection — sale saved and will sync automatically",
+      "queueFailed": "Could not save the sale locally",
+      "pending": "{{count}} to sync",
+      "syncNow": "Sync now",
+      "willSyncWhenBack": "Will sync when the connection is back",
+      "notSynced": "Not synced yet"
+    }
   },
   "sales": {
     "reportTitle": "Sales Report",
@@ -626,7 +686,14 @@
     "created": "Order created successfully",
     "createFail": "Failed to create order",
     "removed": "Order removed successfully",
-    "removeFail": "Failed to remove Order"
+    "removeFail": "Failed to remove Order",
+    "addProductToOrder": "Add product",
+    "priceAuto": "Taken from the product — not editable",
+    "pickProduct": "Pick a product first",
+    "pickQuantity": "Enter a quantity",
+    "notEnoughStock": "Only {{count}} of {{name}} in stock",
+    "inStock": "{{count}} in stock",
+    "orderTotal": "Order total"
   },
   "suppliers": {
     "totalSupplier": "Total Supplier",
@@ -698,7 +765,18 @@
     "passwordHint": "At least 6 characters",
     "role": "Role",
     "create": "Create user",
-    "creating": "Creating…"
+    "creating": "Creating…",
+    "staff": "Staff",
+    "admin": "Admin",
+    "delete": "Delete",
+    "deleteConfirm": "Delete {{name}}? This cannot be undone.",
+    "requestTitle": "Request a user account",
+    "requestSub": "Admins cannot create accounts directly — the super admin must approve.",
+    "requestCreate": "Submit request",
+    "requesting": "Submitting…",
+    "requestDeleteConfirm": "Ask the super admin to delete {{name}}?",
+    "manageTitle": "Manage users",
+    "manageSub": "Create and remove accounts directly — no approval needed."
   },
   "activity": {
     "title": "Activity Logs",
@@ -832,5 +910,131 @@
     "refresh": "Refresh",
     "all": "All",
     "noTickets": "No tickets here."
+  },
+  "requests": {
+    "title": "My requests",
+    "sub": "Actions you sent to the super admin for approval",
+    "ref": "Ref",
+    "what": "Action",
+    "raised": "Raised",
+    "status": "Status",
+    "note": "Note",
+    "loading": "Loading…",
+    "empty": "You have not raised any requests yet.",
+    "statuses": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "failed": "Failed"
+    }
+  },
+  "approvals": {
+    "title": "Approvals",
+    "sub": "{{count}} pending request(s) from your admins",
+    "all": "All",
+    "empty": "Nothing here.",
+    "by": "by {{name}}",
+    "approve": "Approve",
+    "reject": "Reject",
+    "rejectPrompt": "Reason for rejecting {{ref}} (optional):"
+  },
+  "generate": {
+    "button": "Random Products",
+    "title": "Random Products",
+    "sub": "For generic items with no barcode. Creates products in the permanent Random category.",
+    "count": "How many?",
+    "tiers": "Price tiers",
+    "tiersHint": "Comma-separated prices — the count is split evenly across them.",
+    "generate": "Generate",
+    "generating": "Generating…",
+    "done": "Generated {{count}} barcodes",
+    "failed": "Could not generate barcodes",
+    "invalidCount": "Enter a valid count (1–500)",
+    "invalidTiers": "Enter at least one valid price",
+    "resultHint": "{{count}} barcodes created and stored. Print them as labels below.",
+    "again": "Generate more",
+    "print": "Print labels",
+    "close": "Close"
+  },
+  "deals": {
+    "button": "Deals",
+    "title": "Bundle deals",
+    "sub": "Group products together for an automatic discount at the till.",
+    "close": "Close",
+    "name": "Deal name",
+    "namePlaceholder": "e.g. Starter Kit",
+    "discount": "Discount (off)",
+    "products": "Products in this deal",
+    "searchProducts": "Search products by name or barcode…",
+    "quantity": "Qty",
+    "remove": "Remove",
+    "normalPrice": "Normal price",
+    "dealPrice": "Deal price",
+    "create": "Create deal",
+    "saving": "Saving…",
+    "existing": "Existing deals",
+    "none": "No deals yet.",
+    "active": "Active",
+    "inactive": "Paused",
+    "pause": "Pause",
+    "enable": "Enable",
+    "product": "Product",
+    "nameRequired": "Enter a deal name",
+    "discountRequired": "Enter a discount greater than zero",
+    "minProducts": "Pick at least two products",
+    "createFailed": "Could not create the deal",
+    "created": "Deal created",
+    "deleted": "Deal deleted",
+    "confirmDelete": "Delete the deal \"{{name}}\"?",
+    "allCategories": "All categories",
+    "noMatches": "No products found",
+    "amountHint": "Fixed amount off the bundle.",
+    "percentHint": "Percent off this deal's products only — not the whole basket.",
+    "percentMax": "A percentage deal cannot exceed 100%"
+  },
+  "dayClosing": {
+    "title": "Day closing",
+    "subtitle": "Hand your takings over to the admin.",
+    "salesCount": "Sales",
+    "byMethod": "By payment method",
+    "total": "Total",
+    "refunded": "Refunded",
+    "closeDay": "Close day",
+    "confirmClose": "Yes, hand over",
+    "closingNow": "Closing…",
+    "back": "Back",
+    "warning": "Once closed, these sales move to the admin and will no longer appear in your sale history. This cannot be undone.",
+    "closed": "Day closed — {{reference}}",
+    "closeFailed": "Could not close the day",
+    "summaryFailed": "Could not load the day summary",
+    "nothingToClose": "No open sales to close."
+  },
+  "dayClosings": {
+    "title": "Day closings",
+    "sub": "Takings handed over by each cashier at the end of their shift.",
+    "batches": "Batches",
+    "totalHandedOver": "Total handed over",
+    "reference": "Reference",
+    "cashier": "Cashier",
+    "closedAt": "Closed at",
+    "sales": "Sales",
+    "net": "Net",
+    "gross": "Gross",
+    "discount": "Discount",
+    "tax": "Tax",
+    "view": "View",
+    "close": "Close",
+    "loading": "Loading…",
+    "empty": "No day closings yet.",
+    "receipts": "Receipts ({{count}})"
+  },
+  "reports": {
+    "download": "Download Report",
+    "generating": "Generating…",
+    "downloaded": "{{format}} report downloaded",
+    "failed": "Failed to generate report",
+    "pdfHint": "Ready to print or email",
+    "csvHint": "Opens in any spreadsheet",
+    "excelHint": "Formatted workbook"
   }
 }

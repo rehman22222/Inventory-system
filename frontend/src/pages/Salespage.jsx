@@ -401,7 +401,7 @@ function Salespage() {
                   <option value="">{t("sales.selectPayment")}</option>
                   <option value={"cash"}>{t("common.payments.cash")}</option>
                   <option value={"creditcard"}>{t("common.payments.creditcard")}</option>
-                  <option value={"banktransfer"}>{t("common.payments.banktransfer")}</option>
+                  <option value={"wallet"}>{t("common.payments.wallet")}</option>
 
                 </select>
               </div>

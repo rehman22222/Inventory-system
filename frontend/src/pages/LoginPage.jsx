@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useDispatch, useSelector } from "react-redux";
@@ -13,6 +14,7 @@ function LoginPage() {
   const { isUserLogin } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const navigator = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
 
   const schema = yup.object().shape({
     email: yup.string().email(t("login.invalidEmail")).required(t("login.emailRequired")),
@@ -111,12 +113,23 @@ function LoginPage() {
                 <label className="mb-2 block text-sm font-medium text-base-content/80">
                   {t("common.password")}
                 </label>
-                <input
-                  type="password"
-                  {...register("password")}
-                  className="h-12 w-full rounded-lg border border-base-300 px-3 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
-                  placeholder={t("login.passwordPlaceholder")}
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    {...register("password")}
+                    className="h-12 w-full rounded-lg border border-base-300 pe-12 ps-3 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                    placeholder={t("login.passwordPlaceholder")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((value) => !value)}
+                    aria-label={showPassword ? t("login.hidePassword") : t("login.showPassword")}
+                    title={showPassword ? t("login.hidePassword") : t("login.showPassword")}
+                    className="absolute end-0 top-0 flex h-12 w-12 items-center justify-center text-base-content/50 transition hover:text-base-content"
+                  >
+                    {showPassword ? <FiEyeOff className="h-5 w-5" /> : <FiEye className="h-5 w-5" />}
+                  </button>
+                </div>
                 {errors.password && (
                   <p className="mt-2 text-sm text-red-500">{errors.password.message}</p>
                 )}

@@ -11,8 +11,30 @@ try {
 } catch (e) {
   require("../models/ Categorymodel");
 }
-const { formatDate, formatDateTime, money } = require("../libs/csv");
+const { buildCsv, formatDate, formatDateTime, money } = require("../libs/csv");
 const { buildWorkbookBuffer } = require("../libs/excel");
+const { buildPdfBuffer } = require("../libs/pdf");
+
+// One report, three shapes. Excel stays the default so existing links keep
+// working; the UI offers PDF and CSV.
+const FORMATS = {
+  csv: {
+    extension: "csv",
+    contentType: "text/csv; charset=utf-8",
+    build: async (report) => Buffer.from(buildCsv(report), "utf8"),
+  },
+  pdf: {
+    extension: "pdf",
+    contentType: "application/pdf",
+    build: (report) => buildPdfBuffer(report),
+  },
+  xlsx: {
+    extension: "xlsx",
+    contentType:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    build: async (report) => Buffer.from(await buildWorkbookBuffer(report)),
+  },
+};
 
 const LOW_STOCK_THRESHOLD = 10;
 
@@ -216,8 +238,17 @@ module.exports.downloadReport = async (req, res) => {
       return res.status(403).json({ message: "You do not have access to this report" });
     }
 
+    const requested = String(req.query.format || "xlsx").toLowerCase();
+    const format = FORMATS[requested];
+
+    if (!format) {
+      return res.status(400).json({
+        message: `Unsupported format "${requested}". Use one of: ${Object.keys(FORMATS).join(", ")}`,
+      });
+    }
+
     const report = await def.build(req);
-    const buffer = await buildWorkbookBuffer({
+    const buffer = await format.build({
       title: report.title,
       subtitle: report.subtitle,
       generatedBy: `${req.user.name || "User"} (${req.user.role})`,
@@ -226,13 +257,10 @@ module.exports.downloadReport = async (req, res) => {
       summary: report.summary,
     });
 
-    const filename = `${type}-report-${formatDate(new Date())}.xlsx`;
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
+    const filename = `${type}-report-${formatDate(new Date())}.${format.extension}`;
+    res.setHeader("Content-Type", format.contentType);
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    return res.status(200).send(Buffer.from(buffer));
+    return res.status(200).send(buffer);
   } catch (error) {
     console.error("Report generation failed:", error);
     return res.status(500).json({ message: "Failed to generate report", error: error.message });

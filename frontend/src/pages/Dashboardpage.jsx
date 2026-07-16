@@ -69,7 +69,9 @@ function Dashboardpage() {
     const orders = Array.isArray(getorder) ? getorder : [];
     const sales = Array.isArray(getallsales) ? getallsales : [];
     const categories = Array.isArray(getallCategory) ? getallCategory : [];
-    const lowStock = products.filter((product) => Number(product.quantity) <= 10);
+    const lowStock = products.filter(
+      (product) => Number(product.quantity) <= (product.lowStockThreshold ?? 10)
+    );
     const inventoryValue = products.reduce(
       (sum, product) => sum + Number(product.Price || 0) * Number(product.quantity || 0),
       0

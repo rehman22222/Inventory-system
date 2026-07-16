@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(node \"C:/Users/dell/AppData/Local/Temp/claude/c--Users-dell-Desktop-Job-vape-inventory-system-inventory-managment-system-Advanced-Inventory-Management-System/dca84c3a-3f55-41cf-9e2b-78f1723dc2d9/scratchpad/i18n-pos.js\")"
+    ]
+  }
+}

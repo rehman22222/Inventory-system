@@ -77,3 +77,69 @@ export const tileColor = (name = "") => {
   }
   return TILE_COLORS[hash % TILE_COLORS.length];
 };
+
+const round2 = (value) => Math.round(Number(value || 0) * 100) / 100;
+
+// The product id of a deal item, whether it arrives populated ({_id,...}) or raw.
+const itemProductId = (item) =>
+  String(item?.product?._id || item?.product || "");
+
+// Detect which active deals are fully present in the cart. Mirrors the server's
+// libs/deals.js so the till preview matches what checkout will charge — keep the
+// two in step.
+//
+// A percentage deal is a percentage of the DEAL'S OWN products, not of the whole
+// basket, so prices travel alongside the quantities.
+//
+// cart: [{ productId, quantity, price }]; deals: redux deal docs.
+// Returns { applied: [{ dealId, name, sets, amount, products:[ids] }], total }.
+export const applicableDeals = (cart, deals) => {
+  const cartMap = new Map();
+  (cart || []).forEach((item) => {
+    const key = String(item.productId);
+    const seen = cartMap.get(key);
+    cartMap.set(key, {
+      quantity: (seen?.quantity || 0) + Number(item.quantity || 0),
+      price: Number(item.price || 0),
+    });
+  });
+
+  const applied = [];
+  let total = 0;
+
+  (deals || []).forEach((deal) => {
+    if (deal.active === false) return;
+    const items = Array.isArray(deal.items) ? deal.items : [];
+    if (items.length === 0) return;
+
+    let sets = Infinity;
+    let setValue = 0;
+    const products = [];
+
+    items.forEach((item) => {
+      const need = Number(item.quantity || 1);
+      if (need <= 0) return;
+      const pid = itemProductId(item);
+      products.push(pid);
+      const line = cartMap.get(pid);
+      sets = Math.min(sets, Math.floor(Number(line?.quantity || 0) / need));
+      setValue += Number(line?.price || 0) * need;
+    });
+
+    if (!Number.isFinite(sets) || sets < 1) return;
+
+    const raw =
+      deal.discountType === "percent"
+        ? (setValue * sets * Number(deal.discount || 0)) / 100
+        : Number(deal.discount || 0) * sets;
+
+    // Never give back more than the deal's own goods are worth.
+    const amount = round2(Math.min(raw, setValue * sets));
+    if (amount <= 0) return;
+
+    applied.push({ dealId: deal._id, name: deal.name, sets, amount, products });
+    total += amount;
+  });
+
+  return { applied, total: round2(total) };
+};

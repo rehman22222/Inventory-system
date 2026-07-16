@@ -10,17 +10,16 @@ import {
   staffUser,
   managerUser,
   adminUser,
-  removeusers,
-  createUser
 } from "../features/authSlice";
-import toast from "react-hot-toast";
+import { RaiseRequest } from "../features/approvalSlice";
 import  UserRoleChart from '../lib/Usersgraph'
 
 const EMPTY_USER = { name: "", email: "", password: "", role: "staff" };
 
 function Userstatus() {
   const { t } = useTranslation();
-  const { staffuser, manageruser, adminuser, iscreatinguser } = useSelector((state) => state.auth);
+  const { staffuser, manageruser, adminuser } = useSelector((state) => state.auth);
+  const { issubmitting } = useSelector((state) => state.approval);
   const dispatch = useDispatch();
   const { Authuser } = useSelector((state) => state.auth);
   const [form, setForm] = useState(EMPTY_USER);
@@ -29,27 +28,30 @@ function Userstatus() {
     dispatch(staffUser());
     dispatch(managerUser());
     dispatch(adminUser());
-  }, [dispatch,removeusers]);
+  }, [dispatch]);
 
-  
+  // Admins no longer delete directly — they ask the superadmin to.
+  const handleremove = (user) => {
+    if (!window.confirm(t("users.requestDeleteConfirm", { name: user.name }))) return;
 
+    dispatch(
+      RaiseRequest({
+        type: "delete_user",
+        payload: { userId: user._id, targetName: user.name },
+      })
+    );
+  };
 
-  const handleremove=async(UserId)=>{
-
-    dispatch(removeusers(UserId))
-    .then(()=>{
-      toast.success(t("users.removed"))
-    })
-    .catch((err)=>{
-      toast.error(t("users.removeFail"))
-    })
-
-  }
-
+  // Creating an account is now a request the superadmin approves.
   const submitNewUser = async (event) => {
     event.preventDefault();
 
-    const result = await dispatch(createUser(form));
+    const result = await dispatch(
+      RaiseRequest({
+        type: "create_user",
+        payload: { ...form, name: form.name.trim(), email: form.email.trim() },
+      })
+    );
 
     if (!result.error) setForm(EMPTY_USER);
   };
@@ -68,8 +70,8 @@ function Userstatus() {
         className="mx-10 mt-8 grid gap-4 rounded-lg border border-base-300 bg-base-100 p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-5"
       >
         <div className="sm:col-span-2 lg:col-span-5">
-          <h2 className="text-lg font-semibold">{t("users.createTitle")}</h2>
-          <p className="mt-0.5 text-sm text-base-content/60">{t("users.createSub")}</p>
+          <h2 className="text-lg font-semibold">{t("users.requestTitle")}</h2>
+          <p className="mt-0.5 text-sm text-base-content/60">{t("users.requestSub")}</p>
         </div>
 
         <div>
@@ -117,11 +119,11 @@ function Userstatus() {
         <div className="flex items-end">
           <button
             type="submit"
-            disabled={iscreatinguser}
+            disabled={issubmitting}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-content transition hover:opacity-90 disabled:opacity-50"
           >
             <IoMdAdd className="text-lg" />
-            {iscreatinguser ? t("users.creating") : t("users.create")}
+            {issubmitting ? t("users.requesting") : t("users.requestCreate")}
           </button>
         </div>
       </form>
@@ -138,7 +140,7 @@ function Userstatus() {
                   <p className="font-medium">{user.name}</p>
                   <p className="text-base-content/60 text-sm">{user.email}</p>
                 </div>
-                <div><TiDelete  onClick={()=>handleremove( user._id)}  className="text-red-600 text-2xl"/></div>
+                <div><TiDelete  onClick={()=>handleremove(user)}  className="text-red-600 text-2xl"/></div>
               </div>
             ))
           ) : (
@@ -156,7 +158,7 @@ function Userstatus() {
                   <p className="font-medium">{user.name}</p>
                   <p className="text-base-content/60 text-sm">{user.email}</p>
                 </div>
-                <div><TiDelete  onClick={()=>handleremove( user._id)} className="text-red-600 text-2xl" /></div>
+                <div><TiDelete  onClick={()=>handleremove(user)} className="text-red-600 text-2xl" /></div>
               
               </div>
             ))
@@ -175,7 +177,7 @@ function Userstatus() {
                   <p className="font-medium  bg-base-100">{user.name}</p>
                   <p className=" bg-base-100 text-sm">{user.email}</p>
                 </div>
-                <div><TiDelete onClick={()=>handleremove( user._id)} className="text-red-600 text-2xl" /></div>
+                <div><TiDelete onClick={()=>handleremove(user)} className="text-red-600 text-2xl" /></div>
               </div>
             ))
           ) : (

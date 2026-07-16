@@ -1,7 +1,7 @@
 const express=require("express")
 const router=express.Router()
 const {signup,login,createUser,updateProfile,logout,staffuser,manageruser,adminuser,removeuser}=require('../controller/authcontroller')
-const {authmiddleware,adminmiddleware,managermiddleware}=require('../middleware/Authmiddleware')
+const {authmiddleware,adminmiddleware,managermiddleware,superadminmiddleware}=require('../middleware/Authmiddleware')
 
 
 
@@ -11,10 +11,10 @@ const {authmiddleware,adminmiddleware,managermiddleware}=require('../middleware/
 router.post("/signup",signup)
 router.post("/login",login)
 
-// Creating and deleting accounts is an admin job. /removeuser used to be wide
-// open — anyone could delete any user.
-router.post("/createuser",authmiddleware,adminmiddleware,createUser)
-router.delete("/removeuser/:UserId",authmiddleware,adminmiddleware,removeuser)
+// Only the superadmin creates/deletes accounts directly. Admins raise an
+// approval request instead (see /api/approval).
+router.post("/createuser",authmiddleware,superadminmiddleware,createUser)
+router.delete("/removeuser/:UserId",authmiddleware,superadminmiddleware,removeuser)
 router.get("/staffuser",authmiddleware,staffuser)
 router.get("/manageruser",authmiddleware,manageruser)
 router.get("/adminuser",authmiddleware,adminuser)

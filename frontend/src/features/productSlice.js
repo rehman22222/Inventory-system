@@ -87,6 +87,15 @@ export const Addproduct=createAsyncThunk('product/addproduct',async(product,{rej
     }
   })
 
+  export const generateRandomBarcodes=createAsyncThunk('product/generateRandom',async(payload,{rejectWithValue})=>{
+    try {
+       const response=await axiosInstance.post("product/generate-random",payload,{ withCredentials: true,})
+       return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Could not generate barcodes");
+    }
+  })
+
   export const getTopProductsByQuantity=createAsyncThunk('product/getTopProductsByQuantity',async(_,{rejectWithValue})=>{
     try {
        const response=await axiosInstance.get(`product/getTopProductsByQuantity`,_,{ withCredentials: true,})

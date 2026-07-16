@@ -21,11 +21,13 @@ const UserSchema= new mongoose.Schema({
     }, 
     role:{
         type:String,
-        // "superadmin" is the vendor (us), not the shop. It is never created
-        // through the app — only by scripts/createSuperAdmin.js.
+        // "superadmin" sits above everything: it owns the support inbox, the
+        // approvals queue and user management. Admin must request sensitive
+        // actions (like user management) and superadmin approves them.
+        // Created only by script, never through the app.
         enum:['superadmin','admin','manager','staff'],
         default:'staff',
-    
+
     },
     ProfilePic:{
         type:String

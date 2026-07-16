@@ -7,6 +7,7 @@ import {
   FiClock,
   FiHash,
   FiImage,
+  FiLock,
   FiLogOut,
   FiPause,
   FiPercent,
@@ -21,6 +22,7 @@ import useBarcodeScanner from "../lib/useBarcodeScanner";
 import LanguageSwitcher from "../Components/LanguageSwitcher";
 import { gettingallproducts } from "../features/productSlice";
 import { gettingallCategory } from "../features/categorySlice";
+import { gettingallDeals } from "../features/dealSlice";
 import ActionRail from "../Components/pos/ActionRail";
 import SaleTable from "../Components/pos/SaleTable";
 import CategoryTiles from "../Components/pos/CategoryTiles";
@@ -33,12 +35,30 @@ import UnknownBarcodeModal from "../Components/pos/UnknownBarcodeModal";
 import SaleHistoryModal from "../Components/pos/SaleHistoryModal";
 import HeldSalesModal from "../Components/pos/HeldSalesModal";
 import PaymentModal from "../Components/pos/PaymentModal";
+import ProductSearchModal from "../Components/pos/ProductSearchModal";
+import DayClosingModal from "../Components/pos/DayClosingModal";
 import {
   CURRENCIES,
   currency,
   initCurrency,
   setCurrencyCode,
+  applicableDeals,
 } from "../Components/pos/posUtils";
+import {
+  cacheGet,
+  cacheSet,
+  markVoucherSpent,
+  localHeldAdd,
+  localHeldRemove,
+} from "../lib/offlineDb";
+import {
+  queueSale,
+  syncQueue,
+  startAutoSync,
+  isNetworkError,
+} from "../lib/offlineQueue";
+import { QRCodeSVG } from "qrcode.react";
+import SHOP from "../config/shop";
 import e360LogoDark from "../images/e360-logo-dark.png";
 
 const dashboardByRole = {
@@ -47,16 +67,20 @@ const dashboardByRole = {
   staff: "/StaffDashboard",
 };
 
+// What the shop actually takes over the counter. "wallet" is the digital/online
+// tender (Apple Pay, Google Pay, Revolut).
 const paymentMethods = [
   { label: "Cash", value: "cash" },
   { label: "Card", value: "creditcard" },
-  { label: "Bank", value: "banktransfer" },
-  { label: "Easypaisa", value: "easypaisa" },
-  { label: "JazzCash", value: "jazzcash" },
+  { label: "Wallet", value: "wallet" },
 ];
 
 const TILL = "TERMINAL-MAIN";
 const TAX_RATE_KEY = "pos_tax_rate";
+
+// A synthetic category id. Deals aren't products and have no Category, so they
+// get their own tile at the front of the list rather than a real DB category.
+const DEALS_TAB = "__deals__";
 
 function POSPage() {
   const { t, i18n } = useTranslation();
@@ -66,10 +90,12 @@ function POSPage() {
 
   const { getallproduct } = useSelector((state) => state.product);
   const { getallCategory } = useSelector((state) => state.category);
+  const { deals: allDeals } = useSelector((state) => state.deal);
   const { Authuser } = useSelector((state) => state.auth);
 
   const role = Authuser?.role;
-  const isElevated = role === "admin" || role === "manager";
+  // Superadmin sits above admin, so they get the elevated till actions too.
+  const isElevated = role === "superadmin" || role === "admin" || role === "manager";
   const dashboardPath = dashboardByRole[role] || "/StaffDashboard";
 
   const [query, setQuery] = useState("");
@@ -108,10 +134,46 @@ function POSPage() {
   const [unknownBarcode, setUnknownBarcode] = useState(null);
   const [refundReceiptNo, setRefundReceiptNo] = useState("");
 
+  // Anything the till rang up while the line was down.
+  const [offlineCache, setOfflineCache] = useState(null);
+
   useEffect(() => {
     dispatch(gettingallproducts());
     dispatch(gettingallCategory());
+    dispatch(gettingallDeals());
   }, [dispatch]);
+
+  // Flush queued sales as soon as the connection is back.
+  useEffect(() => startAutoSync(), []);
+
+  // Keep a copy of the live voucher codes so a customer's voucher still works
+  // when the line drops. Best-effort — a till that has never been online simply
+  // cannot take vouchers.
+  useEffect(() => {
+    axiosInstance
+      .get("voucher/active")
+      .then((response) => cacheSet("vouchers", response.data.vouchers || []))
+      .catch(() => {
+        /* offline, or no permission — the cached copy (if any) stands */
+      });
+  }, []);
+
+  // Read the last-known catalogue up front, so a till that opens with no line
+  // still has something to sell from while the live fetch fails in the
+  // background.
+  useEffect(() => {
+    let alive = true;
+    cacheGet("catalogue")
+      .then((cached) => {
+        if (alive && cached) setOfflineCache(cached);
+      })
+      .catch(() => {
+        // No cache yet — the online fetch will lay one down.
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // The terminal is a dark-only surface — a bright till is unusable under shop
   // lighting, and the panels are painted in fixed dark tones. Force dark while
@@ -128,15 +190,52 @@ function POSPage() {
     };
   }, []);
 
-  const products = useMemo(
-    () => (Array.isArray(getallproduct) ? getallproduct : []),
-    [getallproduct]
+  // Live data when we have it, the last cached copy when we don't. The till must
+  // never open to an empty grid just because the line is down.
+  const products = useMemo(() => {
+    if (Array.isArray(getallproduct) && getallproduct.length > 0) return getallproduct;
+    return offlineCache?.products || [];
+  }, [getallproduct, offlineCache]);
+
+  const realCategories = useMemo(() => {
+    if (Array.isArray(getallCategory) && getallCategory.length > 0) return getallCategory;
+    return offlineCache?.categories || [];
+  }, [getallCategory, offlineCache]);
+
+  const dealSource = useMemo(() => {
+    if (Array.isArray(allDeals) && allDeals.length > 0) return allDeals;
+    return offlineCache?.deals || [];
+  }, [allDeals, offlineCache]);
+
+  const activeDeals = useMemo(
+    () => dealSource.filter((deal) => deal.active !== false),
+    [dealSource]
   );
 
-  const categories = useMemo(
-    () => (Array.isArray(getallCategory) ? getallCategory : []),
-    [getallCategory]
-  );
+  // Keep the cache fresh on every successful load, so the snapshot the till
+  // falls back to is never older than its last online moment.
+  useEffect(() => {
+    if (!Array.isArray(getallproduct) || getallproduct.length === 0) return;
+
+    cacheSet("catalogue", {
+      products: getallproduct,
+      categories: Array.isArray(getallCategory) ? getallCategory : [],
+      deals: Array.isArray(allDeals) ? allDeals : [],
+    }).catch(() => {
+      // Out of quota or private mode — the till still works, just without a
+      // fallback. Not worth interrupting a sale over.
+    });
+  }, [getallproduct, getallCategory, allDeals]);
+
+  // Deals ride at the front of the tiles so a cashier can ring a whole bundle
+  // with one tap instead of hunting each item down.
+  const categories = useMemo(() => {
+    if (activeDeals.length === 0) return realCategories;
+    return [
+      { _id: DEALS_TAB, name: t("pos.dealsTile"), productCount: activeDeals.length },
+      ...realCategories,
+    ];
+  }, [realCategories, activeDeals, t]);
 
   // Open the first category as soon as the list arrives.
   useEffect(() => {
@@ -144,6 +243,7 @@ function POSPage() {
   }, [categories, category]);
 
   const searching = query.trim().length > 0;
+  const showingDeals = !searching && category === DEALS_TAB;
 
   const activeCategoryName = searching
     ? t("pos.searchResults")
@@ -162,6 +262,9 @@ function POSPage() {
           product.barcode?.toLowerCase().includes(value)
       );
     }
+
+    // The deals tile renders deal cards instead of products.
+    if (category === DEALS_TAB) return [];
 
     return products.filter((product) => product.Category?._id === category);
   }, [products, query, category]);
@@ -183,7 +286,24 @@ function POSPage() {
   const rawManual =
     discountType === "percent" ? (afterVoucher * Number(discount || 0)) / 100 : Number(discount || 0);
   const manualDiscount = Math.max(0, Math.min(rawManual, afterVoucher));
-  const totalDiscount = voucherDiscount + manualDiscount;
+
+  // Bundle deals are detected automatically as items land in the basket. The
+  // server recomputes this at checkout — these values just drive the preview.
+  const dealMatch = useMemo(
+    () => applicableDeals(cart, allDeals),
+    [cart, allDeals]
+  );
+  // Deals live in the sidebar as their own tile; see dealsCategoryId below.
+  const dealRoom = Math.max(subtotal - voucherDiscount - manualDiscount, 0);
+  const dealDiscount = Math.min(dealMatch.total, dealRoom);
+  // Products that belong to a currently-applied deal, for the line badge.
+  const dealProductIds = useMemo(() => {
+    const set = new Set();
+    dealMatch.applied.forEach((entry) => entry.products.forEach((id) => set.add(String(id))));
+    return set;
+  }, [dealMatch]);
+
+  const totalDiscount = voucherDiscount + manualDiscount + dealDiscount;
   const taxable = Math.max(subtotal - totalDiscount, 0);
   const taxFraction = Math.max(0, Number(taxRate || 0)) / 100;
   const tax = taxEnabled ? taxable * taxFraction : 0;
@@ -253,6 +373,51 @@ function POSPage() {
     addToCart(product, quantity);
     setMultiplier(0);
     setBuffer("");
+  };
+
+  // Ring up a whole bundle at once. The discount itself is not applied here —
+  // dropping the items in the basket is enough, because the deal matcher (and
+  // the server at checkout) detects the complete set on its own.
+  const tapDeal = (deal) => {
+    const missing = [];
+
+    (deal.items || []).forEach((item) => {
+      const productId = String(item.product?._id || item.product);
+      const product = products.find((entry) => entry._id === productId);
+
+      if (!product) {
+        missing.push(item.product?.name || productId);
+        return;
+      }
+
+      addToCart(product, Number(item.quantity || 1));
+    });
+
+    if (missing.length > 0) {
+      toast.error(t("pos.dealMissing", { names: missing.join(", ") }));
+    }
+
+    setMultiplier(0);
+    setBuffer("");
+  };
+
+  // What a deal is worth, for the tile. Mirrors the matcher's rule: a percentage
+  // is off the deal's own products.
+  const dealPricing = (deal) => {
+    const normal = (deal.items || []).reduce((sum, item) => {
+      const productId = String(item.product?._id || item.product);
+      const product = products.find((entry) => entry._id === productId);
+      const price = Number(product?.Price ?? item.product?.Price ?? 0);
+      return sum + price * Number(item.quantity || 1);
+    }, 0);
+
+    const raw =
+      deal.discountType === "percent"
+        ? (normal * Number(deal.discount || 0)) / 100
+        : Number(deal.discount || 0);
+    const saving = Math.min(raw, normal);
+
+    return { normal, saving, price: Math.max(0, normal - saving) };
   };
 
   // Every scan: try the loaded catalogue, then the server (the list may be
@@ -351,26 +516,46 @@ function POSPage() {
       return;
     }
 
+    const payload = {
+      till: TILL,
+      customerName,
+      items: cart.map((item) => ({
+        product: item.productId,
+        name: item.name,
+        barcode: item.barcode,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      discount,
+      discountType,
+      taxEnabled,
+      voucherCode: voucher?.code,
+    };
+
+    // With no line the basket is parked on this till instead of the server. It
+    // is only a basket — nothing is owed until it is charged — so it does not
+    // need to reach the server to be useful; the same till can resume it.
+    const holdLocally = async () => {
+      await localHeldAdd({ ...payload, cashierName: Authuser?.name, createdAt: new Date().toISOString() });
+      toast.success(t("pos.offline.heldLocally"));
+      resetSale();
+    };
+
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      await holdLocally();
+      return;
+    }
+
     try {
-      await axiosInstance.post("pos/hold", {
-        till: TILL,
-        customerName,
-        items: cart.map((item) => ({
-          product: item.productId,
-          name: item.name,
-          barcode: item.barcode,
-          quantity: item.quantity,
-          price: item.price,
-        })),
-        discount,
-        discountType,
-        taxEnabled,
-        voucherCode: voucher?.code,
-      });
+      await axiosInstance.post("pos/hold", payload);
       toast.success(t("pos.saleHeld"));
       resetSale();
     } catch (error) {
-      toast.error(error.response?.data?.message || t("pos.held.failed"));
+      if (isNetworkError(error)) {
+        await holdLocally();
+      } else {
+        toast.error(error.response?.data?.message || t("pos.held.failed"));
+      }
     }
   };
 
@@ -395,6 +580,13 @@ function POSPage() {
     setTaxEnabled(Boolean(held.taxEnabled));
     setReceipt(null);
     setModal(null);
+
+    // A locally-parked basket never reached the server, so there is nothing
+    // there to clear.
+    if (held.local) {
+      await localHeldRemove(held._id).catch(() => {});
+      return;
+    }
 
     try {
       await axiosInstance.delete(`pos/held/${held._id}`);
@@ -444,35 +636,135 @@ function POSPage() {
     setModal("payment");
   };
 
+  // Everything that goes on the receipt, worked out from the cart on this till.
+  // Online this is only a preview and the server recomputes it; offline it is
+  // what gets printed and later synced, so it is built once and used for both.
+  const saleSnapshot = (payments) => ({
+    customerName: customerName.trim(),
+    payments,
+    discount: Number(discount || 0),
+    discountType,
+    voucherCode: voucher?.code,
+    taxEnabled,
+    taxRate: taxFraction,
+    items: cart.map((item) => ({ product: item.productId, quantity: item.quantity })),
+  });
+
+  const finishSale = (completed) => {
+    setReceipt(completed);
+    setModal(null);
+    // On narrow screens the receipt (with Print / New Sale) lives in the sale
+    // pane — show it, or the cashier is left staring at the product grid.
+    setPane("sale");
+    setCart([]);
+    setSelectedLine(null);
+    setDiscount(0);
+    setVoucher(null);
+    setTaxEnabled(false);
+  };
+
+  // Sell with no network: build the receipt here, park the sale, print as usual.
+  // The customer is served exactly as they would be online; the sale reaches the
+  // server the moment the line is back.
+  const checkoutOffline = async (payments) => {
+    const tendered = payments.reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
+
+    const queued = await queueSale({
+      ...saleSnapshot(payments),
+      // Offline the server cannot re-price, so the prices the customer was
+      // actually charged travel with the sale and are honoured at sync.
+      items: cart.map((item) => ({
+        product: item.productId,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      discount: totalDiscount,
+      dealDiscount,
+      // The server redeems the code at sync; it needs the amount that was
+      // actually taken off, since it cannot recompute a cached voucher.
+      voucherDiscount,
+      deals: dealMatch.applied.map((entry) => ({
+        dealId: entry.dealId,
+        name: entry.name,
+        sets: entry.sets,
+        amount: entry.amount,
+      })),
+    });
+
+    // Stop this till spending the same single-use code twice while it is down.
+    if (voucher?.code) {
+      await markVoucherSpent(voucher.code).catch(() => {});
+    }
+
+    finishSale({
+      // The printed ref. The real POS-###### number is assigned at sync, and a
+      // refund can be looked up by either.
+      receiptNo: queued.offlineRef,
+      offlinePending: true,
+      customerName: customerName.trim(),
+      cashierName: Authuser?.name,
+      paymentMethod: payments.length === 1 ? payments[0].method : "split",
+      payments,
+      items: cart.map((item) => ({
+        product: item.productId,
+        name: item.name,
+        barcode: item.barcode,
+        quantity: item.quantity,
+        price: item.price,
+        lineTotal: item.price * item.quantity,
+      })),
+      subtotal,
+      discount: totalDiscount,
+      dealDiscount,
+      deals: dealMatch.applied,
+      taxRate: taxFraction,
+      tax,
+      total,
+      amountTendered: tendered,
+      changeDue: Math.max(0, tendered - total),
+      createdAt: queued.soldAt,
+    });
+
+    toast.success(t("pos.offline.queued"));
+  };
+
   const checkout = async (payments) => {
     setIsCheckingOut(true);
-    try {
-      const response = await axiosInstance.post("pos/checkout", {
-        customerName: customerName.trim(),
-        payments,
-        discount: Number(discount || 0),
-        discountType,
-        voucherCode: voucher?.code,
-        taxEnabled,
-        taxRate: taxFraction,
-        // Price is ignored server-side — it is read from the database.
-        items: cart.map((item) => ({ product: item.productId, quantity: item.quantity })),
-      });
 
-      setReceipt(response.data.receipt);
+    // Known to be offline — don't even try, just serve the customer.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      try {
+        await checkoutOffline(payments);
+      } catch (error) {
+        toast.error(t("pos.offline.queueFailed"));
+      } finally {
+        setIsCheckingOut(false);
+      }
+      return;
+    }
+
+    try {
+      const response = await axiosInstance.post("pos/checkout", saleSnapshot(payments));
+
+      finishSale(response.data.receipt);
       toast.success(t("pos.receiptCompleted"));
-      setModal(null);
-      // On narrow screens the receipt (with Print / New Sale) lives in the sale
-      // pane — show it, or the cashier is left staring at the product grid.
-      setPane("sale");
-      setCart([]);
-      setSelectedLine(null);
-      setDiscount(0);
-      setVoucher(null);
-      setTaxEnabled(false);
       dispatch(gettingallproducts());
+      // A completed sale is a good moment to drain anything still queued.
+      syncQueue();
     } catch (error) {
-      toast.error(error.response?.data?.message || t("pos.checkoutFail"));
+      // The line dropped mid-sale (the browser can still think it is online).
+      // Fall back to the queue rather than losing the sale.
+      if (isNetworkError(error)) {
+        try {
+          await checkoutOffline(payments);
+        } catch {
+          toast.error(t("pos.offline.queueFailed"));
+        }
+      } else {
+        // A real refusal from the server — out of stock, bad voucher. The
+        // cashier must see it; queueing it would only fail again later.
+        toast.error(error.response?.data?.message || t("pos.checkoutFail"));
+      }
     } finally {
       setIsCheckingOut(false);
     }
@@ -512,7 +804,7 @@ function POSPage() {
       label: "pos.rail.productSearch",
       tone: "cyan",
       icon: FiSearch,
-      onClick: () => searchRef.current?.focus(),
+      onClick: () => setModal("search"),
     },
     {
       id: "discount",
@@ -541,6 +833,13 @@ function POSPage() {
       tone: "slate",
       icon: FiHash,
       onClick: () => setModal("code"),
+    },
+    {
+      id: "dayClosing",
+      label: "pos.rail.dayClosing",
+      tone: "teal",
+      icon: FiLock,
+      onClick: () => setModal("dayClosing"),
     },
   ];
 
@@ -629,20 +928,36 @@ function POSPage() {
           <SaleTable
             cart={cart}
             selectedId={selectedLine}
+            dealProductIds={dealProductIds}
             onSelect={setSelectedLine}
             onQuantityChange={updateQuantity}
             onRemove={removeFromCart}
           />
 
           {receipt && (
-            <div className="border-t border-emerald-800 bg-emerald-900/20 px-3 py-2 text-sm">
-              <span className="font-semibold text-emerald-400">
+            <div
+              className={`border-t px-3 py-2 text-sm ${
+                receipt.offlinePending
+                  ? "border-amber-800 bg-amber-900/20"
+                  : "border-emerald-800 bg-emerald-900/20"
+              }`}
+            >
+              <span
+                className={`font-semibold ${
+                  receipt.offlinePending ? "text-amber-400" : "text-emerald-400"
+                }`}
+              >
                 {t("pos.receipt")} {receipt.receiptNo}
               </span>{" "}
               <span className="text-slate-300">
                 {currency(receipt.total)}
                 {receipt.changeDue ? ` · ${t("pos.changeDue")} ${currency(receipt.changeDue)}` : ""}
               </span>
+              {receipt.offlinePending && (
+                <span className="ms-2 bg-amber-950 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-300 ring-1 ring-amber-800">
+                  {t("pos.offline.notSynced")}
+                </span>
+              )}
               <button
                 type="button"
                 onClick={newSale}
@@ -718,6 +1033,21 @@ function POSPage() {
                     <span className="tabular-nums">-{currency(voucherDiscount)}</span>
                   </div>
                 )}
+                {dealMatch.applied.map((entry) => (
+                  <div
+                    key={String(entry.dealId)}
+                    className="flex justify-between gap-8 text-fuchsia-400"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <FiTag className="h-3 w-3" />
+                      <span className="text-xs">
+                        {entry.name}
+                        {entry.sets > 1 ? ` ×${entry.sets}` : ""}
+                      </span>
+                    </span>
+                    <span className="tabular-nums">-{currency(entry.amount)}</span>
+                  </div>
+                ))}
                 {manualDiscount > 0 && (
                   <div className="flex justify-between gap-8 text-slate-500">
                     <span>{t("pos.discount")}</span>
@@ -793,7 +1123,7 @@ function POSPage() {
                 {activeCategoryName}
               </span>
               <span className="text-xs tabular-nums text-slate-600">
-                {filteredProducts.length}
+                {showingDeals ? activeDeals.length : filteredProducts.length}
               </span>
             </div>
           </div>
@@ -809,7 +1139,56 @@ function POSPage() {
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto border border-slate-800 bg-slate-950/60 p-2">
-            {filteredProducts.length === 0 ? (
+            {showingDeals ? (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))]">
+                {activeDeals.map((deal) => {
+                  const { normal, saving, price } = dealPricing(deal);
+
+                  return (
+                    <button
+                      key={deal._id}
+                      type="button"
+                      onClick={() => tapDeal(deal)}
+                      className="group flex flex-col gap-2 border border-fuchsia-900 bg-gradient-to-b from-fuchsia-950/60 to-slate-900 p-3 text-start transition hover:border-fuchsia-600 hover:from-fuchsia-900/60 active:scale-[0.98]"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="flex items-center gap-1.5 text-sm font-bold text-fuchsia-200">
+                          <FiTag className="h-3.5 w-3.5 shrink-0" />
+                          <span className="line-clamp-1">{deal.name}</span>
+                        </span>
+                        <span className="shrink-0 bg-fuchsia-900 px-1.5 py-0.5 text-[10px] font-bold uppercase text-fuchsia-200">
+                          {deal.discountType === "percent"
+                            ? `−${Number(deal.discount)}%`
+                            : `−${currency(deal.discount)}`}
+                        </span>
+                      </div>
+
+                      <p className="line-clamp-2 text-[11px] leading-snug text-slate-400">
+                        {(deal.items || [])
+                          .map(
+                            (item) =>
+                              `${item.quantity > 1 ? `${item.quantity}× ` : ""}${
+                                item.product?.name || "?"
+                              }`
+                          )
+                          .join(" + ")}
+                      </p>
+
+                      <div className="mt-auto flex items-baseline justify-between gap-2">
+                        <span className="text-base font-bold tabular-nums text-cyan-400">
+                          {currency(price)}
+                        </span>
+                        {saving > 0 && (
+                          <span className="text-[11px] tabular-nums text-slate-500 line-through">
+                            {currency(normal)}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : filteredProducts.length === 0 ? (
               <p className="py-12 text-center text-sm text-slate-700">{t("pos.noProducts")}</p>
             ) : (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(150px,1fr))]">
@@ -849,7 +1228,7 @@ function POSPage() {
                           className={`px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
                             stock <= 0
                               ? "bg-red-950 text-red-400"
-                              : stock <= 10
+                              : stock <= (product.lowStockThreshold ?? 10)
                               ? "bg-amber-950 text-amber-400"
                               : "bg-slate-800 text-slate-500"
                           }`}
@@ -902,62 +1281,139 @@ function POSPage() {
       {/* Printable receipt — everything else is hidden by the print stylesheet. */}
       {receipt && (
         <div id="receipt" className="hidden">
-          <h1>Eire Tech 360</h1>
-          <p>{receipt.receiptNo}</p>
-          <p>{new Date(receipt.createdAt).toLocaleString()}</p>
-          <p>
-            {t("pos.cashier")}: {receipt.cashierName}
-          </p>
-          <p>
-            {t("pos.customer")}: {receipt.customerName}
-          </p>
-          <hr />
-          <table>
+          {/* Header */}
+          <div className="r-center">
+            <div className="r-shop">{SHOP.name}</div>
+            {SHOP.addressLines.map((line) => (
+              <div key={line} className="r-addr">
+                {line}
+              </div>
+            ))}
+            <div className="r-order">
+              {t("pos.receiptDoc.order")} : {receipt.receiptNo}
+            </div>
+          </div>
+
+          <div className="r-rule" />
+
+          {/* Meta */}
+          <div className="r-meta">
+            {t("pos.receiptDoc.orderType")} : {t("pos.status.counter")}
+          </div>
+          <div className="r-meta">
+            {t("pos.receiptDoc.date")} : {new Date(receipt.createdAt).toLocaleString()}
+          </div>
+          <div className="r-meta">
+            {t("pos.receiptDoc.placedBy")} : {receipt.cashierName}
+          </div>
+          {receipt.customerName && receipt.customerName !== t("pos.walkIn") && (
+            <div className="r-meta">
+              {t("pos.customer")} : {receipt.customerName}
+            </div>
+          )}
+
+          <div className="r-rule" />
+
+          {/* Items */}
+          <table className="r-table">
+            <thead>
+              <tr>
+                <th className="r-qty">{t("pos.table.qty")}</th>
+                <th className="r-prod">{t("pos.table.product")}</th>
+                <th className="r-num">{t("pos.table.rate")}</th>
+                <th className="r-num">{t("pos.receiptDoc.price")}</th>
+              </tr>
+            </thead>
             <tbody>
               {receipt.items.map((item) => (
                 <tr key={String(item.product)}>
-                  <td>{item.name}</td>
-                  <td>x{item.quantity}</td>
-                  <td>{currency(item.lineTotal)}</td>
+                  <td className="r-qty">{item.quantity}</td>
+                  <td className="r-prod">{item.name}</td>
+                  <td className="r-num">{currency(item.price)}</td>
+                  <td className="r-num">{currency(item.lineTotal)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <hr />
-          <p>
-            {t("pos.subtotal")}: {currency(receipt.subtotal)}
-          </p>
-          {receipt.discount > 0 && (
-            <p>
-              {t("pos.discount")}: -{currency(receipt.discount)}
-            </p>
+
+          <div className="r-rule" />
+
+          {/* Totals */}
+          <div className="r-line">
+            <span>{t("pos.subtotal")}</span>
+            <span>{currency(receipt.subtotal)}</span>
+          </div>
+          {(receipt.deals || []).map((entry) => (
+            <div className="r-line" key={String(entry.dealId)}>
+              <span>
+                {entry.name}
+                {entry.sets > 1 ? ` ×${entry.sets}` : ""}
+              </span>
+              <span>-{currency(entry.amount)}</span>
+            </div>
+          ))}
+          {receipt.discount - (receipt.dealDiscount || 0) > 0 && (
+            <div className="r-line">
+              <span>{t("pos.discount")}</span>
+              <span>-{currency(receipt.discount - (receipt.dealDiscount || 0))}</span>
+            </div>
           )}
           {receipt.tax > 0 && (
-            <p>
-              {t("pos.tax")} ({Math.round(Number(receipt.taxRate || 0) * 1000) / 10}%):{" "}
-              {currency(receipt.tax)}
-            </p>
+            <div className="r-line">
+              <span>
+                {t("pos.tax")} ({Math.round(Number(receipt.taxRate || 0) * 1000) / 10}%)
+              </span>
+              <span>{currency(receipt.tax)}</span>
+            </div>
           )}
-          <p>
-            <strong>
-              {t("pos.total")}: {currency(receipt.total)}
-            </strong>
-          </p>
-          {(receipt.payments || []).map((entry, index) => (
-            <p key={`${entry.method}-${index}`}>
-              {t(`common.payments.${entry.method}`, entry.method)}: {currency(entry.amount)}
-            </p>
+          <div className="r-line r-total">
+            <span>{t("pos.total")}</span>
+            <span>{currency(receipt.total)}</span>
+          </div>
+
+          <div className="r-rule" />
+
+          {/* Payments */}
+          <div className="r-meta r-strong">{t("pos.receiptDoc.payments")}</div>
+          {(receipt.payments && receipt.payments.length > 0
+            ? receipt.payments
+            : [{ method: receipt.paymentMethod, amount: receipt.total }]
+          ).map((entry, index) => (
+            <div className="r-line" key={`${entry.method}-${index}`}>
+              <span>{t(`common.payments.${entry.method}`, entry.method)}</span>
+              <span>{currency(entry.amount)}</span>
+            </div>
           ))}
           {receipt.changeDue > 0 && (
-            <p>
-              {t("pos.changeDue")}: {currency(receipt.changeDue)}
-            </p>
+            <div className="r-line">
+              <span>{t("pos.changeDue")}</span>
+              <span>{currency(receipt.changeDue)}</span>
+            </div>
           )}
-          <p>{t("pos.ageVerification")}</p>
+
+          {/* QR + footer */}
+          <div className="r-center r-qrwrap">
+            <QRCodeSVG
+              value={SHOP.qrTemplate.replace("{ref}", receipt.receiptNo)}
+              size={132}
+              level="M"
+            />
+          </div>
+          <div className="r-center r-footer">{SHOP.footer}</div>
+          <div className="r-center r-footer">{t("pos.ageVerification")}</div>
         </div>
       )}
 
       {/* Modals */}
+      {modal === "search" && (
+        <ProductSearchModal
+          products={products}
+          categories={categories}
+          onPick={(product) => tapProduct(product)}
+          onClose={() => setModal(null)}
+        />
+      )}
+
       {modal === "payment" && (
         <PaymentModal
           total={total}
@@ -1018,6 +1474,13 @@ function POSPage() {
 
       {modal === "held" && (
         <HeldSalesModal onResume={resumeSale} onClose={() => setModal(null)} />
+      )}
+
+      {modal === "dayClosing" && (
+        <DayClosingModal
+          onClosed={() => setReceipt(null)}
+          onClose={() => setModal(null)}
+        />
       )}
 
       {modal === "code" && (

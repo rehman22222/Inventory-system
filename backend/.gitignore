@@ -40,3 +40,8 @@ pids
 coverage/
 .env
 
+# Database snapshots. These are shop records, not source — they must never be
+# swept into a commit by `git add .` and end up on a public remote.
+# (data/local-store.json is deliberately tracked: it is the demo-mode seed.)
+data/backups/
+

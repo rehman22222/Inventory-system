@@ -4,6 +4,13 @@ const logActivity = require("../libs/logger");
 
 const money = (value) => Math.round(Number(value || 0) * 100) / 100;
 
+// The owner side reviews every cashier's sales. A cashier (manager/staff) sees
+// only their own, and only until they hand them over at day closing — the same
+// rule the POS sale history uses.
+const seesAllSales = (user) => user?.role === "admin" || user?.role === "superadmin";
+
+const salesScope = (user) => (seesAllSales(user) ? {} : { cashier: user?._id, dayClosing: null });
+
 const dayRange = (from, to) => {
   const startSource = from || to || new Date();
   const endSource = to || from || startSource;
@@ -56,6 +63,10 @@ module.exports.createSale = async (req, res) => {
       paymentMethod,
       paymentStatus,
       status,
+      // Stamp who rang it, so the seller can still find it on their own sales
+      // view once per-cashier scoping applies.
+      cashier: req.user?._id,
+      cashierName: req.user?.name,
     });
 
     await newSale.save();
@@ -74,7 +85,9 @@ module.exports.createSale = async (req, res) => {
 
 module.exports.getAllSales = async (req, res) => {
   try {
-    const sales = await Sale.find().populate("products.product").sort({ createdAt: -1 });
+    const sales = await Sale.find(salesScope(req.user))
+      .populate("products.product")
+      .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, sales });
   } catch (error) {
@@ -288,19 +301,22 @@ module.exports.overrideSalesReportTotal = async (req, res) => {
 module.exports.SearchSales = async (req, res) => {
   try {
     const { query } = req.query;
+    // A search must never reach past what this user is allowed to list.
+    const scope = salesScope(req.user);
 
     if (!query || query.trim() === "") {
-     
-      const allSales = await Sale.find().populate("products.product");
+
+      const allSales = await Sale.find(scope).populate("products.product");
       return res.status(200).json({ success: true, sales: allSales });
     }
 
     const searchdata = await Sale.find({
+      ...scope,
       $or: [
         { customerName: { $regex: query, $options: "i" } },
         { paymentMethod: { $regex: query, $options: "i" } }
       ]
-    }).populate("products.product"); 
+    }).populate("products.product");
 
     res.status(200).json({ sales: searchdata });
 

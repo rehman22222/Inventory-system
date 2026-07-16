@@ -2,8 +2,29 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import axiosInstance from "../../lib/axios";
+import { cacheGet, isVoucherSpentOffline } from "../../lib/offlineDb";
+import { isNetworkError } from "../../lib/offlineQueue";
 import PosModal from "./PosModal";
 import { currency } from "./posUtils";
+
+// Work out what a cached voucher is worth, mirroring Vouchermodel's
+// computeDiscount + rejectionReason so an offline preview matches what the
+// server will conclude at sync.
+const priceCachedVoucher = (voucher, subtotal) => {
+  if (voucher.expiresAt && new Date(voucher.expiresAt).getTime() < Date.now()) {
+    return { error: "expired" };
+  }
+  if (Number(subtotal) < Number(voucher.minSpend || 0)) {
+    return { error: "minSpend", minSpend: voucher.minSpend };
+  }
+
+  const raw =
+    voucher.type === "percent"
+      ? (Number(subtotal) * Number(voucher.value)) / 100
+      : Number(voucher.value);
+
+  return { amount: Math.max(0, Math.min(raw, Number(subtotal))) };
+};
 
 // Cashiers apply a code; admin/manager can also cut a new one without leaving
 // the till. Redemption itself happens server-side inside the checkout
@@ -23,12 +44,61 @@ function VoucherModal({ subtotal, applied, canGenerate, onApply, onRemove, onClo
     usageLimit: "1",
   });
 
+  // With no line, price the code from the cached voucher list. The server has
+  // the last word at sync: it redeems the code, and if another till already
+  // spent it, the discount still stands but the admin is told.
+  const applyFromCache = async (value) => {
+    const cached = (await cacheGet("vouchers")) || [];
+    const voucher = cached.find((entry) => entry.code === value);
+
+    if (!voucher) {
+      toast.error(t("pos.voucher.offlineUnknown"));
+      return false;
+    }
+
+    // The one thing this till *can* be sure of: it hasn't already spent it.
+    if (await isVoucherSpentOffline(value)) {
+      toast.error(t("pos.voucher.offlineAlreadyUsed"));
+      return false;
+    }
+
+    const priced = priceCachedVoucher(voucher, subtotal);
+
+    if (priced.error === "expired") {
+      toast.error(t("pos.voucher.expired"));
+      return false;
+    }
+    if (priced.error === "minSpend") {
+      toast.error(t("pos.voucher.minSpend", { amount: currency(priced.minSpend) }));
+      return false;
+    }
+
+    onApply({
+      code: voucher.code,
+      type: voucher.type,
+      value: voucher.value,
+      amount: priced.amount,
+      offline: true,
+    });
+    toast.success(t("pos.voucher.appliedOffline", { amount: currency(priced.amount) }));
+    onClose();
+    return true;
+  };
+
   const applyCode = async (event) => {
     event.preventDefault();
     const value = code.trim().toUpperCase();
     if (!value) return;
 
     setBusy(true);
+
+    // Known to be offline — go straight to the cache.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      await applyFromCache(value);
+      setBusy(false);
+      return;
+    }
+
     try {
       const response = await axiosInstance.post("voucher/validate", {
         code: value,
@@ -45,7 +115,13 @@ function VoucherModal({ subtotal, applied, canGenerate, onApply, onRemove, onClo
       );
       onClose();
     } catch (error) {
-      toast.error(error.response?.data?.message || t("pos.voucher.invalid"));
+      // The line dropped rather than the server refusing — fall back to the
+      // cache. A real refusal (used/expired) must still reach the cashier.
+      if (isNetworkError(error)) {
+        await applyFromCache(value);
+      } else {
+        toast.error(error.response?.data?.message || t("pos.voucher.invalid"));
+      }
     } finally {
       setBusy(false);
     }

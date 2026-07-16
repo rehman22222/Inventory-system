@@ -71,6 +71,33 @@ module.exports.getVouchers = async (req, res) => {
   }
 };
 
+// What the till caches so a customer's voucher still works when the line is
+// down. Only live codes, and only the fields needed to price one — never the
+// audit trail.
+//
+// Trade-off worth knowing: this puts the live voucher codes on the till, so a
+// cashier with developer tools could read them. That is the price of honouring
+// vouchers offline. It is bounded: every code is single-use, each redemption is
+// recorded against a receipt, and an offline redemption of an already-spent code
+// is flagged for the admin.
+module.exports.getActiveVouchers = async (req, res) => {
+  try {
+    const now = new Date();
+
+    const vouchers = await Voucher.find({
+      status: "active",
+      $expr: { $lt: ["$usedCount", "$usageLimit"] },
+      $or: [{ expiresAt: { $exists: false } }, { expiresAt: null }, { expiresAt: { $gt: now } }],
+    }).select("code type value minSpend expiresAt");
+
+    return res.status(200).json({ vouchers });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Error fetching vouchers", error: error.message });
+  }
+};
+
 module.exports.disableVoucher = async (req, res) => {
   try {
     const voucher = await Voucher.findByIdAndUpdate(
