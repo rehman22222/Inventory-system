@@ -1,6 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const ActivityLog = require("../models/ActivityLogmodel");
+const {
+  authmiddleware,
+  superadminmiddleware,
+  activityLogAccess,
+} = require("../middleware/Authmiddleware");
 
 module.exports = (app) => {
   const io = app.get("io");
@@ -27,7 +32,9 @@ module.exports = (app) => {
     }
   };
 
-  router.post('/addLog', async (req, res) => {
+  // Writing straight into the audit trail was open to anyone. Entries are meant
+  // to come from libs/logger on the server, so this is now the owner's alone.
+  router.post('/addLog', authmiddleware, superadminmiddleware, async (req, res) => {
     try {
       const newLog = new ActivityLog(req.body);
       const savedLog = await newLog.save();
@@ -41,7 +48,9 @@ module.exports = (app) => {
     }
   });
 
-  router.get('/getAllLogs', async (req, res) => {
+  // The full audit trail. The superadmin always; an admin only with an approved,
+  // time-limited grant.
+  router.get('/getAllLogs', authmiddleware, activityLogAccess, async (req, res) => {
     try {
       const logs = await ActivityLog.find().populate("userId");
       res.status(200).json(logs);
@@ -52,7 +61,10 @@ module.exports = (app) => {
   });
 
   
-  router.get("/getrecentActivitys",async(req,res)=>{
+  // The dashboard's three-line "recent activity" strip. Left open to any
+  // signed-in user (it had no auth at all before) rather than gated: it is a
+  // glance at the shop, not the audit trail. Gate it here too if that changes.
+  router.get("/getrecentActivitys", authmiddleware, async(req,res)=>{
     try{
       const logs=await ActivityLog.find().sort({createdAt: -1}).limit(3);
       res.status(200).json(logs);
@@ -64,7 +76,7 @@ module.exports = (app) => {
     }
   })
 
-  router.get('/getLogs/:userid', async (req, res) => {
+  router.get('/getLogs/:userid', authmiddleware, activityLogAccess, async (req, res) => {
     const { userid } = req.params;
     try {
       const logs = await ActivityLog.find({ userId: userid });
@@ -75,7 +87,8 @@ module.exports = (app) => {
     }
   });
 
-  router.delete('/deleteLog', async (req, res) => {
+  // An audit trail anyone can delete from is not an audit trail. Owner only.
+  router.delete('/deleteLog', authmiddleware, superadminmiddleware, async (req, res) => {
     try {
       const { id } = req.body;
       const deletedLog = await ActivityLog.findByIdAndDelete(id);

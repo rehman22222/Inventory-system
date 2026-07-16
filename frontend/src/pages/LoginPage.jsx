@@ -1,6 +1,7 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { FiEye, FiEyeOff } from "react-icons/fi";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { FiAlertCircle, FiEye, FiEyeOff } from "react-icons/fi";
+import toast from "react-hot-toast";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useDispatch, useSelector } from "react-redux";
@@ -15,6 +16,23 @@ function LoginPage() {
   const dispatch = useDispatch();
   const navigator = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState("");
+  const [params] = useSearchParams();
+
+  // The session ended on its own — the account was removed, or the token
+  // expired. Say which, rather than dumping the user on a blank login form.
+  useEffect(() => {
+    const reason = params.get("reason");
+    if (!reason) return;
+
+    const message =
+      reason === "account-removed"
+        ? t("login.accountRemoved")
+        : t("login.sessionExpired");
+
+    setLoginError(message);
+    toast.error(message);
+  }, [params, t]);
 
   const schema = yup.object().shape({
     email: yup.string().email(t("login.invalidEmail")).required(t("login.emailRequired")),
@@ -33,6 +51,8 @@ function LoginPage() {
   });
 
   const onSubmit = (data) => {
+    setLoginError("");
+
     dispatch(login(data))
       .unwrap()
       .then((response) => {
@@ -48,7 +68,12 @@ function LoginPage() {
         }
       })
       .catch((error) => {
-        console.error("Error in Login:", error);
+        // The reason used to go only to the console, so a wrong password looked
+        // like nothing had happened at all. Show it on the form and as a toast.
+        const message =
+          typeof error === "string" ? error : error?.message || t("login.failed");
+        setLoginError(message);
+        toast.error(message);
       });
   };
 
@@ -94,6 +119,18 @@ function LoginPage() {
               onSubmit={handleSubmit(onSubmit)}
               className="rounded-xl border border-base-300 bg-base-100 p-6 shadow-sm"
             >
+              {/* Why the sign-in failed, stated plainly and left on screen — a
+                  toast alone disappears before it has been read. */}
+              {loginError && (
+                <div
+                  role="alert"
+                  className="mb-5 flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+                >
+                  <FiAlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{loginError}</span>
+                </div>
+              )}
+
               <div className="mb-5">
                 <label className="mb-2 block text-sm font-medium text-base-content/80">
                   {t("common.email")}

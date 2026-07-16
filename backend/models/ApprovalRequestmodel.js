@@ -9,7 +9,15 @@ const ApprovalRequestSchema = new mongoose.Schema(
 
     type: {
       type: String,
-      enum: ["create_user", "delete_user"],
+      enum: [
+        "create_user",
+        "delete_user",
+        "create_supplier",
+        "create_deal",
+        // Not an action but an access grant: approving opens the audit trail to
+        // the requester for a while. See ACTIVITY_LOG_GRANT_HOURS.
+        "view_activity_logs",
+      ],
       required: true,
     },
 

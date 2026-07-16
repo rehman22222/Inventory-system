@@ -58,7 +58,7 @@ import {
   isNetworkError,
 } from "../lib/offlineQueue";
 import { QRCodeSVG } from "qrcode.react";
-import SHOP from "../config/shop";
+import { gettingStore, hydrateStore } from "../features/storeSlice";
 import e360LogoDark from "../images/e360-logo-dark.png";
 
 const dashboardByRole = {
@@ -91,6 +91,9 @@ function POSPage() {
   const { getallproduct } = useSelector((state) => state.product);
   const { getallCategory } = useSelector((state) => state.category);
   const { deals: allDeals } = useSelector((state) => state.deal);
+  // The shop's own name/address, set by the owner. Drives the till header and
+  // the printed receipt.
+  const { store: SHOP } = useSelector((state) => state.store);
   const { Authuser } = useSelector((state) => state.auth);
 
   const role = Authuser?.role;
@@ -141,6 +144,7 @@ function POSPage() {
     dispatch(gettingallproducts());
     dispatch(gettingallCategory());
     dispatch(gettingallDeals());
+    dispatch(gettingStore());
   }, [dispatch]);
 
   // Flush queued sales as soon as the connection is back.
@@ -163,6 +167,7 @@ function POSPage() {
   // background.
   useEffect(() => {
     let alive = true;
+
     cacheGet("catalogue")
       .then((cached) => {
         if (alive && cached) setOfflineCache(cached);
@@ -170,10 +175,23 @@ function POSPage() {
       .catch(() => {
         // No cache yet — the online fetch will lay one down.
       });
+
+    // The shop name has to survive an outage too: it heads the till and prints
+    // on every receipt, including the ones rung up offline.
+    cacheGet("store")
+      .then((cached) => {
+        if (alive && cached) dispatch(hydrateStore(cached));
+      })
+      .catch(() => {});
+
     return () => {
       alive = false;
     };
-  }, []);
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (SHOP?.name) cacheSet("store", SHOP).catch(() => {});
+  }, [SHOP]);
 
   // The terminal is a dark-only surface — a bright till is unusable under shop
   // lighting, and the panels are painted in fixed dark tones. Force dark while
@@ -850,7 +868,12 @@ function POSPage() {
         <div className="flex min-w-0 items-center gap-3">
           <img src={e360LogoDark} alt="Eire Tech 360" className="h-6 sm:h-7" />
           <span className="hidden h-5 w-px bg-slate-700 sm:block" />
-          <span className="hidden text-xs font-bold uppercase tracking-[0.22em] text-slate-500 sm:block">
+          {/* Whose till this is — set by the owner in Super Admin → Store. */}
+          <span className="hidden truncate text-sm font-bold tracking-wide text-slate-200 sm:block">
+            {SHOP?.name}
+          </span>
+          <span className="hidden h-5 w-px bg-slate-700 lg:block" />
+          <span className="hidden text-xs font-bold uppercase tracking-[0.22em] text-slate-500 lg:block">
             {t("pos.title")}
           </span>
         </div>
@@ -1283,12 +1306,13 @@ function POSPage() {
         <div id="receipt" className="hidden">
           {/* Header */}
           <div className="r-center">
-            <div className="r-shop">{SHOP.name}</div>
-            {SHOP.addressLines.map((line) => (
+            <div className="r-shop">{SHOP?.name}</div>
+            {(SHOP?.addressLines || []).map((line) => (
               <div key={line} className="r-addr">
                 {line}
               </div>
             ))}
+            {SHOP?.phone && <div className="r-addr">{SHOP.phone}</div>}
             <div className="r-order">
               {t("pos.receiptDoc.order")} : {receipt.receiptNo}
             </div>
@@ -1394,12 +1418,12 @@ function POSPage() {
           {/* QR + footer */}
           <div className="r-center r-qrwrap">
             <QRCodeSVG
-              value={SHOP.qrTemplate.replace("{ref}", receipt.receiptNo)}
+              value={(SHOP?.qrTemplate || "{ref}").replace("{ref}", receipt.receiptNo)}
               size={132}
               level="M"
             />
           </div>
-          <div className="r-center r-footer">{SHOP.footer}</div>
+          {SHOP?.footer && <div className="r-center r-footer">{SHOP.footer}</div>}
           <div className="r-center r-footer">{t("pos.ageVerification")}</div>
         </div>
       )}

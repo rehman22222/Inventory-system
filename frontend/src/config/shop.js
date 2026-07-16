@@ -1,6 +1,9 @@
-// Details printed on the receipt header/footer. Edit these to match the shop —
-// they are not stored in the database, so a change here (plus a rebuild) is all
-// it takes.
+// Fallback shop details.
+//
+// The real values now live in the database and are edited from Super Admin →
+// Store, so renaming the shop no longer needs a code change and a redeploy.
+// These are used only before the first fetch lands, or on a till that has never
+// reached the server.
 const SHOP = {
   name: "Candy Cloud",
   addressLines: ["10 Abbeygate Street", "Lower, H91 KV7K"],

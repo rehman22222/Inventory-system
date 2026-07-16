@@ -31,8 +31,15 @@ const UserSchema= new mongoose.Schema({
     },
     ProfilePic:{
         type:String
-   
 
+
+    },
+    // The audit trail is not something an admin browses at will: they ask the
+    // superadmin, and approval opens it until this moment passes. Unset or in
+    // the past means no access.
+    logAccessUntil:{
+        type:Date,
+        default:null
     },
     createdAt:{
         type:Date,

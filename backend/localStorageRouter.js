@@ -31,7 +31,7 @@ function initialStore() {
       _id: "sup-northline",
       name: "Northline Distribution",
       contactInfo: { phone: "555-0142", email: "orders@northline.example", address: "1840 Harbor Road, Los Angeles, CA" },
-      productsSupplied: "prod-vaporx",
+      productsSupplied: ["prod-vaporx"],
       createdAt: daysAgo(29),
       updatedAt: daysAgo(4),
     },
@@ -39,7 +39,7 @@ function initialStore() {
       _id: "sup-cloudnine",
       name: "CloudNine Wholesale",
       contactInfo: { phone: "555-0177", email: "supply@cloudnine.example", address: "72 Market Street, San Diego, CA" },
-      productsSupplied: "prod-mint",
+      productsSupplied: ["prod-mint"],
       createdAt: daysAgo(27),
       updatedAt: daysAgo(6),
     },
@@ -47,7 +47,7 @@ function initialStore() {
       _id: "sup-pacific",
       name: "Pacific Vape Supply",
       contactInfo: { phone: "555-0188", email: "sales@pacificvape.example", address: "404 Commerce Drive, Irvine, CA" },
-      productsSupplied: "prod-pods",
+      productsSupplied: ["prod-pods"],
       createdAt: daysAgo(25),
       updatedAt: daysAgo(2),
     },
@@ -632,19 +632,62 @@ function localStorageRouter(app) {
     res.json({ message: "Barcode linked successfully", product: populateProduct(store, product) });
   });
 
+  // A supplier supplies many products; older demo rows hold a single id, so
+  // both shapes are lifted into a list.
+  const suppliedIds = (value) => {
+    const list = Array.isArray(value) ? value : value ? [value] : [];
+    return [...new Set(list.map((entry) => String(entry?._id || entry)).filter(Boolean))];
+  };
+
+  const populateSupplier = (store, supplier) => ({
+    ...supplier,
+    productsSupplied: suppliedIds(supplier.productsSupplied)
+      .map((pid) => populateProduct(store, store.products.find((p) => p._id === pid)))
+      .filter(Boolean),
+  });
+
+  // Mirrors the real controller: a product has one supplier, so claiming it here
+  // takes it off whoever had it before.
+  const syncSupplierProducts = (store, supplierId, productIds) => {
+    store.suppliers.forEach((other) => {
+      if (other._id === supplierId) return;
+      other.productsSupplied = suppliedIds(other.productsSupplied).filter(
+        (pid) => !productIds.includes(pid)
+      );
+    });
+
+    store.products.forEach((product) => {
+      if (productIds.includes(product._id)) product.supplier = supplierId;
+      else if (product.supplier === supplierId) product.supplier = undefined;
+    });
+  };
+
   router.get("/supplier/getallsupplier", (_req, res) => {
     const store = readStore();
-    res.json(store.suppliers.map((supplier) => ({
-      ...supplier,
-      productsSupplied: populateProduct(store, store.products.find((product) => product._id === supplier.productsSupplied)),
-    })));
+    res.json(store.suppliers.map((supplier) => populateSupplier(store, supplier)));
   });
   router.post("/supplier/createsupplier", (req, res) => {
     const store = readStore();
-    const supplier = { _id: id(), ...req.body, createdAt: now(), updatedAt: now() };
+    if (!String(req.body.name || "").trim()) {
+      return res.status(400).json({ success: false, message: "Supplier name is required." });
+    }
+    const productIds = suppliedIds(req.body.productsSupplied);
+    const supplier = {
+      _id: id(),
+      ...req.body,
+      name: String(req.body.name).trim(),
+      productsSupplied: productIds,
+      createdAt: now(),
+      updatedAt: now(),
+    };
     store.suppliers.push(supplier);
+    syncSupplierProducts(store, supplier._id, productIds);
     writeStore(store);
-    res.status(201).json({ success: true, message: "Supplier created successfully", newSupplier: supplier });
+    res.status(201).json({
+      success: true,
+      message: "Supplier created successfully",
+      newSupplier: populateSupplier(store, supplier),
+    });
   });
   router.get("/supplier/searchSupplier", (req, res) => {
     const query = String(req.query.query || "").toLowerCase();
@@ -654,13 +697,27 @@ function localStorageRouter(app) {
     const store = readStore();
     const supplier = store.suppliers.find((item) => item._id === req.params.supplierId);
     if (!supplier) return res.status(404).json({ message: "Supplier not found" });
+
     Object.assign(supplier, req.body, { updatedAt: now() });
+
+    // Only touch the product list if one was actually sent — a rename must not
+    // wipe the supplier's products.
+    if (req.body.productsSupplied !== undefined) {
+      const productIds = suppliedIds(req.body.productsSupplied);
+      supplier.productsSupplied = productIds;
+      syncSupplierProducts(store, supplier._id, productIds);
+    }
+
     writeStore(store);
-    res.json({ message: "Supplier updated successfully", supplier });
+    res.json({ message: "Supplier updated successfully", supplier: populateSupplier(store, supplier) });
   });
   router.delete("/supplier/:supplierId", (req, res) => {
     const store = readStore();
     store.suppliers = store.suppliers.filter((supplier) => supplier._id !== req.params.supplierId);
+    // Release the products, or they point at a supplier that no longer exists.
+    store.products.forEach((product) => {
+      if (product.supplier === req.params.supplierId) product.supplier = undefined;
+    });
     writeStore(store);
     res.json({ success: true, message: "Supplier deleted successfully" });
   });
@@ -1665,6 +1722,103 @@ function localStorageRouter(app) {
     if (store.deals.length === before) return res.status(404).json({ message: "Deal not found" });
     writeStore(store);
     res.json({ message: "Deal deleted successfully" });
+  });
+
+
+  // --- Store details (demo) --------------------------------------------
+  const DEFAULT_STORE = {
+    key: "shop",
+    name: "Candy Cloud",
+    addressLines: ["10 Abbeygate Street", "Lower, H91 KV7K"],
+    phone: "",
+    footer: "Thank you for shopping with us",
+    qrTemplate: "{ref}",
+  };
+
+  router.get("/store", (_req, res) => {
+    const store = readStore();
+    if (!store.shop) { store.shop = { ...DEFAULT_STORE, createdAt: now(), updatedAt: now() }; writeStore(store); }
+    res.json({ store: store.shop });
+  });
+
+  router.put("/store", (req, res) => {
+    const store = readStore();
+    const user = currentUser(store, req);
+    if (user && user.role !== "superadmin") {
+      return res.status(403).json({ message: "Access denied. Super admin only." });
+    }
+    const shop = store.shop || { ...DEFAULT_STORE };
+    const { name, addressLines, phone, footer, qrTemplate } = req.body;
+
+    if (name !== undefined) {
+      if (!String(name).trim()) return res.status(400).json({ message: "Store name is required" });
+      shop.name = String(name).trim();
+    }
+    if (addressLines !== undefined) {
+      // The form sends a textarea: one address line per row.
+      const lines = Array.isArray(addressLines)
+        ? addressLines
+        : String(addressLines).split(/\r?\n/);
+      shop.addressLines = lines.map((l) => String(l).trim()).filter(Boolean);
+    }
+    if (phone !== undefined) shop.phone = String(phone).trim();
+    if (footer !== undefined) shop.footer = String(footer).trim();
+    if (qrTemplate !== undefined) shop.qrTemplate = String(qrTemplate).trim() || "{ref}";
+
+    shop.updatedAt = now();
+    store.shop = shop;
+    addActivity(
+      store,
+      "Update Store",
+      `Store details updated — now trading as "${shop.name}".`,
+      "system",
+      null,
+      user && user._id
+    );
+    writeStore(store);
+    res.json({ message: "Store details updated", store: shop });
+  });
+
+  // Ghost mode (demo): every sale, unscoped. Owner only.
+  router.get("/pos/all-sales", (req, res) => {
+    const store = readStore();
+    const user = currentUser(store, req);
+    if (user && user.role !== "superadmin") {
+      return res.status(403).json({ message: "Access denied. Super admin only." });
+    }
+
+    let list = [...store.receipts];
+    if (req.query.cashier) list = list.filter((r) => r.cashier === req.query.cashier);
+    if (req.query.status) list = list.filter((r) => r.status === req.query.status);
+    if (req.query.from) list = list.filter((r) => new Date(r.createdAt) >= new Date(req.query.from + "T00:00:00"));
+    if (req.query.to) list = list.filter((r) => new Date(r.createdAt) <= new Date(req.query.to + "T23:59:59.999"));
+
+    const limit = Math.min(Number(req.query.limit || 50), 200);
+    const page = Math.max(Number(req.query.page || 1), 1);
+
+    const totals = list.reduce((acc, r) => ({
+      net: acc.net + Number(r.total || 0),
+      gross: acc.gross + Number(r.subtotal || 0),
+      discount: acc.discount + Number(r.discount || 0),
+      tax: acc.tax + Number(r.tax || 0),
+    }), { net: 0, gross: 0, discount: 0, tax: 0 });
+
+    const byCashierMap = new Map();
+    list.forEach((r) => {
+      const k = r.cashier || "unknown";
+      const cur = byCashierMap.get(k) || { cashier: k, name: r.cashierName, net: 0, count: 0 };
+      cur.net += Number(r.total || 0); cur.count += 1;
+      byCashierMap.set(k, cur);
+    });
+
+    res.json({
+      receipts: list.slice((page - 1) * limit, page * limit),
+      page,
+      pages: Math.max(Math.ceil(list.length / limit), 1),
+      total: list.length,
+      totals: { net: money(totals.net), gross: money(totals.gross), discount: money(totals.discount), tax: money(totals.tax) },
+      byCashier: [...byCashierMap.values()].map((e) => ({ ...e, net: money(e.net) })).sort((a, b) => b.net - a.net),
+    });
   });
 
   router.get("/stocktransaction/getallStockTransaction", (_req, res) => {

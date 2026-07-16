@@ -10,6 +10,7 @@ import {
   RemoveDeal,
 } from "../features/dealSlice";
 import { gettingallCategory } from "../features/categorySlice";
+import { RaiseRequest } from "../features/approvalSlice";
 
 // Build and manage bundle deals: name the deal, pick the products that make it
 // up, and set the discount. The POS detects the deal automatically when those
@@ -21,6 +22,10 @@ function DealsModal({ onClose }) {
   const { getallproduct } = useSelector((state) => state.product);
   const { getallCategory } = useSelector((state) => state.category);
   const { deals, iscreating } = useSelector((state) => state.deal);
+  const { Authuser } = useSelector((state) => state.auth);
+
+  // Only the owner creates a deal outright; everyone else asks.
+  const canCreateDirectly = Authuser?.role === "superadmin";
 
   const products = useMemo(
     () => (Array.isArray(getallproduct) ? getallproduct : []),
@@ -140,14 +145,31 @@ function DealsModal({ onClose }) {
       return;
     }
 
-    const result = await dispatch(
-      CreateDeal({
-        name: name.trim(),
-        discount: Number(discount),
-        discountType,
-        items: picked.map((entry) => ({ product: entry.productId, quantity: entry.quantity })),
-      })
-    );
+    const payload = {
+      name: name.trim(),
+      discount: Number(discount),
+      discountType,
+      items: picked.map((entry) => ({ product: entry.productId, quantity: entry.quantity })),
+    };
+
+    // A deal gives money away, so it is the owner's call. Everyone else sends it
+    // for approval — approving is what creates it.
+    if (!canCreateDirectly) {
+      const asked = await dispatch(RaiseRequest({ type: "create_deal", payload }));
+
+      if (asked.error) {
+        toast.error(asked.payload || t("deals.requestFailed"));
+        return;
+      }
+
+      toast.success(
+        t("deals.requested", { ref: asked.payload?.request?.reference || "" })
+      );
+      resetForm();
+      return;
+    }
+
+    const result = await dispatch(CreateDeal(payload));
 
     if (result.error) {
       toast.error(result.payload || t("deals.createFailed"));
@@ -361,12 +383,23 @@ function DealsModal({ onClose }) {
               </div>
             )}
 
+            {/* Say up front that this goes to the owner. */}
+            {!canCreateDirectly && (
+              <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                {t("deals.needsApproval")}
+              </p>
+            )}
+
             <button
               type="submit"
               disabled={iscreating}
               className="h-11 w-full rounded-lg bg-blue-800 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
             >
-              {iscreating ? t("deals.saving") : t("deals.create")}
+              {iscreating
+                ? t("deals.saving")
+                : canCreateDirectly
+                ? t("deals.create")
+                : t("deals.sendForApproval")}
             </button>
           </form>
 

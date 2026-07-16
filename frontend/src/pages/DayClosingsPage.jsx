@@ -7,12 +7,11 @@ import {
   gettingDayClosing,
   clearSelectedClosing,
 } from "../features/dayClosingSlice";
+import ReportButton from "../Components/ReportButton";
+// The shop's own currency, not a hard-coded dollar — these are Euro takings.
+import { currency } from "../Components/pos/posUtils";
 
-const money = (value) =>
-  Number(value || 0).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+const money = (value) => currency(value);
 
 // The admin's ledger of takings handed over by each cashier at day closing.
 function DayClosingsPage() {
@@ -58,7 +57,7 @@ function DayClosingsPage() {
           <h2 className="text-sm font-semibold text-slate-300">
             {t("dayClosings.totalHandedOver")}
           </h2>
-          <p className="mt-2 text-2xl font-bold">${money(totalHandedOver)}</p>
+          <p className="mt-2 text-2xl font-bold">{money(totalHandedOver)}</p>
         </div>
       </div>
 
@@ -100,16 +99,28 @@ function DayClosingsPage() {
                     {closing.receiptCount}
                   </td>
                   <td className="border px-3 py-2 text-right font-semibold tabular-nums">
-                    ${money(closing.net)}
+                    {money(closing.net)}
                   </td>
                   <td className="border px-3 py-2">
-                    <button
-                      type="button"
-                      onClick={() => open(closing)}
-                      className="rounded-md bg-blue-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
-                    >
-                      {t("dayClosings.view")}
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => open(closing)}
+                        className="rounded-md bg-blue-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                      >
+                        {t("dayClosings.view")}
+                      </button>
+                      {/* This batch's own report — every line it was made of.
+                          Pinned to PDF: a menu here would be clipped by the
+                          table's own scroll container. Open it for CSV/Excel. */}
+                      <ReportButton
+                        reportKey="day-closing"
+                        params={{ id: closing._id }}
+                        format="pdf"
+                        label={t("dayClosings.report")}
+                        className="h-[30px] text-xs"
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -133,14 +144,27 @@ function DayClosingsPage() {
                   </p>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={close}
-                className="rounded-lg p-2 text-base-content/50 hover:bg-base-200"
-                aria-label={t("dayClosings.close")}
-              >
-                <FiX className="h-5 w-5" />
-              </button>
+
+              <div className="flex shrink-0 items-center gap-2">
+                {/* This batch, as one report — every line sold, plus the
+                    drawer/terminal split to reconcile against. */}
+                {selected && (
+                  <ReportButton
+                    reportKey="day-closing"
+                    params={{ id: selected._id }}
+                    label={t("dayClosings.report")}
+                    className="h-9 text-xs"
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={close}
+                  className="rounded-lg p-2 text-base-content/50 hover:bg-base-200"
+                  aria-label={t("dayClosings.close")}
+                >
+                  <FiX className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
@@ -165,7 +189,7 @@ function DayClosingsPage() {
                         <p className="text-[11px] font-semibold uppercase text-base-content/50">
                           {stat.label}
                         </p>
-                        <p className="mt-1 font-bold tabular-nums">${money(stat.value)}</p>
+                        <p className="mt-1 font-bold tabular-nums">{money(stat.value)}</p>
                       </div>
                     ))}
                   </div>
@@ -181,33 +205,64 @@ function DayClosingsPage() {
                           <span className="text-base-content/70">
                             {t(`common.payments.${entry.method}`, entry.method)}
                           </span>
-                          <span className="tabular-nums font-medium">${money(entry.amount)}</span>
+                          <span className="tabular-nums font-medium">{money(entry.amount)}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Receipts in the batch */}
+                  {/* Receipts in the batch, with what was actually sold on each —
+                      a list of totals alone tells the admin nothing about where
+                      the money came from. */}
                   <div>
                     <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-base-content/60">
                       {t("dayClosings.receipts", { count: selected.receiptCount })}
                     </h3>
                     <div className="divide-y divide-base-200 rounded-lg border border-base-300">
                       {(selected.receipts || []).map((receipt) => (
-                        <div
-                          key={receipt._id || receipt.receiptNo}
-                          className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
-                        >
-                          <span className="font-mono font-medium">{receipt.receiptNo}</span>
-                          <span className="min-w-0 flex-1 truncate text-base-content/60">
-                            {receipt.customerName}
-                          </span>
-                          <span className="text-xs uppercase text-base-content/50">
-                            {receipt.status}
-                          </span>
-                          <span className="tabular-nums font-semibold">
-                            ${money(receipt.total)}
-                          </span>
+                        <div key={receipt._id || receipt.receiptNo} className="px-3 py-2">
+                          <div className="flex items-center justify-between gap-3 text-sm">
+                            <span className="font-mono font-medium">{receipt.receiptNo}</span>
+                            <span className="min-w-0 flex-1 truncate text-base-content/60">
+                              {receipt.customerName}
+                            </span>
+                            <span className="text-xs text-base-content/50">
+                              {new Date(receipt.createdAt).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                            <span
+                              className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                                receipt.status === "completed"
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-amber-100 text-amber-700"
+                              }`}
+                            >
+                              {receipt.status}
+                            </span>
+                            <span className="w-20 text-end tabular-nums font-semibold">
+                              {money(receipt.total)}
+                            </span>
+                          </div>
+
+                          {(receipt.items || []).length > 0 && (
+                            <div className="mt-1 space-y-0.5 ps-1">
+                              {receipt.items.map((item, i) => (
+                                <div
+                                  key={i}
+                                  className="flex justify-between gap-3 text-xs text-base-content/60"
+                                >
+                                  <span className="min-w-0 truncate">
+                                    {item.quantity} × {item.name}
+                                  </span>
+                                  <span className="shrink-0 tabular-nums">
+                                    {money(item.lineTotal)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

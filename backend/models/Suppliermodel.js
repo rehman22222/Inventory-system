@@ -15,11 +15,13 @@ const SupplierSchema= new mongoose.Schema({
         email:{type:String},
         address:{type:String}
     },
-    productsSupplied:{
+    // A supplier supplies many products. The inverse of this is Product.supplier
+    // (each product comes from one supplier), and the controller keeps the two
+    // in step — otherwise the same fact would be stored twice and drift apart.
+    productsSupplied:[{
         type:mongoose.Schema.Types.ObjectId,
         ref:"Product"
-
-    },
+    }],
     createdAt:{
         type:Date,
         default:Date.now

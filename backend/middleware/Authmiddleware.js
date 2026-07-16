@@ -86,6 +86,30 @@ module.exports.adminOrSuperadmin = (req, res, next) => {
 
 
 
+// The audit trail records what everyone did, including the admin, so it is not
+// theirs to browse at will. The superadmin sees it always; anyone else needs an
+// approved, time-limited grant (Usermodel.logAccessUntil).
+module.exports.activityLogAccess = (req, res, next) => {
+  if (req.user?.role === "superadmin") return next();
+
+  const until = req.user?.logAccessUntil;
+
+  if (until && new Date(until).getTime() > Date.now()) {
+    return next();
+  }
+
+  return res.status(403).json({
+    message: until
+      ? "Your access to the activity log has expired — request it again"
+      : "Ask the super admin for access to the activity log",
+    // The page reads this to offer the request button rather than a dead end.
+    needsApproval: "view_activity_logs",
+    expired: Boolean(until),
+  });
+};
+
+
+
 // managermiddleware is a strict role equality check, so an admin fails it.
 // Guards for elevated till actions (refund/void) use this. Superadmin sits
 // above admin, so it is allowed too.

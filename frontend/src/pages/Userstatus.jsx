@@ -5,6 +5,7 @@ import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { TiDelete } from "react-icons/ti";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 import image from "../images/user.png";
 import {
   staffUser,
@@ -23,6 +24,7 @@ function Userstatus() {
   const dispatch = useDispatch();
   const { Authuser } = useSelector((state) => state.auth);
   const [form, setForm] = useState(EMPTY_USER);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     dispatch(staffUser());
@@ -95,13 +97,26 @@ function Userstatus() {
 
         <div>
           <label className={label}>{t("users.password")}</label>
-          <input
-            type="password"
-            value={form.password}
-            onChange={(event) => setForm({ ...form, password: event.target.value })}
-            placeholder={t("users.passwordHint")}
-            className={field}
-          />
+          {/* Whoever sets this has to read it back to the new staff member, so
+              they need to be able to see what they typed. */}
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              value={form.password}
+              onChange={(event) => setForm({ ...form, password: event.target.value })}
+              placeholder={t("users.passwordHint")}
+              className={`${field} pe-11`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((value) => !value)}
+              aria-label={showPassword ? t("login.hidePassword") : t("login.showPassword")}
+              title={showPassword ? t("login.hidePassword") : t("login.showPassword")}
+              className="absolute end-0 top-0 flex h-full w-11 items-center justify-center text-base-content/50 transition hover:text-base-content"
+            >
+              {showPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
 
         <div>

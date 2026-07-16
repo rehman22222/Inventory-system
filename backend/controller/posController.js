@@ -798,6 +798,94 @@ module.exports.getReceipts = async (req, res) => {
   }
 };
 
+// "Ghost mode": the owner's view over the whole shop — every sale, every
+// cashier, every day, whether or not it has been handed over at day closing.
+// Nothing here is scoped to the caller, which is exactly why it is superadmin
+// only.
+module.exports.getAllSales = async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit || 50), 200);
+    const page = Math.max(Number(req.query.page || 1), 1);
+    const filter = {};
+
+    if (req.query.cashier) {
+      if (!mongoose.isValidObjectId(req.query.cashier)) {
+        return res.status(400).json({ message: "Invalid cashier id" });
+      }
+      // Cast explicitly. find() would coerce the string for us, but $match in an
+      // aggregate does not — leaving it a string made the totals silently come
+      // back as zero while the rows themselves listed fine.
+      filter.cashier = new mongoose.Types.ObjectId(req.query.cashier);
+    }
+
+    if (req.query.from || req.query.to) {
+      filter.createdAt = {};
+      if (req.query.from) filter.createdAt.$gte = new Date(`${req.query.from}T00:00:00`);
+      if (req.query.to) filter.createdAt.$lte = new Date(`${req.query.to}T23:59:59.999`);
+    }
+
+    if (req.query.status) filter.status = req.query.status;
+
+    const [receipts, total, totals, byCashier] = await Promise.all([
+      Receipt.find(filter)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Receipt.countDocuments(filter),
+      // Totals across the WHOLE filter, not just this page — a page total would
+      // be meaningless to the owner.
+      Receipt.aggregate([
+        { $match: filter },
+        {
+          $group: {
+            _id: null,
+            net: { $sum: "$total" },
+            gross: { $sum: "$subtotal" },
+            discount: { $sum: "$discount" },
+            tax: { $sum: "$tax" },
+          },
+        },
+      ]),
+      Receipt.aggregate([
+        { $match: filter },
+        {
+          $group: {
+            _id: { cashier: "$cashier", name: "$cashierName" },
+            net: { $sum: "$total" },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { net: -1 } },
+      ]),
+    ]);
+
+    const sum = totals[0] || { net: 0, gross: 0, discount: 0, tax: 0 };
+
+    return res.status(200).json({
+      receipts,
+      page,
+      pages: Math.max(Math.ceil(total / limit), 1),
+      total,
+      totals: {
+        net: money(sum.net),
+        gross: money(sum.gross),
+        discount: money(sum.discount),
+        tax: money(sum.tax),
+      },
+      byCashier: byCashier.map((entry) => ({
+        cashier: entry._id.cashier,
+        name: entry._id.name,
+        net: money(entry.net),
+        count: entry.count,
+      })),
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Error fetching sales", error: error.message });
+  }
+};
+
 module.exports.getReceipt = async (req, res) => {
   try {
     const reference = String(req.params.receiptNo).trim().toUpperCase();

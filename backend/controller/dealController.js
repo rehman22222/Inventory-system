@@ -35,53 +35,68 @@ const validateDiscount = (discount, discountType) => {
   return null;
 };
 
+// Shared creation logic. Both the direct endpoint and the approval executor go
+// through here, so an approved deal is identical to a directly-created one.
+module.exports.createDealRecord = async (
+  { name, discount, discountType = "amount", items },
+  actor = {}
+) => {
+  if (!name || !String(name).trim()) {
+    return { ok: false, status: 400, message: "Deal name is required" };
+  }
+
+  const invalid = validateDiscount(discount, discountType);
+  if (invalid) {
+    return { ok: false, status: 400, message: invalid };
+  }
+
+  const cleanItems = normaliseItems(items);
+  if (cleanItems.length < 2) {
+    return { ok: false, status: 400, message: "Pick at least two products for the deal" };
+  }
+
+  // Every product must actually exist.
+  const found = await Product.countDocuments({
+    _id: { $in: cleanItems.map((item) => item.product) },
+  });
+  if (found !== cleanItems.length) {
+    return { ok: false, status: 400, message: "One or more products no longer exist" };
+  }
+
+  const deal = await Deal.create({
+    name: String(name).trim(),
+    discount: Number(discount),
+    discountType,
+    items: cleanItems,
+    createdBy: actor._id,
+  });
+
+  await deal.populate("items.product", "name Price barcode");
+
+  await logActivity({
+    action: "Create Deal",
+    description: `Deal "${deal.name}" created.`,
+    entity: "product",
+    entityId: deal._id,
+    userId: actor._id,
+    ipAddress: actor.ip,
+  });
+
+  return { ok: true, message: "Deal created successfully", deal };
+};
+
 module.exports.createDeal = async (req, res) => {
   try {
-    const { name, discount, discountType = "amount", items } = req.body;
-
-    if (!name || !String(name).trim()) {
-      return res.status(400).json({ message: "Deal name is required" });
-    }
-
-    const invalid = validateDiscount(discount, discountType);
-    if (invalid) {
-      return res.status(400).json({ message: invalid });
-    }
-    const amount = Number(discount);
-
-    const cleanItems = normaliseItems(items);
-    if (cleanItems.length < 2) {
-      return res.status(400).json({ message: "Pick at least two products for the deal" });
-    }
-
-    // Every product must actually exist.
-    const found = await Product.countDocuments({
-      _id: { $in: cleanItems.map((item) => item.product) },
-    });
-    if (found !== cleanItems.length) {
-      return res.status(400).json({ message: "One or more products no longer exist" });
-    }
-
-    const deal = await Deal.create({
-      name: String(name).trim(),
-      discount: amount,
-      discountType,
-      items: cleanItems,
-      createdBy: req.user?._id,
+    const result = await module.exports.createDealRecord(req.body, {
+      _id: req.user?._id,
+      ip: req.ip,
     });
 
-    await deal.populate("items.product", "name Price barcode");
+    if (!result.ok) {
+      return res.status(result.status).json({ message: result.message });
+    }
 
-    await logActivity({
-      action: "Create Deal",
-      description: `Deal "${deal.name}" created.`,
-      entity: "product",
-      entityId: deal._id,
-      userId: req.user?._id,
-      ipAddress: req.ip,
-    });
-
-    return res.status(201).json({ message: "Deal created successfully", deal });
+    return res.status(201).json({ message: result.message, deal: result.deal });
   } catch (error) {
     return res.status(500).json({ message: error.message || "Error creating deal" });
   }

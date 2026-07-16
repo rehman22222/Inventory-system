@@ -1,7 +1,22 @@
 const ApprovalRequest = require("../models/ApprovalRequestmodel");
+const User = require("../models/Usermodel");
 const { nextSequence } = require("../models/Countermodel");
 const { createUserRecord, deleteUserRecord } = require("./authcontroller");
+const { createSupplierRecord } = require("./suppliercontroller");
+const { createDealRecord } = require("./dealController");
 const logActivity = require("../libs/logger");
+
+// How long an approved look at the audit trail lasts. It is a grant, not a
+// permanent right — the admin asks again next time.
+const ACTIVITY_LOG_GRANT_HOURS = 24;
+
+const REQUEST_TYPES = [
+  "create_user",
+  "delete_user",
+  "create_supplier",
+  "create_deal",
+  "view_activity_logs",
+];
 
 // A short label for the queue, per request type.
 const summarise = (type, payload) => {
@@ -11,6 +26,18 @@ const summarise = (type, payload) => {
   if (type === "delete_user") {
     return `Delete user ${payload.targetName || payload.userId}`;
   }
+  if (type === "create_supplier") {
+    const count = (payload.productsSupplied || []).length;
+    return `Add supplier "${payload.name}"${count ? ` — ${count} product(s)` : ""}`;
+  }
+  if (type === "create_deal") {
+    const off =
+      payload.discountType === "percent" ? `${payload.discount}%` : payload.discount;
+    return `Create deal "${payload.name}" — ${off} off`;
+  }
+  if (type === "view_activity_logs") {
+    return `View the activity log for ${ACTIVITY_LOG_GRANT_HOURS} hours`;
+  }
   return type;
 };
 
@@ -19,7 +46,7 @@ module.exports.createRequest = async (req, res) => {
   try {
     const { type, payload = {}, reason } = req.body;
 
-    if (!["create_user", "delete_user"].includes(type)) {
+    if (!REQUEST_TYPES.includes(type)) {
       return res.status(400).json({ message: "Unknown request type" });
     }
 
@@ -39,6 +66,45 @@ module.exports.createRequest = async (req, res) => {
 
     if (type === "delete_user" && !payload.userId) {
       return res.status(400).json({ message: "Which user to delete is required" });
+    }
+
+    if (type === "create_supplier" && !payload.name?.trim()) {
+      return res.status(400).json({ message: "Supplier name is required" });
+    }
+
+    if (type === "create_deal") {
+      if (!payload.name?.trim()) {
+        return res.status(400).json({ message: "Deal name is required" });
+      }
+      if (!Number(payload.discount) || Number(payload.discount) <= 0) {
+        return res.status(400).json({ message: "Deal discount must be greater than zero" });
+      }
+      if ((payload.items || []).length < 2) {
+        return res.status(400).json({ message: "Pick at least two products for the deal" });
+      }
+    }
+
+    if (type === "view_activity_logs") {
+      // Asking again while you already have it would just queue noise for the
+      // superadmin.
+      const me = await User.findById(req.user._id).select("logAccessUntil");
+      if (me?.logAccessUntil && me.logAccessUntil.getTime() > Date.now()) {
+        return res.status(400).json({
+          message: "You already have access to the activity log",
+          until: me.logAccessUntil,
+        });
+      }
+
+      const already = await ApprovalRequest.findOne({
+        type: "view_activity_logs",
+        requestedBy: req.user._id,
+        status: "pending",
+      });
+      if (already) {
+        return res
+          .status(400)
+          .json({ message: `Request ${already.reference} is already waiting for approval` });
+      }
     }
 
     const seq = await nextSequence("approval");
@@ -122,6 +188,33 @@ module.exports.approveRequest = async (req, res) => {
       result = await createUserRecord(request.payload, ["manager", "staff"], actor);
     } else if (request.type === "delete_user") {
       result = await deleteUserRecord(request.payload.userId, actor);
+    } else if (request.type === "create_supplier") {
+      result = await createSupplierRecord(request.payload);
+      if (result.ok) result.user = result.supplier;
+    } else if (request.type === "create_deal") {
+      // Credited to whoever asked for it, not to whoever approved.
+      result = await createDealRecord(request.payload, {
+        _id: request.requestedBy,
+        ip: req.ip,
+      });
+      if (result.ok) result.user = result.deal;
+    } else if (request.type === "view_activity_logs") {
+      // Nothing to "create" — this opens the audit trail to the requester for a
+      // while. Measured from approval, so the clock starts when access does.
+      const until = new Date(Date.now() + ACTIVITY_LOG_GRANT_HOURS * 60 * 60 * 1000);
+      const granted = await User.findByIdAndUpdate(
+        request.requestedBy,
+        { $set: { logAccessUntil: until } },
+        { new: true }
+      );
+
+      result = granted
+        ? {
+            ok: true,
+            message: `Activity log open until ${until.toLocaleString()}`,
+            user: granted,
+          }
+        : { ok: false, status: 404, message: "The requesting user no longer exists" };
     } else {
       result = { ok: false, status: 400, message: "Unknown request type" };
     }

@@ -12,6 +12,7 @@ import salesReducer from "../features/salesSlice"
 import voucherReducer from "../features/voucherSlice"
 import dealReducer from "../features/dealSlice"
 import dayClosingReducer from "../features/dayClosingSlice"
+import storeSettingsReducer from "../features/storeSlice"
 import ticketReducer from "../features/ticketSlice"
 import approvalReducer from "../features/approvalSlice"
 
@@ -29,6 +30,7 @@ const store=configureStore({
         voucher:voucherReducer,
         deal:dealReducer,
         dayClosing:dayClosingReducer,
+        store:storeSettingsReducer,
         ticket:ticketReducer,
         approval:approvalReducer
     }

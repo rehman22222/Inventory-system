@@ -212,7 +212,9 @@
     "tickets": "Ticéid",
     "approvals": "Ceaduithe",
     "myRequests": "M'Iarratais",
-    "dayClosings": "Dúnadh Lae"
+    "dayClosings": "Dúnadh Lae",
+    "store": "Siopa",
+    "ghost": "Mód Taibhse"
   },
   "topnav": {
     "welcome": "Fáilte, {{name}}",
@@ -245,7 +247,10 @@
     "passwordMin": "Caithfidh pasfhocal a bheith 6 charachtar ar a laghad",
     "passwordRequired": "Tá pasfhocal riachtanach",
     "showPassword": "Taispeáin an focal faire",
-    "hidePassword": "Folaigh an focal faire"
+    "hidePassword": "Folaigh an focal faire",
+    "failed": "Níorbh fhéidir sínigh isteach",
+    "accountRemoved": "Baineadh do chuntas — déan teagmháil le do riarthóir",
+    "sessionExpired": "Tá do sheisiún imithe in éag — sínigh isteach arís"
   },
   "signup": {
     "namePlaceholder": "D'ainm",
@@ -499,13 +504,17 @@
       "typePercent": "Céatadán (%)",
       "amountValue": "Méid lascaine",
       "percentValue": "Céatadán lascaine",
-      "minSpend": "Íoschaiteachas",
+      "minSpend": "Teastaíonn caiteachas íosta {{amount}} don dearbhán seo",
       "usageLimit": "Teorainn úsáide",
       "expires": "In éag",
       "generate": "Cruthaigh dearbhán",
       "generated": "Dearbhán {{code}} cruthaithe",
       "generateFailed": "Níorbh fhéidir an dearbhán a chruthú",
-      "missingFields": "Cuir cód agus luach isteach"
+      "missingFields": "Cuir cód agus luach isteach",
+      "offlineUnknown": "Cód anaithnid — níl taifead air ar an till seo as líne",
+      "offlineAlreadyUsed": "Bhain an till seo úsáid as an gcód sin as líne cheana",
+      "appliedOffline": "{{amount}} as — deimhneofar é nuair a fhillfidh an ceangal",
+      "expired": "Tá an dearbhán seo imithe in éag"
     },
     "discountModal": {
       "title": "Lascaine",
@@ -617,7 +626,10 @@
       "pending": "{{count}} le sioncrónú",
       "syncNow": "Sioncrónaigh anois",
       "willSyncWhenBack": "Sioncrónófar é nuair a fhillfidh an ceangal",
-      "notSynced": "Gan sioncrónú fós"
+      "notSynced": "Gan sioncrónú fós",
+      "heldLocally": "Gan ceangal — díolachán ar fionraí ar an till seo",
+      "heldOnThisTill": "Ar fionraí as líne — ní féidir ach leis an till seo é a atosú",
+      "thisTill": "An till seo"
     }
   },
   "sales": {
@@ -716,7 +728,18 @@
     "updated": "Nuashonraíodh an soláthraí go rathúil",
     "updateFail": "Theip ar nuashonrú an tsoláthraí",
     "removed": "Baineadh an soláthraí go rathúil",
-    "removeFail": "Theip ar bhaint an tsoláthraí"
+    "removeFail": "Theip ar bhaint an tsoláthraí",
+    "products": "Táirgí soláthraithe",
+    "searchProducts": "Cuardaigh táirgí de réir ainm nó barrachóid…",
+    "productsHint": "Tic gach rud a sholáthraíonn an soláthraí seo. Níl ach soláthraí amháin ag táirge, mar sin bogfaidh tic anseo é ó cheann ar bith eile.",
+    "noProducts": "Níl aon táirge ann.",
+    "taken": "Eile",
+    "alreadySupplied": "Á sholáthar ag duine eile faoi láthair — bogfaidh tic é anseo",
+    "nameRequired": "Tá ainm soláthraí ag teastáil",
+    "needsApproval": "Teastaíonn cead an ard-riarthóra chun soláthraí a chur leis. Líon isteach é agus seolfar chuige é.",
+    "sendForApproval": "Seol lena cheadú",
+    "requested": "Seoladh lena cheadú {{ref}}",
+    "requestFail": "Níorbh fhéidir an iarratas a sheoladh"
   },
   "stock": {
     "searchPlaceholder": "Cuir isteach do stoc",
@@ -787,7 +810,13 @@
     "ipAddress": "Seoladh IP",
     "noLogs": "Níl aon logaí gníomhaíochta ar fáil",
     "prev": "Roimhe",
-    "next": "Ar Aghaidh"
+    "next": "Ar Aghaidh",
+    "locked": "Tá an loga gníomhaíochta faoi ghlas",
+    "grantHint": "Osclaíonn ceadú é ar feadh 24 uair.",
+    "requestAccess": "Iarr rochtain",
+    "requesting": "Á sheoladh…",
+    "requested": "Iarradh rochtain {{ref}}",
+    "requestFailed": "Níorbh fhéidir rochtain a iarraidh"
   },
   "profile": {
     "uploading": "Á uaslódáil…",
@@ -990,7 +1019,11 @@
     "noMatches": "Níor aimsíodh táirgí",
     "amountHint": "Méid seasta as an gcnuasach.",
     "percentHint": "Céatadán as táirgí an mhargaidh seo amháin — ní as an gciseán ar fad.",
-    "percentMax": "Ní féidir le margadh céatadáin dul thar 100%"
+    "percentMax": "Ní féidir le margadh céatadáin dul thar 100%",
+    "needsApproval": "Teastaíonn cead an ard-riarthóra chun margadh a chruthú. Líon isteach é agus seolfar chuige é.",
+    "sendForApproval": "Seol lena cheadú",
+    "requested": "Seoladh lena cheadú {{ref}}",
+    "requestFailed": "Níorbh fhéidir an iarratas a sheoladh"
   },
   "dayClosing": {
     "title": "Dúnadh an lae",
@@ -1026,7 +1059,8 @@
     "close": "Dún",
     "loading": "Á lódáil…",
     "empty": "Gan dúnadh lae fós.",
-    "receipts": "Admhálacha ({{count}})"
+    "receipts": "Admhálacha ({{count}})",
+    "report": "Tuairisc"
   },
   "reports": {
     "download": "Íoslódáil Tuairisc",
@@ -1035,6 +1069,55 @@
     "failed": "Níorbh fhéidir an tuairisc a ghiniúint",
     "pdfHint": "Réidh le priontáil nó a sheoladh",
     "csvHint": "Osclaíonn in aon scarbhileog",
-    "excelHint": "Leabhar oibre formáidithe"
+    "excelHint": "Leabhar oibre formáidithe",
+    "downloadAs": "Íoslódáil mar {{format}}"
+  },
+  "store": {
+    "title": "Sonraí an tsiopa",
+    "sub": "Ainm agus seoladh do shiopa — ar an till agus ar gach admháil.",
+    "name": "Ainm an tsiopa",
+    "nameHint": "Le feiceáil ag barr an till agus i gceann na hadmhála.",
+    "address": "Seoladh",
+    "addressHint": "Líne amháin in aghaidh an ró.",
+    "phone": "Fón",
+    "footer": "Buntásc na hadmhála",
+    "footerHint": "Faoin iomlán — nóta buíochais nó uaireanta oscailte.",
+    "qr": "QR na hadmhála",
+    "qrHint": "Cuirtear uimhir na hadmhála in ionad {{ref}}. Bain úsáid as URL le go mbeidh sé inscanta.",
+    "save": "Sábháil",
+    "saving": "Á shábháil…",
+    "nameRequired": "Tá ainm siopa ag teastáil",
+    "preview": "Réamhamharc admhála",
+    "appliesEverywhere": "Feidhmíonn sé ar gach till agus admháil láithreach."
+  },
+  "ghost": {
+    "title": "Mód Taibhse",
+    "sub": "Gach díolachán sa siopa — gach airgeadóir, gach lá, baisceanna tugtha ar láimh san áireamh.",
+    "sales": "Díolacháin",
+    "gross": "Comhlán",
+    "discount": "Lascainí",
+    "net": "Fáltais ghlana",
+    "byCashier": "De réir airgeadóra",
+    "from": "Ó",
+    "to": "Go",
+    "status": "Stádas",
+    "allStatuses": "Gach ceann",
+    "clear": "Glan",
+    "receipt": "Admháil",
+    "when": "Cathain",
+    "cashier": "Airgeadóir",
+    "items": "Míreanna",
+    "payment": "Íocaíocht",
+    "total": "Iomlán",
+    "loading": "Á lódáil…",
+    "empty": "Níl aon díolachán ann.",
+    "failed": "Níorbh fhéidir díolacháin a lódáil",
+    "offline": "As líne",
+    "wasOffline": "Cláraithe gan ceangal, sioncrónaithe níos déanaí",
+    "closed": "Dúnta",
+    "handedOver": "Tugtha ar láimh ag dúnadh an lae",
+    "prev": "Roimhe",
+    "next": "Ar aghaidh",
+    "pageOf": "Leathanach {{page}} as {{pages}}"
   }
 }

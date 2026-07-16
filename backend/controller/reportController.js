@@ -1,6 +1,8 @@
+const mongoose = require("mongoose");
 const Sale = require("../models/Salesmodel");
 const Product = require("../models/Productmodel");
 const User = require("../models/Usermodel");
+const DayClosing = require("../models/DayClosingmodel");
 const ActivityLog = require("../models/ActivityLogmodel");
 // Registered so inventory populate("supplier") works regardless of load order.
 require("../models/Suppliermodel");
@@ -211,11 +213,92 @@ async function buildActivity(req) {
   };
 }
 
+// ── Day closing: what one cashier handed over ───────────────────────────────
+async function buildDayClosing(req) {
+  const { id } = req.query;
+
+  if (!mongoose.isValidObjectId(id)) {
+    throw Object.assign(new Error("A valid day closing id is required"), { statusCode: 400 });
+  }
+
+  const closing = await DayClosing.findById(id).populate({
+    path: "receipts",
+    select: "receiptNo customerName total status createdAt items paymentMethod",
+  });
+
+  if (!closing) {
+    throw Object.assign(new Error("Day closing not found"), { statusCode: 404 });
+  }
+
+  // One row per line sold, not per receipt — the point of the report is to show
+  // the admin what the money was actually made of.
+  const rows = [];
+  (closing.receipts || []).forEach((receipt) => {
+    (receipt.items || []).forEach((item) => {
+      rows.push([
+        receipt.receiptNo,
+        formatDateTime(receipt.createdAt),
+        receipt.customerName || "",
+        item.name || "",
+        item.quantity,
+        money(item.price),
+        money(item.lineTotal),
+        receipt.paymentMethod || "",
+        receipt.status || "",
+      ]);
+    });
+  });
+
+  const summary = [
+    ["Reference", closing.reference],
+    ["Cashier", `${closing.cashierName || ""} (${closing.cashierRole || ""})`],
+    ["Opened", formatDateTime(closing.openedAt)],
+    ["Closed", formatDateTime(closing.closedAt)],
+    ["Sales", closing.receiptCount],
+    ["Gross", money(closing.gross)],
+    ["Discounts", money(closing.discount)],
+    ["Tax", money(closing.tax)],
+    ["Refunded", money(closing.refunded)],
+    ["Net handed over", money(closing.net)],
+  ];
+
+  // The drawer/terminal split — the figure the admin actually reconciles against.
+  (closing.byMethod || []).forEach((entry) => {
+    summary.push([`  ${entry.method}`, `${money(entry.amount)} (${entry.count})`]);
+  });
+
+  return {
+    title: `Day Closing ${closing.reference}`,
+    subtitle: `${closing.cashierName} · closed ${formatDateTime(closing.closedAt)}`,
+    headers: [
+      "Receipt No", "Date & Time", "Customer", "Product",
+      "Qty", "Unit Price", "Line Total", "Payment", "Status",
+    ],
+    rows,
+    summary,
+  };
+}
+
 // ── Registry: single source of truth for labels + role access ───────────────
 const REPORTS = {
   sales: { label: "Sales", roles: ["admin", "manager", "staff"], build: buildSales },
   inventory: { label: "Inventory & Valuation", roles: ["admin", "manager"], build: buildInventory },
-  activity: { label: "Activity Log", roles: ["admin"], build: buildActivity },
+  // Downloading the audit trail is the same thing as reading it, so it sits
+  // behind the same grant — otherwise the report would be a way straight past
+  // the gate on /activitylogs/getAllLogs.
+  activity: {
+    label: "Activity Log",
+    roles: ["admin", "superadmin"],
+    requiresLogAccess: true,
+    build: buildActivity,
+  },
+  // One batch at a time, keyed by ?id=. Handed-over takings belong to the owner
+  // side — the cashier who closed the batch must not be able to pull it back.
+  "day-closing": {
+    label: "Day Closing",
+    roles: ["admin", "superadmin"],
+    build: buildDayClosing,
+  },
 };
 
 module.exports.listReports = (req, res) => {
@@ -236,6 +319,19 @@ module.exports.downloadReport = async (req, res) => {
     }
     if (!def.roles.includes(req.user.role)) {
       return res.status(403).json({ message: "You do not have access to this report" });
+    }
+
+    // Some reports need more than a role — the audit trail needs a live grant.
+    if (def.requiresLogAccess && req.user.role !== "superadmin") {
+      const until = req.user.logAccessUntil;
+      if (!until || new Date(until).getTime() <= Date.now()) {
+        return res.status(403).json({
+          message: until
+            ? "Your access to the activity log has expired — request it again"
+            : "Ask the super admin for access to the activity log",
+          needsApproval: "view_activity_logs",
+        });
+      }
     }
 
     const requested = String(req.query.format || "xlsx").toLowerCase();
@@ -263,6 +359,12 @@ module.exports.downloadReport = async (req, res) => {
     return res.status(200).send(buffer);
   } catch (error) {
     console.error("Report generation failed:", error);
-    return res.status(500).json({ message: "Failed to generate report", error: error.message });
+    // A builder can reject for a real reason (unknown id, missing batch). Pass
+    // that through rather than flattening everything to an opaque 500.
+    const status = error.statusCode || 500;
+    return res.status(status).json({
+      message: status === 500 ? "Failed to generate report" : error.message,
+      error: error.message,
+    });
   }
 };

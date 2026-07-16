@@ -8,8 +8,11 @@ const initialState = {
   isFetching: false,
   isAdding: false,
   userdata:[],
-  recentuser:null
- 
+  recentuser:null,
+  // Set when the audit trail refused us and the fix is to ask the owner, rather
+  // than a real failure. Drives the "request access" prompt.
+  accessError: null,
+
 };
 
 
@@ -20,9 +23,17 @@ export const getAllActivityLogs = createAsyncThunk(
       const response = await axiosInstance.get("activitylogs/getAllLogs", {
         withCredentials: true,
       });
-      return response.data; 
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Failed to fetch activity logs");
+      // The audit trail is gated: a 403 here means "ask the owner", not
+      // "something broke". Carry that through so the page can offer the request
+      // instead of showing a dead error.
+      const data = error.response?.data;
+      return rejectWithValue({
+        message: data?.message || "Failed to fetch activity logs",
+        needsApproval: data?.needsApproval,
+        expired: data?.expired,
+      });
     }
   }
 );
@@ -87,6 +98,7 @@ const activitySlice = createSlice({
       
       .addCase(getAllActivityLogs.pending, (state) => {
         state.isFetching = true;
+        state.accessError = null;
       })
       .addCase(getAllActivityLogs.fulfilled, (state, action) => {
         state.isFetching = false;
@@ -96,7 +108,17 @@ const activitySlice = createSlice({
       .addCase(getAllActivityLogs.rejected, (state, action) => {
         state.isFetching = false;
         state.error = action.payload;
-        toast.error(action.payload || "Error fetching activity logs");
+        state.activityLogs = [];
+
+        // "You need approval" is an expected state with its own screen — not a
+        // failure to shout about.
+        if (action.payload?.needsApproval) {
+          state.accessError = action.payload;
+          return;
+        }
+
+        state.accessError = null;
+        toast.error(action.payload?.message || "Error fetching activity logs");
       })
 
       

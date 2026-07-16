@@ -25,6 +25,8 @@ import MyRequestspage from "./pages/MyRequestspage";
 import ApprovalsPage from "./pages/ApprovalsPage";
 import DayClosingsPage from "./pages/DayClosingsPage";
 import SuperAdminUsers from "./pages/SuperAdminUsers";
+import StorePage from "./pages/StorePage";
+import GhostModePage from "./pages/GhostModePage";
 import NotificationPageRead from "./pages/Notificationpageread";
 import ProtectedRoute from "./lib/ProtectedRoute";
 import { Toaster } from "react-hot-toast";
@@ -76,15 +78,28 @@ function App() {
           <Route path="Profilepage" element={protect(<Profilepage />, ["manager"])} />
         </Route>
 
-        {/* The owner console: the shop dashboard, the approvals queue admin
-            raises requests into, user management, day closings and the vendor
-            support inbox — all in one place. */}
+        {/* The owner console. Everything an admin can do, plus what only the
+            owner can: approvals, direct user management, the support inbox, the
+            shop's own details, and ghost mode. */}
         <Route path="/SuperAdmin" element={protect(<SuperAdminDashboard />, ["superadmin"])}>
           <Route index element={protect(<Dashboardpage />, ["superadmin"])} />
+          {/* Owner-only */}
+          <Route path="ghost" element={protect(<GhostModePage />, ["superadmin"])} />
+          <Route path="store" element={protect(<StorePage />, ["superadmin"])} />
           <Route path="approvals" element={protect(<ApprovalsPage />, ["superadmin"])} />
           <Route path="day-closings" element={protect(<DayClosingsPage />, ["superadmin"])} />
           <Route path="users" element={protect(<SuperAdminUsers />, ["superadmin"])} />
           <Route path="tickets" element={protect(<SuperAdminTickets />, ["superadmin"])} />
+          {/* The full shop, same as admin */}
+          <Route path="product" element={protect(<Productpage />, ["superadmin"])} />
+          <Route path="category" element={protect(<Categorypage />, ["superadmin"])} />
+          <Route path="supplier" element={protect(<Supplierpage />, ["superadmin"])} />
+          <Route path="sales" element={protect(<Salespage />, ["superadmin"])} />
+          <Route path="order" element={protect(<Orderpage />, ["superadmin"])} />
+          <Route path="vouchers" element={protect(<Voucherpage />, ["superadmin"])} />
+          <Route path="stock-transaction" element={protect(<StockTransaction />, ["superadmin"])} />
+          <Route path="notifications" element={protect(<Notificationpage />, ["superadmin"])} />
+          <Route path="activity-log" element={protect(<Activitylogpage />, ["superadmin"])} />
           <Route path="Profilepage" element={protect(<Profilepage />, ["superadmin"])} />
         </Route>
 

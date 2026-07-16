@@ -212,7 +212,9 @@
     "tickets": "Tickets",
     "approvals": "Approvals",
     "myRequests": "My Requests",
-    "dayClosings": "Day Closings"
+    "dayClosings": "Day Closings",
+    "store": "Store",
+    "ghost": "Ghost Mode"
   },
   "topnav": {
     "welcome": "Welcome, {{name}}",
@@ -245,7 +247,10 @@
     "passwordMin": "Password must be at least 6 characters",
     "passwordRequired": "Password is required",
     "showPassword": "Show password",
-    "hidePassword": "Hide password"
+    "hidePassword": "Hide password",
+    "failed": "Could not sign in",
+    "accountRemoved": "Your account has been removed — contact your administrator",
+    "sessionExpired": "Your session has expired — please sign in again"
   },
   "signup": {
     "namePlaceholder": "Your name",
@@ -499,13 +504,17 @@
       "typePercent": "Percent (%)",
       "amountValue": "Amount off",
       "percentValue": "Percent off",
-      "minSpend": "Min spend",
+      "minSpend": "This voucher needs a minimum spend of {{amount}}",
       "usageLimit": "Usage limit",
       "expires": "Expires",
       "generate": "Generate voucher",
       "generated": "Voucher {{code}} created",
       "generateFailed": "Could not create voucher",
-      "missingFields": "Enter a code and a value"
+      "missingFields": "Enter a code and a value",
+      "offlineUnknown": "Unknown code — this till has no record of it while offline",
+      "offlineAlreadyUsed": "This till already used that code while offline",
+      "appliedOffline": "{{amount}} off — will be confirmed when the connection is back",
+      "expired": "This voucher has expired"
     },
     "discountModal": {
       "title": "Discount",
@@ -617,7 +626,10 @@
       "pending": "{{count}} to sync",
       "syncNow": "Sync now",
       "willSyncWhenBack": "Will sync when the connection is back",
-      "notSynced": "Not synced yet"
+      "notSynced": "Not synced yet",
+      "heldLocally": "No connection — sale suspended on this till",
+      "heldOnThisTill": "Suspended while offline — only this till can resume it",
+      "thisTill": "This till"
     }
   },
   "sales": {
@@ -716,7 +728,18 @@
     "updated": "Supplier updated successfully",
     "updateFail": "Failed to update supplier",
     "removed": "Supplier removed successfully",
-    "removeFail": "Failed to remove Supplier"
+    "removeFail": "Failed to remove Supplier",
+    "products": "Products supplied",
+    "searchProducts": "Search products by name or barcode…",
+    "productsHint": "Tick everything this supplier provides. A product has one supplier, so ticking it here moves it from any other.",
+    "noProducts": "No products match.",
+    "taken": "Other",
+    "alreadySupplied": "Currently supplied by someone else — ticking this moves it here",
+    "nameRequired": "Supplier name is required",
+    "needsApproval": "Adding a supplier needs the super admin's approval. Fill this in and it will be sent to them.",
+    "sendForApproval": "Send for approval",
+    "requested": "Sent for approval {{ref}}",
+    "requestFail": "Could not send the request"
   },
   "stock": {
     "searchPlaceholder": "Enter your Stock",
@@ -787,7 +810,13 @@
     "ipAddress": "IP Address",
     "noLogs": "No activity logs available",
     "prev": "Prev",
-    "next": "Next"
+    "next": "Next",
+    "locked": "Activity log is locked",
+    "grantHint": "Approval opens it for 24 hours.",
+    "requestAccess": "Request access",
+    "requesting": "Sending…",
+    "requested": "Access requested {{ref}}",
+    "requestFailed": "Could not request access"
   },
   "profile": {
     "uploading": "Uploading…",
@@ -990,7 +1019,11 @@
     "noMatches": "No products found",
     "amountHint": "Fixed amount off the bundle.",
     "percentHint": "Percent off this deal's products only — not the whole basket.",
-    "percentMax": "A percentage deal cannot exceed 100%"
+    "percentMax": "A percentage deal cannot exceed 100%",
+    "needsApproval": "Creating a deal needs the super admin's approval. Fill this in and it will be sent to them.",
+    "sendForApproval": "Send for approval",
+    "requested": "Sent for approval {{ref}}",
+    "requestFailed": "Could not send the request"
   },
   "dayClosing": {
     "title": "Day closing",
@@ -1026,7 +1059,8 @@
     "close": "Close",
     "loading": "Loading…",
     "empty": "No day closings yet.",
-    "receipts": "Receipts ({{count}})"
+    "receipts": "Receipts ({{count}})",
+    "report": "Report"
   },
   "reports": {
     "download": "Download Report",
@@ -1035,6 +1069,55 @@
     "failed": "Failed to generate report",
     "pdfHint": "Ready to print or email",
     "csvHint": "Opens in any spreadsheet",
-    "excelHint": "Formatted workbook"
+    "excelHint": "Formatted workbook",
+    "downloadAs": "Download as {{format}}"
+  },
+  "store": {
+    "title": "Store details",
+    "sub": "Your shop's name and address — shown on the till and printed on every receipt.",
+    "name": "Store name",
+    "nameHint": "Appears at the top of the till and on the receipt header.",
+    "address": "Address",
+    "addressHint": "One line per row.",
+    "phone": "Phone",
+    "footer": "Receipt footer",
+    "footerHint": "Shown under the total — a thank-you note or opening hours.",
+    "qr": "Receipt QR",
+    "qrHint": "{{ref}} is replaced with the receipt number. Use a URL to make it scannable.",
+    "save": "Save changes",
+    "saving": "Saving…",
+    "nameRequired": "Store name is required",
+    "preview": "Receipt preview",
+    "appliesEverywhere": "Applies to every till and receipt straight away."
+  },
+  "ghost": {
+    "title": "Ghost Mode",
+    "sub": "Every sale in the shop — all cashiers, all days, including batches already handed over.",
+    "sales": "Sales",
+    "gross": "Gross",
+    "discount": "Discounts",
+    "net": "Net takings",
+    "byCashier": "By cashier",
+    "from": "From",
+    "to": "To",
+    "status": "Status",
+    "allStatuses": "All",
+    "clear": "Clear",
+    "receipt": "Receipt",
+    "when": "When",
+    "cashier": "Cashier",
+    "items": "Items",
+    "payment": "Payment",
+    "total": "Total",
+    "loading": "Loading…",
+    "empty": "No sales match.",
+    "failed": "Could not load sales",
+    "offline": "Offline",
+    "wasOffline": "Rung up with no connection, synced later",
+    "closed": "Closed",
+    "handedOver": "Handed over at day closing",
+    "prev": "Previous",
+    "next": "Next",
+    "pageOf": "Page {{page}} of {{pages}}"
   }
 }

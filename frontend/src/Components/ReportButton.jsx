@@ -13,11 +13,15 @@ const FORMATS = [
 ];
 
 /**
- * Downloads a role-permitted report, letting the user pick the format.
- * @param {string} reportKey  e.g. "sales" | "inventory" | "activity"
- * @param {object} params     optional query params (e.g. { from, to })
+ * Downloads a role-permitted report.
+ *
+ * @param {string} reportKey  e.g. "sales" | "inventory" | "day-closing"
+ * @param {object} params     optional query params (e.g. { from, to, id })
+ * @param {string} format     pin to one format and download on click, with no
+ *                            menu. Use inside a scrolling container, where an
+ *                            absolutely-positioned menu would be clipped.
  */
-function ReportButton({ reportKey, label, params, className = "" }) {
+function ReportButton({ reportKey, label, params, format, className = "" }) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -71,6 +75,22 @@ function ReportButton({ reportKey, label, params, className = "" }) {
       setLoading(false);
     }
   };
+
+  // Pinned to one format: a plain button, no menu to be clipped.
+  if (format) {
+    return (
+      <button
+        type="button"
+        onClick={() => download(format)}
+        disabled={loading}
+        title={t("reports.downloadAs", { format: format.toUpperCase() })}
+        className={`inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60 ${className}`}
+      >
+        <FiDownload className="h-3.5 w-3.5" />
+        {loading ? t("reports.generating") : label || t("reports.download")}
+      </button>
+    );
+  }
 
   return (
     <div ref={boxRef} className={`relative inline-block ${className}`}>

@@ -126,9 +126,11 @@ module.exports.login=async(req,res)=>{
      // and the user is told "no user found" for a perfectly good address.
      const duplicatedUser=await User.findOne({ email: String(email || "").trim().toLowerCase() })
 
+     // Both failures answer on `message`. The no-user branch used to reply on an
+     // `error` key that nothing on the client read, so a wrong email surfaced as
+     // a blank "Login failed".
      if(!duplicatedUser){
-
-   return res.status(400).json({error:"No user found"})
+   return res.status(400).json({ message: "No account found with this email", reason: "email" })
      }
 
 
@@ -136,7 +138,9 @@ module.exports.login=async(req,res)=>{
 
 
       if(!hasedpassword){
-            return res.status(400).json({message:'Invalid credentials'})
+            // Named plainly: this is a staff till, not a public sign-up, so the
+            // cashier needs to know it is the password and not the email.
+            return res.status(400).json({ message: "The password is incorrect", reason: "password" })
         }
 
         const token=await generateToken(duplicatedUser,res)

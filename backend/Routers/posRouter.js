@@ -4,6 +4,7 @@ const {
   refund,
   voidSale,
   getReceipts,
+  getAllSales,
   getReceipt,
   changePaymentMethod,
   syncOfflineSales,
@@ -19,6 +20,7 @@ const {
   authmiddleware,
   adminOrManager,
   adminOrSuperadmin,
+  superadminmiddleware,
 } = require("../middleware/Authmiddleware");
 
 const router = express.Router();
@@ -34,6 +36,8 @@ router.post("/refund", authmiddleware, adminOrManager, refund);
 router.post("/void/:receiptNo", authmiddleware, adminOrManager, voidSale);
 
 router.get("/receipts", authmiddleware, getReceipts);
+// Ghost mode: the whole shop's sales, unscoped. Owner only.
+router.get("/all-sales", authmiddleware, superadminmiddleware, getAllSales);
 router.get("/receipt/:receiptNo", authmiddleware, getReceipt);
 // Correcting a mis-tapped tender (cash -> card) on a still-open sale. Ownership
 // and the day-closing lock are enforced in the controller.

@@ -1,7 +1,7 @@
 import React from "react";
 import { AiOutlineProduct } from "react-icons/ai";
 import { RiStockLine } from "react-icons/ri";
-import { FiCheckSquare, FiCreditCard, FiInbox, FiLifeBuoy, FiLock, FiLogOut, FiShoppingCart, FiTag } from "react-icons/fi";
+import { FiCheckSquare, FiCreditCard, FiEye, FiInbox, FiLifeBuoy, FiLock, FiLogOut, FiShoppingBag, FiShoppingCart, FiTag } from "react-icons/fi";
 import { MdOutlineCategory, MdPointOfSale } from "react-icons/md";
 import { TfiSupport } from "react-icons/tfi";
 import { IoNotificationsOutline } from "react-icons/io5";
@@ -26,16 +26,26 @@ const dashboardPath = {
 
 // `label` is an i18n key under the `sidebar` namespace, resolved at render.
 const menuByRole = {
-  // The owner: the shop dashboard, the approvals queue admin raises requests
-  // into, direct user management, the handed-over day closings, the support
-  // inbox, and the till.
+  // The owner: everything an admin has, plus what only they get — ghost mode,
+  // the shop's own details, approvals, direct user management and the inbox.
   superadmin: [
     { label: "sidebar.dashboard", path: "", icon: RxDashboard },
-    { label: "sidebar.approvals", path: "approvals", icon: FiCheckSquare },
+    { label: "sidebar.ghost", path: "ghost", icon: FiEye },
+    { label: "sidebar.pos", to: "/pos", icon: FiCreditCard },
+    { label: "sidebar.products", path: "product", icon: AiOutlineProduct },
+    { label: "sidebar.categories", path: "category", icon: MdOutlineCategory },
+    { label: "sidebar.suppliers", path: "supplier", icon: TfiSupport },
+    { label: "sidebar.sales", path: "sales", icon: MdPointOfSale },
     { label: "sidebar.dayClosings", path: "day-closings", icon: FiLock },
+    { label: "sidebar.orders", path: "order", icon: FiShoppingCart },
+    { label: "sidebar.vouchers", path: "vouchers", icon: FiTag },
+    { label: "sidebar.stock", path: "stock-transaction", icon: RiStockLine },
+    { label: "sidebar.notifications", path: "notifications", icon: IoNotificationsOutline },
+    { label: "sidebar.approvals", path: "approvals", icon: FiCheckSquare },
     { label: "sidebar.users", path: "users", icon: LuUsers },
     { label: "sidebar.tickets", path: "tickets", icon: FiInbox },
-    { label: "sidebar.pos", to: "/pos", icon: FiCreditCard },
+    { label: "sidebar.activityLog", path: "activity-log", icon: RxActivityLog },
+    { label: "sidebar.store", path: "store", icon: FiShoppingBag },
   ],
   admin: [
     { label: "sidebar.dashboard", path: "", icon: RxDashboard },
