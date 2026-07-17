@@ -8,6 +8,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server",
+    "build": "cd ../frontend && npm install && npm run build",
     "dev": "nodemon server",
     "seed": "node scripts/seedDemoUsers.js",
     "seed:mongo": "node scripts/seedMongoDemoData.js",

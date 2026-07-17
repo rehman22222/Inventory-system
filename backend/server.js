@@ -2,6 +2,8 @@ const express = require("express");
 const { MongoDBconfig } = require('./libs/mongoconfig');
 const { Server } = require("socket.io");
 const http = require("http");
+const path = require("path");
+const fs = require("fs");
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
 const compression = require("compression");
@@ -156,6 +158,22 @@ app.use((err, req, res, next) => {
   }
   next();
 });
+
+// Full-stack single deployment: serve the built React app from the same server.
+// The API lives under /api; every other path falls through to index.html so
+// client-side routing works on refresh/deep links. If no build is present (API-
+// only hosting, or local dev where the SPA runs on its own port) this is skipped.
+const clientBuild = path.join(__dirname, "..", "frontend", "build");
+if (fs.existsSync(path.join(clientBuild, "index.html"))) {
+  app.use(express.static(clientBuild));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api")) return next();
+    res.sendFile(path.join(clientBuild, "index.html"));
+  });
+  console.log(`[static] serving frontend build from ${clientBuild}`);
+} else {
+  console.log("[static] no frontend build found — running API-only");
+}
 
 
 
