@@ -58,6 +58,7 @@ function App() {
           <Route path="stock-transaction" element={protect(<StockTransaction />, ["admin"])} />
           <Route path="vouchers" element={protect(<Voucherpage />, ["admin"])} />
           <Route path="reorders" element={protect(<Reorderspage />, ["admin"])} />
+          <Route path="store" element={protect(<StorePage />, ["admin"])} />
           <Route path="day-closings" element={protect(<DayClosingsPage />, ["admin"])} />
           <Route path="support" element={protect(<Supportpage />, ["admin"])} />
           <Route path="notifications" element={protect(<Notificationpage />, ["admin"])} />

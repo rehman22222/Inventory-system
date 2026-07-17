@@ -64,6 +64,7 @@ const menuByRole = {
     { label: "sidebar.users", path: "Userstatus", icon: LuUsers },
     { label: "sidebar.myRequests", path: "requests", icon: FiCheckSquare },
     { label: "sidebar.activityLog", path: "activity-log", icon: RxActivityLog },
+    { label: "sidebar.store", path: "store", icon: FiShoppingBag },
     { label: "sidebar.support", path: "support", icon: FiLifeBuoy },
   ],
   manager: [

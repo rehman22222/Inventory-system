@@ -6,6 +6,7 @@ const { nextSequence } = require("../models/Countermodel");
 const { createUserRecord, deleteUserRecord } = require("./authcontroller");
 const { createSupplierRecord } = require("./suppliercontroller");
 const { createDealRecord } = require("./dealController");
+const { updateStoreRecord } = require("./storeController");
 const logActivity = require("../libs/logger");
 
 // How long an approved look at the audit trail lasts. It is a grant, not a
@@ -18,6 +19,7 @@ const REQUEST_TYPES = [
   "create_supplier",
   "create_deal",
   "view_activity_logs",
+  "edit_store",
 ];
 
 // A short label for the queue, per request type.
@@ -41,6 +43,9 @@ const summarise = (type, payload) => {
     const window =
       payload.from && payload.to ? ` (${payload.from} → ${payload.to})` : "";
     return `View the activity log${window} for ${ACTIVITY_LOG_GRANT_HOURS} hours`;
+  }
+  if (type === "edit_store") {
+    return payload.name ? `Update store details (rename to "${payload.name}")` : "Update store details";
   }
   return type;
 };
@@ -78,6 +83,24 @@ module.exports.createRequest = async (req, res) => {
 
     if (type === "create_supplier" && !payload.name?.trim()) {
       return res.status(400).json({ message: "Supplier name is required" });
+    }
+
+    if (type === "edit_store") {
+      // A rename can't be to nothing; other fields are optional.
+      if (payload.name !== undefined && !String(payload.name).trim()) {
+        return res.status(400).json({ message: "Store name cannot be empty" });
+      }
+      // One pending store-edit at a time, so the queue doesn't fill with drafts.
+      const already = await ApprovalRequest.findOne({
+        type: "edit_store",
+        requestedBy: req.user._id,
+        status: "pending",
+      });
+      if (already) {
+        return res
+          .status(400)
+          .json({ message: `Request ${already.reference} is already waiting for approval` });
+      }
     }
 
     if (type === "create_deal") {
@@ -216,6 +239,11 @@ module.exports.approveRequest = async (req, res) => {
         ip: req.ip,
       });
       if (result.ok) result.user = result.deal;
+    } else if (request.type === "edit_store") {
+      const applied = await updateStoreRecord(request.payload, { _id: req.user._id, ip: req.ip });
+      result = applied.ok
+        ? { ok: true, message: "Store details updated", user: applied.store }
+        : { ok: false, status: applied.status || 400, message: applied.message };
     } else if (request.type === "view_activity_logs") {
       // Nothing to "create" — this opens the audit trail to the requester for a
       // while. The grant expiry (`until`) is measured from approval so the clock

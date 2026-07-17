@@ -798,6 +798,9 @@
     "manageSub": "Cruthaigh nó bain cuntaí go díreach — gan cead."
   },
   "activity": {
+    "systemUser": "Córas",
+    "clearFilter": "Glan scagaire",
+    "matches": "{{count}} iontráil sa raon",
     "title": "Logaí Gníomhaíochta",
     "downloadReport": "Íoslódáil Tuairisc Gníomhaíochta",
     "action": "Gníomh",
@@ -1100,7 +1103,11 @@
     "timezone": "Crios ama",
     "timezoneHint": "Úsáideann tuairiscí agus scagairí dáta laethanta iomlána sa chrios ama seo.",
     "notificationsEmail": "Ríomhphost fógraí",
-    "notificationsEmailHint": "Áit a seoltar meabhrúcháin cheadaithe athordaithe. Fágtar folamh é chun ríomhphost logála isteach an úinéara a úsáid."
+    "notificationsEmailHint": "Áit a seoltar meabhrúcháin cheadaithe athordaithe. Fágtar folamh é chun ríomhphost logála isteach an úinéara a úsáid.",
+    "requestChanges": "Iarr athruithe",
+    "requestSent": "Seoladh d'athruithe chuig an úinéir lena gceadú.",
+    "requestFailed": "Níorbh fhéidir d'iarratas a sheoladh.",
+    "approvalNotice": "Teastaíonn ceadú an úinéara ó d'athruithe sula dtiocfaidh siad i bhfeidhm."
   },
   "reorders": {
     "title": "Athorduithe",

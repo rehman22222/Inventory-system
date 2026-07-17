@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { FiShoppingBag } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { gettingStore, UpdateStore } from "../features/storeSlice";
+import { RaiseRequest } from "../features/approvalSlice";
 // The till already knows these; reports use whichever is picked here.
 import { CURRENCIES } from "../Components/pos/posUtils";
 
@@ -32,6 +33,11 @@ function StorePage() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const { store, isloading, issaving } = useSelector((state) => state.store);
+  const { Authuser } = useSelector((state) => state.auth);
+
+  // The owner edits the shop directly; an admin's changes are a request the
+  // owner approves before they take effect.
+  const isOwner = Authuser?.role === "superadmin";
 
   const [form, setForm] = useState({
     name: "",
@@ -65,7 +71,7 @@ function StorePage() {
 
   const set = (key) => (event) => setForm({ ...form, [key]: event.target.value });
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault();
 
     if (!form.name.trim()) {
@@ -73,19 +79,30 @@ function StorePage() {
       return;
     }
 
-    dispatch(
-      UpdateStore({
-        name: form.name.trim(),
-        // The textarea is one line per row; the server splits and trims.
-        addressLines: form.addressLines,
-        phone: form.phone,
-        currency: form.currency,
-        timezone: form.timezone,
-        notificationsEmail: form.notificationsEmail,
-        footer: form.footer,
-        qrTemplate: form.qrTemplate,
-      })
-    );
+    const changes = {
+      name: form.name.trim(),
+      // The textarea is one line per row; the server splits and trims.
+      addressLines: form.addressLines,
+      phone: form.phone,
+      currency: form.currency,
+      timezone: form.timezone,
+      notificationsEmail: form.notificationsEmail,
+      footer: form.footer,
+      qrTemplate: form.qrTemplate,
+    };
+
+    if (isOwner) {
+      dispatch(UpdateStore(changes));
+      return;
+    }
+
+    // Admin: raise a request for the owner to approve instead of saving.
+    const result = await dispatch(RaiseRequest({ type: "edit_store", payload: changes }));
+    if (result.error) {
+      toast.error(result.payload || t("store.requestFailed"));
+    } else {
+      toast.success(t("store.requestSent"));
+    }
   };
 
   const addressPreview = form.addressLines.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -99,6 +116,12 @@ function StorePage() {
           <p className="mt-1 text-sm text-base-content/60">{t("store.sub")}</p>
         </div>
       </header>
+
+      {!isOwner && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+          {t("store.approvalNotice")}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <form
@@ -220,10 +243,16 @@ function StorePage() {
             disabled={issaving || isloading}
             className="h-11 w-full rounded-lg bg-blue-800 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
           >
-            {issaving ? t("store.saving") : t("store.save")}
+            {issaving
+              ? t("store.saving")
+              : isOwner
+              ? t("store.save")
+              : t("store.requestChanges")}
           </button>
 
-          <p className="text-center text-xs text-base-content/50">{t("store.appliesEverywhere")}</p>
+          <p className="text-center text-xs text-base-content/50">
+            {isOwner ? t("store.appliesEverywhere") : t("store.approvalNotice")}
+          </p>
         </form>
 
         {/* A live sketch of the receipt head/foot, so the owner can see what they

@@ -29,6 +29,13 @@ function Activitylogpage() {
   const [reqFrom, setReqFrom] = useState("");
   const [reqTo, setReqTo] = useState("");
 
+  // The owner sees everything, so they get a free date/time filter to narrow the
+  // trail to any moment — down to the minute. (An admin is already bounded to a
+  // granted window, so no filter is offered there.)
+  const isOwner = Authuser?.role === "superadmin";
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo] = useState("");
+
   // The audit trail records what everyone did, including this admin, so it is
   // not theirs to browse at will — they ask the owner for a specific window.
   const askForAccess = async () => {
@@ -79,10 +86,26 @@ function Activitylogpage() {
     setLogs(activityLogs);
   }, [activityLogs]);
 
+  // Owner-only date/time filter, applied to the already-loaded trail.
+  const filteredLogs =
+    isOwner && (filterFrom || filterTo)
+      ? logs.filter((log) => {
+          const when = new Date(log.createdAt).getTime();
+          if (filterFrom && when < new Date(filterFrom).getTime()) return false;
+          if (filterTo && when > new Date(filterTo).getTime()) return false;
+          return true;
+        })
+      : logs;
+
   const indexOfLastLog = currentPage * logsPerPage;
   const indexOfFirstLog = indexOfLastLog - logsPerPage;
-  const currentLogs = logs.slice(indexOfFirstLog, indexOfLastLog);
-  const totalPages = Math.ceil(logs.length / logsPerPage);
+  const currentLogs = filteredLogs.slice(indexOfFirstLog, indexOfLastLog);
+  const totalPages = Math.ceil(filteredLogs.length / logsPerPage);
+
+  // A narrower filter can leave the current page past the end — snap back.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterFrom, filterTo]);
 
   // Locked: show the way in rather than an error and an empty table.
   if (accessError) {
@@ -168,6 +191,52 @@ function Activitylogpage() {
               the same granted window, so this can't reach past it. */}
           <ReportButton reportKey="activity" label={t("activity.print")} />
         </div>
+
+        {/* Owner-only: narrow the trail to a day/time window. */}
+        {isOwner && (
+          <div className="mb-4 flex flex-wrap items-end gap-3 pr-5">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-base-content/60">
+                {t("activity.from")}
+              </label>
+              <input
+                type="datetime-local"
+                value={filterFrom}
+                onChange={(event) => setFilterFrom(event.target.value)}
+                className="h-10 rounded-lg border-2 border-base-300 bg-base-100 px-3 text-sm"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-base-content/60">
+                {t("activity.to")}
+              </label>
+              <input
+                type="datetime-local"
+                value={filterTo}
+                onChange={(event) => setFilterTo(event.target.value)}
+                className="h-10 rounded-lg border-2 border-base-300 bg-base-100 px-3 text-sm"
+              />
+            </div>
+            {(filterFrom || filterTo) && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterFrom("");
+                    setFilterTo("");
+                  }}
+                  className="h-10 rounded-lg border-2 border-base-300 px-3 text-sm font-semibold hover:bg-base-200"
+                >
+                  {t("activity.clearFilter")}
+                </button>
+                <span className="text-xs text-base-content/50">
+                  {t("activity.matches", { count: filteredLogs.length })}
+                </span>
+              </>
+            )}
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="min-w-full bg-base-100 mb-24 border border-base-300 rounded-lg shadow-md">
             <thead className="bg-base-200">
@@ -187,8 +256,8 @@ function Activitylogpage() {
                 currentLogs.map((log, index) => (
                   <tr key={log._id}>
                     <td className="px-3 py-2 border">{indexOfFirstLog + index + 1}</td>
-                    <td className="px-3 py-2 border">{log.userId.name}</td>
-                    <td className="px-3 py-2 border">{log.userId.email}</td>
+                    <td className="px-3 py-2 border">{log.userId?.name || t("activity.systemUser")}</td>
+                    <td className="px-3 py-2 border">{log.userId?.email || "—"}</td>
                     <td className="px-3 py-2 border">{log.action}</td>
                     <td className="px-3 py-2 border">{log.entity}</td>
                     <td className="px-3 py-2 border">{log.description}</td>

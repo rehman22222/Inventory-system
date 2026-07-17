@@ -798,6 +798,9 @@
     "manageSub": "Create and remove accounts directly — no approval needed."
   },
   "activity": {
+    "systemUser": "System",
+    "clearFilter": "Clear filter",
+    "matches": "{{count}} entries in range",
     "title": "Activity Logs",
     "downloadReport": "Download Activity Report",
     "action": "Action",
@@ -1100,7 +1103,11 @@
     "timezone": "Timezone",
     "timezoneHint": "Reports and date filters use whole days in this timezone.",
     "notificationsEmail": "Notifications email",
-    "notificationsEmailHint": "Where reorder-approval reminders are sent. Blank uses the owner's login email."
+    "notificationsEmailHint": "Where reorder-approval reminders are sent. Blank uses the owner's login email.",
+    "requestChanges": "Request changes",
+    "requestSent": "Your changes were sent to the owner for approval.",
+    "requestFailed": "Could not send your request.",
+    "approvalNotice": "Your changes need the owner's approval before they take effect."
   },
   "reorders": {
     "title": "Reorders",
