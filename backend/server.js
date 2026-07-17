@@ -4,6 +4,9 @@ const { Server } = require("socket.io");
 const http = require("http");
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
+const compression = require("compression");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const authrouter = require('./Routers/authRouther');
 const productrouter = require('./Routers/ProductRouter');
 const orderrouter = require('./Routers/orderRouter');
@@ -30,6 +33,31 @@ const useLocalStorage = process.env.USE_LOCAL_STORAGE === "true";
 
 const app = express();
 const server = http.createServer(app);
+
+// We sit behind Render's/Vercel's proxy in production, so the real client IP is
+// in X-Forwarded-For. Trust one proxy hop so req.ip (used by rate-limiting and
+// the activity log) is the caller, not the load balancer.
+app.set("trust proxy", 1);
+
+// Don't advertise the framework — one less thing for a scanner to fingerprint.
+app.disable("x-powered-by");
+
+// Security headers. This is a JSON API with a separate frontend, so the two
+// headers that assume you're serving HTML (CSP, cross-origin resource policy)
+// are turned off — they'd add nothing here and can block the SPA's XHR. What we
+// keep is the useful part: nosniff, HSTS, no framing (clickjacking), a locked
+// referrer policy, and DNS-prefetch control.
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
+
+// Gzip responses. Reports, product lists and sales history are large JSON
+// payloads; compressing them cuts transfer size ~70% and speeds every client.
+app.use(compression());
 const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000,https://advanced-inventory-management-system.vercel.app")
   .split(",")
   .map((origin) => origin.trim());
@@ -71,6 +99,31 @@ app.use(cookieParser());
 app.get(["/health", "/api/health"], (req, res) => {
   res.status(200).json({ status: "ok", uptime: process.uptime() });
 });
+
+// Rate limiting. Generous enough that a busy shop with many tills never notices
+// it, but low enough to blunt scripted abuse and credential-stuffing. The health
+// check sits above this and is never throttled (keep-alive pings hit it often).
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: Number(process.env.RATE_LIMIT_MAX) || 600, // per IP per minute
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests — please slow down and try again shortly." },
+});
+
+// A much tighter cap on the login endpoint specifically, to slow brute-forcing
+// without locking out a shop that's simply busy.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.AUTH_RATE_LIMIT_MAX) || 40, // per IP per 15 min
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true, // only failed attempts count toward the cap
+  message: { message: "Too many login attempts — please wait a few minutes and try again." },
+});
+
+app.use("/api", apiLimiter);
+app.use("/api/auth/login", authLimiter);
 
 if (useLocalStorage) {
   app.use("/api", localStorageRouter(app));

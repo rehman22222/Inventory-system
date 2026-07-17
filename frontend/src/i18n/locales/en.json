@@ -419,7 +419,6 @@
     "amountTendered": "Amount tendered",
     "changeDue": "Change due",
     "balanceDue": "Balance due",
-    "exact": "Exact",
     "insufficientCash": "Cash tendered is less than the total",
     "newSale": "New Sale",
     "print": "Print",
@@ -579,12 +578,12 @@
       "subtitle": "Record what the customer actually hands over",
       "paid": "Paid",
       "remaining": "Remaining",
-      "add": "Add",
       "complete": "Complete sale",
       "removeTender": "Remove this payment",
-      "hint": "Split the bill by adding more than one payment — part cash, the rest on card.",
+      "hint": "Tap a method to settle the balance on it. Type an amount first only to split.",
       "giveChange": "Give {{amount}} change",
-      "roundOff": "Round off"
+      "roundOff": "Round off",
+      "roundOffHint": "cash"
     },
     "currencyHint": "Display currency for this till",
     "receiptDoc": {
@@ -593,7 +592,11 @@
       "date": "Date",
       "placedBy": "Placed by",
       "price": "Price",
-      "payments": "Payments"
+      "payments": "Payments",
+      "youSaved": "You saved {{amount}}",
+      "thanks": "Thank you!",
+      "keepReceipt": "Keep this receipt for returns or exchanges",
+      "qrCaption": "Scan for receipt {{ref}}"
     },
     "productSearch": {
       "title": "Product search",
@@ -663,15 +666,7 @@
     "updated": "Sale updated successfully",
     "updateFail": "Failed to update sale",
     "added": "Sales added successfully",
-    "addFail": "Sales add unsuccessful",
-    "overrideTitle": "Admin sales total override",
-    "overrideSub": "Current selected report total is ${{total}}. Saving here rewrites matching sale records directly.",
-    "overrideTarget": "New report total",
-    "overrideApply": "Rewrite records",
-    "overrideSaving": "Updating...",
-    "overrideInvalid": "Enter a valid total",
-    "overrideSuccess": "{{count}} sale records updated. New total: ${{total}}",
-    "overrideFail": "Could not update sales total"
+    "addFail": "Sales add unsuccessful"
   },
   "orders": {
     "searchPlaceholder": "Enter your order",
@@ -812,11 +807,18 @@
     "prev": "Prev",
     "next": "Next",
     "locked": "Activity log is locked",
-    "grantHint": "Approval opens it for 24 hours.",
+    "grantHint": "Approval opens the range you pick for 24 hours.",
     "requestAccess": "Request access",
     "requesting": "Sending…",
     "requested": "Access requested {{ref}}",
-    "requestFailed": "Could not request access"
+    "requestFailed": "Could not request access",
+    "from": "From",
+    "to": "To",
+    "pickRange": "Choose the date range you need",
+    "rangeOrder": "'From' must be on or before 'To'",
+    "showingWindow": "Showing {{from}} – {{to}}",
+    "accessUntil": "· access until {{until}}",
+    "print": "Print / Export"
   },
   "profile": {
     "uploading": "Uploading…",
@@ -1088,7 +1090,11 @@
     "saving": "Saving…",
     "nameRequired": "Store name is required",
     "preview": "Receipt preview",
-    "appliesEverywhere": "Applies to every till and receipt straight away."
+    "appliesEverywhere": "Applies to every till and receipt straight away.",
+    "currency": "Currency",
+    "currencyHint": "Printed beside every amount on your reports.",
+    "timezone": "Timezone",
+    "timezoneHint": "Reports and date filters use whole days in this timezone."
   },
   "ghost": {
     "title": "Ghost Mode",
@@ -1118,6 +1124,24 @@
     "handedOver": "Handed over at day closing",
     "prev": "Previous",
     "next": "Next",
-    "pageOf": "Page {{page}} of {{pages}}"
+    "pageOf": "Page {{page}} of {{pages}}",
+    "tax": {
+      "title": "Tax shadow report",
+      "sub": "Generate a country/province tax version of these Ghost results without changing original receipts, sales reports or stock.",
+      "jurisdiction": "Country / province",
+      "jurisdictionPlaceholder": "Ireland / Ontario / Dubai",
+      "rate": "Tax rate %",
+      "mode": "Tax mode",
+      "exclusive": "Add tax on top",
+      "inclusive": "Prices include tax",
+      "target": "Forced final total",
+      "targetPlaceholder": "Optional",
+      "safety": "Report-only: the backend adjusts copied rows in memory so the exported total matches, but real Sale and Receipt records stay unchanged.",
+      "download": "Download tax report",
+      "from": "Report from",
+      "to": "Report to",
+      "periodHint": "Report period",
+      "allTime": "All time ? no date limit"
+    }
   }
 }

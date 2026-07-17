@@ -43,6 +43,13 @@ const ActivityLogSchema = new mongoose.Schema(
 
 
 
+// The activity log is append-heavy and read newest-first, often scoped to one
+// user or a date window (the admin grant). Index the sort key and the per-user
+// timeline so the audit page stays fast as the log grows into the tens of
+// thousands of rows.
+ActivityLogSchema.index({ createdAt: -1 });
+ActivityLogSchema.index({ userId: 1, createdAt: -1 });
+
 const ActivityLog = mongoose.model("ActivityLog", ActivityLogSchema);
 
 module.exports = ActivityLog;

@@ -152,6 +152,12 @@ ReceiptSchema.index(
   { unique: true, sparse: true }
 );
 ReceiptSchema.index({ "offline.ref": 1 }, { sparse: true });
+// Ghost/report exports commonly slice a full trading year by date, then narrow
+// by cashier or status. These indexes keep those reads bounded without touching
+// the immutable receipt records.
+ReceiptSchema.index({ createdAt: -1 });
+ReceiptSchema.index({ cashier: 1, createdAt: -1 });
+ReceiptSchema.index({ status: 1, createdAt: -1 });
 
 const Receipt = mongoose.model("Receipt", ReceiptSchema);
 

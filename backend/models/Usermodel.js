@@ -35,9 +35,21 @@ const UserSchema= new mongoose.Schema({
 
     },
     // The audit trail is not something an admin browses at will: they ask the
-    // superadmin, and approval opens it until this moment passes. Unset or in
-    // the past means no access.
+    // superadmin for a specific window, and approval opens exactly that window
+    // until `logAccessUntil` passes.
+    //   logAccessUntil        — when the grant itself lapses (unset/past = none)
+    //   logAccessFrom/To      — the slice of history the grant covers
+    // The admin can only ever see entries inside [From, To], and only while the
+    // grant is live. Enforced on the server, not just hidden in the UI.
     logAccessUntil:{
+        type:Date,
+        default:null
+    },
+    logAccessFrom:{
+        type:Date,
+        default:null
+    },
+    logAccessTo:{
         type:Date,
         default:null
     },
@@ -50,6 +62,10 @@ const UserSchema= new mongoose.Schema({
 
 
 )
+
+// The user-management pages filter by role (list staff, list managers). Index
+// it so those lists don't scan every account. (email already has a unique index.)
+UserSchema.index({ role: 1 });
 
 const User=mongoose.model("User",UserSchema)
 

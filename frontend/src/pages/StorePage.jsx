@@ -4,6 +4,26 @@ import { useTranslation } from "react-i18next";
 import { FiShoppingBag } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { gettingStore, UpdateStore } from "../features/storeSlice";
+// The till already knows these; reports use whichever is picked here.
+import { CURRENCIES } from "../Components/pos/posUtils";
+
+// Every timezone the browser knows, newest platforms first; fall back to a
+// short common list on older browsers that lack supportedValuesOf.
+const TIMEZONES =
+  typeof Intl.supportedValuesOf === "function"
+    ? Intl.supportedValuesOf("timeZone")
+    : [
+        "UTC",
+        "Europe/Dublin",
+        "Europe/London",
+        "Europe/Paris",
+        "Asia/Dubai",
+        "Asia/Karachi",
+        "Asia/Kolkata",
+        "Asia/Dhaka",
+        "America/New_York",
+        "America/Los_Angeles",
+      ];
 
 // The shop's own details. These used to be hard-coded in the frontend, so
 // renaming the shop needed a developer and a redeploy — now the owner changes
@@ -17,6 +37,8 @@ function StorePage() {
     name: "",
     addressLines: "",
     phone: "",
+    currency: "EUR",
+    timezone: "UTC",
     footer: "",
     qrTemplate: "",
   });
@@ -32,6 +54,8 @@ function StorePage() {
       name: store.name || "",
       addressLines: (store.addressLines || []).join("\n"),
       phone: store.phone || "",
+      currency: store.currency || "EUR",
+      timezone: store.timezone || "UTC",
       footer: store.footer || "",
       qrTemplate: store.qrTemplate || "{ref}",
     });
@@ -53,6 +77,8 @@ function StorePage() {
         // The textarea is one line per row; the server splits and trims.
         addressLines: form.addressLines,
         phone: form.phone,
+        currency: form.currency,
+        timezone: form.timezone,
         footer: form.footer,
         qrTemplate: form.qrTemplate,
       })
@@ -100,14 +126,54 @@ function StorePage() {
             <p className="mt-1 text-xs text-base-content/50">{t("store.addressHint")}</p>
           </div>
 
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("store.phone")}</label>
+              <input
+                value={form.phone}
+                onChange={set("phone")}
+                placeholder="+353 91 123456"
+                className="h-11 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3"
+              />
+            </div>
+
+            {/* Reports print this beside every money column. */}
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("store.currency")}</label>
+              <select
+                value={form.currency}
+                onChange={set("currency")}
+                className="h-11 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3"
+              >
+                {CURRENCIES.map((entry) => (
+                  <option key={entry.code} value={entry.code}>
+                    {entry.symbol} — {entry.code}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-base-content/50">{t("store.currencyHint")}</p>
+            </div>
+          </div>
+
+          {/* Reports and date-range filters use whole calendar days in THIS zone,
+              so a shop abroad still gets its own trading days. */}
           <div>
-            <label className="mb-1 block text-sm font-medium">{t("store.phone")}</label>
-            <input
-              value={form.phone}
-              onChange={set("phone")}
-              placeholder="+353 91 123456"
+            <label className="mb-1 block text-sm font-medium">{t("store.timezone")}</label>
+            <select
+              value={form.timezone}
+              onChange={set("timezone")}
               className="h-11 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3"
-            />
+            >
+              {!TIMEZONES.includes(form.timezone) && (
+                <option value={form.timezone}>{form.timezone}</option>
+              )}
+              {TIMEZONES.map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-base-content/50">{t("store.timezoneHint")}</p>
           </div>
 
           <div>

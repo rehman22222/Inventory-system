@@ -1,5 +1,7 @@
 const ApprovalRequest = require("../models/ApprovalRequestmodel");
 const User = require("../models/Usermodel");
+const Store = require("../models/Storemodel");
+const { startOfDay, endOfDay } = require("../libs/time");
 const { nextSequence } = require("../models/Countermodel");
 const { createUserRecord, deleteUserRecord } = require("./authcontroller");
 const { createSupplierRecord } = require("./suppliercontroller");
@@ -36,10 +38,16 @@ const summarise = (type, payload) => {
     return `Create deal "${payload.name}" — ${off} off`;
   }
   if (type === "view_activity_logs") {
-    return `View the activity log for ${ACTIVITY_LOG_GRANT_HOURS} hours`;
+    const window =
+      payload.from && payload.to ? ` (${payload.from} → ${payload.to})` : "";
+    return `View the activity log${window} for ${ACTIVITY_LOG_GRANT_HOURS} hours`;
   }
   return type;
 };
+
+// A YYYY-MM-DD string, or null.
+const isDateString = (value) =>
+  typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(value).getTime());
 
 // An admin raises a request for something only the superadmin may do.
 module.exports.createRequest = async (req, res) => {
@@ -85,6 +93,16 @@ module.exports.createRequest = async (req, res) => {
     }
 
     if (type === "view_activity_logs") {
+      // The admin asks for a specific window, not open-ended access.
+      if (!isDateString(payload.from) || !isDateString(payload.to)) {
+        return res
+          .status(400)
+          .json({ message: "Choose the date range you need (from and to)" });
+      }
+      if (new Date(payload.from).getTime() > new Date(payload.to).getTime()) {
+        return res.status(400).json({ message: "The 'from' date must be on or before the 'to' date" });
+      }
+
       // Asking again while you already have it would just queue noise for the
       // superadmin.
       const me = await User.findById(req.user._id).select("logAccessUntil");
@@ -200,18 +218,27 @@ module.exports.approveRequest = async (req, res) => {
       if (result.ok) result.user = result.deal;
     } else if (request.type === "view_activity_logs") {
       // Nothing to "create" — this opens the audit trail to the requester for a
-      // while. Measured from approval, so the clock starts when access does.
+      // while. The grant expiry (`until`) is measured from approval so the clock
+      // starts when access does; the window (`from`/`to`) is exactly what they
+      // asked for and bounds what they can see inside it.
       const until = new Date(Date.now() + ACTIVITY_LOG_GRANT_HOURS * 60 * 60 * 1000);
+      // The admin picked calendar days; interpret them in the shop's timezone so
+      // the window covers the trading days they meant, not UTC days.
+      const shop = await Store.findOne({ key: "shop" }).select("timezone").lean();
+      const tz = shop?.timezone || "UTC";
+      const from = startOfDay(request.payload.from, tz);
+      const to = endOfDay(request.payload.to, tz);
+
       const granted = await User.findByIdAndUpdate(
         request.requestedBy,
-        { $set: { logAccessUntil: until } },
+        { $set: { logAccessUntil: until, logAccessFrom: from, logAccessTo: to } },
         { new: true }
       );
 
       result = granted
         ? {
             ok: true,
-            message: `Activity log open until ${until.toLocaleString()}`,
+            message: `Activity log open for ${request.payload.from} → ${request.payload.to}, until ${until.toLocaleString()}`,
             user: granted,
           }
         : { ok: false, status: 404, message: "The requesting user no longer exists" };

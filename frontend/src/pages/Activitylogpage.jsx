@@ -17,18 +17,34 @@ function Activitylogpage() {
   const [currentPage, setCurrentPage] = useState(1);
   const logsPerPage = 10;
 
-  const { activityLogs, isFetching, userdata, accessError } = useSelector(
+  const { activityLogs, isFetching, userdata, accessError, logRange } = useSelector(
     (state) => state.activity
   );
   const { Authuser } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const [asking, setAsking] = useState(false);
 
+  // The window the admin wants to see. They ask for it; the superadmin approves
+  // exactly that, and it bounds everything they can then see or print.
+  const [reqFrom, setReqFrom] = useState("");
+  const [reqTo, setReqTo] = useState("");
+
   // The audit trail records what everyone did, including this admin, so it is
-  // not theirs to browse at will — they ask the owner for a look.
+  // not theirs to browse at will — they ask the owner for a specific window.
   const askForAccess = async () => {
+    if (!reqFrom || !reqTo) {
+      toast.error(t("activity.pickRange"));
+      return;
+    }
+    if (reqFrom > reqTo) {
+      toast.error(t("activity.rangeOrder"));
+      return;
+    }
+
     setAsking(true);
-    const result = await dispatch(RaiseRequest({ type: "view_activity_logs" }));
+    const result = await dispatch(
+      RaiseRequest({ type: "view_activity_logs", payload: { from: reqFrom, to: reqTo } })
+    );
     setAsking(false);
 
     if (result.error) {
@@ -82,11 +98,38 @@ function Activitylogpage() {
             <p className="mt-2 text-sm text-base-content/60">{accessError.message}</p>
             <p className="mt-1 text-xs text-base-content/50">{t("activity.grantHint")}</p>
 
+            {/* Pick the window to request — access is only ever for a slice of
+                the history, not the whole trail. */}
+            <div className="mt-5 grid grid-cols-2 gap-3 text-left">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-base-content/60">
+                  {t("activity.from")}
+                </label>
+                <input
+                  type="date"
+                  value={reqFrom}
+                  onChange={(event) => setReqFrom(event.target.value)}
+                  className="h-11 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-base-content/60">
+                  {t("activity.to")}
+                </label>
+                <input
+                  type="date"
+                  value={reqTo}
+                  onChange={(event) => setReqTo(event.target.value)}
+                  className="h-11 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3 text-sm"
+                />
+              </div>
+            </div>
+
             <button
               type="button"
               onClick={askForAccess}
               disabled={asking}
-              className="mt-5 h-11 w-full rounded-lg bg-blue-800 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+              className="mt-4 h-11 w-full rounded-lg bg-blue-800 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
             >
               {asking ? t("activity.requesting") : t("activity.requestAccess")}
             </button>
@@ -100,9 +143,30 @@ function Activitylogpage() {
     <div className="bg-base-200 min-h-screen">
       <TopNavbar />
       <div className="mt-10 ml-5">
-        <div className="mb-4 flex items-center justify-between pr-5">
-          <h1 className="text-xl font-semibold">{t("activity.title")}</h1>
-          <ReportButton reportKey="activity" label={t("activity.downloadReport")} />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 pr-5">
+          <div>
+            <h1 className="text-xl font-semibold">{t("activity.title")}</h1>
+            {/* An admin sees a granted slice; say which, so it is clear the page
+                isn't the whole trail. The superadmin sees everything (no range). */}
+            {logRange?.from && (
+              <p className="mt-1 text-xs text-base-content/60">
+                {t("activity.showingWindow", {
+                  from: new Date(logRange.from).toLocaleDateString(),
+                  to: new Date(logRange.to).toLocaleDateString(),
+                })}
+                {logRange.until && (
+                  <span className="ms-2 text-base-content/40">
+                    {t("activity.accessUntil", {
+                      until: new Date(logRange.until).toLocaleString(),
+                    })}
+                  </span>
+                )}
+              </p>
+            )}
+          </div>
+          {/* PDF/CSV/Excel — the print-out. Server clamps an admin's export to
+              the same granted window, so this can't reach past it. */}
+          <ReportButton reportKey="activity" label={t("activity.print")} />
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full bg-base-100 mb-24 border border-base-300 rounded-lg shadow-md">

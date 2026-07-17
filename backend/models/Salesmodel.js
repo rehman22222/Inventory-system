@@ -47,6 +47,17 @@ const SaleSchema = new mongoose.Schema(
 { timestamps: true }
 );
 
+// Indexes for the queries the sales page, ghost mode and reports actually run:
+// newest-first lists, per-cashier day views, receipt lookups, and date-range
+// report filters. Without these, every one of those is a full collection scan
+// that gets slower as sales pile up.
+SaleSchema.index({ createdAt: -1 });
+SaleSchema.index({ cashier: 1, createdAt: -1 });
+SaleSchema.index({ receiptNo: 1 });
+SaleSchema.index({ status: 1, createdAt: -1 });
+SaleSchema.index({ source: 1, createdAt: -1 });
+SaleSchema.index({ dayClosing: 1 });
+
 const Sale= mongoose.model("Sale", SaleSchema);
 
 module.exports=Sale

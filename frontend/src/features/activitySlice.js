@@ -12,6 +12,8 @@ const initialState = {
   // Set when the audit trail refused us and the fix is to ask the owner, rather
   // than a real failure. Drives the "request access" prompt.
   accessError: null,
+  // The granted window an admin is currently viewing (null for superadmin).
+  logRange: null,
 
 };
 
@@ -102,8 +104,12 @@ const activitySlice = createSlice({
       })
       .addCase(getAllActivityLogs.fulfilled, (state, action) => {
         state.isFetching = false;
-        state.activityLogs = action.payload; 
-        toast.success("Activity logs fetched successfully");
+        // The endpoint now returns { logs, range }; older shape was a bare
+        // array. Handle both so nothing breaks mid-deploy.
+        const payload = action.payload;
+        state.activityLogs = Array.isArray(payload) ? payload : payload.logs || [];
+        state.logRange = Array.isArray(payload) ? null : payload.range || null;
+        state.accessError = null;
       })
       .addCase(getAllActivityLogs.rejected, (state, action) => {
         state.isFetching = false;

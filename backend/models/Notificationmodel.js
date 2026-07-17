@@ -24,6 +24,10 @@ const NotificationSchema= new mongoose.Schema({
 { timestamps: true }
 )
 
+// Notifications are always read newest-first; index the sort key so the bell
+// dropdown doesn't scan the whole collection on every poll.
+NotificationSchema.index({ createdAt: -1 });
+
 const Notification=mongoose.model("Notification",NotificationSchema)
 
 module.exports=Notification

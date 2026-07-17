@@ -419,7 +419,6 @@
     "amountTendered": "Méid tairgthe",
     "changeDue": "Sóinseáil dlite",
     "balanceDue": "Iarmhéid dlite",
-    "exact": "Beacht",
     "insufficientCash": "Tá an t-airgead tirim tairgthe níos lú ná an t-iomlán",
     "newSale": "Díolachán Nua",
     "print": "Priontáil",
@@ -579,12 +578,12 @@
       "subtitle": "Taifead an méid a thug an custaiméir duit",
       "paid": "Íoctha",
       "remaining": "Fágtha",
-      "add": "Cuir leis",
       "complete": "Críochnaigh an díolachán",
       "removeTender": "Bain an íocaíocht seo",
-      "hint": "Roinn an bille le níos mó ná íocaíocht amháin — cuid in airgead, an chuid eile ar chárta.",
+      "hint": "Tapáil modh chun an t-iarmhéid a shocrú air. Clóscríobh méid ar dtús agus tú ag roinnt amháin.",
       "giveChange": "Tabhair {{amount}} sóinseáil",
-      "roundOff": "Slánaigh suas"
+      "roundOff": "Slánaigh suas",
+      "roundOffHint": "airgead"
     },
     "currencyHint": "Airgeadra taispeána don scipéad seo",
     "receiptDoc": {
@@ -593,7 +592,11 @@
       "date": "Dáta",
       "placedBy": "Cláraithe ag",
       "price": "Praghas",
-      "payments": "Íocaíochtaí"
+      "payments": "Íocaíochtaí",
+      "youSaved": "Shábháil tú {{amount}}",
+      "thanks": "Go raibh maith agat!",
+      "keepReceipt": "Coinnigh an admháil seo le haghaidh cuir ar ais nó malartú",
+      "qrCaption": "Scan don admháil {{ref}}"
     },
     "productSearch": {
       "title": "Cuardach táirgí",
@@ -663,15 +666,7 @@
     "updated": "Nuashonraíodh an díolachán go rathúil",
     "updateFail": "Theip ar nuashonrú an díolacháin",
     "added": "Cuireadh na díolacháin leis go rathúil",
-    "addFail": "Theip ar chur leis na díolacháin",
-    "overrideTitle": "Admin sales total override",
-    "overrideSub": "Current selected report total is ${{total}}. Saving here rewrites matching sale records directly.",
-    "overrideTarget": "New report total",
-    "overrideApply": "Rewrite records",
-    "overrideSaving": "Updating...",
-    "overrideInvalid": "Enter a valid total",
-    "overrideSuccess": "{{count}} sale records updated. New total: ${{total}}",
-    "overrideFail": "Could not update sales total"
+    "addFail": "Theip ar chur leis na díolacháin"
   },
   "orders": {
     "searchPlaceholder": "Cuir isteach d'ordú",
@@ -812,11 +807,18 @@
     "prev": "Roimhe",
     "next": "Ar Aghaidh",
     "locked": "Tá an loga gníomhaíochta faoi ghlas",
-    "grantHint": "Osclaíonn ceadú é ar feadh 24 uair.",
+    "grantHint": "Osclaíonn ceadú an raon a roghnaíonn tú ar feadh 24 uair.",
     "requestAccess": "Iarr rochtain",
     "requesting": "Á sheoladh…",
     "requested": "Iarradh rochtain {{ref}}",
-    "requestFailed": "Níorbh fhéidir rochtain a iarraidh"
+    "requestFailed": "Níorbh fhéidir rochtain a iarraidh",
+    "from": "Ó",
+    "to": "Go",
+    "pickRange": "Roghnaigh an raon dátaí atá uait",
+    "rangeOrder": "Caithfidh 'Ó' a bheith ar nó roimh 'Go'",
+    "showingWindow": "Ag taispeáint {{from}} – {{to}}",
+    "accessUntil": "· rochtain go {{until}}",
+    "print": "Priontáil / Easpórtáil"
   },
   "profile": {
     "uploading": "Á uaslódáil…",
@@ -1088,7 +1090,11 @@
     "saving": "Á shábháil…",
     "nameRequired": "Tá ainm siopa ag teastáil",
     "preview": "Réamhamharc admhála",
-    "appliesEverywhere": "Feidhmíonn sé ar gach till agus admháil láithreach."
+    "appliesEverywhere": "Feidhmíonn sé ar gach till agus admháil láithreach.",
+    "currency": "Airgeadra",
+    "currencyHint": "Priontáilte in aice le gach suim ar do thuairiscí.",
+    "timezone": "Crios ama",
+    "timezoneHint": "Úsáideann tuairiscí agus scagairí dáta laethanta iomlána sa chrios ama seo."
   },
   "ghost": {
     "title": "Mód Taibhse",
@@ -1118,6 +1124,24 @@
     "handedOver": "Tugtha ar láimh ag dúnadh an lae",
     "prev": "Roimhe",
     "next": "Ar aghaidh",
-    "pageOf": "Leathanach {{page}} as {{pages}}"
+    "pageOf": "Leathanach {{page}} as {{pages}}",
+    "tax": {
+      "title": "Tax shadow report",
+      "sub": "Generate a country/province tax version of these Ghost results without changing original receipts, sales reports or stock.",
+      "jurisdiction": "Country / province",
+      "jurisdictionPlaceholder": "Ireland / Ontario / Dubai",
+      "rate": "Tax rate %",
+      "mode": "Tax mode",
+      "exclusive": "Add tax on top",
+      "inclusive": "Prices include tax",
+      "target": "Forced final total",
+      "targetPlaceholder": "Optional",
+      "safety": "Report-only: the backend adjusts copied rows in memory so the exported total matches, but real Sale and Receipt records stay unchanged.",
+      "download": "Download tax report",
+      "from": "Report from",
+      "to": "Report to",
+      "periodHint": "Report period",
+      "allTime": "All time ? no date limit"
+    }
   }
 }

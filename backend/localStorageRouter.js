@@ -3,6 +3,10 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { applicableDeals } = require("./libs/deals");
+const { buildCsv, formatDate } = require("./libs/csv");
+const { buildWorkbookBuffer } = require("./libs/excel");
+const { buildPdfBuffer } = require("./libs/pdf");
+const { buildShadowTaxReport } = require("./libs/shadowTaxReport");
 
 const dataDir = path.join(__dirname, "data");
 const dataFile = path.join(dataDir, "local-store.json");
@@ -10,6 +14,27 @@ const storeVersion = 6;
 
 const now = () => new Date().toISOString();
 const id = () => crypto.randomBytes(12).toString("hex");
+
+const REPORT_FORMATS = {
+  csv: {
+    extension: "csv",
+    contentType: "text/csv; charset=utf-8",
+    build: async (report) => Buffer.from(buildCsv(report), "utf8"),
+  },
+  pdf: {
+    extension: "pdf",
+    contentType: "application/pdf",
+    build: (report) => buildPdfBuffer(report),
+  },
+  xlsx: {
+    extension: "xlsx",
+    contentType:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    build: async (report) => Buffer.from(await buildWorkbookBuffer(report)),
+  },
+};
+
+const CURRENCIES = ["EUR", "GBP", "USD", "AED", "PKR", "INR", "BDT"];
 
 const demoUsers = [
   { _id: "admin-demo", name: "Demo Admin", email: "admin@example.com", password: "Admin@123", role: "admin", ProfilePic: "" },
@@ -234,22 +259,6 @@ function voucherRejection(voucher, subtotal) {
   return null;
 }
 
-function reportDayRange(from, to) {
-  const startSource = from || to || new Date();
-  const endSource = to || from || startSource;
-  const start = new Date(
-    typeof startSource === "string" ? `${startSource}T00:00:00.000` : startSource
-  );
-  const end = new Date(
-    typeof endSource === "string" ? `${endSource}T23:59:59.999` : endSource
-  );
-
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
-
-  start.setHours(0, 0, 0, 0);
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
-}
 
 function nextReceiptNo(store) {
   const sequence = Number(store.posSequence || 1000) + 1;
@@ -811,105 +820,6 @@ function localStorageRouter(app) {
         ? store.sales
         : store.sales.filter((sale) => sale.cashier === user._id && !sale.dayClosing);
     res.json({ success: true, sales: scoped.map((sale) => populateSale(store, sale)) });
-  });
-  router.patch("/sales/override-report-total", (req, res) => {
-    const store = readStore();
-    const { from, to, targetTotal } = req.body;
-    const range = reportDayRange(from, to);
-    const target = money(targetTotal);
-
-    if (!range) return res.status(400).json({ success: false, message: "Invalid date range" });
-    if (!Number.isFinite(Number(targetTotal)) || target < 0) {
-      return res.status(400).json({ success: false, message: "Target total must be a valid positive number" });
-    }
-
-    const sales = store.sales
-      .filter((sale) => {
-        const createdAt = new Date(sale.createdAt);
-        return createdAt >= range.start && createdAt <= range.end;
-      })
-      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-
-    if (sales.length === 0) {
-      return res.status(404).json({ success: false, message: "No sale records found for this date range" });
-    }
-
-    const adjustable = sales.filter(
-      (sale) => sale.source !== "refund" && Number(sale.totalAmount || 0) > 0
-    );
-    const adjustableIds = new Set(adjustable.map((sale) => sale._id));
-    const fixedTotal = money(
-      sales
-        .filter((sale) => !adjustableIds.has(sale._id))
-        .reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0)
-    );
-    const currentTotal = money(sales.reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0));
-    const currentAdjustableTotal = money(
-      adjustable.reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0)
-    );
-    const desiredAdjustableTotal = money(target - fixedTotal);
-
-    if (desiredAdjustableTotal < 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Target total cannot be lower than fixed refund/negative records (${fixedTotal})`,
-      });
-    }
-    if (adjustable.length === 0 || currentAdjustableTotal <= 0) {
-      return res.status(400).json({ success: false, message: "No positive sale rows are available to rewrite" });
-    }
-
-    const factor = desiredAdjustableTotal / currentAdjustableTotal;
-    let remaining = desiredAdjustableTotal;
-    const changedSales = [];
-
-    adjustable.forEach((sale, index) => {
-      const previousTotalAmount = money(sale.totalAmount);
-      const previousUnitPrice = money(sale.products?.price || 0);
-      const nextTotalAmount =
-        index === adjustable.length - 1 ? money(remaining) : money(previousTotalAmount * factor);
-      const quantity = Number(sale.products?.quantity || 1) || 1;
-      const nextUnitPrice = money(nextTotalAmount / quantity);
-
-      remaining = money(remaining - nextTotalAmount);
-      sale.totalAmount = nextTotalAmount;
-      sale.products.price = nextUnitPrice;
-      sale.discount = money(Number(sale.discount || 0) * factor);
-      sale.tax = money(Number(sale.tax || 0) * factor);
-      sale.reportOverride = {
-        previousTotalAmount,
-        previousUnitPrice,
-        targetReportTotal: target,
-        factor,
-        changedByName: "Demo Admin",
-        changedAt: now(),
-      };
-      sale.updatedAt = now();
-      changedSales.push({ saleId: sale._id, previousTotalAmount, totalAmount: sale.totalAmount });
-    });
-
-    addActivity(
-      store,
-      "Override Sales Report Total",
-      `Sales total changed from ${currentTotal} to ${target}.`,
-      "order",
-      null,
-      "admin-demo"
-    );
-    writeStore(store);
-
-    res.json({
-      success: true,
-      message: "Sales records updated to match the requested report total",
-      previousTotal: currentTotal,
-      targetTotal: target,
-      updatedTotal: money(
-        fixedTotal + changedSales.reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0)
-      ),
-      updatedCount: changedSales.length,
-      fixedTotal,
-      changedSales,
-    });
   });
   router.post("/sales/createsales", (req, res) => {
     const store = readStore();
@@ -1731,6 +1641,8 @@ function localStorageRouter(app) {
     name: "Candy Cloud",
     addressLines: ["10 Abbeygate Street", "Lower, H91 KV7K"],
     phone: "",
+    currency: "EUR",
+    timezone: "Europe/Dublin",
     footer: "Thank you for shopping with us",
     qrTemplate: "{ref}",
   };
@@ -1748,11 +1660,19 @@ function localStorageRouter(app) {
       return res.status(403).json({ message: "Access denied. Super admin only." });
     }
     const shop = store.shop || { ...DEFAULT_STORE };
-    const { name, addressLines, phone, footer, qrTemplate } = req.body;
+    const { name, addressLines, phone, currency, timezone, footer, qrTemplate } = req.body;
 
     if (name !== undefined) {
       if (!String(name).trim()) return res.status(400).json({ message: "Store name is required" });
       shop.name = String(name).trim();
+    }
+    if (timezone !== undefined) {
+      try {
+        new Intl.DateTimeFormat("en-US", { timeZone: timezone });
+        shop.timezone = timezone;
+      } catch {
+        return res.status(400).json({ message: `"${timezone}" is not a recognised timezone` });
+      }
     }
     if (addressLines !== undefined) {
       // The form sends a textarea: one address line per row.
@@ -1762,6 +1682,14 @@ function localStorageRouter(app) {
       shop.addressLines = lines.map((l) => String(l).trim()).filter(Boolean);
     }
     if (phone !== undefined) shop.phone = String(phone).trim();
+    if (currency !== undefined) {
+      if (!CURRENCIES.includes(currency)) {
+        return res
+          .status(400)
+          .json({ message: `Currency must be one of: ${CURRENCIES.join(", ")}` });
+      }
+      shop.currency = currency;
+    }
     if (footer !== undefined) shop.footer = String(footer).trim();
     if (qrTemplate !== undefined) shop.qrTemplate = String(qrTemplate).trim() || "{ref}";
 
@@ -1777,6 +1705,73 @@ function localStorageRouter(app) {
     );
     writeStore(store);
     res.json({ message: "Store details updated", store: shop });
+  });
+
+  const ghostReportReceipts = (store, query) => {
+    let list = [...(store.receipts || [])];
+
+    if (query.cashier) {
+      list = list.filter((receipt) => String(receipt.cashier) === String(query.cashier));
+    }
+    if (query.from) {
+      const start = new Date(`${query.from}T00:00:00`).getTime();
+      list = list.filter((receipt) => new Date(receipt.createdAt).getTime() >= start);
+    }
+    if (query.to) {
+      const end = new Date(`${query.to}T23:59:59.999`).getTime();
+      list = list.filter((receipt) => new Date(receipt.createdAt).getTime() <= end);
+    }
+    if (query.status) {
+      list = list.filter((receipt) => receipt.status === query.status);
+    }
+
+    return list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  };
+
+  router.get("/reports/ghost-tax", async (req, res) => {
+    try {
+      const store = readStore();
+      const user = currentUser(store, req);
+      if (user && user.role !== "superadmin") {
+        return res.status(403).json({ message: "Access denied. Super admin only." });
+      }
+
+      const requested = String(req.query.format || "xlsx").toLowerCase();
+      const format = REPORT_FORMATS[requested];
+      if (!format) {
+        return res.status(400).json({
+          message: `Unsupported format "${requested}". Use one of: ${Object.keys(REPORT_FORMATS).join(", ")}`,
+        });
+      }
+
+      const shop = store.shop || { ...DEFAULT_STORE };
+      const report = buildShadowTaxReport(ghostReportReceipts(store, req.query), req.query);
+      const buffer = await format.build({
+        title: report.title,
+        subtitle: report.subtitle,
+        generatedBy: `${user?.name || "Demo User"} (${user?.role || "demo"})`,
+        headers: report.headers,
+        rows: report.rows,
+        summary: report.summary,
+        shop,
+        currency: shop.currency || "EUR",
+      });
+
+      const slug = String(shop.name || "report")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+      const filename = `${slug}-ghost-tax-${formatDate(new Date())}.${format.extension}`;
+      res.setHeader("Content-Type", format.contentType);
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      return res.status(200).send(buffer);
+    } catch (error) {
+      const status = error.statusCode || 500;
+      return res.status(status).json({
+        message: status === 500 ? "Failed to generate report" : error.message,
+        error: error.message,
+      });
+    }
   });
 
   // Ghost mode (demo): every sale, unscoped. Owner only.

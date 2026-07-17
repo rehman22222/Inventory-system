@@ -16,6 +16,23 @@ const StoreSchema = new mongoose.Schema(
     // Free-form: one line per row on the receipt header.
     addressLines: [{ type: String, trim: true }],
     phone: { type: String, trim: true },
+    // What the shop trades in. Reports print it beside every money column — a
+    // column of bare numbers is not something you hand an accountant.
+    currency: {
+      type: String,
+      enum: ["EUR", "GBP", "USD", "AED", "PKR", "INR", "BDT"],
+      default: "EUR",
+    },
+    // The shop's own timezone (an IANA name, e.g. "Europe/Dublin"). Times are
+    // always stored in UTC; this is only used to render reports and to work out
+    // where a trading day starts and ends — so the same database serves shops in
+    // different countries correctly. Not enum-checked here: the set of valid
+    // zones is the platform's, validated in the controller.
+    timezone: {
+      type: String,
+      default: "UTC",
+      trim: true,
+    },
     // Shown under the total — a thank-you note, a loyalty URL, opening hours.
     footer: { type: String, trim: true, default: "Thank you for shopping with us" },
     // What the receipt QR encodes. {ref} is swapped for the receipt number.

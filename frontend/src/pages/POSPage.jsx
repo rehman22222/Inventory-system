@@ -1305,7 +1305,7 @@ function POSPage() {
       {receipt && (
         <div id="receipt" className="hidden">
           {/* Header */}
-          <div className="r-center">
+          <div className="r-head">
             <div className="r-shop">{SHOP?.name}</div>
             {(SHOP?.addressLines || []).map((line) => (
               <div key={line} className="r-addr">
@@ -1313,26 +1313,22 @@ function POSPage() {
               </div>
             ))}
             {SHOP?.phone && <div className="r-addr">{SHOP.phone}</div>}
-            <div className="r-order">
-              {t("pos.receiptDoc.order")} : {receipt.receiptNo}
-            </div>
+            <div className="r-order">{receipt.receiptNo}</div>
           </div>
 
-          <div className="r-rule" />
-
-          {/* Meta */}
+          {/* Meta — label/value pairs, so nothing wraps into a run-on line. */}
           <div className="r-meta">
-            {t("pos.receiptDoc.orderType")} : {t("pos.status.counter")}
+            <span>{t("pos.receiptDoc.date")}</span>
+            <span>{new Date(receipt.createdAt).toLocaleString()}</span>
           </div>
           <div className="r-meta">
-            {t("pos.receiptDoc.date")} : {new Date(receipt.createdAt).toLocaleString()}
-          </div>
-          <div className="r-meta">
-            {t("pos.receiptDoc.placedBy")} : {receipt.cashierName}
+            <span>{t("pos.receiptDoc.placedBy")}</span>
+            <span>{receipt.cashierName}</span>
           </div>
           {receipt.customerName && receipt.customerName !== t("pos.walkIn") && (
             <div className="r-meta">
-              {t("pos.customer")} : {receipt.customerName}
+              <span>{t("pos.customer")}</span>
+              <span>{receipt.customerName}</span>
             </div>
           )}
 
@@ -1368,18 +1364,34 @@ function POSPage() {
             <span>{currency(receipt.subtotal)}</span>
           </div>
           {(receipt.deals || []).map((entry) => (
-            <div className="r-line" key={String(entry.dealId)}>
+            <div className="r-line r-save" key={String(entry.dealId)}>
               <span>
                 {entry.name}
                 {entry.sets > 1 ? ` ×${entry.sets}` : ""}
               </span>
-              <span>-{currency(entry.amount)}</span>
+              <span>−{currency(entry.amount)}</span>
             </div>
           ))}
-          {receipt.discount - (receipt.dealDiscount || 0) > 0 && (
-            <div className="r-line">
+          {receipt.voucher?.code && receipt.voucher.amount > 0 && (
+            <div className="r-line r-save">
+              <span>{receipt.voucher.code}</span>
+              <span>−{currency(receipt.voucher.amount)}</span>
+            </div>
+          )}
+          {receipt.discount -
+            (receipt.dealDiscount || 0) -
+            (receipt.voucher?.amount || 0) >
+            0 && (
+            <div className="r-line r-save">
               <span>{t("pos.discount")}</span>
-              <span>-{currency(receipt.discount - (receipt.dealDiscount || 0))}</span>
+              <span>
+                −
+                {currency(
+                  receipt.discount -
+                    (receipt.dealDiscount || 0) -
+                    (receipt.voucher?.amount || 0)
+                )}
+              </span>
             </div>
           )}
           {receipt.tax > 0 && (
@@ -1395,10 +1407,9 @@ function POSPage() {
             <span>{currency(receipt.total)}</span>
           </div>
 
-          <div className="r-rule" />
-
           {/* Payments */}
-          <div className="r-meta r-strong">{t("pos.receiptDoc.payments")}</div>
+          <div className="r-rule" />
+          <div className="r-strong">{t("pos.receiptDoc.payments")}</div>
           {(receipt.payments && receipt.payments.length > 0
             ? receipt.payments
             : [{ method: receipt.paymentMethod, amount: receipt.total }]
@@ -1409,22 +1420,38 @@ function POSPage() {
             </div>
           ))}
           {receipt.changeDue > 0 && (
-            <div className="r-line">
+            <div className="r-line r-strong">
               <span>{t("pos.changeDue")}</span>
               <span>{currency(receipt.changeDue)}</span>
             </div>
           )}
 
+          {/* The line customers actually look for. Worth its own box. */}
+          {receipt.discount > 0 && (
+            <div className="r-savedbox">
+              {t("pos.receiptDoc.youSaved", { amount: currency(receipt.discount) })}
+            </div>
+          )}
+
           {/* QR + footer */}
+          <div className="r-rule" />
           <div className="r-center r-qrwrap">
             <QRCodeSVG
               value={(SHOP?.qrTemplate || "{ref}").replace("{ref}", receipt.receiptNo)}
-              size={132}
+              size={116}
               level="M"
             />
+            {/* Say what the QR is for — an unexplained square gets ignored. */}
+            <div className="r-qrcap">
+              {t("pos.receiptDoc.qrCaption", { ref: receipt.receiptNo })}
+            </div>
           </div>
+
+          <div className="r-center r-thanks">{t("pos.receiptDoc.thanks")}</div>
           {SHOP?.footer && <div className="r-center r-footer">{SHOP.footer}</div>}
+          <div className="r-center r-footer">{t("pos.receiptDoc.keepReceipt")}</div>
           <div className="r-center r-footer">{t("pos.ageVerification")}</div>
+          <div className="r-center r-tail">• • •</div>
         </div>
       )}
 

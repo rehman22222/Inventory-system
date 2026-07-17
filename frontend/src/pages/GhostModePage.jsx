@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { FiChevronLeft, FiChevronRight, FiEye } from "react-icons/fi";
 import toast from "react-hot-toast";
 import axiosInstance from "../lib/axios";
+import ReportButton from "../Components/ReportButton";
 
 const money = (value) =>
   Number(value || 0).toLocaleString(undefined, {
@@ -36,6 +37,14 @@ function GhostModePage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({ from: "", to: "", cashier: "", status: "" });
+  const [taxReport, setTaxReport] = useState({
+    from: "",
+    to: "",
+    jurisdiction: "",
+    taxRate: "",
+    taxMode: "exclusive",
+    targetTotal: "",
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,6 +79,21 @@ function GhostModePage() {
   const clear = () => {
     setPage(1);
     setFilters({ from: "", to: "", cashier: "", status: "" });
+  };
+
+  const setTaxField = (key) => (event) => {
+    setTaxReport({ ...taxReport, [key]: event.target.value });
+  };
+
+  const taxReportParams = {
+    from: taxReport.from || undefined,
+    to: taxReport.to || undefined,
+    cashier: filters.cashier || undefined,
+    status: filters.status || undefined,
+    jurisdiction: taxReport.jurisdiction || undefined,
+    taxRate: taxReport.taxRate || 0,
+    taxMode: taxReport.taxMode,
+    targetTotal: taxReport.targetTotal || undefined,
   };
 
   return (
@@ -189,6 +213,124 @@ function GhostModePage() {
         >
           {t("ghost.clear")}
         </button>
+      </div>
+
+      {/* Shadow tax report: report-only recalculation for any country/province.
+          The backend distributes the new total across copied receipt rows and
+          never writes the result back to Sales, Receipts or stock. */}
+      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-blue-900">
+            {t("ghost.tax.title")}
+          </h2>
+          <p className="mt-1 text-sm text-blue-900/70">{t("ghost.tax.sub")}</p>
+        </div>
+
+        <div className="mb-3 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase text-blue-900/70">
+              {t("ghost.tax.from")}
+            </label>
+            <input
+              type="date"
+              value={taxReport.from}
+              onChange={setTaxField("from")}
+              className="h-10 w-full rounded-lg border-2 border-blue-100 bg-white px-3"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase text-blue-900/70">
+              {t("ghost.tax.to")}
+            </label>
+            <input
+              type="date"
+              value={taxReport.to}
+              onChange={setTaxField("to")}
+              className="h-10 w-full rounded-lg border-2 border-blue-100 bg-white px-3"
+            />
+          </div>
+
+          <div className="lg:col-span-2">
+            <label className="mb-1 block text-xs font-semibold uppercase text-blue-900/70">
+              {t("ghost.tax.periodHint")}
+            </label>
+            <div className="flex h-10 items-center rounded-lg border-2 border-blue-100 bg-white px-3 text-sm text-blue-900/70">
+              {taxReport.from || taxReport.to
+                ? `${taxReport.from || "…"} → ${taxReport.to || "…"}`
+                : t("ghost.tax.allTime")}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-5">
+          <div className="lg:col-span-2">
+            <label className="mb-1 block text-xs font-semibold uppercase text-blue-900/70">
+              {t("ghost.tax.jurisdiction")}
+            </label>
+            <input
+              value={taxReport.jurisdiction}
+              onChange={setTaxField("jurisdiction")}
+              placeholder={t("ghost.tax.jurisdictionPlaceholder")}
+              className="h-10 w-full rounded-lg border-2 border-blue-100 bg-white px-3"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase text-blue-900/70">
+              {t("ghost.tax.rate")}
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.001"
+              value={taxReport.taxRate}
+              onChange={setTaxField("taxRate")}
+              placeholder="23"
+              className="h-10 w-full rounded-lg border-2 border-blue-100 bg-white px-3"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase text-blue-900/70">
+              {t("ghost.tax.mode")}
+            </label>
+            <select
+              value={taxReport.taxMode}
+              onChange={setTaxField("taxMode")}
+              className="h-10 w-full rounded-lg border-2 border-blue-100 bg-white px-3"
+            >
+              <option value="exclusive">{t("ghost.tax.exclusive")}</option>
+              <option value="inclusive">{t("ghost.tax.inclusive")}</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase text-blue-900/70">
+              {t("ghost.tax.target")}
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={taxReport.targetTotal}
+              onChange={setTaxField("targetTotal")}
+              placeholder={t("ghost.tax.targetPlaceholder")}
+              className="h-10 w-full rounded-lg border-2 border-blue-100 bg-white px-3"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="max-w-2xl text-xs text-blue-900/70">{t("ghost.tax.safety")}</p>
+          <ReportButton
+            reportKey="ghost-tax"
+            label={t("ghost.tax.download")}
+            params={taxReportParams}
+            className="h-10 min-w-48"
+          />
+        </div>
       </div>
 
       {/* Sales */}

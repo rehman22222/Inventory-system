@@ -8,9 +8,11 @@ const Voucher = require("../models/Vouchermodel");
 const HeldSale = require("../models/HeldSalemodel");
 const Deal = require("../models/Dealmodel");
 const DayClosing = require("../models/DayClosingmodel");
+const Store = require("../models/Storemodel");
 const { nextSequence } = require("../models/Countermodel");
 const { runInTransaction } = require("../libs/txn");
 const { applicableDeals } = require("../libs/deals");
+const { startOfDay, endOfDay } = require("../libs/time");
 const logActivity = require("../libs/logger");
 
 const DEFAULT_LOW_STOCK = 10;
@@ -819,9 +821,13 @@ module.exports.getAllSales = async (req, res) => {
     }
 
     if (req.query.from || req.query.to) {
+      // Day boundaries are the shop's local midnight, so ghost mode's totals line
+      // up with the reports and never split a late-night sale into the wrong day.
+      const shop = await Store.findOne({ key: "shop" }).select("timezone").lean();
+      const tz = shop?.timezone || "UTC";
       filter.createdAt = {};
-      if (req.query.from) filter.createdAt.$gte = new Date(`${req.query.from}T00:00:00`);
-      if (req.query.to) filter.createdAt.$lte = new Date(`${req.query.to}T23:59:59.999`);
+      if (req.query.from) filter.createdAt.$gte = startOfDay(req.query.from, tz);
+      if (req.query.to) filter.createdAt.$lte = endOfDay(req.query.to, tz);
     }
 
     if (req.query.status) filter.status = req.query.status;

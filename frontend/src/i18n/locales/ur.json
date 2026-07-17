@@ -419,7 +419,6 @@
     "amountTendered": "ادا کی گئی رقم",
     "changeDue": "واپس کرنے کی رقم",
     "balanceDue": "بقایا رقم",
-    "exact": "درست رقم",
     "insufficientCash": "ادا کی گئی نقد رقم کل سے کم ہے",
     "newSale": "نئی فروخت",
     "print": "پرنٹ",
@@ -579,12 +578,12 @@
       "subtitle": "گاہک نے جو دیا وہ درج کریں",
       "paid": "ادا شدہ",
       "remaining": "باقی",
-      "add": "شامل کریں",
       "complete": "سیل مکمل کریں",
       "removeTender": "یہ ادائیگی ہٹائیں",
-      "hint": "ایک سے زیادہ ادائیگیاں شامل کر کے بل تقسیم کریں — کچھ کیش، باقی کارڈ پر۔",
+      "hint": "بقایا رقم اسی طریقے پر لینے کے لیے اس پر ٹیپ کریں۔ تقسیم کرنی ہو تو پہلے رقم لکھیں۔",
       "giveChange": "{{amount}} واپس دیں",
-      "roundOff": "راؤنڈ آف"
+      "roundOff": "راؤنڈ آف",
+      "roundOffHint": "کیش"
     },
     "currencyHint": "اس ٹل کی کرنسی",
     "receiptDoc": {
@@ -593,7 +592,11 @@
       "date": "تاریخ",
       "placedBy": "بنانے والا",
       "price": "قیمت",
-      "payments": "ادائیگیاں"
+      "payments": "ادائیگیاں",
+      "youSaved": "آپ نے {{amount}} بچائے",
+      "thanks": "شکریہ!",
+      "keepReceipt": "واپسی یا تبدیلی کے لیے یہ رسید سنبھال کر رکھیں",
+      "qrCaption": "رسید {{ref}} کے لیے اسکین کریں"
     },
     "productSearch": {
       "title": "پروڈکٹ تلاش",
@@ -663,15 +666,7 @@
     "updated": "فروخت کامیابی سے اپ ڈیٹ ہو گئی",
     "updateFail": "فروخت اپ ڈیٹ کرنے میں ناکام",
     "added": "فروخت کامیابی سے شامل ہو گئی",
-    "addFail": "فروخت شامل کرنا ناکام",
-    "overrideTitle": "????? ???? ???? ???? ????",
-    "overrideSub": "????? ????? ?? ?????? ???? ${{total}} ??? ????? ???? ?? ?????? ??? ??????? ???? ???? ??? ????? ???",
-    "overrideTarget": "??? ????? ????",
-    "overrideApply": "??????? ?????? ?????",
-    "overrideSaving": "?? ??? ?? ??? ??...",
-    "overrideInvalid": "???? ???? ??? ????",
-    "overrideSuccess": "{{count}} ??? ??????? ?? ??? ?? ???? ??? ????: ${{total}}",
-    "overrideFail": "???? ???? ?? ??? ???? ?? ???"
+    "addFail": "فروخت شامل کرنا ناکام"
   },
   "orders": {
     "searchPlaceholder": "اپنا آرڈر درج کریں",
@@ -812,11 +807,18 @@
     "prev": "پچھلا",
     "next": "اگلا",
     "locked": "ایکٹیویٹی لاگ بند ہے",
-    "grantHint": "منظوری ملنے پر 24 گھنٹے کے لیے کھلے گا۔",
+    "grantHint": "منظوری آپ کی منتخب کردہ حد 24 گھنٹے کے لیے کھولتی ہے۔",
     "requestAccess": "رسائی کی درخواست کریں",
     "requesting": "بھیجا جا رہا ہے…",
     "requested": "رسائی کی درخواست بھیج دی {{ref}}",
-    "requestFailed": "درخواست نہیں بھیجی جا سکی"
+    "requestFailed": "درخواست نہیں بھیجی جا سکی",
+    "from": "سے",
+    "to": "تک",
+    "pickRange": "اپنی مطلوبہ تاریخ کی حد منتخب کریں",
+    "rangeOrder": "'سے' تاریخ 'تک' سے پہلے یا برابر ہونی چاہیے",
+    "showingWindow": "{{from}} – {{to}} دکھایا جا رہا ہے",
+    "accessUntil": "· رسائی {{until}} تک",
+    "print": "پرنٹ / ایکسپورٹ"
   },
   "profile": {
     "uploading": "اپ لوڈ ہو رہا ہے…",
@@ -1088,7 +1090,11 @@
     "saving": "محفوظ ہو رہا ہے…",
     "nameRequired": "اسٹور کا نام درکار ہے",
     "preview": "رسید کا پیش منظر",
-    "appliesEverywhere": "ہر ٹل اور رسید پر فوراً لاگو ہو جاتا ہے۔"
+    "appliesEverywhere": "ہر ٹل اور رسید پر فوراً لاگو ہو جاتا ہے۔",
+    "currency": "کرنسی",
+    "currencyHint": "آپ کی رپورٹس میں ہر رقم کے ساتھ چھپتی ہے۔",
+    "timezone": "ٹائم زون",
+    "timezoneHint": "رپورٹس اور تاریخ فلٹرز اسی ٹائم زون کے مکمل دنوں کے حساب سے چلتے ہیں۔"
   },
   "ghost": {
     "title": "گھوسٹ موڈ",
@@ -1118,6 +1124,24 @@
     "handedOver": "دن کی بندش میں حوالے",
     "prev": "پچھلا",
     "next": "اگلا",
-    "pageOf": "صفحہ {{page}} از {{pages}}"
+    "pageOf": "صفحہ {{page}} از {{pages}}",
+    "tax": {
+      "title": "Tax shadow report",
+      "sub": "Generate a country/province tax version of these Ghost results without changing original receipts, sales reports or stock.",
+      "jurisdiction": "Country / province",
+      "jurisdictionPlaceholder": "Ireland / Ontario / Dubai",
+      "rate": "Tax rate %",
+      "mode": "Tax mode",
+      "exclusive": "Add tax on top",
+      "inclusive": "Prices include tax",
+      "target": "Forced final total",
+      "targetPlaceholder": "Optional",
+      "safety": "Report-only: the backend adjusts copied rows in memory so the exported total matches, but real Sale and Receipt records stay unchanged.",
+      "download": "Download tax report",
+      "from": "Report from",
+      "to": "Report to",
+      "periodHint": "Report period",
+      "allTime": "All time ? no date limit"
+    }
   }
 }

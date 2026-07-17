@@ -1,8 +1,10 @@
 const mongoose = require("mongoose");
 const Sale = require("../models/Salesmodel");
+const Receipt = require("../models/Receiptmodel");
 const Product = require("../models/Productmodel");
 const User = require("../models/Usermodel");
 const DayClosing = require("../models/DayClosingmodel");
+const Store = require("../models/Storemodel");
 const ActivityLog = require("../models/ActivityLogmodel");
 // Registered so inventory populate("supplier") works regardless of load order.
 require("../models/Suppliermodel");
@@ -13,9 +15,19 @@ try {
 } catch (e) {
   require("../models/ Categorymodel");
 }
-const { buildCsv, formatDate, formatDateTime, money } = require("../libs/csv");
+const { buildCsv, money } = require("../libs/csv");
 const { buildWorkbookBuffer } = require("../libs/excel");
 const { buildPdfBuffer } = require("../libs/pdf");
+const { buildShadowTaxReport } = require("../libs/shadowTaxReport");
+const { startOfDay, endOfDay, formatInZone } = require("../libs/time");
+
+// Every timestamp on a report is rendered in the shop's timezone, and every
+// date-range filter is interpreted there — so a report reads correctly whether
+// the shop is in Dublin or Karachi. The zone rides on the request; `downloadReport`
+// puts it there before any builder runs.
+const zoneOf = (req) => req.reportTz || "UTC";
+const fmtDateTime = (value, req) => formatInZone(value, zoneOf(req), true);
+const fmtDate = (value, req) => formatInZone(value, zoneOf(req), false);
 
 // One report, three shapes. Excel stays the default so existing links keep
 // working; the UI offers PDF and CSV.
@@ -40,12 +52,13 @@ const FORMATS = {
 
 const LOW_STOCK_THRESHOLD = 10;
 
-// Build an inclusive createdAt filter from ?from=YYYY-MM-DD&to=YYYY-MM-DD
-function dateFilter(from, to) {
+// Build an inclusive createdAt filter from ?from=YYYY-MM-DD&to=YYYY-MM-DD,
+// where the day boundaries are the shop's local midnight — not the server's.
+function dateFilter(from, to, tz = "UTC") {
   if (!from && !to) return null;
   const range = {};
-  if (from) range.$gte = new Date(`${from}T00:00:00`);
-  if (to) range.$lte = new Date(`${to}T23:59:59.999`);
+  if (from) range.$gte = startOfDay(from, tz);
+  if (to) range.$lte = endOfDay(to, tz);
   return range;
 }
 
@@ -56,12 +69,29 @@ function periodLabel(from, to) {
   return "Period: All time";
 }
 
+function ghostReceiptFilter(query, tz = "UTC") {
+  const filter = {};
+
+  if (query.cashier) {
+    if (!mongoose.isValidObjectId(query.cashier)) {
+      throw Object.assign(new Error("Invalid cashier id"), { statusCode: 400 });
+    }
+    filter.cashier = new mongoose.Types.ObjectId(query.cashier);
+  }
+
+  const range = dateFilter(query.from, query.to, tz);
+  if (range) filter.createdAt = range;
+  if (query.status) filter.status = query.status;
+
+  return filter;
+}
+
 // ── Sales: the core profit/loss report ──────────────────────────────────────
 async function buildSales(req) {
   const { from, to } = req.query;
   const filter = {};
   if (req.user.role === "staff") filter.cashier = req.user._id;
-  const range = dateFilter(from, to);
+  const range = dateFilter(from, to, zoneOf(req));
   if (range) filter.createdAt = range;
 
   const sales = await Sale.find(filter)
@@ -94,7 +124,7 @@ async function buildSales(req) {
 
     return [
       s.receiptNo || "",
-      formatDateTime(s.createdAt),
+      fmtDateTime(s.createdAt, req),
       s.customerName,
       s.cashierName || "",
       s.products?.product?.name || "",
@@ -136,7 +166,7 @@ async function buildSales(req) {
 }
 
 // ── Inventory: stock valuation + potential profit ───────────────────────────
-async function buildInventory() {
+async function buildInventory(req) {
   const products = await Product.find({})
     .populate("Category", "name")
     .populate("supplier", "name")
@@ -163,7 +193,7 @@ async function buildInventory() {
       money(price),
       money(price * qty),
       qty <= 0 ? "Out of stock" : qty <= LOW_STOCK_THRESHOLD ? "Low" : "OK",
-      formatDate(p.expiryDate),
+      p.expiryDate ? fmtDate(p.expiryDate, req) : "",
       p.supplier?.name || "",
     ];
   });
@@ -187,22 +217,40 @@ async function buildInventory() {
 
 // ── Activity log: audit trail for admins ────────────────────────────────────
 async function buildActivity(req) {
-  const { from, to } = req.query;
   const filter = {};
-  const range = dateFilter(from, to);
-  if (range) filter.createdAt = range;
+  let from = req.query.from;
+  let to = req.query.to;
+
+  // An admin's report is bounded by exactly the window they were granted — the
+  // same slice they see on screen. A superadmin may narrow with query dates but
+  // is not bounded. This is the hard limit, so the download can't reach past the
+  // grant.
+  if (req.user.role !== "superadmin") {
+    const gFrom = req.user.logAccessFrom;
+    const gTo = req.user.logAccessTo;
+    if (gFrom || gTo) {
+      filter.createdAt = {};
+      if (gFrom) filter.createdAt.$gte = new Date(gFrom);
+      if (gTo) filter.createdAt.$lte = new Date(gTo);
+    }
+    from = gFrom ? fmtDate(gFrom, req) : from;
+    to = gTo ? fmtDate(gTo, req) : to;
+  } else {
+    const range = dateFilter(from, to, zoneOf(req));
+    if (range) filter.createdAt = range;
+  }
 
   const logs = await ActivityLog.find(filter)
     .populate("userId", "name email")
     .sort({ createdAt: -1 })
-    .limit(2000);
+    .limit(5000);
 
   return {
     title: "Activity Log Report",
     subtitle: periodLabel(from, to),
     headers: ["Date & Time", "User", "Email", "Action", "Entity", "Description", "IP Address"],
     rows: logs.map((l) => [
-      formatDateTime(l.createdAt),
+      fmtDateTime(l.createdAt, req),
       l.userId?.name || "",
       l.userId?.email || "",
       l.action,
@@ -237,7 +285,7 @@ async function buildDayClosing(req) {
     (receipt.items || []).forEach((item) => {
       rows.push([
         receipt.receiptNo,
-        formatDateTime(receipt.createdAt),
+        fmtDateTime(receipt.createdAt, req),
         receipt.customerName || "",
         item.name || "",
         item.quantity,
@@ -252,8 +300,8 @@ async function buildDayClosing(req) {
   const summary = [
     ["Reference", closing.reference],
     ["Cashier", `${closing.cashierName || ""} (${closing.cashierRole || ""})`],
-    ["Opened", formatDateTime(closing.openedAt)],
-    ["Closed", formatDateTime(closing.closedAt)],
+    ["Opened", fmtDateTime(closing.openedAt, req)],
+    ["Closed", fmtDateTime(closing.closedAt, req)],
     ["Sales", closing.receiptCount],
     ["Gross", money(closing.gross)],
     ["Discounts", money(closing.discount)],
@@ -269,7 +317,7 @@ async function buildDayClosing(req) {
 
   return {
     title: `Day Closing ${closing.reference}`,
-    subtitle: `${closing.cashierName} · closed ${formatDateTime(closing.closedAt)}`,
+    subtitle: `${closing.cashierName} · closed ${fmtDateTime(closing.closedAt, req)}`,
     headers: [
       "Receipt No", "Date & Time", "Customer", "Product",
       "Qty", "Unit Price", "Line Total", "Payment", "Status",
@@ -280,6 +328,16 @@ async function buildDayClosing(req) {
 }
 
 // ── Registry: single source of truth for labels + role access ───────────────
+async function buildGhostTax(req) {
+  const filter = ghostReceiptFilter(req.query, zoneOf(req));
+  const receipts = await Receipt.find(filter)
+    .select("receiptNo createdAt cashierName status paymentMethod total refunds.amount items.quantity items.name")
+    .sort({ createdAt: -1 })
+    .maxTimeMS(120000)
+    .lean();
+  return buildShadowTaxReport(receipts, req.query);
+}
+
 const REPORTS = {
   sales: { label: "Sales", roles: ["admin", "manager", "staff"], build: buildSales },
   inventory: { label: "Inventory & Valuation", roles: ["admin", "manager"], build: buildInventory },
@@ -298,6 +356,11 @@ const REPORTS = {
     label: "Day Closing",
     roles: ["admin", "superadmin"],
     build: buildDayClosing,
+  },
+  "ghost-tax": {
+    label: "Ghost Tax Shadow",
+    roles: ["superadmin"],
+    build: buildGhostTax,
   },
 };
 
@@ -343,7 +406,14 @@ module.exports.downloadReport = async (req, res) => {
       });
     }
 
+    // The shop's letterhead, currency and timezone. Loaded before the builder
+    // runs so every timestamp and date filter inside it can use the shop's zone.
+    const shop = await Store.findOne({ key: "shop" }).lean();
+    const timezone = shop?.timezone || "UTC";
+    req.reportTz = timezone;
+
     const report = await def.build(req);
+
     const buffer = await format.build({
       title: report.title,
       subtitle: report.subtitle,
@@ -351,9 +421,18 @@ module.exports.downloadReport = async (req, res) => {
       headers: report.headers,
       rows: report.rows,
       summary: report.summary,
+      shop: shop || {},
+      currency: shop?.currency || "EUR",
+      timezone,
     });
 
-    const filename = `${type}-report-${formatDate(new Date())}.${format.extension}`;
+    // Name the file after the shop, dated in the shop's own day so a file
+    // downloaded just after local midnight isn't stamped the previous day.
+    const slug = String(shop?.name || "report")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    const filename = `${slug}-${type}-${fmtDate(new Date(), req)}.${format.extension}`;
     res.setHeader("Content-Type", format.contentType);
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     return res.status(200).send(buffer);

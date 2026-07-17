@@ -419,7 +419,6 @@
     "amountTendered": "المبلغ المدفوع",
     "changeDue": "الباقي المستحق",
     "balanceDue": "الرصيد المستحق",
-    "exact": "المبلغ بالضبط",
     "insufficientCash": "النقد المدفوع أقل من الإجمالي",
     "newSale": "بيع جديد",
     "print": "طباعة",
@@ -579,12 +578,12 @@
       "subtitle": "سجّل ما دفعه العميل فعلاً",
       "paid": "المدفوع",
       "remaining": "المتبقي",
-      "add": "إضافة",
       "complete": "إتمام البيع",
       "removeTender": "إزالة هذه الدفعة",
-      "hint": "قسّم الفاتورة بإضافة أكثر من دفعة — جزء نقداً والباقي بالبطاقة.",
+      "hint": "اضغط على وسيلة لتسوية المتبقي عليها. اكتب مبلغًا أولاً فقط عند التقسيم.",
       "giveChange": "أعطِ {{amount}} باقي",
-      "roundOff": "تقريب"
+      "roundOff": "تقريب",
+      "roundOffHint": "نقدًا"
     },
     "currencyHint": "عملة العرض لهذا الصندوق",
     "receiptDoc": {
@@ -593,7 +592,11 @@
       "date": "التاريخ",
       "placedBy": "أُنشئ بواسطة",
       "price": "السعر",
-      "payments": "المدفوعات"
+      "payments": "المدفوعات",
+      "youSaved": "وفّرت {{amount}}",
+      "thanks": "شكرًا لك!",
+      "keepReceipt": "احتفظ بهذا الإيصال للإرجاع أو الاستبدال",
+      "qrCaption": "امسح للإيصال {{ref}}"
     },
     "productSearch": {
       "title": "بحث المنتجات",
@@ -663,15 +666,7 @@
     "updated": "تم تحديث البيع بنجاح",
     "updateFail": "فشل في تحديث البيع",
     "added": "تمت إضافة المبيعات بنجاح",
-    "addFail": "فشلت إضافة المبيعات",
-    "overrideTitle": "Admin sales total override",
-    "overrideSub": "Current selected report total is ${{total}}. Saving here rewrites matching sale records directly.",
-    "overrideTarget": "New report total",
-    "overrideApply": "Rewrite records",
-    "overrideSaving": "Updating...",
-    "overrideInvalid": "Enter a valid total",
-    "overrideSuccess": "{{count}} sale records updated. New total: ${{total}}",
-    "overrideFail": "Could not update sales total"
+    "addFail": "فشلت إضافة المبيعات"
   },
   "orders": {
     "searchPlaceholder": "أدخل طلبك",
@@ -812,11 +807,18 @@
     "prev": "السابق",
     "next": "التالي",
     "locked": "سجل النشاط مقفل",
-    "grantHint": "الموافقة تفتحه لمدة 24 ساعة.",
+    "grantHint": "الموافقة تفتح النطاق الذي تختاره لمدة 24 ساعة.",
     "requestAccess": "اطلب الوصول",
     "requesting": "جارٍ الإرسال…",
     "requested": "طُلب الوصول {{ref}}",
-    "requestFailed": "تعذر طلب الوصول"
+    "requestFailed": "تعذر طلب الوصول",
+    "from": "من",
+    "to": "إلى",
+    "pickRange": "اختر النطاق الزمني الذي تحتاجه",
+    "rangeOrder": "يجب أن يكون تاريخ 'من' قبل أو يساوي 'إلى'",
+    "showingWindow": "عرض {{from}} – {{to}}",
+    "accessUntil": "· الوصول حتى {{until}}",
+    "print": "طباعة / تصدير"
   },
   "profile": {
     "uploading": "جارٍ الرفع…",
@@ -1088,7 +1090,11 @@
     "saving": "جارٍ الحفظ…",
     "nameRequired": "اسم المتجر مطلوب",
     "preview": "معاينة الإيصال",
-    "appliesEverywhere": "يُطبَّق على كل صندوق وإيصال فورًا."
+    "appliesEverywhere": "يُطبَّق على كل صندوق وإيصال فورًا.",
+    "currency": "العملة",
+    "currencyHint": "تُطبع بجانب كل مبلغ في تقاريرك.",
+    "timezone": "المنطقة الزمنية",
+    "timezoneHint": "تستخدم التقارير ومرشحات التواريخ أياماً كاملة بهذه المنطقة الزمنية."
   },
   "ghost": {
     "title": "الوضع الخفي",
@@ -1118,6 +1124,24 @@
     "handedOver": "سُلّمت عند إغلاق اليوم",
     "prev": "السابق",
     "next": "التالي",
-    "pageOf": "صفحة {{page}} من {{pages}}"
+    "pageOf": "صفحة {{page}} من {{pages}}",
+    "tax": {
+      "title": "Tax shadow report",
+      "sub": "Generate a country/province tax version of these Ghost results without changing original receipts, sales reports or stock.",
+      "jurisdiction": "Country / province",
+      "jurisdictionPlaceholder": "Ireland / Ontario / Dubai",
+      "rate": "Tax rate %",
+      "mode": "Tax mode",
+      "exclusive": "Add tax on top",
+      "inclusive": "Prices include tax",
+      "target": "Forced final total",
+      "targetPlaceholder": "Optional",
+      "safety": "Report-only: the backend adjusts copied rows in memory so the exported total matches, but real Sale and Receipt records stay unchanged.",
+      "download": "Download tax report",
+      "from": "Report from",
+      "to": "Report to",
+      "periodHint": "Report period",
+      "allTime": "All time ? no date limit"
+    }
   }
 }

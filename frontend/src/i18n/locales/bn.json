@@ -419,7 +419,6 @@
     "amountTendered": "প্রদত্ত পরিমাণ",
     "changeDue": "ফেরত দেওয়ার পরিমাণ",
     "balanceDue": "বাকি পরিমাণ",
-    "exact": "সঠিক",
     "insufficientCash": "প্রদত্ত নগদ মোটের চেয়ে কম",
     "newSale": "নতুন বিক্রয়",
     "print": "প্রিন্ট",
@@ -579,12 +578,12 @@
       "subtitle": "গ্রাহক যা দিয়েছেন তা লিখুন",
       "paid": "পরিশোধিত",
       "remaining": "বাকি",
-      "add": "যোগ করুন",
       "complete": "বিক্রয় সম্পন্ন",
       "removeTender": "এই পেমেন্ট সরান",
-      "hint": "একাধিক পেমেন্ট যোগ করে বিল ভাগ করুন — কিছু নগদ, বাকিটা কার্ডে।",
+      "hint": "বাকি টাকা সেই পদ্ধতিতে নিতে ট্যাপ করুন। ভাগ করতে হলে আগে পরিমাণ লিখুন।",
       "giveChange": "{{amount}} ফেরত দিন",
-      "roundOff": "রাউন্ড অফ"
+      "roundOff": "রাউন্ড অফ",
+      "roundOffHint": "ক্যাশ"
     },
     "currencyHint": "এই টিলের মুদ্রা",
     "receiptDoc": {
@@ -593,7 +592,11 @@
       "date": "তারিখ",
       "placedBy": "তৈরি করেছেন",
       "price": "মূল্য",
-      "payments": "পেমেন্ট"
+      "payments": "পেমেন্ট",
+      "youSaved": "আপনি {{amount}} সাশ্রয় করেছেন",
+      "thanks": "ধন্যবাদ!",
+      "keepReceipt": "ফেরত বা বদলের জন্য এই রসিদ রাখুন",
+      "qrCaption": "রসিদ {{ref}} স্ক্যান করুন"
     },
     "productSearch": {
       "title": "পণ্য অনুসন্ধান",
@@ -663,15 +666,7 @@
     "updated": "বিক্রয় সফলভাবে আপডেট হয়েছে",
     "updateFail": "বিক্রয় আপডেট করতে ব্যর্থ",
     "added": "বিক্রয় সফলভাবে যোগ করা হয়েছে",
-    "addFail": "বিক্রয় যোগ করা ব্যর্থ",
-    "overrideTitle": "Admin sales total override",
-    "overrideSub": "Current selected report total is ${{total}}. Saving here rewrites matching sale records directly.",
-    "overrideTarget": "New report total",
-    "overrideApply": "Rewrite records",
-    "overrideSaving": "Updating...",
-    "overrideInvalid": "Enter a valid total",
-    "overrideSuccess": "{{count}} sale records updated. New total: ${{total}}",
-    "overrideFail": "Could not update sales total"
+    "addFail": "বিক্রয় যোগ করা ব্যর্থ"
   },
   "orders": {
     "searchPlaceholder": "আপনার অর্ডার লিখুন",
@@ -812,11 +807,18 @@
     "prev": "পূর্ববর্তী",
     "next": "পরবর্তী",
     "locked": "অ্যাক্টিভিটি লগ বন্ধ",
-    "grantHint": "অনুমোদন পেলে ২৪ ঘণ্টার জন্য খুলবে।",
+    "grantHint": "অনুমোদন আপনার বেছে নেওয়া পরিসর ২৪ ঘণ্টার জন্য খোলে।",
     "requestAccess": "অ্যাক্সেসের অনুরোধ",
     "requesting": "পাঠানো হচ্ছে…",
     "requested": "অ্যাক্সেসের অনুরোধ পাঠানো হয়েছে {{ref}}",
-    "requestFailed": "অনুরোধ পাঠানো যায়নি"
+    "requestFailed": "অনুরোধ পাঠানো যায়নি",
+    "from": "থেকে",
+    "to": "পর্যন্ত",
+    "pickRange": "আপনার প্রয়োজনীয় তারিখ পরিসর বেছে নিন",
+    "rangeOrder": "'থেকে' তারিখ 'পর্যন্ত'-এর আগে বা সমান হতে হবে",
+    "showingWindow": "{{from}} – {{to}} দেখানো হচ্ছে",
+    "accessUntil": "· অ্যাক্সেস {{until}} পর্যন্ত",
+    "print": "প্রিন্ট / এক্সপোর্ট"
   },
   "profile": {
     "uploading": "আপলোড হচ্ছে…",
@@ -1088,7 +1090,11 @@
     "saving": "সংরক্ষণ হচ্ছে…",
     "nameRequired": "স্টোরের নাম প্রয়োজন",
     "preview": "রসিদ প্রিভিউ",
-    "appliesEverywhere": "প্রতিটি টিল ও রসিদে সঙ্গে সঙ্গে প্রযোজ্য।"
+    "appliesEverywhere": "প্রতিটি টিল ও রসিদে সঙ্গে সঙ্গে প্রযোজ্য।",
+    "currency": "মুদ্রা",
+    "currencyHint": "আপনার রিপোর্টে প্রতিটি অঙ্কের পাশে ছাপা হয়।",
+    "timezone": "টাইম জোন",
+    "timezoneHint": "রিপোর্ট ও তারিখ ফিল্টার এই টাইম জোনের পূর্ণ দিন হিসেবে চলে।"
   },
   "ghost": {
     "title": "ঘোস্ট মোড",
@@ -1118,6 +1124,24 @@
     "handedOver": "দিন বন্ধে হস্তান্তরিত",
     "prev": "পূর্ববর্তী",
     "next": "পরবর্তী",
-    "pageOf": "পৃষ্ঠা {{page}} / {{pages}}"
+    "pageOf": "পৃষ্ঠা {{page}} / {{pages}}",
+    "tax": {
+      "title": "Tax shadow report",
+      "sub": "Generate a country/province tax version of these Ghost results without changing original receipts, sales reports or stock.",
+      "jurisdiction": "Country / province",
+      "jurisdictionPlaceholder": "Ireland / Ontario / Dubai",
+      "rate": "Tax rate %",
+      "mode": "Tax mode",
+      "exclusive": "Add tax on top",
+      "inclusive": "Prices include tax",
+      "target": "Forced final total",
+      "targetPlaceholder": "Optional",
+      "safety": "Report-only: the backend adjusts copied rows in memory so the exported total matches, but real Sale and Receipt records stay unchanged.",
+      "download": "Download tax report",
+      "from": "Report from",
+      "to": "Report to",
+      "periodHint": "Report period",
+      "allTime": "All time ? no date limit"
+    }
   }
 }

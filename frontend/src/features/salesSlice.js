@@ -6,11 +6,9 @@ const initialState = {
   getallsales: null,
   isgetallsales: false,
   iscreatedsales: false,
-  isoverridingReportTotal: false,
-  overrideResult: null,
   editedsales:null,
   searchdata:null
-  
+
 };
 
 
@@ -79,19 +77,6 @@ export const searchsalesdata=createAsyncThunk(
    }
  })
 
-export const OverrideSalesReportTotal = createAsyncThunk(
-  'sales/overrideReportTotal',
-  async (payload, { rejectWithValue }) => {
-    try {
-      const response = await axiosInstance.patch("sales/override-report-total", payload, {
-        withCredentials: true,
-      });
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Sales report total override failed");
-    }
-  }
-)
 
 
 
@@ -166,18 +151,6 @@ const salesSlice = createSlice({
      
       .addCase(searchsalesdata.rejected,(state,action)=>{
 
-      })
-
-      .addCase(OverrideSalesReportTotal.pending, (state) => {
-        state.isoverridingReportTotal = true;
-      })
-      .addCase(OverrideSalesReportTotal.fulfilled, (state, action) => {
-        state.isoverridingReportTotal = false;
-        state.overrideResult = action.payload;
-      })
-      .addCase(OverrideSalesReportTotal.rejected, (state, action) => {
-        state.isoverridingReportTotal = false;
-        toast.error(action.payload || "Sales report total override failed");
       })
     
     

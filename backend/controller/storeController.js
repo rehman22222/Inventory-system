@@ -1,5 +1,8 @@
 const Store = require("../models/Storemodel");
 const logActivity = require("../libs/logger");
+const { isValidZone } = require("../libs/time");
+
+const CURRENCIES = ["EUR", "GBP", "USD", "AED", "PKR", "INR", "BDT"];
 
 // There is only ever one shop record. Create it on first read rather than
 // requiring a seed step, so a fresh install just works.
@@ -26,7 +29,7 @@ module.exports.getStore = async (req, res) => {
 // Only the owner renames the shop.
 module.exports.updateStore = async (req, res) => {
   try {
-    const { name, addressLines, phone, footer, qrTemplate } = req.body;
+    const { name, addressLines, phone, footer, qrTemplate, currency, timezone } = req.body;
 
     const store = await loadStore();
 
@@ -50,6 +53,22 @@ module.exports.updateStore = async (req, res) => {
     }
 
     if (phone !== undefined) store.phone = String(phone).trim();
+
+    if (currency !== undefined) {
+      if (!CURRENCIES.includes(currency)) {
+        return res
+          .status(400)
+          .json({ message: `Currency must be one of: ${CURRENCIES.join(", ")}` });
+      }
+      store.currency = currency;
+    }
+
+    if (timezone !== undefined) {
+      if (!isValidZone(timezone)) {
+        return res.status(400).json({ message: `"${timezone}" is not a recognised timezone` });
+      }
+      store.timezone = timezone;
+    }
     if (footer !== undefined) store.footer = String(footer).trim();
     if (qrTemplate !== undefined) {
       store.qrTemplate = String(qrTemplate).trim() || "{ref}";

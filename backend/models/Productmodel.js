@@ -66,6 +66,14 @@ const ProductSchema= new mongoose.Schema({
 
 )
 
+// Hot paths: listing/filtering by category, low-stock scans (quantity), and the
+// product search box. A text index lets name/description search use an index
+// instead of scanning every row — important once the catalogue is thousands of
+// SKUs. (barcode already has a unique sparse index on the field.)
+ProductSchema.index({ Category: 1 });
+ProductSchema.index({ quantity: 1 });
+ProductSchema.index({ name: "text", Desciption: "text" });
+
 const Product=mongoose.model("Product",ProductSchema)
 
 module.exports=Product

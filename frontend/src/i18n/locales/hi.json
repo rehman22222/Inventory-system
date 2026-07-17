@@ -419,7 +419,6 @@
     "amountTendered": "दी गई राशि",
     "changeDue": "वापस की जाने वाली राशि",
     "balanceDue": "शेष राशि",
-    "exact": "सटीक",
     "insufficientCash": "दी गई नकद राशि कुल से कम है",
     "newSale": "नई बिक्री",
     "print": "प्रिंट",
@@ -579,12 +578,12 @@
       "subtitle": "ग्राहक ने जो दिया वह दर्ज करें",
       "paid": "भुगतान",
       "remaining": "शेष",
-      "add": "जोड़ें",
       "complete": "बिक्री पूरी करें",
       "removeTender": "यह भुगतान हटाएँ",
-      "hint": "एक से अधिक भुगतान जोड़कर बिल बाँटें — कुछ नकद, बाकी कार्ड पर।",
+      "hint": "बकाया उसी तरीके से लेने के लिए उस पर टैप करें। बाँटना हो तो पहले राशि लिखें।",
       "giveChange": "{{amount}} वापस दें",
-      "roundOff": "राउंड ऑफ"
+      "roundOff": "राउंड ऑफ",
+      "roundOffHint": "कैश"
     },
     "currencyHint": "इस टिल की मुद्रा",
     "receiptDoc": {
@@ -593,7 +592,11 @@
       "date": "तारीख",
       "placedBy": "बनाया",
       "price": "मूल्य",
-      "payments": "भुगतान"
+      "payments": "भुगतान",
+      "youSaved": "आपने {{amount}} बचाए",
+      "thanks": "धन्यवाद!",
+      "keepReceipt": "वापसी या बदलने के लिए यह रसीद संभाल कर रखें",
+      "qrCaption": "रसीद {{ref}} के लिए स्कैन करें"
     },
     "productSearch": {
       "title": "उत्पाद खोज",
@@ -663,15 +666,7 @@
     "updated": "बिक्री सफलतापूर्वक अपडेट हुई",
     "updateFail": "बिक्री अपडेट करने में विफल",
     "added": "बिक्री सफलतापूर्वक जोड़ी गई",
-    "addFail": "बिक्री जोड़ना असफल",
-    "overrideTitle": "????? ?????? ??? ???????",
-    "overrideSub": "???? ??? ??????? ?? ??????? ??? ${{total}} ??? ??? ???? ?? ??????? ?????? ??????? ???? ??? ???????",
-    "overrideTarget": "??? ??????? ???",
-    "overrideApply": "??????? ?????? ?????",
-    "overrideSaving": "????? ?? ??? ??...",
-    "overrideInvalid": "????? ??? ???? ????",
-    "overrideSuccess": "{{count}} ?????? ??????? ????? ???? ??? ???: ${{total}}",
-    "overrideFail": "?????? ??? ????? ???? ?? ???"
+    "addFail": "बिक्री जोड़ना असफल"
   },
   "orders": {
     "searchPlaceholder": "अपना ऑर्डर दर्ज करें",
@@ -812,11 +807,18 @@
     "prev": "पिछला",
     "next": "अगला",
     "locked": "एक्टिविटी लॉग बंद है",
-    "grantHint": "मंज़ूरी मिलने पर 24 घंटे के लिए खुलेगा।",
+    "grantHint": "मंज़ूरी आपकी चुनी सीमा 24 घंटे के लिए खोलती है।",
     "requestAccess": "एक्सेस का अनुरोध करें",
     "requesting": "भेजा जा रहा है…",
     "requested": "एक्सेस का अनुरोध भेजा गया {{ref}}",
-    "requestFailed": "अनुरोध नहीं भेजा जा सका"
+    "requestFailed": "अनुरोध नहीं भेजा जा सका",
+    "from": "से",
+    "to": "तक",
+    "pickRange": "अपनी ज़रूरी तारीख़ सीमा चुनें",
+    "rangeOrder": "'से' तारीख़ 'तक' से पहले या बराबर होनी चाहिए",
+    "showingWindow": "{{from}} – {{to}} दिखाया जा रहा है",
+    "accessUntil": "· एक्सेस {{until}} तक",
+    "print": "प्रिंट / एक्सपोर्ट"
   },
   "profile": {
     "uploading": "अपलोड हो रहा है…",
@@ -1088,7 +1090,11 @@
     "saving": "सहेज रहे हैं…",
     "nameRequired": "स्टोर का नाम आवश्यक है",
     "preview": "रसीद पूर्वावलोकन",
-    "appliesEverywhere": "हर टिल और रसीद पर तुरंत लागू।"
+    "appliesEverywhere": "हर टिल और रसीद पर तुरंत लागू।",
+    "currency": "मुद्रा",
+    "currencyHint": "आपकी रिपोर्ट में हर राशि के साथ छपती है।",
+    "timezone": "टाइम ज़ोन",
+    "timezoneHint": "रिपोर्ट और तिथि फ़िल्टर इसी टाइम ज़ोन के पूरे दिनों के हिसाब से चलते हैं।"
   },
   "ghost": {
     "title": "घोस्ट मोड",
@@ -1118,6 +1124,24 @@
     "handedOver": "दिन की क्लोजिंग में सौंपी गई",
     "prev": "पिछला",
     "next": "अगला",
-    "pageOf": "पेज {{page}} / {{pages}}"
+    "pageOf": "पेज {{page}} / {{pages}}",
+    "tax": {
+      "title": "Tax shadow report",
+      "sub": "Generate a country/province tax version of these Ghost results without changing original receipts, sales reports or stock.",
+      "jurisdiction": "Country / province",
+      "jurisdictionPlaceholder": "Ireland / Ontario / Dubai",
+      "rate": "Tax rate %",
+      "mode": "Tax mode",
+      "exclusive": "Add tax on top",
+      "inclusive": "Prices include tax",
+      "target": "Forced final total",
+      "targetPlaceholder": "Optional",
+      "safety": "Report-only: the backend adjusts copied rows in memory so the exported total matches, but real Sale and Receipt records stay unchanged.",
+      "download": "Download tax report",
+      "from": "Report from",
+      "to": "Report to",
+      "periodHint": "Report period",
+      "allTime": "All time ? no date limit"
+    }
   }
 }

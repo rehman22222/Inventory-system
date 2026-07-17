@@ -48,12 +48,34 @@ module.exports = (app) => {
     }
   });
 
-  // The full audit trail. The superadmin always; an admin only with an approved,
-  // time-limited grant.
+  // The audit trail an admin was granted is exactly the window they asked for.
+  // The superadmin sees everything. Enforced here, not in the UI, so the range
+  // can't be widened by editing a query param.
+  const grantedRange = (user) => {
+    if (user.role === "superadmin") return {};
+    const filter = {};
+    if (user.logAccessFrom || user.logAccessTo) {
+      filter.createdAt = {};
+      if (user.logAccessFrom) filter.createdAt.$gte = new Date(user.logAccessFrom);
+      if (user.logAccessTo) filter.createdAt.$lte = new Date(user.logAccessTo);
+    }
+    return filter;
+  };
+
   router.get('/getAllLogs', authmiddleware, activityLogAccess, async (req, res) => {
     try {
-      const logs = await ActivityLog.find().populate("userId");
-      res.status(200).json(logs);
+      const logs = await ActivityLog.find(grantedRange(req.user))
+        .populate("userId")
+        .sort({ createdAt: -1 })
+        .limit(5000);
+
+      res.status(200).json({
+        logs,
+        // The window the caller is looking at, so the page can label it.
+        range: req.user.role === "superadmin"
+          ? null
+          : { from: req.user.logAccessFrom, to: req.user.logAccessTo, until: req.user.logAccessUntil },
+      });
     } catch (error) {
       console.error("Failed to fetch logs:", error);
       res.status(500).json({ message: "Failed to fetch logs", error: error.message });
@@ -79,7 +101,9 @@ module.exports = (app) => {
   router.get('/getLogs/:userid', authmiddleware, activityLogAccess, async (req, res) => {
     const { userid } = req.params;
     try {
-      const logs = await ActivityLog.find({ userId: userid });
+      const logs = await ActivityLog.find({ userId: userid, ...grantedRange(req.user) }).sort({
+        createdAt: -1,
+      });
       res.status(200).json(logs);
     } catch (error) {
       console.error("Failed to fetch logs for user:", userid, error);

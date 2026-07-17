@@ -25,6 +25,11 @@
     visibility: visible;
   }
 
+  /* ── Customer receipt (80mm thermal roll) ──────────────────────────────
+     Thermal printers are 203dpi, single-colour, on paper that fades. That
+     rules out grey text, hairlines and light weights — everything here is
+     solid black at a size that survives a till drawer and a coat pocket.
+     Structure comes from spacing and rules, not colour. */
   #receipt {
     display: block !important;
     position: absolute;
@@ -35,55 +40,99 @@
     background: #fff;
     font-family: "Helvetica Neue", Arial, sans-serif;
     font-size: 12px;
-    line-height: 1.45;
+    line-height: 1.5;
   }
 
   #receipt .r-center {
     text-align: center;
   }
+
+  /* Header ------------------------------------------------------------- */
+  #receipt .r-head {
+    text-align: center;
+    padding-bottom: 8px;
+  }
   #receipt .r-shop {
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1.2;
   }
   #receipt .r-addr {
-    font-size: 12px;
+    font-size: 11px;
+    line-height: 1.4;
   }
+  /* The receipt number is what a customer quotes at the counter for a
+     refund, so it is the second-loudest thing on the page. */
   #receipt .r-order {
-    margin-top: 6px;
+    margin-top: 8px;
+    padding: 3px 0;
+    border-top: 2px solid #000;
+    border-bottom: 2px solid #000;
     font-size: 15px;
-    font-weight: 700;
-  }
-  #receipt .r-rule {
-    border-top: 1px dashed #000;
-    margin: 6px 0;
-  }
-  #receipt .r-meta {
-    font-size: 12px;
-  }
-  #receipt .r-strong {
-    font-weight: 700;
+    font-weight: 800;
+    letter-spacing: 0.04em;
   }
 
+  #receipt .r-rule {
+    border-top: 1px dashed #000;
+    margin: 7px 0;
+  }
+
+  /* Meta: label left, value right — scannable, never a wrapped run-on. */
+  #receipt .r-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11px;
+  }
+  #receipt .r-meta span:first-child {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  #receipt .r-meta span:last-child {
+    font-weight: 700;
+    text-align: right;
+  }
+  #receipt .r-strong {
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 11px;
+  }
+
+  /* Items -------------------------------------------------------------- */
   #receipt .r-table {
     width: 100%;
     border-collapse: collapse;
   }
   #receipt .r-table th {
     text-align: left;
-    font-weight: 600;
+    font-weight: 800;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
     padding-bottom: 3px;
-    border-bottom: 1px solid #000;
+    border-bottom: 1.5px solid #000;
   }
   #receipt .r-table td {
-    padding: 2px 0;
+    padding: 3px 0;
     vertical-align: top;
+    font-size: 12px;
+  }
+  #receipt .r-table tbody tr + tr td {
+    border-top: 1px dotted #bbb;
   }
   #receipt .r-qty {
-    width: 26px;
+    width: 24px;
     text-align: left;
+    font-weight: 700;
   }
   #receipt .r-prod {
     text-align: left;
+    /* Long vape names must wrap, not shove the price off the paper. */
+    word-break: break-word;
   }
   #receipt .r-num {
     text-align: right;
@@ -91,24 +140,66 @@
     padding-left: 6px;
   }
 
+  /* Totals ------------------------------------------------------------- */
   #receipt .r-line {
     display: flex;
     justify-content: space-between;
     gap: 8px;
-    font-size: 13px;
+    font-size: 12px;
+    padding: 1px 0;
   }
-  #receipt .r-total {
-    font-size: 16px;
+  #receipt .r-save {
     font-weight: 700;
-    margin-top: 2px;
+  }
+  /* The number the customer checks first. */
+  #receipt .r-total {
+    font-size: 17px;
+    font-weight: 800;
+    margin-top: 4px;
+    padding: 4px 0;
+    border-top: 2px solid #000;
+    border-bottom: 2px solid #000;
+    text-transform: uppercase;
+  }
+  /* What they saved — the one line worth a box around it. */
+  #receipt .r-savedbox {
+    margin-top: 6px;
+    padding: 4px 6px;
+    border: 1.5px solid #000;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
   #receipt .r-qrwrap {
-    margin-top: 12px;
+    margin-top: 10px;
+  }
+  #receipt .r-qrcap {
+    margin-top: 2px;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  #receipt .r-thanks {
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
   }
   #receipt .r-footer {
-    margin-top: 6px;
-    font-size: 11px;
+    margin-top: 4px;
+    font-size: 10px;
+    line-height: 1.4;
+  }
+  /* Tear-off breathing room: thermal cutters eat the last few millimetres. */
+  #receipt .r-tail {
+    margin-top: 10px;
+    padding-bottom: 12px;
+    font-size: 10px;
+    letter-spacing: 0.3em;
   }
 
   /* ── Price-point label sheet (Random Products) ─────────────────────────
