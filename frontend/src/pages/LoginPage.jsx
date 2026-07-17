@@ -80,28 +80,29 @@ function LoginPage() {
   return (
     <div className="min-h-screen bg-base-200 text-base-content">
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[1.1fr_0.9fr]">
-        {/* Left panel is always dark by design. */}
-        <section className="flex flex-col justify-between bg-slate-950 px-8 py-10 text-white lg:px-14">
-          <div>
+        {/* Left panel: a full-bleed photo with the logo on top. Drop the image
+            at frontend/public/login-hero.jpg. If it's missing, the dark
+            background simply shows through — nothing breaks. */}
+        <section className="relative min-h-[200px] overflow-hidden bg-slate-950 text-white lg:min-h-0">
+          <img
+            src="/login-hero.jpg"
+            alt=""
+            aria-hidden="true"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          {/* Subtle dark gradient so the logo stays legible over any photo. */}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-slate-950/60" />
+          <div className="relative px-8 py-10 lg:px-14">
             <Link to="/" className="inline-flex">
               <img
                 src={e360LogoDark}
-                className="h-20 w-auto object-contain"
+                className="h-20 w-auto object-contain drop-shadow-lg"
                 alt="E360 Inventory Suite by Eiretech"
               />
             </Link>
-
-            <div className="mt-20 max-w-2xl">
-              <p className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
-                {t("login.demoWorkspace")}
-              </p>
-              <h1 className="text-4xl font-bold leading-tight lg:text-6xl">
-                {t("login.heroTitle")}
-              </h1>
-              <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300">
-                {t("login.heroSub")}
-              </p>
-            </div>
           </div>
         </section>
 
