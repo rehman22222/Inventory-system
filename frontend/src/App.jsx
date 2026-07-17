@@ -1,45 +1,58 @@
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
-import HomePage from "./pages/HomePage";
-import ServicePage from "./pages/ServicePage";
-import LoginPage from "./pages/LoginPage";
-import Profilepage from "./pages/Profilepage";
-import ManagerDashboard from "./pages/ManagerDashboard";
-import AdminDashboard from "./pages/AdminDashboard";
-import StaffDashboard from "./pages/StaffDashboard";
-import Productpage from "./pages/Productpage";
-import Orderpage from "./pages/Orderpage";
-import Salespage from "./pages/Salespage";
-import POSPage from "./pages/POSPage";
-import StockTransaction from "./pages/StockTransaction";
-import Categorypage from "./pages/Categorypage";
-import Notificationpage from "./pages/Notificationpage";
-import Supplierpage from "./pages/Supplierpage";
-import Activitylogpage from "./pages/Activitylogpage";
-import Dashboardpage from "./pages/Dashboardpage";
-import Userstatus from "./pages/Userstatus";
-import Voucherpage from "./pages/Voucherpage";
-import Supportpage from "./pages/Supportpage";
-import SuperAdminDashboard from "./pages/SuperAdminDashboard";
-import SuperAdminTickets from "./pages/SuperAdminTickets";
-import MyRequestspage from "./pages/MyRequestspage";
-import ApprovalsPage from "./pages/ApprovalsPage";
-import DayClosingsPage from "./pages/DayClosingsPage";
-import Reorderspage from "./pages/Reorderspage";
-import SuperAdminUsers from "./pages/SuperAdminUsers";
-import StorePage from "./pages/StorePage";
-import GhostModePage from "./pages/GhostModePage";
-import NotificationPageRead from "./pages/Notificationpageread";
-import ProtectedRoute from "./lib/ProtectedRoute";
+import { lazy, Suspense } from "react";
 import { Toaster } from "react-hot-toast";
+// Public + always-needed pieces load eagerly; everything behind auth is
+// code-split so the first paint (landing/login) ships a small bundle and each
+// dashboard page is fetched only when a user actually opens it.
+import HomePage from "./pages/HomePage";
+import LoginPage from "./pages/LoginPage";
+import ProtectedRoute from "./lib/ProtectedRoute";
+
+const ServicePage = lazy(() => import("./pages/ServicePage"));
+const Profilepage = lazy(() => import("./pages/Profilepage"));
+const ManagerDashboard = lazy(() => import("./pages/ManagerDashboard"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const StaffDashboard = lazy(() => import("./pages/StaffDashboard"));
+const Productpage = lazy(() => import("./pages/Productpage"));
+const Orderpage = lazy(() => import("./pages/Orderpage"));
+const Salespage = lazy(() => import("./pages/Salespage"));
+const POSPage = lazy(() => import("./pages/POSPage"));
+const StockTransaction = lazy(() => import("./pages/StockTransaction"));
+const Categorypage = lazy(() => import("./pages/Categorypage"));
+const Notificationpage = lazy(() => import("./pages/Notificationpage"));
+const Supplierpage = lazy(() => import("./pages/Supplierpage"));
+const Activitylogpage = lazy(() => import("./pages/Activitylogpage"));
+const Dashboardpage = lazy(() => import("./pages/Dashboardpage"));
+const Userstatus = lazy(() => import("./pages/Userstatus"));
+const Voucherpage = lazy(() => import("./pages/Voucherpage"));
+const Supportpage = lazy(() => import("./pages/Supportpage"));
+const SuperAdminDashboard = lazy(() => import("./pages/SuperAdminDashboard"));
+const SuperAdminTickets = lazy(() => import("./pages/SuperAdminTickets"));
+const MyRequestspage = lazy(() => import("./pages/MyRequestspage"));
+const ApprovalsPage = lazy(() => import("./pages/ApprovalsPage"));
+const DayClosingsPage = lazy(() => import("./pages/DayClosingsPage"));
+const Reorderspage = lazy(() => import("./pages/Reorderspage"));
+const SuperAdminUsers = lazy(() => import("./pages/SuperAdminUsers"));
+const StorePage = lazy(() => import("./pages/StorePage"));
+const GhostModePage = lazy(() => import("./pages/GhostModePage"));
+const NotificationPageRead = lazy(() => import("./pages/Notificationpageread"));
 
 const protect = (element, allowedRoles) => (
   <ProtectedRoute element={element} allowedRoles={allowedRoles} />
+);
+
+// Shown briefly while a code-split page chunk loads.
+const PageFallback = () => (
+  <div className="flex min-h-screen items-center justify-center bg-base-200">
+    <div className="h-10 w-10 animate-spin rounded-full border-4 border-base-300 border-t-primary" />
+  </div>
 );
 
 function App() {
   return (
     <Router>
       <Toaster />
+      <Suspense fallback={<PageFallback />}>
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<ServicePage />} />
@@ -113,6 +126,7 @@ function App() {
           <Route path="Profilepage" element={protect(<Profilepage />, ["staff"])} />
         </Route>
       </Routes>
+      </Suspense>
     </Router>
   );
 }

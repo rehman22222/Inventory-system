@@ -172,9 +172,20 @@ const clientBuild = [
 ].find((dir) => fs.existsSync(path.join(dir, "index.html")));
 
 if (clientBuild) {
-  app.use(express.static(clientBuild));
+  // Fingerprinted assets (main.<hash>.js, etc.) never change, so cache them hard
+  // — repeat visitors and every till stop re-downloading them, cutting server
+  // load. index.html is served by the catch-all below with no-cache so app
+  // updates still show immediately. `index: false` keeps "/" out of here.
+  app.use(
+    express.static(clientBuild, {
+      index: false,
+      maxAge: "1y",
+      immutable: true,
+    })
+  );
   app.get("*", (req, res, next) => {
     if (req.path.startsWith("/api")) return next();
+    res.set("Cache-Control", "no-cache");
     res.sendFile(path.join(clientBuild, "index.html"));
   });
   console.log(`[static] serving frontend build from ${clientBuild}`);

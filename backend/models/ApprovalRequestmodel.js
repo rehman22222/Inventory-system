@@ -17,6 +17,8 @@ const ApprovalRequestSchema = new mongoose.Schema(
         // Not an action but an access grant: approving opens the audit trail to
         // the requester for a while. See ACTIVITY_LOG_GRANT_HOURS.
         "view_activity_logs",
+        // An admin's store-settings change: approving applies it to the shop.
+        "edit_store",
       ],
       required: true,
     },

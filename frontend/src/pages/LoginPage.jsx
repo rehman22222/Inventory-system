@@ -85,7 +85,7 @@ function LoginPage() {
             background simply shows through — nothing breaks. */}
         <section className="relative min-h-[200px] overflow-hidden bg-slate-950 text-white lg:min-h-0">
           <img
-            src="/login-hero.jpg"
+            src="/login-hero.png"
             alt=""
             aria-hidden="true"
             onError={(e) => {

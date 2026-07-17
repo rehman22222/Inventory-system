@@ -28,6 +28,12 @@ const HeldSaleSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// A parked sale is only meant to be resumed shortly. Expire it automatically 30
+// minutes after it was suspended so stale baskets don't pile up — MongoDB's TTL
+// monitor removes them (within ~a minute of expiry). Resuming deletes it too;
+// this just cleans up the ones nobody comes back for.
+HeldSaleSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 60 });
+
 const HeldSale = mongoose.model("HeldSale", HeldSaleSchema);
 
 module.exports = HeldSale;
