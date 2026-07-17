@@ -269,176 +269,184 @@ function Productpage() {
 
         {/* Form drawer */}
         {isFormVisible && (
-          <div className="fixed right-0 top-0 z-50 h-svh w-full max-w-sm overflow-y-auto border-l-2 border-base-300 bg-base-100 p-6 shadow-xl">
-            <div className="text-right">
+          <div className="fixed right-0 top-0 z-50 flex h-svh w-full max-w-2xl flex-col overflow-hidden border-l-2 border-base-300 bg-base-100 shadow-xl">
+            <div className="flex items-center justify-between border-b border-base-300 px-5 py-3">
+              <h1 className="text-lg font-semibold">
+                {selectedProduct ? t("products.editProduct") : t("products.addProduct")}
+              </h1>
               <MdKeyboardDoubleArrowLeft
                 onClick={() => setIsFormVisible(false)}
-                className="ml-auto cursor-pointer text-2xl"
+                className="cursor-pointer text-2xl"
               />
             </div>
 
-            <h1 className="mb-4 text-xl font-semibold">
-              {selectedProduct ? t("products.editProduct") : t("products.addProduct")}
-            </h1>
-
-            <form onSubmit={selectedProduct ? handleEditSubmit : submitProduct}>
-              {/* Image */}
-              <div className="mb-4">
-                <label className="mb-2 block text-sm font-medium">{t("products.productImage")}</label>
-                <div className="flex items-center gap-4">
+            {/* Compact two-column form so the whole thing fits a 12-13" screen
+                without scrolling; only Name and Description run full width. */}
+            <form
+              onSubmit={selectedProduct ? handleEditSubmit : submitProduct}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+                {/* Image */}
+                <div className="mb-3 flex items-center gap-4">
                   <ProductThumb
                     url={imagePreview}
                     alt="Preview"
-                    className="h-16 w-16 border border-base-300"
+                    className="h-14 w-14 border border-base-300"
                   />
-                  <label className="cursor-pointer rounded-lg border border-base-300 bg-base-200 px-3 py-2 text-sm hover:bg-base-300">
-                    {imagePreview ? t("products.change") : t("products.upload")}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageChange}
-                    />
-                  </label>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">{t("products.productImage")}</label>
+                    <label className="cursor-pointer rounded-lg border border-base-300 bg-base-200 px-3 py-1.5 text-sm hover:bg-base-300">
+                      {imagePreview ? t("products.change") : t("products.upload")}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageChange}
+                      />
+                    </label>
+                  </div>
                 </div>
+
+                <div className="mb-3">
+                  <label className="text-sm">{t("common.name")} *</label>
+                  <input
+                    value={name}
+                    placeholder={t("products.namePlaceholder")}
+                    onChange={(e) => setName(e.target.value)}
+                    type="text"
+                    className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  <div>
+                    <label className="text-sm">{t("common.category")}</label>
+                    <select
+                      value={Category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                    >
+                      <option value="">{t("products.selectCategory")}</option>
+                      {getallCategory?.map((category) => (
+                        <option key={category._id} value={category._id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm">{t("products.shelfLabel")}</label>
+                    <input
+                      value={shelfLabel}
+                      placeholder={t("products.shelfLabelPlaceholder")}
+                      onChange={(e) => setShelfLabel(e.target.value.toUpperCase())}
+                      type="text"
+                      className={`mt-1 h-10 w-full rounded-lg border-2 bg-base-100 px-2 uppercase text-base-content ${
+                        shelfLabelValid ? "border-base-300" : "border-red-500"
+                      }`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm">{t("products.sellingPrice")} *</label>
+                    <input
+                      type="number"
+                      placeholder={t("products.sellingPricePlaceholder")}
+                      value={Price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                      required
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm">{t("products.costPrice")}</label>
+                    <input
+                      type="number"
+                      placeholder={t("products.costPricePlaceholder")}
+                      value={costPrice}
+                      onChange={(e) => setCostPrice(e.target.value)}
+                      className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm">{t("common.quantity")}</label>
+                    <input
+                      type="number"
+                      placeholder={t("products.quantityPlaceholder")}
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                      className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                      min="0"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm">{t("products.lowStockThreshold")}</label>
+                    <input
+                      type="number"
+                      placeholder="10"
+                      value={lowStockThreshold}
+                      onChange={(e) => setLowStockThreshold(e.target.value)}
+                      className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                      min="0"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm">{t("common.barcode")}</label>
+                    <input
+                      value={barcode}
+                      placeholder={t("products.barcodePlaceholder")}
+                      onChange={(e) => setBarcode(e.target.value)}
+                      type="text"
+                      className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm">{t("products.expiryDate")}</label>
+                    <input
+                      type="date"
+                      value={expiryDate}
+                      onChange={(e) => setExpiryDate(e.target.value)}
+                      className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="text-sm">{t("common.description")}</label>
+                    <input
+                      value={Desciption}
+                      placeholder={t("products.descPlaceholder")}
+                      onChange={(e) => setDesciption(e.target.value)}
+                      type="text"
+                      className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                    />
+                  </div>
+                </div>
+
+                {!shelfLabelValid && (
+                  <p className="mt-2 text-xs text-red-500">{t("products.shelfLabelInvalid")}</p>
+                )}
               </div>
 
-              <div className="mb-4">
-                <label>{t("common.name")} *</label>
-                <input
-                  value={name}
-                  placeholder={t("products.namePlaceholder")}
-                  onChange={(e) => setName(e.target.value)}
-                  type="text"
-                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
-                  required
-                />
-              </div>
-
-              <div className="mb-4">
-                <label>{t("products.shelfLabel")}</label>
-                <input
-                  value={shelfLabel}
-                  placeholder={t("products.shelfLabelPlaceholder")}
-                  onChange={(e) => setShelfLabel(e.target.value.toUpperCase())}
-                  type="text"
-                  className={`mt-2 h-10 w-full rounded-lg border-2 bg-base-100 px-2 uppercase text-base-content ${
-                    shelfLabelValid ? "border-base-300" : "border-red-500"
-                  }`}
-                />
-                <p className="mt-1 text-xs text-base-content/50">
-                  {shelfLabelValid ? t("products.shelfLabelHint") : t("products.shelfLabelInvalid")}
-                </p>
-              </div>
-
-              <div className="mb-4">
-                <label>{t("common.category")}</label>
-                <select
-                  value={Category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+              <div className="border-t border-base-300 px-5 py-3">
+                <button
+                  type="submit"
+                  className="h-11 w-full rounded-lg bg-blue-800 text-white transition hover:bg-blue-700"
                 >
-                  <option value="">{t("products.selectCategory")}</option>
-                  {getallCategory?.map((category) => (
-                    <option key={category._id} value={category._id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
+                  {selectedProduct ? t("products.updateProduct") : t("products.addProduct")}
+                </button>
               </div>
-
-              <div className="mb-4">
-                <label>{t("common.description")}</label>
-                <input
-                  value={Desciption}
-                  placeholder={t("products.descPlaceholder")}
-                  onChange={(e) => setDesciption(e.target.value)}
-                  type="text"
-                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
-                />
-              </div>
-
-              <div className="mb-4">
-                <label>{t("common.barcode")}</label>
-                <input
-                  value={barcode}
-                  placeholder={t("products.barcodePlaceholder")}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  type="text"
-                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
-                />
-              </div>
-
-              <div className="mb-4">
-                <label>{t("products.sellingPrice")} *</label>
-                <input
-                  type="number"
-                  placeholder={t("products.sellingPricePlaceholder")}
-                  value={Price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
-                  required
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              <div className="mb-4">
-                <label>{t("products.costPrice")}</label>
-                <input
-                  type="number"
-                  placeholder={t("products.costPricePlaceholder")}
-                  value={costPrice}
-                  onChange={(e) => setCostPrice(e.target.value)}
-                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              <div className="mb-4">
-                <label>{t("common.quantity")}</label>
-                <input
-                  type="number"
-                  placeholder={t("products.quantityPlaceholder")}
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
-                  min="0"
-                />
-              </div>
-
-              <div className="mb-4">
-                <label>{t("products.lowStockThreshold")}</label>
-                <input
-                  type="number"
-                  placeholder="10"
-                  value={lowStockThreshold}
-                  onChange={(e) => setLowStockThreshold(e.target.value)}
-                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
-                  min="0"
-                />
-                <p className="mt-1 text-xs text-base-content/50">
-                  {t("products.lowStockThresholdHint")}
-                </p>
-              </div>
-
-              <div className="mb-4">
-                <label>{t("products.expiryDate")}</label>
-                <input
-                  type="date"
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="mt-4 h-12 w-full rounded-lg bg-blue-800 text-white transition hover:bg-blue-700"
-              >
-                {selectedProduct ? t("products.updateProduct") : t("products.addProduct")}
-              </button>
             </form>
           </div>
         )}
