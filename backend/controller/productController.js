@@ -367,6 +367,16 @@ module.exports.generateRandomBarcodes = async (req, res) => {
       return res.status(400).json({ message: "At least one valid price tier is required" });
     }
 
+    // Opening stock per generated item. The owner chooses it now instead of
+    // every label being effectively infinite — so random items count toward
+    // stock like anything else. Falls back to a large number only when left
+    // blank (the old price-point-label behaviour).
+    const hasQuantity = req.body?.quantity !== undefined && req.body?.quantity !== "";
+    const stockQuantity = hasQuantity ? Math.floor(Number(req.body.quantity)) : 100000;
+    if (!Number.isFinite(stockQuantity) || stockQuantity < 0 || stockQuantity > 1000000) {
+      return res.status(400).json({ message: "Quantity must be between 0 and 1,000,000" });
+    }
+
     const category = await ensureRandomCategory();
 
     // Spread the count as evenly as possible across the tiers.
@@ -381,9 +391,7 @@ module.exports.generateRandomBarcodes = async (req, res) => {
         Desciption: "Generated price-point item",
         Category: category._id,
         Price: price,
-        // Effectively unlimited — a price-point label can be scanned any number
-        // of times, so it should never fall out of stock.
-        quantity: 100000,
+        quantity: stockQuantity,
         lowStockThreshold: 0,
         barcode,
       });

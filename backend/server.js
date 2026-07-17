@@ -23,6 +23,7 @@ const dealrouter = require("./Routers/dealRouter");
 const storerouter = require("./Routers/storeRouter");
 const ticketrouter = require("./Routers/ticketRouter");
 const approvalrouter = require("./Routers/approvalRouter");
+const reorderrouter = require("./Routers/reorderRouter");
 const reportrouter = require("./Routers/reportRouter");
 const localStorageRouter = require("./localStorageRouter");
 
@@ -142,6 +143,7 @@ if (useLocalStorage) {
   app.use('/api/store', storerouter);
   app.use('/api/ticket', ticketrouter);
   app.use('/api/approval', approvalrouter);
+  app.use('/api/reorder', reorderrouter);
   app.use('/api/reports', reportrouter);
   app.use('/api/supplier', supplierrouter);
   app.use("/api/stocktransaction", stocktransactionrouter);

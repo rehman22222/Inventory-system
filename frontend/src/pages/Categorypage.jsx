@@ -185,54 +185,51 @@ function Categorypage() {
 
 
       {isFormVisible && (
-          <div className="absolute top-10 right-0 z-50 h-svh w-80 bg-base-100 p-6 border-2 border-base-300 rounded-lg shadow-xl transition-transform transform">
-            <div className="text-right">
+          <div className="fixed right-0 top-0 z-50 flex h-svh w-full max-w-lg flex-col overflow-hidden border-l-2 border-base-300 bg-base-100 shadow-xl">
+            <div className="flex items-center justify-between border-b border-base-300 px-5 py-3">
+              <h1 className="text-lg font-semibold">
+                {selectedCategory ? t("categories.editCategory") : t("categories.addCategoryTitle")}
+              </h1>
               <MdKeyboardDoubleArrowLeft
                 onClick={closeForm}
                 className="cursor-pointer text-2xl"
               />
             </div>
 
-            <h1 className="text-xl font-semibold mb-4">
-              {selectedCategory ? t("categories.editCategory") : t("categories.addCategoryTitle")}
-            </h1>
+            <form onSubmit={submitCategory} className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
+                <div>
+                  <label className="text-sm">{t("common.name")} *</label>
+                  <input
+                    value={name}
+                    placeholder={t("categories.namePlaceholder")}
+                    onChange={(e) => setname(e.target.value)}
+                    type="text"
+                    required
+                    className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                  />
+                </div>
 
-            <form onSubmit={ submitCategory}>
-              <div className="mb-4">
-                <label>{t("common.name")} *</label>
-                <input
-                  value={name}
-                  placeholder={t("categories.namePlaceholder")}
-                  onChange={(e) => setname(e.target.value)}
-                  type="text"
-                  required
-                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
-                />
+                <div>
+                  <label className="text-sm">{t("common.description")}</label>
+                  <input
+                    value={description}
+                    placeholder={t("categories.descPlaceholder")}
+                    onChange={(e) => setdescription(e.target.value)}
+                    type="text"
+                    className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                  />
+                </div>
               </div>
 
-              
-
-              <div className="mb-4">
-                <label>{t("common.description")}</label>
-                <input
-                  value={description}
-                  placeholder={t("categories.descPlaceholder")}
-                  onChange={(e) => setdescription(e.target.value)}
-                  type="text"
-                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
-                />
+              <div className="border-t border-base-300 px-5 py-3">
+                <button
+                  type="submit"
+                  className="h-11 w-full rounded-lg bg-blue-800 text-white transition hover:bg-blue-700"
+                >
+                  {selectedCategory ? t("categories.updateCategory") : t("categories.addCategoryTitle")}
+                </button>
               </div>
-
-              
-
-             
-
-              <button
-                type="submit"
-                className="bg-blue-800 text-white w-full h-12 rounded-lg hover:bg-blue-700 mt-4"
-              >
-                {selectedCategory ? t("categories.updateCategory") : t("categories.addCategoryTitle")}
-              </button>
             </form>
           </div>
         )}

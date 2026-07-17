@@ -24,6 +24,7 @@ import SuperAdminTickets from "./pages/SuperAdminTickets";
 import MyRequestspage from "./pages/MyRequestspage";
 import ApprovalsPage from "./pages/ApprovalsPage";
 import DayClosingsPage from "./pages/DayClosingsPage";
+import Reorderspage from "./pages/Reorderspage";
 import SuperAdminUsers from "./pages/SuperAdminUsers";
 import StorePage from "./pages/StorePage";
 import GhostModePage from "./pages/GhostModePage";
@@ -56,6 +57,7 @@ function App() {
           <Route path="order" element={protect(<Orderpage />, ["admin"])} />
           <Route path="stock-transaction" element={protect(<StockTransaction />, ["admin"])} />
           <Route path="vouchers" element={protect(<Voucherpage />, ["admin"])} />
+          <Route path="reorders" element={protect(<Reorderspage />, ["admin"])} />
           <Route path="day-closings" element={protect(<DayClosingsPage />, ["admin"])} />
           <Route path="support" element={protect(<Supportpage />, ["admin"])} />
           <Route path="notifications" element={protect(<Notificationpage />, ["admin"])} />
@@ -87,6 +89,7 @@ function App() {
           <Route path="ghost" element={protect(<GhostModePage />, ["superadmin"])} />
           <Route path="store" element={protect(<StorePage />, ["superadmin"])} />
           <Route path="approvals" element={protect(<ApprovalsPage />, ["superadmin"])} />
+          <Route path="reorders" element={protect(<Reorderspage />, ["superadmin"])} />
           <Route path="day-closings" element={protect(<DayClosingsPage />, ["superadmin"])} />
           <Route path="users" element={protect(<SuperAdminUsers />, ["superadmin"])} />
           <Route path="tickets" element={protect(<SuperAdminTickets />, ["superadmin"])} />

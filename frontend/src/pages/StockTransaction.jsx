@@ -122,85 +122,83 @@ const[query,setquery]=useState("");
 
 
         {isFormVisible && (
-          <div className="absolute top-10 right-0 z-50 h-svh w-80 bg-base-100 p-6 border-2 border-base-300 rounded-lg shadow-xl transition-transform transform">
-            <div className="text-right">
+          <div className="fixed right-0 top-0 z-50 flex h-svh w-full max-w-xl flex-col overflow-hidden border-l-2 border-base-300 bg-base-100 shadow-xl">
+            <div className="flex items-center justify-between border-b border-base-300 px-5 py-3">
+              <h1 className="text-lg font-semibold">{t("stock.addProductTitle")}</h1>
               <MdKeyboardDoubleArrowLeft
                 onClick={() => setIsFormVisible(false)}
                 className="cursor-pointer text-2xl"
               />
             </div>
 
-            <h1 className="text-xl font-semibold mb-4">
-            {t("stock.addProductTitle")}
-            </h1>
+            <form onSubmit={submitstocktranscation} className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  <div className="col-span-2">
+                    <label className="text-sm">{t("stock.product")}</label>
+                    <select
+                      value={product}
+                      onChange={(e) => setproduct(e.target.value)}
+                      className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                    >
+                      <option value="">{t("stock.selectProduct")}</option>
+                      { getallproduct?.map((product) => (
+                        <option key={product._id} value={product._id}>
+                          {product.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-            <form onSubmit={submitstocktranscation}>
+                  <div>
+                    <label className="text-sm">{t("stock.type")}</label>
+                    <select
+                      value={type}
+                      className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                      onChange={(e) => settype(e.target.value)}
+                    >
+                      <option value={"Stock-in"}>{t("stock.stockIn")}</option>
+                      <option value={"Stock-out"}>{t("stock.stockOut")}</option>
+                    </select>
+                  </div>
 
+                  <div>
+                    <label className="text-sm">{t("common.quantity")}</label>
+                    <input
+                      type="number"
+                      placeholder={t("stock.quantityPlaceholder")}
+                      value={quantity}
+                      onChange={(e) => setquantity(e.target.value)}
+                      className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                    />
+                  </div>
 
-              <div className="mb-4">
-                <label>{t("stock.product")}</label>
-                <select
-                  value={product}
-                  onChange={(e) => setproduct(e.target.value)}
-                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
+                  <div className="col-span-2">
+                    <label className="text-sm">{t("stock.supplier")}</label>
+                    <select
+                      value={supplier}
+                      onChange={(e) => setsupplier(e.target.value)}
+                      className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                    >
+                      <option value="">{t("stock.selectSupplier")}</option>
+                      { getallSupplier?.map((supplier) => (
+                        <option key={supplier._id} value={supplier._id}>
+                          {supplier.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-base-300 px-5 py-3">
+                <button
+                  type="submit"
+                  className="h-11 w-full rounded-lg bg-blue-800 text-white transition hover:bg-blue-700"
                 >
-                  <option value="">{t("stock.selectProduct")}</option>
-                  { getallproduct?.map((product) => (
-                    <option key={product._id} value={product._id}>
-                      {product.name}
-                    </option>
-                  ))}
-                </select>
+                  { iscreatedStocks ? t("stock.addingStock") : t("stock.addStock")}
+                </button>
               </div>
-
-
-
-              <div className="mb-4">
-                <label>{t("stock.type")}</label>
-                <select value={type}   className="w-full h-10 px-2 border-2 rounded-lg mt-2"  onChange={(e) => settype(e.target.value)}>
-                  <option value={"Stock-in"}>{t("stock.stockIn")}</option>
-                  <option value={"Stock-out"}>{t("stock.stockOut")}</option>
-                </select>
-              </div>
-
-
-              <div className="mb-4">
-                <label>{t("common.quantity")}</label>
-                <input
-                  type="number"
-                  placeholder={t("stock.quantityPlaceholder")}
-                  value={quantity}
-                  onChange={(e) => setquantity(e.target.value)}
-                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
-                />
-              </div>
-
-
-
-              <div className="mb-4">
-                <label>{t("stock.supplier")}</label>
-                <select
-                  value={supplier}
-                  onChange={(e) => setsupplier(e.target.value)}
-                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
-                >
-                  <option value="">{t("stock.selectSupplier")}</option>
-                  { getallSupplier?.map((supplier) => (
-                    <option key={supplier._id} value={supplier._id}>
-                      {supplier.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-
-
-              <button
-                type="submit"
-                className="bg-blue-800 text-white w-full h-12 rounded-lg hover:bg-blue-700 mt-4"
-              >
-                { iscreatedStocks ? t("stock.addingStock") : t("stock.addStock")}
-              </button>
             </form>
           </div>
         )}

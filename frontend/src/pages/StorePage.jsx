@@ -39,6 +39,7 @@ function StorePage() {
     phone: "",
     currency: "EUR",
     timezone: "UTC",
+    notificationsEmail: "",
     footer: "",
     qrTemplate: "",
   });
@@ -56,6 +57,7 @@ function StorePage() {
       phone: store.phone || "",
       currency: store.currency || "EUR",
       timezone: store.timezone || "UTC",
+      notificationsEmail: store.notificationsEmail || "",
       footer: store.footer || "",
       qrTemplate: store.qrTemplate || "{ref}",
     });
@@ -79,6 +81,7 @@ function StorePage() {
         phone: form.phone,
         currency: form.currency,
         timezone: form.timezone,
+        notificationsEmail: form.notificationsEmail,
         footer: form.footer,
         qrTemplate: form.qrTemplate,
       })
@@ -174,6 +177,20 @@ function StorePage() {
               ))}
             </select>
             <p className="mt-1 text-xs text-base-content/50">{t("store.timezoneHint")}</p>
+          </div>
+
+          {/* Where automatic reminders (e.g. low-stock reorder approvals) are
+              sent. Blank falls back to the owner's login email. */}
+          <div>
+            <label className="mb-1 block text-sm font-medium">{t("store.notificationsEmail")}</label>
+            <input
+              type="email"
+              value={form.notificationsEmail}
+              onChange={set("notificationsEmail")}
+              placeholder="owner@myshop.com"
+              className="h-11 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3"
+            />
+            <p className="mt-1 text-xs text-base-content/50">{t("store.notificationsEmailHint")}</p>
           </div>
 
           <div>

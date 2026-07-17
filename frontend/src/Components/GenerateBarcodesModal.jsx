@@ -15,6 +15,7 @@ function GenerateBarcodesModal({ onClose }) {
 
   const [count, setCount] = useState("50");
   const [tiers, setTiers] = useState("5, 10, 15");
+  const [quantity, setQuantity] = useState("100");
   const [busy, setBusy] = useState(false);
   const [generated, setGenerated] = useState([]);
 
@@ -22,6 +23,7 @@ function GenerateBarcodesModal({ onClose }) {
     event.preventDefault();
 
     const parsedCount = Math.floor(Number(count));
+    const parsedQuantity = Math.floor(Number(quantity));
     const parsedTiers = tiers
       .split(/[,\s]+/)
       .map((value) => Number(value))
@@ -31,6 +33,10 @@ function GenerateBarcodesModal({ onClose }) {
       toast.error(t("generate.invalidCount"));
       return;
     }
+    if (!Number.isFinite(parsedQuantity) || parsedQuantity < 0) {
+      toast.error(t("generate.invalidQuantity"));
+      return;
+    }
     if (parsedTiers.length === 0) {
       toast.error(t("generate.invalidTiers"));
       return;
@@ -38,7 +44,7 @@ function GenerateBarcodesModal({ onClose }) {
 
     setBusy(true);
     const result = await dispatch(
-      generateRandomBarcodes({ count: parsedCount, tiers: parsedTiers })
+      generateRandomBarcodes({ count: parsedCount, tiers: parsedTiers, quantity: parsedQuantity })
     );
     setBusy(false);
 
@@ -90,18 +96,35 @@ function GenerateBarcodesModal({ onClose }) {
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           {generated.length === 0 ? (
             <form onSubmit={submit} className="no-print space-y-4">
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase text-base-content/60">
-                  {t("generate.count")}
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="500"
-                  value={count}
-                  onChange={(e) => setCount(e.target.value)}
-                  className="h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase text-base-content/60">
+                    {t("generate.count")}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="500"
+                    value={count}
+                    onChange={(e) => setCount(e.target.value)}
+                    className="h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase text-base-content/60">
+                    {t("generate.quantity")}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="1000000"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    className="h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3"
+                  />
+                  <p className="mt-1 text-xs text-base-content/50">{t("generate.quantityHint")}</p>
+                </div>
               </div>
 
               <div>

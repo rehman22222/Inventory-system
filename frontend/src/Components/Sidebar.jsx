@@ -1,7 +1,7 @@
 import React from "react";
 import { AiOutlineProduct } from "react-icons/ai";
 import { RiStockLine } from "react-icons/ri";
-import { FiCheckSquare, FiCreditCard, FiEye, FiInbox, FiLifeBuoy, FiLock, FiLogOut, FiShoppingBag, FiShoppingCart, FiTag } from "react-icons/fi";
+import { FiCheckSquare, FiCreditCard, FiEye, FiInbox, FiLifeBuoy, FiLock, FiLogOut, FiRefreshCw, FiShoppingBag, FiShoppingCart, FiTag } from "react-icons/fi";
 import { MdOutlineCategory, MdPointOfSale } from "react-icons/md";
 import { TfiSupport } from "react-icons/tfi";
 import { IoNotificationsOutline } from "react-icons/io5";
@@ -38,6 +38,7 @@ const menuByRole = {
     { label: "sidebar.sales", path: "sales", icon: MdPointOfSale },
     { label: "sidebar.dayClosings", path: "day-closings", icon: FiLock },
     { label: "sidebar.orders", path: "order", icon: FiShoppingCart },
+    { label: "sidebar.reorders", path: "reorders", icon: FiRefreshCw },
     { label: "sidebar.vouchers", path: "vouchers", icon: FiTag },
     { label: "sidebar.stock", path: "stock-transaction", icon: RiStockLine },
     { label: "sidebar.notifications", path: "notifications", icon: IoNotificationsOutline },
@@ -56,6 +57,7 @@ const menuByRole = {
     { label: "sidebar.sales", path: "sales", icon: MdPointOfSale },
     { label: "sidebar.dayClosings", path: "day-closings", icon: FiLock },
     { label: "sidebar.orders", path: "order", icon: FiShoppingCart },
+    { label: "sidebar.reorders", path: "reorders", icon: FiRefreshCw },
     { label: "sidebar.vouchers", path: "vouchers", icon: FiTag },
     { label: "sidebar.stock", path: "stock-transaction", icon: RiStockLine },
     { label: "sidebar.notifications", path: "notifications", icon: IoNotificationsOutline },

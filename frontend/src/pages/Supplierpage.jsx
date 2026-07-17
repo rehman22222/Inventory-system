@@ -11,6 +11,7 @@ import {
   SearchSupplier,
   EditSupplier,
 } from "../features/SupplierSlice";
+import { gettingallproducts } from "../features/productSlice";
 import toast from "react-hot-toast";
 import { RaiseRequest } from "../features/approvalSlice";
 import FormattedTime from "../lib/FormattedTime ";
@@ -55,6 +56,9 @@ function Supplierpage() {
 
   useEffect(() => {
     dispatch(gettingallSupplier());
+    // The product picker in the form needs the catalogue loaded, otherwise it
+    // shows "No products match" for everything. This page never fetched it.
+    dispatch(gettingallproducts());
   }, [dispatch, deleteSupplier, editedsupplier]);
 
   useEffect(() => {
@@ -215,147 +219,156 @@ function Supplierpage() {
         </div>
 
         {isFormVisible && (
-          <div className="absolute top-16 right-0 z-50 h-svh w-80 bg-base-100 p-6 border-2 border-base-300 rounded-lg shadow-xl transition-transform transform">
-            <div className="text-right">
+          <div className="fixed right-0 top-0 z-50 flex h-svh w-full max-w-2xl flex-col overflow-hidden border-l-2 border-base-300 bg-base-100 shadow-xl">
+            <div className="flex items-center justify-between border-b border-base-300 px-5 py-3">
+              <h1 className="text-lg font-semibold">
+                {selectedSupplier ? t("suppliers.editSupplier") : t("suppliers.addSupplier")}
+              </h1>
               <MdKeyboardDoubleArrowLeft
                 onClick={() => setIsFormVisible(false)}
                 className="cursor-pointer text-2xl"
               />
             </div>
 
-            <h1 className="text-xl font-semibold mb-4">
-              {selectedSupplier ? t("suppliers.editSupplier") : t("suppliers.addSupplier")}
-            </h1>
+            <form
+              onSubmit={selectedSupplier ? handleEditSubmit : submitSupplier}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+                {/* Say up front that this goes to the owner — finding out only after
+                    pressing the button is a nasty surprise. */}
+                {!selectedSupplier && !canCreateDirectly && (
+                  <p className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                    {t("suppliers.needsApproval")}
+                  </p>
+                )}
 
-            {/* Say up front that this goes to the owner — finding out only after
-                pressing the button is a nasty surprise. */}
-            {!selectedSupplier && !canCreateDirectly && (
-              <p className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
-                {t("suppliers.needsApproval")}
-              </p>
-            )}
+                {/* Four short fields side by side so nothing runs off the screen. */}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  <div>
+                    <label className="text-sm">{t("common.name")}</label>
+                    <input
+                      value={name}
+                      placeholder={t("suppliers.namePlaceholder")}
+                      onChange={(e) => setName(e.target.value)}
+                      type="text"
+                      className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                    />
+                  </div>
 
-            <form onSubmit={selectedSupplier ? handleEditSubmit : submitSupplier}>
-              <div className="mb-4">
-                <label>{t("common.name")}</label>
-                <input
-                  value={name}
-                  placeholder={t("suppliers.namePlaceholder")}
-                  onChange={(e) => setName(e.target.value)}
-                  type="text"
-                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
-                />
-              </div>
+                  <div>
+                    <label className="text-sm">{t("common.phone")}</label>
+                    <input
+                      value={Phone}
+                      placeholder={t("suppliers.phonePlaceholder")}
+                      onChange={(e) => setPhone(e.target.value)}
+                      type="text"
+                      className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                    />
+                  </div>
 
-              <div className="mb-4">
-                <label>{t("common.phone")}</label>
-                <input
-                  value={Phone}
-                  placeholder={t("suppliers.phonePlaceholder")}
-                  onChange={(e) => setPhone(e.target.value)}
-                  type="text"
-                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
-                />
-              </div>
+                  <div>
+                    <label className="text-sm">{t("common.email")}</label>
+                    <input
+                      value={Email}
+                      placeholder={t("suppliers.emailPlaceholder")}
+                      onChange={(e) => setEmail(e.target.value)}
+                      type="email"
+                      className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                    />
+                  </div>
 
-              <div className="mb-4">
-                <label>{t("common.email")}</label>
-                <input
-                  value={Email}
-                  placeholder={t("suppliers.emailPlaceholder")}
-                  onChange={(e) => setEmail(e.target.value)}
-                  type="email"
-                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
-                />
-              </div>
-
-              <div className="mb-4">
-                <label>{t("common.address")}</label>
-                <input
-                  type="text"
-                  placeholder={t("suppliers.addressPlaceholder")}
-                  value={Address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
-                />
-              </div>
-
-              {/* A supplier supplies many products — tick as many as apply.
-                  Searchable, because the catalogue runs to thousands. */}
-              <div className="mb-4">
-                <label>
-                  {t("suppliers.products")}
-                  {products.length > 0 && (
-                    <span className="ml-2 rounded bg-blue-800 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                      {products.length}
-                    </span>
-                  )}
-                </label>
-
-                <input
-                  type="text"
-                  value={productQuery}
-                  onChange={(e) => setProductQuery(e.target.value)}
-                  placeholder={t("suppliers.searchProducts")}
-                  className="mt-2 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
-                />
-
-                <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border-2 border-base-300">
-                  {productMatches.length === 0 ? (
-                    <p className="py-6 text-center text-sm text-base-content/50">
-                      {t("suppliers.noProducts")}
-                    </p>
-                  ) : (
-                    productMatches.map((product) => {
-                      const checked = products.includes(product._id);
-                      // Already supplied by someone else — a product has one
-                      // supplier, so ticking it here takes it off them.
-                      const takenBy =
-                        product.supplier &&
-                        String(product.supplier?._id || product.supplier) !==
-                          String(selectedSupplier?._id) &&
-                        !checked;
-
-                      return (
-                        <label
-                          key={product._id}
-                          className={`flex cursor-pointer items-center gap-2 border-b border-base-200 px-3 py-2 text-sm last:border-b-0 hover:bg-base-200 ${
-                            checked ? "bg-blue-50" : ""
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleProduct(product._id)}
-                            className="h-4 w-4 accent-blue-800"
-                          />
-                          <span className="min-w-0 flex-1 truncate">{product.name}</span>
-                          {takenBy && (
-                            <span
-                              title={t("suppliers.alreadySupplied")}
-                              className="shrink-0 rounded bg-amber-100 px-1.5 text-[10px] font-semibold text-amber-700"
-                            >
-                              {t("suppliers.taken")}
-                            </span>
-                          )}
-                        </label>
-                      );
-                    })
-                  )}
+                  <div>
+                    <label className="text-sm">{t("common.address")}</label>
+                    <input
+                      type="text"
+                      placeholder={t("suppliers.addressPlaceholder")}
+                      value={Address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                    />
+                  </div>
                 </div>
-                <p className="mt-1 text-xs text-base-content/50">{t("suppliers.productsHint")}</p>
+
+                {/* A supplier supplies many products — tick as many as apply.
+                    Searchable, because the catalogue runs to thousands. */}
+                <div className="mt-3">
+                  <label className="text-sm">
+                    {t("suppliers.products")}
+                    {products.length > 0 && (
+                      <span className="ml-2 rounded bg-blue-800 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                        {products.length}
+                      </span>
+                    )}
+                  </label>
+
+                  <input
+                    type="text"
+                    value={productQuery}
+                    onChange={(e) => setProductQuery(e.target.value)}
+                    placeholder={t("suppliers.searchProducts")}
+                    className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                  />
+
+                  <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border-2 border-base-300">
+                    {productMatches.length === 0 ? (
+                      <p className="py-6 text-center text-sm text-base-content/50">
+                        {t("suppliers.noProducts")}
+                      </p>
+                    ) : (
+                      productMatches.map((product) => {
+                        const checked = products.includes(product._id);
+                        // Already supplied by someone else — a product has one
+                        // supplier, so ticking it here takes it off them.
+                        const takenBy =
+                          product.supplier &&
+                          String(product.supplier?._id || product.supplier) !==
+                            String(selectedSupplier?._id) &&
+                          !checked;
+
+                        return (
+                          <label
+                            key={product._id}
+                            className={`flex cursor-pointer items-center gap-2 border-b border-base-200 px-3 py-2 text-sm last:border-b-0 hover:bg-base-200 ${
+                              checked ? "bg-blue-50" : ""
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleProduct(product._id)}
+                              className="h-4 w-4 accent-blue-800"
+                            />
+                            <span className="min-w-0 flex-1 truncate">{product.name}</span>
+                            {takenBy && (
+                              <span
+                                title={t("suppliers.alreadySupplied")}
+                                className="shrink-0 rounded bg-amber-100 px-1.5 text-[10px] font-semibold text-amber-700"
+                              >
+                                {t("suppliers.taken")}
+                              </span>
+                            )}
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-base-content/50">{t("suppliers.productsHint")}</p>
+                </div>
               </div>
 
-              <button
-                type="submit"
-                className="bg-blue-800 text-white w-full h-12 rounded-lg hover:bg-blue-700 mt-4"
-              >
-                {selectedSupplier
-                  ? t("suppliers.updateSupplier")
-                  : canCreateDirectly
-                  ? t("suppliers.addSupplier")
-                  : t("suppliers.sendForApproval")}
-              </button>
+              <div className="border-t border-base-300 px-5 py-3">
+                <button
+                  type="submit"
+                  className="h-11 w-full rounded-lg bg-blue-800 text-white transition hover:bg-blue-700"
+                >
+                  {selectedSupplier
+                    ? t("suppliers.updateSupplier")
+                    : canCreateDirectly
+                    ? t("suppliers.addSupplier")
+                    : t("suppliers.sendForApproval")}
+                </button>
+              </div>
             </form>
           </div>
         )}

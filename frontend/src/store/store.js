@@ -15,6 +15,7 @@ import dayClosingReducer from "../features/dayClosingSlice"
 import storeSettingsReducer from "../features/storeSlice"
 import ticketReducer from "../features/ticketSlice"
 import approvalReducer from "../features/approvalSlice"
+import reorderReducer from "../features/reorderSlice"
 
 const store=configureStore({
     reducer:{
@@ -32,7 +33,8 @@ const store=configureStore({
         dayClosing:dayClosingReducer,
         store:storeSettingsReducer,
         ticket:ticketReducer,
-        approval:approvalReducer
+        approval:approvalReducer,
+        reorder:reorderReducer
     }
 })
 export default store;

@@ -13,6 +13,7 @@ const { nextSequence } = require("../models/Countermodel");
 const { runInTransaction } = require("../libs/txn");
 const { applicableDeals } = require("../libs/deals");
 const { startOfDay, endOfDay } = require("../libs/time");
+const { raiseReorderForProduct } = require("./reorderController");
 const logActivity = require("../libs/logger");
 
 const DEFAULT_LOW_STOCK = 10;
@@ -57,6 +58,10 @@ const raiseLowStockAlerts = async (products, reference) => {
         }),
       ),
     );
+    // In addition to the in-app alert, raise a reorder for each low item and
+    // email the shop to approve it. Also best-effort — a mail hiccup must never
+    // fail the sale.
+    await Promise.all(low.map((product) => raiseReorderForProduct(product._id)));
   } catch (error) {
     console.error("Low stock notification failed:", error.message);
   }

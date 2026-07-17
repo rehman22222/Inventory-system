@@ -38,6 +38,10 @@ const StoreSchema = new mongoose.Schema(
     // What the receipt QR encodes. {ref} is swapped for the receipt number.
     qrTemplate: { type: String, trim: true, default: "{ref}" },
 
+    // Where automatic reminders go (e.g. "low stock — approve a reorder"). If
+    // blank, the system falls back to the owner's (superadmin's) login email.
+    notificationsEmail: { type: String, trim: true, default: "" },
+
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }

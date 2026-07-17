@@ -18,7 +18,7 @@ try {
 const { buildCsv, money } = require("../libs/csv");
 const { buildWorkbookBuffer } = require("../libs/excel");
 const { buildPdfBuffer } = require("../libs/pdf");
-const { buildShadowTaxReport } = require("../libs/shadowTaxReport");
+const { buildShadowNetReport, currentNetTotal } = require("../libs/shadowNetReport");
 const { startOfDay, endOfDay, formatInZone } = require("../libs/time");
 
 // Every timestamp on a report is rendered in the shop's timezone, and every
@@ -328,19 +328,47 @@ async function buildDayClosing(req) {
 }
 
 // ── Registry: single source of truth for labels + role access ───────────────
-async function buildGhostTax(req) {
+async function buildGhostNet(req) {
   const filter = ghostReceiptFilter(req.query, zoneOf(req));
   const receipts = await Receipt.find(filter)
     .select("receiptNo createdAt cashierName status paymentMethod total refunds.amount items.quantity items.name")
     .sort({ createdAt: -1 })
     .maxTimeMS(120000)
     .lean();
-  return buildShadowTaxReport(receipts, req.query);
+  return buildShadowNetReport(receipts, req.query);
 }
 
+module.exports.previewGhostNet = async (req, res) => {
+  try {
+    const shop = await Store.findOne({ key: "shop" }).select("timezone").lean();
+    req.reportTz = shop?.timezone || "UTC";
+    const filter = ghostReceiptFilter(req.query, zoneOf(req));
+    const receipts = await Receipt.find(filter)
+      .select("total status refunds.amount")
+      .maxTimeMS(120000)
+      .lean();
+
+    return res.status(200).json({
+      period: periodLabel(req.query.from, req.query.to),
+      receipts: receipts.length,
+      existingNet: currentNetTotal(receipts),
+    });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    return res.status(status).json({
+      message: status === 500 ? "Could not calculate existing net sales" : error.message,
+      error: error.message,
+    });
+  }
+};
+
 const REPORTS = {
-  sales: { label: "Sales", roles: ["admin", "manager", "staff"], build: buildSales },
-  inventory: { label: "Inventory & Valuation", roles: ["admin", "manager"], build: buildInventory },
+  sales: { label: "Sales", roles: ["superadmin", "admin", "manager", "staff"], build: buildSales },
+  inventory: {
+    label: "Inventory & Valuation",
+    roles: ["superadmin", "admin", "manager"],
+    build: buildInventory,
+  },
   // Downloading the audit trail is the same thing as reading it, so it sits
   // behind the same grant — otherwise the report would be a way straight past
   // the gate on /activitylogs/getAllLogs.
@@ -357,10 +385,10 @@ const REPORTS = {
     roles: ["admin", "superadmin"],
     build: buildDayClosing,
   },
-  "ghost-tax": {
-    label: "Ghost Tax Shadow",
+  "ghost-net": {
+    label: "Adjusted Net Sales",
     roles: ["superadmin"],
-    build: buildGhostTax,
+    build: buildGhostNet,
   },
 };
 

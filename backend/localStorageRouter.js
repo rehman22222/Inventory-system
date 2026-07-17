@@ -6,7 +6,7 @@ const { applicableDeals } = require("./libs/deals");
 const { buildCsv, formatDate } = require("./libs/csv");
 const { buildWorkbookBuffer } = require("./libs/excel");
 const { buildPdfBuffer } = require("./libs/pdf");
-const { buildShadowTaxReport } = require("./libs/shadowTaxReport");
+const { buildShadowNetReport, currentNetTotal } = require("./libs/shadowNetReport");
 
 const dataDir = path.join(__dirname, "data");
 const dataFile = path.join(dataDir, "local-store.json");
@@ -541,6 +541,12 @@ function localStorageRouter(app) {
       return res.status(400).json({ message: "Count must be between 1 and 500" });
     }
 
+    const hasQuantity = req.body?.quantity !== undefined && req.body?.quantity !== "";
+    const stockQuantity = hasQuantity ? Math.floor(Number(req.body.quantity)) : 100000;
+    if (!Number.isFinite(stockQuantity) || stockQuantity < 0 || stockQuantity > 1000000) {
+      return res.status(400).json({ message: "Quantity must be between 0 and 1,000,000" });
+    }
+
     let category = store.categories.find((c) => c.name === "Random");
     if (!category) {
       category = { _id: id(), name: "Random", description: "System category", system: true, createdAt: now(), updatedAt: now() };
@@ -565,7 +571,7 @@ function localStorageRouter(app) {
         Desciption: "Generated price-point item",
         Category: category._id,
         Price: price,
-        quantity: 100000,
+        quantity: stockQuantity,
         lowStockThreshold: 0,
         barcode: ean(store.randomSeq),
         createdAt: now(),
@@ -1660,7 +1666,8 @@ function localStorageRouter(app) {
       return res.status(403).json({ message: "Access denied. Super admin only." });
     }
     const shop = store.shop || { ...DEFAULT_STORE };
-    const { name, addressLines, phone, currency, timezone, footer, qrTemplate } = req.body;
+    const { name, addressLines, phone, currency, timezone, notificationsEmail, footer, qrTemplate } =
+      req.body;
 
     if (name !== undefined) {
       if (!String(name).trim()) return res.status(400).json({ message: "Store name is required" });
@@ -1690,6 +1697,13 @@ function localStorageRouter(app) {
       }
       shop.currency = currency;
     }
+    if (notificationsEmail !== undefined) {
+      const clean = String(notificationsEmail).trim();
+      if (clean && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
+        return res.status(400).json({ message: "Notifications email is not a valid email address" });
+      }
+      shop.notificationsEmail = clean;
+    }
     if (footer !== undefined) shop.footer = String(footer).trim();
     if (qrTemplate !== undefined) shop.qrTemplate = String(qrTemplate).trim() || "{ref}";
 
@@ -1706,6 +1720,11 @@ function localStorageRouter(app) {
     writeStore(store);
     res.json({ message: "Store details updated", store: shop });
   });
+
+  // Reorders are a Mongo-mode feature (auto low-stock + supplier email). In the
+  // offline demo there's no mail, so just return an empty queue so the page
+  // loads cleanly instead of 404-ing.
+  router.get("/reorder", (req, res) => res.json({ reorders: [], pending: 0 }));
 
   const ghostReportReceipts = (store, query) => {
     let list = [...(store.receipts || [])];
@@ -1728,7 +1747,35 @@ function localStorageRouter(app) {
     return list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   };
 
-  router.get("/reports/ghost-tax", async (req, res) => {
+  router.get("/reports/ghost-net/preview", (req, res) => {
+    try {
+      const store = readStore();
+      const user = currentUser(store, req);
+      if (user && user.role !== "superadmin") {
+        return res.status(403).json({ message: "Access denied. Super admin only." });
+      }
+
+      const receipts = ghostReportReceipts(store, req.query);
+      return res.json({
+        period: req.query.from && req.query.to
+          ? `Period: ${req.query.from} to ${req.query.to}`
+          : req.query.from
+            ? `Period: from ${req.query.from}`
+            : req.query.to
+              ? `Period: up to ${req.query.to}`
+              : "Period: All time",
+        receipts: receipts.length,
+        existingNet: currentNetTotal(receipts),
+      });
+    } catch (error) {
+      return res.status(500).json({
+        message: "Could not calculate existing net sales",
+        error: error.message,
+      });
+    }
+  });
+
+  router.get("/reports/ghost-net", async (req, res) => {
     try {
       const store = readStore();
       const user = currentUser(store, req);
@@ -1745,7 +1792,7 @@ function localStorageRouter(app) {
       }
 
       const shop = store.shop || { ...DEFAULT_STORE };
-      const report = buildShadowTaxReport(ghostReportReceipts(store, req.query), req.query);
+      const report = buildShadowNetReport(ghostReportReceipts(store, req.query), req.query);
       const buffer = await format.build({
         title: report.title,
         subtitle: report.subtitle,
@@ -1761,7 +1808,7 @@ function localStorageRouter(app) {
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "");
-      const filename = `${slug}-ghost-tax-${formatDate(new Date())}.${format.extension}`;
+      const filename = `${slug}-ghost-net-${formatDate(new Date())}.${format.extension}`;
       res.setHeader("Content-Type", format.contentType);
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
       return res.status(200).send(buffer);

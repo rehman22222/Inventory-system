@@ -270,27 +270,30 @@ function Orderpage() {
         </div>
 
         {isFormVisible && (
-          <div className="absolute top-10 right-0 z-50 h-svh w-80 bg-base-100 p-6 border-2 border-base-300 rounded-lg shadow-xl transition-transform transform">
-            <div className="text-right">
+          <div className="fixed right-0 top-0 z-50 flex h-svh w-full max-w-2xl flex-col overflow-hidden border-l-2 border-base-300 bg-base-100 shadow-xl">
+            <div className="flex items-center justify-between border-b border-base-300 px-5 py-3">
+              <h1 className="text-lg font-semibold">
+                {selectedOrder ? t("orders.editOrder") : t("orders.addOrder")}
+              </h1>
               <MdKeyboardDoubleArrowLeft
                 onClick={() => setIsFormVisible(false)}
                 className="cursor-pointer text-2xl"
               />
             </div>
 
-            <h1 className="text-xl font-semibold mb-4">
-              {selectedOrder ? t("orders.editOrder") : t("orders.addOrder")}
-            </h1>
-
-            <form onSubmit={selectedOrder ? handleEditSubmit : submitOrder}>
+            <form
+              onSubmit={selectedOrder ? handleEditSubmit : submitOrder}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
               <div className="mb-4">
-                <label>{t("common.description")}</label>
+                <label className="text-sm">{t("common.description")}</label>
                 <input
                   value={Description}
                   placeholder={t("orders.descPlaceholder")}
                   onChange={(e) => setDescription(e.target.value)}
                   type="text"
-                  className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
+                  className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
                 />
               </div>
 
@@ -386,10 +389,10 @@ function Orderpage() {
                 </div>
               )}
 
-              <div className="mb-4">
-                <label className="block">{t("orders.status")}</label>
+              <div>
+                <label className="text-sm">{t("orders.status")}</label>
                 <select
-                  className="mt-3 w-72 h-10 mb-6"
+                  className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
                   value={status}
                   onChange={(e) => setstatus(e.target.value)}
                 >
@@ -399,13 +402,16 @@ function Orderpage() {
                   <option value="delivered">{t("common.statuses.delivered")}</option>
                 </select>
               </div>
+              </div>
 
-              <button
-                type="submit"
-                className="bg-blue-800 text-white w-full h-12 rounded-lg hover:bg-blue-700 mt-4"
-              >
-                {selectedOrder ? t("orders.updateOrder") : t("orders.addOrderBtn")}
-              </button>
+              <div className="border-t border-base-300 px-5 py-3">
+                <button
+                  type="submit"
+                  className="h-11 w-full rounded-lg bg-blue-800 text-white transition hover:bg-blue-700"
+                >
+                  {selectedOrder ? t("orders.updateOrder") : t("orders.addOrderBtn")}
+                </button>
+              </div>
             </form>
           </div>
         )}

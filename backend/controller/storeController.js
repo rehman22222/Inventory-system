@@ -29,7 +29,8 @@ module.exports.getStore = async (req, res) => {
 // Only the owner renames the shop.
 module.exports.updateStore = async (req, res) => {
   try {
-    const { name, addressLines, phone, footer, qrTemplate, currency, timezone } = req.body;
+    const { name, addressLines, phone, footer, qrTemplate, currency, timezone, notificationsEmail } =
+      req.body;
 
     const store = await loadStore();
 
@@ -72,6 +73,13 @@ module.exports.updateStore = async (req, res) => {
     if (footer !== undefined) store.footer = String(footer).trim();
     if (qrTemplate !== undefined) {
       store.qrTemplate = String(qrTemplate).trim() || "{ref}";
+    }
+    if (notificationsEmail !== undefined) {
+      const clean = String(notificationsEmail).trim();
+      if (clean && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
+        return res.status(400).json({ message: "Notifications email is not a valid email address" });
+      }
+      store.notificationsEmail = clean;
     }
 
     store.updatedBy = req.user?._id;
