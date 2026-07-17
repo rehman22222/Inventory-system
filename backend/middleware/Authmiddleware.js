@@ -16,7 +16,9 @@ module.exports.authmiddleware = async (req, res, next) => {
     }
 
  
-    const decodedToken = jwt.verify(token, process.env.SecretKey);
+    // Accept either casing of the secret's env name — some hosts (Hostinger)
+    // force env variable names to UPPERCASE.
+    const decodedToken = jwt.verify(token, process.env.SecretKey || process.env.SECRETKEY);
 
     
 

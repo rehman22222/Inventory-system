@@ -3,15 +3,20 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 
+// Accept either casing of the secret's env name. Some hosts (e.g. Hostinger)
+// force env variable names to UPPERCASE, so `SECRETKEY` must work as well as the
+// original `SecretKey`.
+const jwtSecret = () => process.env.SecretKey || process.env.SECRETKEY;
+
 const generateToken = async (user, res) => {
   try {
-    if (!process.env.SecretKey) {
+    if (!jwtSecret()) {
       throw new Error("Secret key is not defined in the environment variables.");
     }
 
     const token = jwt.sign(
       { userId: user._id, role: user.role },
-      process.env.SecretKey,
+      jwtSecret(),
       { expiresIn: '7d' }
     );
 
