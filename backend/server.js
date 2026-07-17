@@ -161,10 +161,17 @@ app.use((err, req, res, next) => {
 
 // Full-stack single deployment: serve the built React app from the same server.
 // The API lives under /api; every other path falls through to index.html so
-// client-side routing works on refresh/deep links. If no build is present (API-
-// only hosting, or local dev where the SPA runs on its own port) this is skipped.
-const clientBuild = path.join(__dirname, "..", "frontend", "build");
-if (fs.existsSync(path.join(clientBuild, "index.html"))) {
+// client-side routing works on refresh/deep links. If no build is present
+// (API-only hosting) this is skipped.
+//
+// Look inside backend first (backend/client — where the deploy build lands so it
+// travels with the backend folder to the runtime), then the local-dev location.
+const clientBuild = [
+  path.join(__dirname, "client"),
+  path.join(__dirname, "..", "frontend", "build"),
+].find((dir) => fs.existsSync(path.join(dir, "index.html")));
+
+if (clientBuild) {
   app.use(express.static(clientBuild));
   app.get("*", (req, res, next) => {
     if (req.path.startsWith("/api")) return next();

@@ -23,9 +23,19 @@ if (!fs.existsSync(path.join(frontendDir, "package.json"))) {
   process.exit(0);
 }
 
+// Build the frontend INTO the backend (backend/client) rather than
+// frontend/build. Hostinger deploys only the "root directory" (backend) to the
+// runtime, so the built app has to live inside backend to travel with it — a
+// sibling frontend/build gets left behind and the server can't find it.
+const clientOut = path.resolve(__dirname, "..", "client");
+
 try {
-  console.log("[postinstall] installing + building frontend…");
-  execSync("npm install && npm run build", { cwd: frontendDir, stdio: "inherit" });
+  console.log(`[postinstall] installing + building frontend → ${clientOut} …`);
+  execSync("npm install && npm run build", {
+    cwd: frontendDir,
+    env: { ...process.env, BUILD_PATH: clientOut },
+    stdio: "inherit",
+  });
   console.log("[postinstall] frontend build complete");
 } catch (error) {
   console.error("[postinstall] frontend build failed:", error.message);

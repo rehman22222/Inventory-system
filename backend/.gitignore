@@ -25,6 +25,8 @@ yarn.lock
 # Compiled files
 dist/
 build/
+# The frontend build the deploy drops here (see scripts/postinstall.js).
+client/
 
 # Process managers
 pids

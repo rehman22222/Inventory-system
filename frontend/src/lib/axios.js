@@ -1,9 +1,14 @@
 import axios from 'axios';
 
-const fallbackURL = "http://localhost:3003";
+// When the app is served by its own backend (production, full-stack deploy) the
+// API is same-origin, so no base URL is needed — "/api" is relative to whatever
+// domain the page is on. This makes it work on the final domain AND on the
+// temporary Hostinger URL without rebuilding. Local dev sets
+// REACT_APP_BACKEND_URL (e.g. http://localhost:3003) in frontend/.env.
+const base = process.env.REACT_APP_BACKEND_URL || "";
 
 const axiosInstance = axios.create({
-    baseURL: `${process.env.REACT_APP_BACKEND_URL|| fallbackURL}/api`,
+    baseURL: `${base}/api`,
     withCredentials: true,
   });
 
