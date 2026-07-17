@@ -45,10 +45,13 @@ Repo: **`etumairansari-pixel/inventory.system`**, branch **`main`**. On the
 | Branch | **main** |
 | Node version | **22.x** |
 | Root directory | **backend** |
-| Build command | **`npm run build`**  (builds the React frontend) |
-| Install command | `npm install` |
-| Start command | `npm start` |
-| Output directory | *(leave empty — Express serves it, not Hostinger)* |
+| Package manager (Build & output → Change) | **npm** |
+| Entry file (Build & output → Change) | **server.js** |
+
+Hostinger's Express deploy only runs `npm install` then the entry file — there is
+no separate build-command field. The frontend is built automatically by the
+backend's **`postinstall`** hook (it runs after `npm install` and builds
+`frontend/build`, which the server then serves). Nothing extra to configure.
 
 Then **Add environment variables** (see below) and **Deploy**. Deploys to
 `inventory.eiretech360.com`.
