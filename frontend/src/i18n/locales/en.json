@@ -597,6 +597,7 @@
       "payments": "Payments",
       "youSaved": "You saved {{amount}}",
       "thanks": "Thank you!",
+      "thanksShopping": "Thank you for shopping with us",
       "keepReceipt": "Keep this receipt for returns or exchanges",
       "qrCaption": "Scan for receipt {{ref}}"
     },

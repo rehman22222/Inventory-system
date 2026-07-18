@@ -1323,7 +1323,7 @@ function POSPage() {
           </div>
           <div className="r-meta">
             <span>{t("pos.receiptDoc.placedBy")}</span>
-            <span>{receipt.cashierName}</span>
+            <span>{receipt.cashierName || Authuser?.name || Authuser?.role}</span>
           </div>
           {receipt.customerName && receipt.customerName !== t("pos.walkIn") && (
             <div className="r-meta">
@@ -1441,15 +1441,11 @@ function POSPage() {
               size={116}
               level="M"
             />
-            {/* Say what the QR is for — an unexplained square gets ignored. */}
-            <div className="r-qrcap">
-              {t("pos.receiptDoc.qrCaption", { ref: receipt.receiptNo })}
-            </div>
           </div>
 
-          <div className="r-center r-thanks">{t("pos.receiptDoc.thanks")}</div>
-          {SHOP?.footer && <div className="r-center r-footer">{SHOP.footer}</div>}
-          <div className="r-center r-footer">{t("pos.receiptDoc.keepReceipt")}</div>
+          <div className="r-center r-footer">
+            {SHOP?.footer || t("pos.receiptDoc.thanksShopping", "Thank you for shopping with us")}
+          </div>
           <div className="r-center r-footer">{t("pos.ageVerification")}</div>
           <div className="r-center r-tail">• • •</div>
         </div>
