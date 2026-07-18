@@ -713,7 +713,12 @@
     "pickQuantity": "Enter a quantity",
     "notEnoughStock": "Only {{count}} of {{name}} in stock",
     "inStock": "{{count}} in stock",
-    "orderTotal": "Order total"
+    "orderTotal": "Order total",
+    "spendBySupplier": "Spend by supplier",
+    "totalSpend": "Total spend",
+    "noSupplier": "No supplier",
+    "ordersCount": "{{count}} order",
+    "ordersCount_other": "{{count}} orders"
   },
   "suppliers": {
     "totalSupplier": "Total Supplier",
