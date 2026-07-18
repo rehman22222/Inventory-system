@@ -63,28 +63,55 @@ const normaliseOptionalTax = (query = {}) => {
   return { applyTax: true, taxRate };
 };
 
-const allocateTotals = (metrics, targetGrandTotal) => {
-  const currentGrandTotal = roundMoney(
-    metrics.reduce((sum, entry) => sum + entry.currentNet, 0)
-  );
+const isCashReceipt = (receipt = {}) =>
+  String(receipt.paymentMethod || "").toLowerCase() === "cash";
 
-  if (currentGrandTotal <= 0) {
-    return metrics.map((entry) => ({ ...entry, adjustedNet: 0 }));
+const allocateTotals = (metrics, targetGrandTotal) => {
+  const lockedTotal = roundMoney(
+    metrics.reduce(
+      (sum, entry) => sum + (entry.adjustable ? 0 : entry.currentNet),
+      0
+    )
+  );
+  const currentCashTotal = roundMoney(
+    metrics.reduce(
+      (sum, entry) => sum + (entry.adjustable ? entry.currentNet : 0),
+      0
+    )
+  );
+  const targetCashTotal = roundMoney(targetGrandTotal - lockedTotal);
+
+  if (targetCashTotal < 0) {
+    throw fail(
+      "New net sales total is lower than the card/split total. Card and split receipts stay unchanged, so only cash can be adjusted."
+    );
   }
 
-  let remaining = roundMoney(targetGrandTotal);
-  const positiveIndexes = metrics
-    .map((entry, index) => (entry.currentNet > 0 ? index : null))
+  if (currentCashTotal <= 0) {
+    if (targetCashTotal > 0) {
+      throw fail("No positive cash receipts found to distribute the new total across");
+    }
+
+    return metrics.map((entry) => ({
+      ...entry,
+      adjustedNet: entry.adjustable ? 0 : entry.currentNet,
+    }));
+  }
+
+  let remaining = roundMoney(targetCashTotal);
+  const positiveCashIndexes = metrics
+    .map((entry, index) => (entry.adjustable && entry.currentNet > 0 ? index : null))
     .filter((index) => index !== null);
-  const lastPositive = positiveIndexes[positiveIndexes.length - 1];
+  const lastPositiveCash = positiveCashIndexes[positiveCashIndexes.length - 1];
 
   return metrics.map((entry, index) => {
+    if (!entry.adjustable) return { ...entry, adjustedNet: entry.currentNet };
     if (entry.currentNet <= 0) return { ...entry, adjustedNet: 0 };
 
     const adjustedNet =
-      index === lastPositive
+      index === lastPositiveCash
         ? roundMoney(remaining)
-        : roundMoney((entry.currentNet / currentGrandTotal) * targetGrandTotal);
+        : roundMoney((entry.currentNet / currentCashTotal) * targetCashTotal);
 
     remaining = roundMoney(remaining - adjustedNet);
     return { ...entry, adjustedNet };
@@ -106,6 +133,7 @@ const buildShadowNetReport = (receipts, query = {}) => {
   const tax = normaliseOptionalTax(query);
   const metrics = sourceReceipts.map((receipt, index) => ({
     index,
+    adjustable: isCashReceipt(receipt),
     refunded: refundTotal(receipt),
     currentNet: receiptNetAfterRefunds(receipt),
   }));
