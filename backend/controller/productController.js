@@ -9,6 +9,10 @@ const { nextSequence } = require('../models/Countermodel')
 
 const RANDOM_CATEGORY = "Random";
 
+// Escape a user string so it's a literal in a regex — stops a stray "(" or "*"
+// throwing, and closes off regex-injection on the search box.
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 module.exports.Addproduct=async(req,res)=>{
   const userId=req.user._id;
   const ipAddress=req.ip
@@ -117,13 +121,17 @@ module.exports.quickAddProduct = async (req, res) => {
     module.exports.getProduct = async (req, res) => {
         try {
           
-          const Products = await Product.find({}).populate('Category'); 
+          // .lean() returns plain objects instead of full Mongoose documents —
+          // the wire JSON is identical, but the server skips hydrating every
+          // product on each request, which is the single biggest win when a
+          // catalogue of thousands of SKUs is fetched by many tills at once.
+          const Products = await Product.find({}).populate('Category').lean();
 
+          // estimatedDocumentCount() reads collection metadata (O(1)) instead of
+          // scanning to count — accurate enough for a total, far cheaper.
+          const totalProduct = await Product.estimatedDocumentCount();
 
-          const totalProduct=await Product.countDocuments({})
-     
-            
-            res.status(200).json({Products,totalProduct});  
+            res.status(200).json({Products,totalProduct});
         } catch (error) {
             res.status(500).json({ message: "Error getting products", error: error.message });
         }
@@ -239,13 +247,21 @@ module.exports.SearchProduct = async (req, res) => {
       }
   
       
+      // Escaped so the raw query can't break (or abuse) the regex. .lean() +
+      // a result cap keep a live search box responsive even on a big catalogue:
+      // a substring match can hit a large slice of the products, and nobody
+      // scrolls hundreds of results — the top matches are what's wanted.
+      const safe = escapeRegex(query.trim());
       const products = await Product.find({
         $or: [
-          { name: { $regex: query, $options: "i" } },
-          { Desciption: { $regex: query, $options: "i" } },
-          { barcode: { $regex: query, $options: "i" } },
+          { name: { $regex: safe, $options: "i" } },
+          { Desciption: { $regex: safe, $options: "i" } },
+          { barcode: { $regex: safe, $options: "i" } },
         ],
-      }).populate("Category");
+      })
+        .populate("Category")
+        .limit(100)
+        .lean();
 
       res.json(products);
     } catch (error) {
@@ -263,7 +279,8 @@ module.exports.getProductByBarcode = async (req, res) => {
       return res.status(400).json({ message: "Barcode is required" });
     }
 
-    const product = await Product.findOne({ barcode: code }).populate("Category");
+    // POS scanner hot path — .lean() skips document hydration on every scan.
+    const product = await Product.findOne({ barcode: code }).populate("Category").lean();
 
     if (!product) {
       return res.status(404).json({ message: "No product with this barcode", barcode: code });
@@ -428,8 +445,9 @@ module.exports.generateRandomBarcodes = async (req, res) => {
   module.exports.getTopProductsByQuantity = async (req, res) => {
   try {
     const topProducts = await Product.find({})
-      .sort({ quantity: -1 }) 
-      .limit(10); 
+      .sort({ quantity: -1 }) // uses the { quantity: 1 } index
+      .limit(10)
+      .lean();
 
     res.status(200).json({ success: true, topProducts });
   } catch (error) {
