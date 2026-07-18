@@ -221,6 +221,8 @@ function Orderpage() {
 
     try {
       await dispatch(createdOrder(orderData)).unwrap();
+      // Pull the fresh list so the new order shows immediately (no manual refresh).
+      dispatch(gettingallOrder());
       toast.success(t("orders.created"));
       resetForm();
       setIsFormVisible(false);

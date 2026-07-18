@@ -185,6 +185,41 @@ module.exports.getReorders = async (req, res) => {
     const filter = {};
     if (req.query.status) filter.status = req.query.status;
     const reorders = await Reorder.find(filter).sort({ status: 1, createdAt: -1 }).limit(500);
+
+    // Keep pending reorders' supplier in step with the product's CURRENT supplier.
+    // A reorder snapshots the supplier when it's raised, but the shop often links
+    // the supplier afterwards — refresh the snapshot here so the queue (and the
+    // "Approve & send" email) reflect the link without having to re-raise it.
+    const pendingReorders = reorders.filter((r) => r.status === "pending" && r.product);
+    if (pendingReorders.length > 0) {
+      const products = await Product.find({
+        _id: { $in: pendingReorders.map((r) => r.product) },
+      })
+        .populate("supplier", "name contactInfo")
+        .select("supplier")
+        .lean();
+      const supplierByProduct = new Map(products.map((p) => [String(p._id), p.supplier]));
+
+      await Promise.all(
+        pendingReorders.map(async (r) => {
+          const supplier = supplierByProduct.get(String(r.product));
+          const id = supplier?._id ? String(supplier._id) : "";
+          const name = supplier?.name || "";
+          const email = supplier?.contactInfo?.email || "";
+          if (
+            String(r.supplier || "") !== id ||
+            (r.supplierName || "") !== name ||
+            (r.supplierEmail || "") !== email
+          ) {
+            r.supplier = supplier?._id || null;
+            r.supplierName = name;
+            r.supplierEmail = email;
+            await r.save();
+          }
+        })
+      );
+    }
+
     const pending = await Reorder.countDocuments({ status: "pending" });
     return res.status(200).json({ reorders, pending });
   } catch (error) {
