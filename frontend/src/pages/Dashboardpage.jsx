@@ -8,7 +8,6 @@ import {
   FiClock,
   FiDollarSign,
   FiLayers,
-  FiShoppingCart,
   FiTrendingUp,
   FiUsers,
 } from "react-icons/fi";
@@ -77,8 +76,6 @@ function Dashboardpage() {
       0
     );
     const revenue = sales.reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0);
-    // Purchase orders not yet emailed to their supplier.
-    const awaitingSend = orders.filter((order) => !order.emailSentAt).length;
 
     return {
       products,
@@ -88,7 +85,6 @@ function Dashboardpage() {
       lowStock,
       inventoryValue,
       revenue,
-      awaitingSend,
       users:
         Number(staffuser?.length || 0) +
         Number(manageruser?.length || 0) +
@@ -112,14 +108,6 @@ function Dashboardpage() {
       icon: FiBox,
       color: "text-cyan-700 dark:text-cyan-400",
       bg: "bg-cyan-50 dark:bg-cyan-900/20",
-    },
-    {
-      label: t("dashboard.openOrders"),
-      value: analytics.orders.length,
-      meta: t("dashboard.awaitingSend", { count: analytics.awaitingSend }),
-      icon: FiShoppingCart,
-      color: "text-indigo-700 dark:text-indigo-400",
-      bg: "bg-indigo-50 dark:bg-indigo-900/20",
     },
     {
       label: t("dashboard.lowStock"),
@@ -172,7 +160,7 @@ function Dashboardpage() {
         </section>
 
         {/* KPI cards */}
-        <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {kpis.map((item) => {
             const Icon = item.icon;
             return (
