@@ -679,6 +679,14 @@ function POSPage() {
     setDiscount(0);
     setVoucher(null);
     setTaxEnabled(false);
+
+    // Auto-print the receipt the moment a sale completes. On a till this both
+    // prints the customer's receipt AND — because the cash drawer is wired to the
+    // printer and the driver is set to kick it on print — pops the drawer open.
+    // (Launch Chrome with --kiosk-printing so this prints silently, no dialog.)
+    setTimeout(() => {
+      window.print();
+    }, 250);
   };
 
   // Sell with no network: build the receipt here, park the sale, print as usual.
