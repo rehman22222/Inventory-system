@@ -14,7 +14,7 @@ import {
   updatestatusOrder,
   gettingallOrder,
   SearchOrder,
- 
+  SendOrder,
 } from "../features/orderSlice";
 
 import { gettingallproducts } from "../features/productSlice";
@@ -245,6 +245,18 @@ function Orderpage() {
       .catch((error) => {
         toast.error(error || t("orders.removeFail"));
       });
+  };
+
+  // The deliberate "send" — asks first, then emails the supplier.
+  const handleSend = async (order) => {
+    if (!window.confirm(t("orders.sendConfirm", { supplier: order.supplierName || "supplier" }))) return;
+    try {
+      await dispatch(SendOrder(order._id)).unwrap();
+      toast.success(t("orders.sent"));
+      dispatch(gettingallOrder());
+    } catch (error) {
+      toast.error(error || t("orders.sendFail"));
+    }
   };
 
   const displayOrder = query.trim() !== "" ? searchdata : getorder;
@@ -514,20 +526,39 @@ function Orderpage() {
                       <td className="px-3 py-2 border">
                         <FormattedTime timestamp={order?.createdAt} />
                       </td>
-                      <td className="px-4 py-2 grid grid-cols-1 border">
-                        <button
-                          onClick={() => handleremove(order._id)}
-                          className="h-10 w-24 bg-red-500 hover:bg-red-700 rounded-md text-white"
-                        >
-                          {t("common.remove")}
-                        </button>
-
-                        <button
-                          onClick={() => handleEditClick(order)}
-                          className="h-10 w-24 bg-green-500 ml-10 hover:bg-green-700 rounded-md text-white"
-                        >
-                          {t("common.edit")}
-                        </button>
+                      <td className="px-4 py-2 border">
+                        <div className="flex flex-col gap-2">
+                          {/* Deliberate send — nothing reaches the supplier until
+                              this is pressed. Shows "Sent" once it has gone. */}
+                          {order.emailSentAt ? (
+                            <span className="rounded-md bg-green-100 px-2 py-1 text-center text-xs font-semibold text-green-700">
+                              {t("orders.emailed")}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleSend(order)}
+                              disabled={!order.supplierEmail}
+                              title={!order.supplierEmail ? t("orders.noEmail") : ""}
+                              className="h-9 rounded-md bg-blue-700 px-3 text-sm font-semibold text-white hover:bg-blue-600 disabled:opacity-40"
+                            >
+                              {t("orders.sendToSupplier")}
+                            </button>
+                          )}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEditClick(order)}
+                              className="h-9 flex-1 rounded-md bg-green-500 text-sm text-white hover:bg-green-700"
+                            >
+                              {t("common.edit")}
+                            </button>
+                            <button
+                              onClick={() => handleremove(order._id)}
+                              className="h-9 flex-1 rounded-md bg-red-500 text-sm text-white hover:bg-red-700"
+                            >
+                              {t("common.remove")}
+                            </button>
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   ))

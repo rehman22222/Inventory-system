@@ -48,6 +48,16 @@ export const createdOrder=createAsyncThunk('order/createorder',async(order,{reje
   })
 
   
+  // Deliberately email the supplier an order (separate from creating it).
+  export const SendOrder = createAsyncThunk('order/sendorder', async (OrderId, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post(`order/sendorder/${OrderId}`, {}, { withCredentials: true });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Could not send the order");
+    }
+  });
+
   export const updatestatusOrder = createAsyncThunk(
     'order/updatestatusOrder',
     async ({ OrderId, updatedData }, { rejectWithValue }) => {

@@ -75,43 +75,10 @@ const createOrder = async (req, res) => {
             status,
         });
 
-        // Email the supplier the order (best-effort — a mail hiccup must not fail
-        // the order). Same mailbox/branding as the automatic reorders.
-        if (isMailConfigured() && supplierEmail) {
-            const shop = await Store.findOne({ key: "shop" }).lean();
-            const rows = lines
-                .map(
-                    (l) =>
-                        `<tr><td style="border:1px solid #e5e7eb;padding:8px 14px;">${esc(l.name)}</td>
-                         <td style="border:1px solid #e5e7eb;padding:8px 14px;text-align:right;">${l.quantity}</td></tr>`
-                )
-                .join("");
-            const body = `
-              <p><strong>Purchase Order</strong></p>
-              <p>Dear ${esc(supplierRecord.name)},</p>
-              <p>Please supply the following:</p>
-              <table style="border-collapse:collapse;margin:8px 0;">
-                <tr><th style="border:1px solid #e5e7eb;padding:8px 14px;text-align:left;">Product</th>
-                    <th style="border:1px solid #e5e7eb;padding:8px 14px;">Qty</th></tr>
-                ${rows}
-              </table>
-              ${Description ? `<p>${esc(Description)}</p>` : ""}
-              <p>Kind regards,<br/>${esc(shop?.name || "The shop")}</p>`;
-            const result = await sendMail({
-                to: supplierEmail,
-                fromName: shop?.name,
-                subject: `Purchase Order — ${supplierRecord.name} (${shop?.name || "Order"})`,
-                html: brandedHtml(shop, body),
-            });
-            if (result.ok) {
-                newOrder.emailSentAt = new Date();
-                await newOrder.save();
-            } else {
-                newOrder.emailError = result.error || result.reason || "send failed";
-                await newOrder.save();
-            }
-        }
-
+        // NOTE: the order is created but NOT emailed here. Sending to the
+        // supplier is a deliberate, separate step (`sendOrder`) so nothing goes
+        // out to a supplier without an explicit "send" — the person reviews the
+        // order first and then confirms.
         await newOrder.populate([
             { path: "Products.product", select: "name Price barcode" },
             { path: "user", select: "name email" },
@@ -119,19 +86,16 @@ const createOrder = async (req, res) => {
 
         await logActivity({
             action: "Create Order",
-            description: `Purchase order to ${supplierRecord.name} for ${lines.length} product(s), total ${totalOrderAmount}.`,
+            description: `Purchase order drafted for ${supplierRecord.name} — ${lines.length} product(s), total ${totalOrderAmount}.`,
             entity: "order",
             entityId: newOrder._id,
             userId: req.user?._id,
             ipAddress: req.ip,
         });
 
-        const note = supplierEmail
-            ? (newOrder.emailSentAt ? " and emailed to the supplier" : "")
-            : " (supplier has no email — add one to send it)";
         res.status(201).json({
             success: true,
-            message: `Order created${note}`,
+            message: "Order created — review it, then send it to the supplier",
             order: newOrder,
         });
     } catch (error) {
@@ -147,12 +111,94 @@ const createOrder = async (req, res) => {
 
 
 
+// The deliberate "send" step: emails the supplier the order. Kept separate from
+// creation so nothing reaches a supplier without an explicit action here.
+const sendOrder = async (req, res) => {
+    try {
+        const { OrderId } = req.params;
+        const order = await Order.findById(OrderId).populate("Products.product", "name");
+        if (!order) return res.status(404).json({ message: "Order not found" });
+
+        if (order.emailSentAt) {
+            return res.status(400).json({ message: "This order has already been sent to the supplier" });
+        }
+        if (!order.supplierEmail) {
+            return res.status(400).json({
+                message: "This supplier has no email address — add one on the supplier, then send.",
+            });
+        }
+        if (!isMailConfigured()) {
+            return res.status(503).json({
+                message: "Email is not configured on the server yet, so the order can't be sent.",
+            });
+        }
+
+        const shop = await Store.findOne({ key: "shop" }).lean();
+        const rows = (order.Products || [])
+            .map((l) => {
+                const name = l.product?.name || "Item";
+                return `<tr><td style="border:1px solid #e5e7eb;padding:8px 14px;">${esc(name)}</td>
+                        <td style="border:1px solid #e5e7eb;padding:8px 14px;text-align:right;">${l.quantity}</td></tr>`;
+            })
+            .join("");
+        const body = `
+          <p><strong>Purchase Order</strong></p>
+          <p>Dear ${esc(order.supplierName || "Supplier")},</p>
+          <p>Please supply the following:</p>
+          <table style="border-collapse:collapse;margin:8px 0;">
+            <tr><th style="border:1px solid #e5e7eb;padding:8px 14px;text-align:left;">Product</th>
+                <th style="border:1px solid #e5e7eb;padding:8px 14px;">Qty</th></tr>
+            ${rows}
+          </table>
+          ${order.Description ? `<p>${esc(order.Description)}</p>` : ""}
+          <p>Kind regards,<br/>${esc(shop?.name || "The shop")}</p>`;
+
+        const result = await sendMail({
+            to: order.supplierEmail,
+            fromName: shop?.name,
+            subject: `Purchase Order — ${order.supplierName || "Order"} (${shop?.name || "Order"})`,
+            html: brandedHtml(shop, body),
+        });
+
+        if (!result.ok) {
+            order.emailError = result.error || result.reason || "send failed";
+            await order.save();
+            return res.status(502).json({
+                message: "Could not send the order email — please try again.",
+                error: order.emailError,
+            });
+        }
+
+        order.emailSentAt = new Date();
+        order.emailError = "";
+        await order.save();
+
+        await logActivity({
+            action: "Send Order",
+            description: `Order emailed to ${order.supplierName || "supplier"} (${order.supplierEmail}).`,
+            entity: "order",
+            entityId: order._id,
+            userId: req.user?._id,
+            ipAddress: req.ip,
+        });
+
+        await order.populate([
+            { path: "Products.product", select: "name Price barcode" },
+            { path: "user", select: "name email" },
+        ]);
+        res.status(200).json({ success: true, message: "Order emailed to the supplier", order });
+    } catch (error) {
+        res.status(500).json({ message: "Error sending order", error: error.message });
+    }
+};
+
+
 const Removeorder = async (req, res) => {
     try {
         const { OrdertId } = req.params;
         const userId = req.user._id;
         const ipAddress = req.ip;
-        
+
         const Deletedorder = await Order.findByIdAndDelete(OrdertId);
 
         if (!Deletedorder) {
@@ -284,6 +330,7 @@ catch (error) {
 
 module.exports = {
     createOrder,
+    sendOrder,
     searchOrder,
     updatestatusOrder,
     getOrder,
