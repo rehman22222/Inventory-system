@@ -66,7 +66,15 @@ function Dashboardpage() {
   const analytics = useMemo(() => {
     const products = Array.isArray(getallproduct) ? getallproduct : [];
     const orders = Array.isArray(getorder) ? getorder : [];
-    const sales = Array.isArray(getallsales) ? getallsales : [];
+    // Refunds/voids are stored as negative "cancelled" sale rows (source
+    // "refund") so shop-wide reports net out. But a per-user dashboard
+    // (manager/staff) only sees ITS OWN rows — so a refund of someone else's
+    // sale would drag revenue NEGATIVE with no matching positive in view. Count
+    // only real takings here; refunds stay visible in receipts/refund reports.
+    const allSales = Array.isArray(getallsales) ? getallsales : [];
+    const sales = allSales.filter(
+      (sale) => sale?.status !== "cancelled" && sale?.source !== "refund"
+    );
     const categories = Array.isArray(getallCategory) ? getallCategory : [];
     const lowStock = products.filter(
       (product) => Number(product.quantity) <= (product.lowStockThreshold ?? 10)
