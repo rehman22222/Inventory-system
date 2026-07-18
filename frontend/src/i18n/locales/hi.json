@@ -285,6 +285,7 @@
     "completedRecords": "{{count}} पूर्ण रिकॉर्ड",
     "activeProducts": "{{count}} सक्रिय उत्पाद",
     "pendingReview": "{{count}} समीक्षा लंबित",
+    "awaitingSend": "{{count}} भेजना बाकी",
     "lowStockMeta": "10 इकाई या उससे कम की वस्तुएं",
     "orderPipeline": "ऑर्डर पाइपलाइन",
     "statusBreakdown": "स्थिति विवरण",

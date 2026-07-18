@@ -285,6 +285,7 @@
     "completedRecords": "{{count}} سجلات مكتملة",
     "activeProducts": "{{count}} منتجات نشطة",
     "pendingReview": "{{count}} قيد المراجعة",
+    "awaitingSend": "{{count}} بانتظار الإرسال",
     "lowStockMeta": "العناصر عند 10 وحدات أو أقل",
     "orderPipeline": "خط أنابيب الطلبات",
     "statusBreakdown": "تفصيل الحالة",

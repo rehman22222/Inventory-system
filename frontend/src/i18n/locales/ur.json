@@ -285,6 +285,7 @@
     "completedRecords": "{{count}} مکمل ریکارڈز",
     "activeProducts": "{{count}} فعال مصنوعات",
     "pendingReview": "{{count}} زیر جائزہ",
+    "awaitingSend": "{{count}} بھیجنا باقی",
     "lowStockMeta": "10 یونٹس یا اس سے کم آئٹمز",
     "orderPipeline": "آرڈر پائپ لائن",
     "statusBreakdown": "حیثیت کی تفصیل",

@@ -285,6 +285,7 @@
     "completedRecords": "{{count}} completed records",
     "activeProducts": "{{count}} active products",
     "pendingReview": "{{count}} pending review",
+    "awaitingSend": "{{count}} awaiting send",
     "lowStockMeta": "Items at or below 10 units",
     "orderPipeline": "Order Pipeline",
     "statusBreakdown": "Status breakdown",

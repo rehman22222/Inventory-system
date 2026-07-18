@@ -77,13 +77,8 @@ function Dashboardpage() {
       0
     );
     const revenue = sales.reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0);
-    const orderStatus = orders.reduce(
-      (acc, order) => ({
-        ...acc,
-        [order.status || "pending"]: (acc[order.status || "pending"] || 0) + 1,
-      }),
-      {}
-    );
+    // Purchase orders not yet emailed to their supplier.
+    const awaitingSend = orders.filter((order) => !order.emailSentAt).length;
 
     return {
       products,
@@ -93,7 +88,7 @@ function Dashboardpage() {
       lowStock,
       inventoryValue,
       revenue,
-      orderStatus,
+      awaitingSend,
       users:
         Number(staffuser?.length || 0) +
         Number(manageruser?.length || 0) +
@@ -121,7 +116,7 @@ function Dashboardpage() {
     {
       label: t("dashboard.openOrders"),
       value: analytics.orders.length,
-      meta: t("dashboard.pendingReview", { count: analytics.orderStatus.pending || 0 }),
+      meta: t("dashboard.awaitingSend", { count: analytics.awaitingSend }),
       icon: FiShoppingCart,
       color: "text-indigo-700 dark:text-indigo-400",
       bg: "bg-indigo-50 dark:bg-indigo-900/20",
@@ -135,13 +130,6 @@ function Dashboardpage() {
       bg: "bg-amber-50 dark:bg-amber-900/20",
     },
   ];
-
-  const statusRows = [
-    { label: t("dashboard.pending"), value: analytics.orderStatus.pending || 0, color: "bg-amber-500" },
-    { label: t("dashboard.shipped"), value: analytics.orderStatus.shipped || 0, color: "bg-cyan-500" },
-    { label: t("dashboard.delivered"), value: analytics.orderStatus.delivered || 0, color: "bg-emerald-500" },
-  ];
-  const maxStatus = Math.max(...statusRows.map((row) => row.value), 1);
 
   return (
     <div className="min-h-screen bg-base-200">
@@ -210,46 +198,8 @@ function Dashboardpage() {
         </section>
 
         {/* Charts row */}
-        <section className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
+        <section>
           <Gettopproduct />
-
-          <div className="rounded-xl border border-base-300 bg-base-100 p-6 shadow-sm">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium uppercase tracking-[0.14em] text-base-content/50">
-                  {t("dashboard.orderPipeline")}
-                </p>
-                <h2 className="mt-2 text-xl font-semibold text-base-content">{t("dashboard.statusBreakdown")}</h2>
-              </div>
-              <FiShoppingCart className="text-2xl text-base-content/30" />
-            </div>
-
-            <div className="space-y-5">
-              {statusRows.map((row) => (
-                <div key={row.label}>
-                  <div className="mb-2 flex items-center justify-between text-sm">
-                    <span className="font-medium text-base-content/70">{row.label}</span>
-                    <span className="font-semibold text-base-content">{row.value}</span>
-                  </div>
-                  <div className="h-3 overflow-hidden rounded-full bg-base-300">
-                    <div
-                      className={`h-full rounded-full ${row.color}`}
-                      style={{
-                        width: `${Math.max((row.value / maxStatus) * 100, row.value ? 12 : 0)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-8 rounded-lg bg-base-200 p-4">
-              <p className="text-sm font-medium text-base-content/70">{t("dashboard.recommendedFocus")}</p>
-              <p className="mt-1 text-sm text-base-content/50">
-                {t("dashboard.recommendedFocusText")}
-              </p>
-            </div>
-          </div>
         </section>
 
         {/* Bottom row */}

@@ -285,6 +285,7 @@
     "completedRecords": "{{count}} সম্পন্ন রেকর্ড",
     "activeProducts": "{{count}} সক্রিয় পণ্য",
     "pendingReview": "{{count}} পর্যালোচনা বাকি",
+    "awaitingSend": "{{count}} পাঠানো বাকি",
     "lowStockMeta": "১০ ইউনিট বা তার কম আইটেম",
     "orderPipeline": "অর্ডার পাইপলাইন",
     "statusBreakdown": "অবস্থা বিভাজন",

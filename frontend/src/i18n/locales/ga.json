@@ -285,6 +285,7 @@
     "completedRecords": "{{count}} taifead críochnaithe",
     "activeProducts": "{{count}} táirge gníomhach",
     "pendingReview": "{{count}} ar feitheamh athbhreithnithe",
+    "awaitingSend": "{{count}} ar feitheamh le seoladh",
     "lowStockMeta": "Míreanna ag 10 n-aonad nó níos lú",
     "orderPipeline": "Píblíne Orduithe",
     "statusBreakdown": "Miondealú stádais",
