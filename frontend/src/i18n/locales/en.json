@@ -670,6 +670,12 @@
     "addFail": "Sales add unsuccessful"
   },
   "orders": {
+    "supplier": "Supplier",
+    "selectSupplier": "Select a supplier",
+    "selectSupplierFirst": "Pick a supplier first",
+    "supplierNoProducts": "This supplier has no products yet",
+    "pickSupplier": "Choose a supplier for this order",
+    "noEmail": "no email",
     "searchPlaceholder": "Enter your order",
     "addOrder": "Add Order",
     "editOrder": "Edit Order",

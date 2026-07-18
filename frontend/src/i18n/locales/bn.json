@@ -670,6 +670,12 @@
     "addFail": "বিক্রয় যোগ করা ব্যর্থ"
   },
   "orders": {
+    "supplier": "সরবরাহকারী",
+    "selectSupplier": "সরবরাহকারী নির্বাচন করুন",
+    "selectSupplierFirst": "প্রথমে সরবরাহকারী নির্বাচন করুন",
+    "supplierNoProducts": "এই সরবরাহকারীর এখনও কোনো পণ্য নেই",
+    "pickSupplier": "এই অর্ডারের জন্য সরবরাহকারী নির্বাচন করুন",
+    "noEmail": "ইমেল নেই",
     "searchPlaceholder": "আপনার অর্ডার লিখুন",
     "addOrder": "অর্ডার যোগ করুন",
     "editOrder": "অর্ডার সম্পাদনা",

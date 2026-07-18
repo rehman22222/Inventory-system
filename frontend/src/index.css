@@ -325,3 +325,26 @@
     }
   }
 }
+
+/* On-screen (touch) keyboard — dark keys to sit on the dark bottom bar. */
+.simple-keyboard.osk-dark {
+  background: transparent;
+  padding: 0;
+}
+.simple-keyboard.osk-dark .hg-row {
+  margin-bottom: 6px;
+}
+.simple-keyboard.osk-dark .hg-button {
+  height: 52px;
+  background: #1e293b;
+  color: #f1f5f9;
+  border: 1px solid #0f172a;
+  border-radius: 8px;
+  font-size: 18px;
+  box-shadow: 0 1px 0 #0f172a;
+}
+.simple-keyboard.osk-dark .hg-button:active,
+.simple-keyboard.osk-dark .hg-button.hg-activeButton {
+  background: #2563eb;
+  color: #fff;
+}

@@ -670,6 +670,12 @@
     "addFail": "Theip ar chur leis na díolacháin"
   },
   "orders": {
+    "supplier": "Soláthraí",
+    "selectSupplier": "Roghnaigh soláthraí",
+    "selectSupplierFirst": "Roghnaigh soláthraí ar dtús",
+    "supplierNoProducts": "Níl aon táirge ag an soláthraí seo fós",
+    "pickSupplier": "Roghnaigh soláthraí don ordú seo",
+    "noEmail": "gan ríomhphost",
     "searchPlaceholder": "Cuir isteach d'ordú",
     "addOrder": "Cuir Ordú Leis",
     "editOrder": "Cuir Ordú in Eagar",

@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { Toaster } from "react-hot-toast";
+import VirtualKeyboard from "./Components/VirtualKeyboard";
 // Public + always-needed pieces load eagerly; everything behind auth is
 // code-split so the first paint (landing/login) ships a small bundle and each
 // dashboard page is fetched only when a user actually opens it.
@@ -52,6 +53,7 @@ function App() {
   return (
     <Router>
       <Toaster />
+      <VirtualKeyboard />
       <Suspense fallback={<PageFallback />}>
       <Routes>
         <Route path="/" element={<HomePage />} />

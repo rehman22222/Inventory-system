@@ -19,6 +19,7 @@ import {
 
 import { gettingallproducts } from "../features/productSlice";
 import { gettingallCategory } from "../features/categorySlice";
+import { gettingallSupplier } from "../features/SupplierSlice";
 
 function Orderpage() {
   const { t } = useTranslation();
@@ -35,10 +36,13 @@ function Orderpage() {
   } = useSelector((state) => state.order);
   const { getallproduct } = useSelector((state) => state.product);
   const { getallCategory } = useSelector((state) => state.category);
+  const { getallSupplier } = useSelector((state) => state.supplier);
   const { Authuser, isUserSignup } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
-  const [status, setstatus] = useState(false);
+  const [status, setstatus] = useState("pending");
   const [query, setquery] = useState("");
+  // Which supplier we're ordering from — a purchase order is placed with one.
+  const [supplier, setSupplier] = useState("");
   const [Product, setProduct] = useState("");
   const [Price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -48,11 +52,16 @@ function Orderpage() {
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [selectedOrder, setselectedOrder] = useState(null);
 
+  // Only the chosen supplier's products can go on the order — you buy from the
+  // supplier that provides them. Product.supplier is the inverse of the
+  // supplier's productsSupplied, kept in step by the backend.
+  const supplierProducts = (Array.isArray(getallproduct) ? getallproduct : []).filter(
+    (p) => supplier && String(p.supplier?._id || p.supplier || "") === String(supplier)
+  );
+
   // The price is the catalogue's, not something to be typed: picking a product
   // fills it in, and it stays read-only.
-  const chosenProduct = (Array.isArray(getallproduct) ? getallproduct : []).find(
-    (entry) => entry._id === Product
-  );
+  const chosenProduct = supplierProducts.find((entry) => entry._id === Product);
 
   useEffect(() => {
     setPrice(chosenProduct ? String(chosenProduct.Price ?? "") : "");
@@ -74,13 +83,9 @@ function Orderpage() {
       return;
     }
 
+    // No stock ceiling: this is a purchase order — you can order any quantity
+    // from the supplier regardless of what's currently on the shelf.
     const stock = Number(chosenProduct.quantity || 0);
-    const already = lines.find((line) => line.productId === chosenProduct._id)?.quantity || 0;
-
-    if (already + wanted > stock) {
-      toast.error(t("orders.notEnoughStock", { name: chosenProduct.name, count: stock }));
-      return;
-    }
 
     setLines((current) => {
       const existing = current.find((line) => line.productId === chosenProduct._id);
@@ -114,7 +119,8 @@ function Orderpage() {
     dispatch(gettingallOrder());
     dispatch(gettingallproducts());
     dispatch(gettingallCategory());
- 
+    dispatch(gettingallSupplier());
+
   }, [dispatch,Authuser]);
 
   useEffect(() => {
@@ -172,6 +178,10 @@ function Orderpage() {
   const submitOrder = async (event) => {
     event.preventDefault();
 
+    if (!supplier) {
+      toast.error(t("orders.pickSupplier"));
+      return;
+    }
     if (lines.length === 0) {
       toast.error(t("orders.requiredFields"));
       return;
@@ -179,8 +189,9 @@ function Orderpage() {
 
     const orderData = {
       user: Authuser?.id || "",
+      supplier,
       Description,
-      status,
+      status: status || "pending",
       // Price is deliberately not sent — the server reads it from the catalogue.
       Products: lines.map((line) => ({
         product: line.productId,
@@ -200,12 +211,13 @@ function Orderpage() {
   };
 
   const resetForm = () => {
+    setSupplier("");
     setProduct("");
     setPrice("");
     setQuantity("");
     setLines([]);
     setDescription("");
-    setstatus("");
+    setstatus("pending");
   };
 
   const handleEditClick = (order) => {
@@ -286,6 +298,30 @@ function Orderpage() {
               className="flex min-h-0 flex-1 flex-col"
             >
               <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+              {/* A purchase order is placed with one supplier — pick it first;
+                  the products below are the ones that supplier provides. */}
+              {!selectedOrder && (
+                <div className="mb-4">
+                  <label className="text-sm">{t("orders.supplier")}</label>
+                  <select
+                    value={supplier}
+                    onChange={(e) => {
+                      setSupplier(e.target.value);
+                      setProduct("");
+                    }}
+                    className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                  >
+                    <option value="">{t("orders.selectSupplier")}</option>
+                    {(Array.isArray(getallSupplier) ? getallSupplier : []).map((s) => (
+                      <option key={s._id} value={s._id}>
+                        {s.name}
+                        {s.contactInfo?.email ? "" : ` — ${t("orders.noEmail")}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="mb-4">
                 <label className="text-sm">{t("common.description")}</label>
                 <input
@@ -306,10 +342,17 @@ function Orderpage() {
                   <select
                     value={Product}
                     onChange={(e) => setProduct(e.target.value)}
-                    className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content"
+                    disabled={!supplier}
+                    className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-2 bg-base-100 text-base-content disabled:opacity-50"
                   >
-                    <option value="">{t("orders.selectProduct")}</option>
-                    {getallproduct?.map((product) => (
+                    <option value="">
+                      {!supplier
+                        ? t("orders.selectSupplierFirst")
+                        : supplierProducts.length === 0
+                        ? t("orders.supplierNoProducts")
+                        : t("orders.selectProduct")}
+                    </option>
+                    {supplierProducts.map((product) => (
                       <option key={product._id} value={product._id}>
                         {product.name}
                       </option>

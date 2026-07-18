@@ -670,6 +670,12 @@
     "addFail": "बिक्री जोड़ना असफल"
   },
   "orders": {
+    "supplier": "सप्लायर",
+    "selectSupplier": "सप्लायर चुनें",
+    "selectSupplierFirst": "पहले सप्लायर चुनें",
+    "supplierNoProducts": "इस सप्लायर के अभी कोई उत्पाद नहीं",
+    "pickSupplier": "इस ऑर्डर के लिए सप्लायर चुनें",
+    "noEmail": "कोई ईमेल नहीं",
     "searchPlaceholder": "अपना ऑर्डर दर्ज करें",
     "addOrder": "ऑर्डर जोड़ें",
     "editOrder": "ऑर्डर संपादित करें",

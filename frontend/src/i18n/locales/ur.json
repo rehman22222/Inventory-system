@@ -670,6 +670,12 @@
     "addFail": "فروخت شامل کرنا ناکام"
   },
   "orders": {
+    "supplier": "سپلائر",
+    "selectSupplier": "سپلائر منتخب کریں",
+    "selectSupplierFirst": "پہلے سپلائر منتخب کریں",
+    "supplierNoProducts": "اس سپلائر کے ابھی کوئی پروڈکٹ نہیں",
+    "pickSupplier": "اس آرڈر کے لیے سپلائر منتخب کریں",
+    "noEmail": "ای میل نہیں",
     "searchPlaceholder": "اپنا آرڈر درج کریں",
     "addOrder": "آرڈر شامل کریں",
     "editOrder": "آرڈر میں ترمیم",

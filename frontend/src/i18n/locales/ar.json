@@ -670,6 +670,12 @@
     "addFail": "فشلت إضافة المبيعات"
   },
   "orders": {
+    "supplier": "المورّد",
+    "selectSupplier": "اختر مورّداً",
+    "selectSupplierFirst": "اختر مورّداً أولاً",
+    "supplierNoProducts": "لا توجد منتجات لهذا المورّد بعد",
+    "pickSupplier": "اختر مورّداً لهذا الطلب",
+    "noEmail": "لا يوجد بريد",
     "searchPlaceholder": "أدخل طلبك",
     "addOrder": "إضافة طلب",
     "editOrder": "تعديل الطلب",

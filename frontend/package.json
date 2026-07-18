@@ -27,6 +27,7 @@
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.1.5",
     "react-scripts": "5.0.1",
+    "react-simple-keyboard": "^3.8.240",
     "redux": "^5.0.1",
     "shadcn-ui": "^0.9.5",
     "socket.io": "^4.8.1",
