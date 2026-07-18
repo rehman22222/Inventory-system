@@ -235,4 +235,16 @@ if (keepAliveUrl) {
   console.log(`[keep-alive] enabled — pinging ${keepAliveUrl}/health every 13 min`);
 }
 
+// Daily low-stock reminders. Runs on the real (MongoDB) server only. The sweep
+// itself only emails a given product once per 24h, so running it hourly just
+// makes the "24h" boundary responsive without spamming — each low product still
+// gets at most one email per day, plus the immediate one when it first goes low.
+if (!useLocalStorage) {
+  const { remindLowStock } = require("./controller/reorderController");
+  const SWEEP_INTERVAL_MS = 60 * 60 * 1000; // hourly check; per-product 24h cap inside
+  setTimeout(() => remindLowStock(), 60 * 1000); // once, ~1 min after boot
+  setInterval(() => remindLowStock(), SWEEP_INTERVAL_MS);
+  console.log("[reorder] low-stock reminder sweep scheduled (hourly, 24h per product)");
+}
+
 module.exports = { io, server};

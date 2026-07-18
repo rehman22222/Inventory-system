@@ -4,9 +4,28 @@ const logActivity = require('../libs/logger');
 const ProductModel = require('../models/Productmodel');
 const Supplier = require('../models/Suppliermodel');
 const Store = require('../models/Storemodel');
+const User = require('../models/Usermodel');
 const { isMailConfigured, sendMail, brandedHtml, esc } = require('../libs/mailer');
 
 const money = (value) => Math.round(Number(value || 0) * 100) / 100;
+
+// Where store-side heads-up emails go: the shop's notifications address, or the
+// owner's login email as a fallback.
+const storeNotifyEmail = async (shop) => {
+    if (shop?.notificationsEmail) return shop.notificationsEmail;
+    const owner = await User.findOne({ role: "superadmin" }).select("email").lean();
+    return owner?.email || "";
+};
+
+// Rows of "Product | Qty" for an email table.
+const emailRows = (items, nameOf) =>
+    (items || [])
+        .map(
+            (l) =>
+                `<tr><td style="border:1px solid #e5e7eb;padding:8px 14px;">${esc(nameOf(l))}</td>
+                 <td style="border:1px solid #e5e7eb;padding:8px 14px;text-align:right;">${l.quantity}</td></tr>`
+        )
+        .join("");
 
 // Accepts the current basket shape (`Products: [...]`) and the older
 // single-line shape (`Product: {...}`), so an out-of-date client still works.
@@ -75,10 +94,35 @@ const createOrder = async (req, res) => {
             status,
         });
 
-        // NOTE: the order is created but NOT emailed here. Sending to the
-        // supplier is a deliberate, separate step (`sendOrder`) so nothing goes
-        // out to a supplier without an explicit "send" — the person reviews the
-        // order first and then confirms.
+        // The SUPPLIER is not emailed here — that's the deliberate "Send to
+        // supplier" step. But the STORE gets a heads-up so someone knows an order
+        // is waiting to be reviewed and sent. Best-effort.
+        if (isMailConfigured()) {
+            try {
+                const shop = await Store.findOne({ key: "shop" }).lean();
+                const to = await storeNotifyEmail(shop);
+                if (to) {
+                    const body = `
+                      <p><strong>A purchase order is ready to review.</strong></p>
+                      <p>Order for <strong>${esc(supplierRecord.name)}</strong>:</p>
+                      <table style="border-collapse:collapse;margin:8px 0;">
+                        <tr><th style="border:1px solid #e5e7eb;padding:8px 14px;text-align:left;">Product</th>
+                            <th style="border:1px solid #e5e7eb;padding:8px 14px;">Qty</th></tr>
+                        ${emailRows(lines, (l) => l.name)}
+                      </table>
+                      <p>Open Orders in the dashboard to review it and send it to the supplier.</p>`;
+                    await sendMail({
+                        to,
+                        fromName: shop?.name,
+                        subject: `Order to send — ${supplierRecord.name}`,
+                        html: brandedHtml(shop, body),
+                    });
+                }
+            } catch (e) {
+                console.error("[order] store notify failed:", e.message);
+            }
+        }
+
         await newOrder.populate([
             { path: "Products.product", select: "name Price barcode" },
             { path: "user", select: "name email" },

@@ -24,65 +24,107 @@ const reminderRecipient = async (shop) => {
   return owner?.email || "";
 };
 
-// Called from the low‑stock hook after a sale. Raises a pending reorder for the
-// product (one at a time, thanks to the partial unique index) and emails the
-// shop a reminder to approve it. Entirely best‑effort — never throws.
+// Don't re-email the shop about the same low product more than once per day.
+const REMINDER_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+// Send the shop the "low stock — approve a reorder" email. Returns true if sent.
+const sendReorderReminder = async (product, reorder) => {
+  if (!isMailConfigured()) return false;
+  const shop = await Store.findOne({ key: "shop" }).lean();
+  const to = await reminderRecipient(shop);
+  if (!to) return false;
+
+  const appUrl = process.env.APP_URL || "";
+  const cta = appUrl
+    ? `<p><a href="${esc(appUrl)}" style="display:inline-block;background:#1d4ed8;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold;">Open dashboard to approve</a></p>`
+    : `<p>Log in to your dashboard to review and approve it.</p>`;
+  const body = `
+    <p><strong>Low stock — a reorder is waiting for approval.</strong></p>
+    <p><strong>${esc(product.name)}</strong> is at <strong>${Number(product.quantity || 0)}</strong> unit(s)
+    (threshold ${reorder.threshold}).</p>
+    <p>Suggested order: <strong>${reorder.quantity}</strong> unit(s)${
+      reorder.supplierName ? ` from <strong>${esc(reorder.supplierName)}</strong>` : ""
+    }.</p>
+    ${cta}
+    <p style="color:#6b7280;font-size:12px;">No supplier email is sent until you approve.</p>`;
+  const result = await sendMail({
+    to,
+    fromName: shop?.name,
+    subject: `Approve reorder — ${product.name}`,
+    html: brandedHtml(shop, body),
+  });
+  return result.ok;
+};
+
+// Called from the low‑stock hook after a sale, and from the daily sweep. Ensures
+// there's a pending reorder for a low product and emails the shop about it —
+// immediately when the product first goes low, then at most once every 24h while
+// it stays low (so the shop is reminded daily without being spammed). Never
+// throws.
 const raiseReorderForProduct = async (productId) => {
   try {
     const product = await Product.findById(productId).populate("supplier", "name contactInfo");
     if (!product) return;
 
-    // Already an open reorder for this item? Leave it — don't stack duplicates.
-    const existing = await Reorder.findOne({ product: product._id, status: "pending" });
-    if (existing) return;
+    // Only act while the product is actually at/below its threshold.
+    const threshold = Number(product.lowStockThreshold ?? DEFAULT_LOW_STOCK);
+    if (Number(product.quantity || 0) > threshold) return;
 
     const supplier = product.supplier;
-    const reorder = await Reorder.create({
+    let reorder = await Reorder.findOne({ product: product._id, status: "pending" });
+
+    if (reorder) {
+      // Already tracked. Re-remind only if the last email was over 24h ago.
+      const last = reorder.reminderSentAt ? reorder.reminderSentAt.getTime() : 0;
+      if (Date.now() - last < REMINDER_INTERVAL_MS) return;
+      reorder.currentQuantity = Number(product.quantity || 0);
+      const sent = await sendReorderReminder(product, reorder);
+      if (sent) reorder.reminderSentAt = new Date();
+      await reorder.save();
+      return;
+    }
+
+    // First time low → create the reorder and send the immediate reminder.
+    reorder = await Reorder.create({
       product: product._id,
       productName: product.name,
       supplier: supplier?._id || null,
       supplierName: supplier?.name || "",
       supplierEmail: supplier?.contactInfo?.email || "",
       currentQuantity: Number(product.quantity || 0),
-      threshold: Number(product.lowStockThreshold ?? DEFAULT_LOW_STOCK),
+      threshold,
       quantity: suggestQuantity(product),
     });
-
-    // Reminder email to the shop (best effort).
-    if (isMailConfigured()) {
-      const shop = await Store.findOne({ key: "shop" }).lean();
-      const to = await reminderRecipient(shop);
-      if (to) {
-        const appUrl = process.env.APP_URL || "";
-        const cta = appUrl
-          ? `<p><a href="${esc(appUrl)}" style="display:inline-block;background:#1d4ed8;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold;">Open dashboard to approve</a></p>`
-          : `<p>Log in to your dashboard to review and approve it.</p>`;
-        const body = `
-          <p><strong>Low stock — a reorder is waiting for approval.</strong></p>
-          <p><strong>${esc(product.name)}</strong> has dropped to <strong>${reorder.currentQuantity}</strong> unit(s)
-          (threshold ${reorder.threshold}).</p>
-          <p>Suggested order: <strong>${reorder.quantity}</strong> unit(s)${
-            reorder.supplierName ? ` from <strong>${esc(reorder.supplierName)}</strong>` : ""
-          }.</p>
-          ${cta}
-          <p style="color:#6b7280;font-size:12px;">No supplier email is sent until you approve.</p>`;
-        const result = await sendMail({
-          to,
-          fromName: shop?.name,
-          subject: `Approve reorder — ${product.name}`,
-          html: brandedHtml(shop, body),
-        });
-        if (result.ok) {
-          reorder.reminderSentAt = new Date();
-          await reorder.save();
-        }
-      }
+    const sent = await sendReorderReminder(product, reorder);
+    if (sent) {
+      reorder.reminderSentAt = new Date();
+      await reorder.save();
     }
   } catch (error) {
     // A duplicate-key race just means another sale raised it first — ignore.
     if (error?.code !== 11000) {
       console.error("[reorder] raise failed:", error.message);
     }
+  }
+};
+
+// Daily sweep: every product currently at/below its threshold gets a reorder and
+// (at most) one reminder email per 24h. This covers items that went low without
+// a sale (e.g. a manual stock edit) and keeps the daily reminders going.
+const remindLowStock = async () => {
+  try {
+    const low = await Product.find({
+      $expr: { $lte: ["$quantity", { $ifNull: ["$lowStockThreshold", DEFAULT_LOW_STOCK] }] },
+    })
+      .select("_id")
+      .lean();
+    for (const p of low) {
+      // Sequential to avoid a burst of parallel mail sends.
+      await raiseReorderForProduct(p._id);
+    }
+    if (low.length) console.log(`[reorder] low-stock sweep checked ${low.length} product(s)`);
+  } catch (error) {
+    console.error("[reorder] sweep failed:", error.message);
   }
 };
 
@@ -209,3 +251,4 @@ module.exports.rejectReorder = async (req, res) => {
 };
 
 module.exports.raiseReorderForProduct = raiseReorderForProduct;
+module.exports.remindLowStock = remindLowStock;
