@@ -20,6 +20,9 @@ function DayClosingsPage() {
   const { closings, selected, isloading, isloadingOne } = useSelector(
     (state) => state.dayClosing
   );
+  const { Authuser } = useSelector((state) => state.auth);
+  // A manager oversees staff closings but doesn't pull reports — owner/admin only.
+  const canSeeReports = ["admin", "superadmin"].includes(Authuser?.role);
   const [openId, setOpenId] = useState(null);
 
   useEffect(() => {
@@ -112,14 +115,17 @@ function DayClosingsPage() {
                       </button>
                       {/* This batch's own report — every line it was made of.
                           Pinned to PDF: a menu here would be clipped by the
-                          table's own scroll container. Open it for CSV/Excel. */}
-                      <ReportButton
-                        reportKey="day-closing"
-                        params={{ id: closing._id }}
-                        format="pdf"
-                        label={t("dayClosings.report")}
-                        className="h-[30px] text-xs"
-                      />
+                          table's own scroll container. Open it for CSV/Excel.
+                          Owner/admin only. */}
+                      {canSeeReports && (
+                        <ReportButton
+                          reportKey="day-closing"
+                          params={{ id: closing._id }}
+                          format="pdf"
+                          label={t("dayClosings.report")}
+                          className="h-[30px] text-xs"
+                        />
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -147,8 +153,8 @@ function DayClosingsPage() {
 
               <div className="flex shrink-0 items-center gap-2">
                 {/* This batch, as one report — every line sold, plus the
-                    drawer/terminal split to reconcile against. */}
-                {selected && (
+                    drawer/terminal split to reconcile against. Owner/admin only. */}
+                {selected && canSeeReports && (
                   <ReportButton
                     reportKey="day-closing"
                     params={{ id: selected._id }}

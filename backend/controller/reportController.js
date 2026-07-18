@@ -363,7 +363,9 @@ module.exports.previewGhostNet = async (req, res) => {
 };
 
 const REPORTS = {
-  sales: { label: "Sales", roles: ["superadmin", "admin", "manager", "staff"], build: buildSales },
+  // Financial takings report — owner/admin only. A manager oversees closings but
+  // does not pull the shop's sales/profit report.
+  sales: { label: "Sales", roles: ["superadmin", "admin"], build: buildSales },
   inventory: {
     label: "Inventory & Valuation",
     roles: ["superadmin", "admin", "manager"],

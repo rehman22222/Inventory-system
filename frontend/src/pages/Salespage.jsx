@@ -20,6 +20,11 @@ import toast from "react-hot-toast";
 function Salespage() {
   const { t } = useTranslation();
   const { getallsales, searchdata } = useSelector((state) => state.sales);
+  const { Authuser } = useSelector((state) => state.auth);
+
+  // Adding/editing sales and pulling the Sales Report are owner/admin actions.
+  // A manager can only view and CLOSE the day here (backend enforces the same).
+  const canManageSales = ["admin", "superadmin"].includes(Authuser?.role);
 
   const { getallproduct } = useSelector(
     (state) => state.product
@@ -173,7 +178,8 @@ function Salespage() {
 
         <SalesChart className=" mb-10" />
 
-        {/* Sales report — date range + profit/loss summary */}
+        {/* Sales report — date range + profit/loss summary. Owner/admin only. */}
+        {canManageSales && (
         <div className="mr-5 mb-8 rounded-xl border border-base-300 bg-base-100 p-5 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
@@ -209,6 +215,7 @@ function Salespage() {
             </div>
           </div>
         </div>
+        )}
 
         <div className="flex items-center space-x-4">
           <input
@@ -218,6 +225,7 @@ function Salespage() {
             className="w-full md:w-96 h-12 pl-4 pr-12 border-2 border-base-300 rounded-lg bg-base-100 text-base-content"
             placeholder={t("sales.searchPlaceholder")}
           />
+          {canManageSales && (
           <button
             onClick={() => {
               setIsFormVisible(true);
@@ -227,6 +235,7 @@ function Salespage() {
           >
             <IoMdAdd className="text-xl mr-2" /> {t("sales.addSales")}
           </button>
+          )}
           {/* Close the day from here too — hands this cashier's open takings over
               (up the chain) and clears them from their own view. */}
           <button
@@ -385,7 +394,9 @@ function Salespage() {
                   <th className="px-3 py-2  border bg-base-100">{t("common.date")}</th>
                   <th className="px-3 py-2 border bg-base-100">{t("sales.paymentMethod")}</th>
                   <th className="px-3 py-2 border bg-base-100">{t("sales.paymentStatus")}</th>
-                  <th className="px-3 py-2  border bg-base-100">{t("common.operations")}</th>
+                  {canManageSales && (
+                    <th className="px-3 py-2  border bg-base-100">{t("common.operations")}</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-base-100">
@@ -413,6 +424,7 @@ function Salespage() {
                         {sales?.paymentStatus ? t(`common.statuses.${sales.paymentStatus}`, sales.paymentStatus) : ""}
                       </td>
 
+                      {canManageSales && (
                       <td className="px-4  py-2 border">
                         <button
                          onClick={()=> handleEditClick(sales)}
@@ -421,6 +433,7 @@ function Salespage() {
                           {t("common.edit")}
                         </button>
                       </td>
+                      )}
                     </tr>
                   ))
                 ) : (
