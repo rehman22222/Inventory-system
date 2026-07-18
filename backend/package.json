@@ -11,9 +11,7 @@
     "build": "cd ../frontend && npm install && npm run build",
     "postinstall": "node scripts/postinstall.js",
     "dev": "nodemon server",
-    "seed": "node scripts/seedDemoUsers.js",
-    "seed:mongo": "node scripts/seedMongoDemoData.js",
-    "seed:pos": "node scripts/seedPosDemo.js",
+    "seed": "node scripts/seedUsers.js",
     "create-superadmin": "node scripts/createSuperAdmin.js"
   },
   "author": "",
