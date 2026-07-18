@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   createOrder,
   sendOrder,
+  receiveOrder,
   searchOrder,
   updatestatusOrder,
   getOrder,
@@ -17,6 +18,7 @@ const {
 
 router.post("/createorder",authmiddleware, createOrder);
 router.post("/sendorder/:OrderId", authmiddleware, sendOrder);
+router.post("/receive/:OrderId", authmiddleware, receiveOrder);
 router.get("/getorders", authmiddleware, getOrder);
 router.delete("/removeorder/:OrdertId", authmiddleware, Removeorder);
 router.put("/updatestatusOrder/:OrderId", authmiddleware,updatestatusOrder);

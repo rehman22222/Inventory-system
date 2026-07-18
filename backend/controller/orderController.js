@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Order = require('../models/Ordermodel');
 const logActivity = require('../libs/logger');
 const ProductModel = require('../models/Productmodel');
+const StockTransaction = require('../models/StockTranscationmodel');
 const Supplier = require('../models/Suppliermodel');
 const Store = require('../models/Storemodel');
 const User = require('../models/Usermodel');
@@ -237,6 +238,73 @@ const sendOrder = async (req, res) => {
 };
 
 
+// The admin confirms the ordered goods have physically arrived. ONLY now is the
+// stock added to inventory — one Stock-in per line — and the order marked
+// received so it can never be added twice. Nothing about inventory changes
+// before this point.
+const receiveOrder = async (req, res) => {
+    try {
+        const { OrderId } = req.params;
+        const order = await Order.findById(OrderId);
+        if (!order) return res.status(404).json({ message: "Order not found" });
+
+        if (order.receivedAt) {
+            return res.status(400).json({ message: "This order has already been added to inventory" });
+        }
+        if (!Array.isArray(order.Products) || order.Products.length === 0) {
+            return res.status(400).json({ message: "This order has no products to receive" });
+        }
+
+        // Add every line's quantity to the product, and log a Stock-in movement
+        // so the stock history shows where the units came from.
+        for (const line of order.Products) {
+            const productId = line.product;
+            const quantity = Number(line.quantity || 0);
+            if (!productId || !Number.isFinite(quantity) || quantity <= 0) continue;
+
+            await ProductModel.findByIdAndUpdate(productId, { $inc: { quantity } });
+            await StockTransaction.create({
+                product: productId,
+                type: "Stock-in",
+                quantity,
+                supplier: order.supplier || undefined,
+                reference: `PO ${order.supplierName || ""} #${String(order._id).slice(-6)}`.trim(),
+            });
+        }
+
+        order.receivedAt = new Date();
+        order.receivedBy = req.user?._id || null;
+        order.receivedByName = req.user?.name || "";
+        await order.save();
+
+        await logActivity({
+            action: "Receive Order",
+            description: `Order received — ${order.Products.length} product(s) added to inventory${
+                order.supplierName ? ` (from ${order.supplierName})` : ""
+            }.`,
+            entity: "order",
+            entityId: order._id,
+            userId: req.user?._id,
+            ipAddress: req.ip,
+        });
+
+        await order.populate([
+            { path: "Products.product", select: "name Price barcode quantity" },
+            { path: "user", select: "name email" },
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: "Order received — stock added to inventory",
+            order,
+        });
+    } catch (error) {
+        console.error("Error receiving order:", error);
+        res.status(500).json({ message: "Error receiving order", error: error.message });
+    }
+};
+
+
 const Removeorder = async (req, res) => {
     try {
         const { OrdertId } = req.params;
@@ -401,6 +469,7 @@ catch (error) {
 module.exports = {
     createOrder,
     sendOrder,
+    receiveOrder,
     searchOrder,
     updatestatusOrder,
     getOrder,

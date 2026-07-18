@@ -752,7 +752,9 @@ function localStorageRouter(app) {
       return res.status(400).json({ message: "Add at least one product to the order" });
     }
 
-    // Validate the whole basket before deducting any stock.
+    // A purchase order buys stock IN — it does NOT deduct inventory. The stock
+    // is only added once the order is received (see /order/receive), so there's
+    // no stock check here: you can order any quantity from a supplier.
     const lines = [];
     for (const item of requested) {
       const product = store.products.find((entry) => entry._id === String(item.product));
@@ -762,21 +764,9 @@ function localStorageRouter(app) {
       if (!Number.isFinite(quantity) || quantity <= 0) {
         return res.status(400).json({ message: `Invalid quantity for ${product.name}` });
       }
-      if (product.quantity < quantity) {
-        return res.status(400).json({
-          message: `Insufficient stock for ${product.name}`,
-          available: product.quantity,
-          requested: quantity,
-        });
-      }
       // Price comes from the catalogue, never the request body.
       lines.push({ product: product._id, quantity, price: money(product.Price) });
     }
-
-    lines.forEach((line) => {
-      const product = store.products.find((entry) => entry._id === line.product);
-      product.quantity -= line.quantity;
-    });
 
     const order = {
       _id: id(),
@@ -785,6 +775,7 @@ function localStorageRouter(app) {
       status: req.body.status,
       Products: lines,
       totalAmount: money(lines.reduce((sum, line) => sum + line.price * line.quantity, 0)),
+      receivedAt: null,
       createdAt: now(),
       updatedAt: now(),
     };
@@ -827,6 +818,30 @@ function localStorageRouter(app) {
     Object.assign(order, updates);
     writeStore(store);
     res.json({ message: "Order successfully updated", order: populateOrder(store, order) });
+  });
+  router.post("/order/receive/:OrderId", (req, res) => {
+    const store = readStore();
+    const order = store.orders.find((item) => item._id === req.params.OrderId);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    if (order.receivedAt) {
+      return res.status(400).json({ message: "This order has already been added to inventory" });
+    }
+    // Add each line's quantity into inventory — the goods have arrived.
+    (order.Products || []).forEach((line) => {
+      const product = store.products.find(
+        (p) => p._id === String(line.product?._id || line.product)
+      );
+      if (product) product.quantity += Number(line.quantity || 0);
+    });
+    order.receivedAt = now();
+    order.updatedAt = now();
+    addActivity(store, "Receive Order", "Order received — stock added to inventory.", "order", order._id, req.body.user || "admin-demo");
+    writeStore(store);
+    res.json({
+      success: true,
+      message: "Order received — stock added to inventory",
+      order: populateOrder(store, order),
+    });
   });
   router.delete("/order/removeorder/:OrdertId", (req, res) => {
     const store = readStore();

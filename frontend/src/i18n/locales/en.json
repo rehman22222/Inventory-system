@@ -719,7 +719,11 @@
     "totalSpend": "Total spend",
     "noSupplier": "No supplier",
     "ordersCount": "{{count}} order",
-    "ordersCount_other": "{{count}} orders"
+    "ordersCount_other": "{{count}} orders",
+    "markReceived": "Mark received (add to inventory)",
+    "received": "Received ✓",
+    "receiveConfirm": "Has this order arrived? This will add the ordered quantities to your inventory. This can't be undone.",
+    "receiveFail": "Could not add the order to inventory"
   },
   "suppliers": {
     "totalSupplier": "Total Supplier",

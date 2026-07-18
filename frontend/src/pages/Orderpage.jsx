@@ -15,6 +15,7 @@ import {
   gettingallOrder,
   SearchOrder,
   SendOrder,
+  ReceiveOrder,
 } from "../features/orderSlice";
 
 import { gettingallproducts } from "../features/productSlice";
@@ -280,6 +281,21 @@ function Orderpage() {
       dispatch(gettingallOrder());
     } catch (error) {
       toast.error(error || t("orders.sendFail"));
+    }
+  };
+
+  // The admin confirms the goods arrived — asks first, then the server adds the
+  // ordered quantities into inventory. Nothing touches stock before this.
+  const handleReceive = async (order) => {
+    if (!window.confirm(t("orders.receiveConfirm"))) return;
+    try {
+      await dispatch(ReceiveOrder(order._id)).unwrap();
+      toast.success(t("orders.received"));
+      dispatch(gettingallOrder());
+      // Reflect the new stock levels straight away.
+      dispatch(gettingallproducts());
+    } catch (error) {
+      toast.error(error || t("orders.receiveFail"));
     }
   };
 
@@ -558,6 +574,23 @@ function Orderpage() {
                               className="h-9 rounded-md bg-blue-700 px-3 text-sm font-semibold text-white hover:bg-blue-600 disabled:opacity-40"
                             >
                               {t("orders.sendToSupplier")}
+                            </button>
+                          )}
+                          {/* Goods arrival: inventory is only touched here. Once
+                              confirmed, the ordered quantities are added to stock. */}
+                          {order.receivedAt ? (
+                            <span
+                              className="rounded-md bg-emerald-100 px-2 py-1 text-center text-xs font-semibold text-emerald-700"
+                              title={order.receivedByName || ""}
+                            >
+                              {t("orders.received")}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleReceive(order)}
+                              className="h-9 rounded-md border-2 border-emerald-600 px-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-600 hover:text-white"
+                            >
+                              {t("orders.markReceived")}
                             </button>
                           )}
                           <div className="flex gap-2">

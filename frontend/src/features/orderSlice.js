@@ -58,6 +58,17 @@ export const createdOrder=createAsyncThunk('order/createorder',async(order,{reje
     }
   });
 
+  // Admin confirms the goods arrived — this is the ONLY step that adds the
+  // ordered quantities into inventory.
+  export const ReceiveOrder = createAsyncThunk('order/receive', async (OrderId, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post(`order/receive/${OrderId}`, {}, { withCredentials: true });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Could not receive the order");
+    }
+  });
+
   export const updatestatusOrder = createAsyncThunk(
     'order/updatestatusOrder',
     async ({ OrderId, updatedData }, { rejectWithValue }) => {

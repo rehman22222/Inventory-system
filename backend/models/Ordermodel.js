@@ -23,6 +23,13 @@ const OrderSchema= new mongoose.Schema({
     // When the order email actually went out to the supplier.
     emailSentAt:{ type:Date, default:null },
     emailError:{ type:String, default:"" },
+    // A purchase order buys stock IN, but the goods arrive later. Inventory is
+    // NOT touched at creation — it's only added once the admin confirms the
+    // order has arrived. These record that confirmation (and stop it happening
+    // twice).
+    receivedAt:{ type:Date, default:null },
+    receivedBy:{ type:mongoose.Schema.Types.ObjectId, ref:"User", default:null },
+    receivedByName:{ type:String, default:"" },
     Description:{
         type:String,
         default:"",
