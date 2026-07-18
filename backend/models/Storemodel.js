@@ -42,6 +42,10 @@ const StoreSchema = new mongoose.Schema(
     // blank, the system falls back to the owner's (superadmin's) login email.
     notificationsEmail: { type: String, trim: true, default: "" },
 
+    // When the last daily low-stock digest (one email listing every low product)
+    // was sent — used to keep it to once per 24h.
+    lastLowStockDigestAt: { type: Date, default: null },
+
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }

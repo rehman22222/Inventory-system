@@ -56,36 +56,25 @@ const sendReorderReminder = async (product, reorder) => {
   return result.ok;
 };
 
-// Called from the low‑stock hook after a sale, and from the daily sweep. Ensures
-// there's a pending reorder for a low product and emails the shop about it —
-// immediately when the product first goes low, then at most once every 24h while
-// it stays low (so the shop is reminded daily without being spammed). Never
-// throws.
+// CASE 1 — immediate, per product. The first time a product is at/below its
+// threshold it gets its own reorder and one email to the shop. It never repeats
+// for the same open reorder (the daily digest below is the recurring reminder).
+// Called from the POS low‑stock hook after a sale, and from the sweep. Best‑
+// effort — never throws.
 const raiseReorderForProduct = async (productId) => {
   try {
     const product = await Product.findById(productId).populate("supplier", "name contactInfo");
     if (!product) return;
 
-    // Only act while the product is actually at/below its threshold.
     const threshold = Number(product.lowStockThreshold ?? DEFAULT_LOW_STOCK);
     if (Number(product.quantity || 0) > threshold) return;
 
+    // Already tracked? Leave it — one email per product, not one per check.
+    const existing = await Reorder.findOne({ product: product._id, status: "pending" });
+    if (existing) return;
+
     const supplier = product.supplier;
-    let reorder = await Reorder.findOne({ product: product._id, status: "pending" });
-
-    if (reorder) {
-      // Already tracked. Re-remind only if the last email was over 24h ago.
-      const last = reorder.reminderSentAt ? reorder.reminderSentAt.getTime() : 0;
-      if (Date.now() - last < REMINDER_INTERVAL_MS) return;
-      reorder.currentQuantity = Number(product.quantity || 0);
-      const sent = await sendReorderReminder(product, reorder);
-      if (sent) reorder.reminderSentAt = new Date();
-      await reorder.save();
-      return;
-    }
-
-    // First time low → create the reorder and send the immediate reminder.
-    reorder = await Reorder.create({
+    const reorder = await Reorder.create({
       product: product._id,
       productName: product.name,
       supplier: supplier?._id || null,
@@ -108,9 +97,71 @@ const raiseReorderForProduct = async (productId) => {
   }
 };
 
-// Daily sweep: every product currently at/below its threshold gets a reorder and
-// (at most) one reminder email per 24h. This covers items that went low without
-// a sale (e.g. a manual stock edit) and keeps the daily reminders going.
+// CASE 2 — the 24h digest. ONE email listing every product currently at/below
+// its threshold, sent at most once per 24h (tracked on the Store).
+const sendLowStockDigest = async () => {
+  try {
+    if (!isMailConfigured()) return;
+    const store = await Store.findOne({ key: "shop" });
+    const last = store?.lastLowStockDigestAt ? store.lastLowStockDigestAt.getTime() : 0;
+    if (Date.now() - last < REMINDER_INTERVAL_MS) return;
+
+    const to = await reminderRecipient(store);
+    if (!to) return;
+
+    const low = await Product.find({
+      $expr: { $lte: ["$quantity", { $ifNull: ["$lowStockThreshold", DEFAULT_LOW_STOCK] }] },
+    })
+      .populate("supplier", "name")
+      .select("name quantity lowStockThreshold supplier")
+      .lean();
+    if (!low.length) return;
+
+    const rows = low
+      .map(
+        (p) =>
+          `<tr>
+             <td style="border:1px solid #e5e7eb;padding:6px 12px;">${esc(p.name)}</td>
+             <td style="border:1px solid #e5e7eb;padding:6px 12px;text-align:right;">${Number(p.quantity || 0)}</td>
+             <td style="border:1px solid #e5e7eb;padding:6px 12px;text-align:right;">${Number(p.lowStockThreshold ?? DEFAULT_LOW_STOCK)}</td>
+             <td style="border:1px solid #e5e7eb;padding:6px 12px;">${esc(p.supplier?.name || "—")}</td>
+           </tr>`
+      )
+      .join("");
+    const appUrl = process.env.APP_URL || "";
+    const cta = appUrl
+      ? `<p><a href="${esc(appUrl)}" style="display:inline-block;background:#1d4ed8;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold;">Open dashboard</a></p>`
+      : "";
+    const body = `
+      <p><strong>Daily low‑stock summary — ${low.length} product(s) at or below threshold.</strong></p>
+      <table style="border-collapse:collapse;margin:8px 0;">
+        <tr>
+          <th style="border:1px solid #e5e7eb;padding:6px 12px;text-align:left;">Product</th>
+          <th style="border:1px solid #e5e7eb;padding:6px 12px;">In stock</th>
+          <th style="border:1px solid #e5e7eb;padding:6px 12px;">Threshold</th>
+          <th style="border:1px solid #e5e7eb;padding:6px 12px;text-align:left;">Supplier</th>
+        </tr>
+        ${rows}
+      </table>
+      ${cta}`;
+    const result = await sendMail({
+      to,
+      fromName: store?.name,
+      subject: `Low stock — ${low.length} product(s)`,
+      html: brandedHtml(store, body),
+    });
+    if (result.ok && store) {
+      store.lastLowStockDigestAt = new Date();
+      await store.save();
+    }
+  } catch (error) {
+    console.error("[reorder] digest failed:", error.message);
+  }
+};
+
+// Scheduled sweep: give every low product its own reorder + immediate email the
+// first time it's seen (case 1, incl. items that went low without a sale), then
+// send the once‑a‑day combined digest (case 2).
 const remindLowStock = async () => {
   try {
     const low = await Product.find({
@@ -119,10 +170,10 @@ const remindLowStock = async () => {
       .select("_id")
       .lean();
     for (const p of low) {
-      // Sequential to avoid a burst of parallel mail sends.
-      await raiseReorderForProduct(p._id);
+      await raiseReorderForProduct(p._id); // sequential — no burst of parallel sends
     }
-    if (low.length) console.log(`[reorder] low-stock sweep checked ${low.length} product(s)`);
+    await sendLowStockDigest();
+    if (low.length) console.log(`[reorder] low-stock sweep: ${low.length} product(s), digest checked`);
   } catch (error) {
     console.error("[reorder] sweep failed:", error.message);
   }

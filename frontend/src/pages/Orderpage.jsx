@@ -39,7 +39,6 @@ function Orderpage() {
   const { getallSupplier } = useSelector((state) => state.supplier);
   const { Authuser, isUserSignup } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
-  const [status, setstatus] = useState("pending");
   const [query, setquery] = useState("");
   // Which supplier we're ordering from — a purchase order is placed with one.
   const [supplier, setSupplier] = useState("");
@@ -155,11 +154,10 @@ function Orderpage() {
 
     if (!selectedOrder) return;
 
-    // Editing an existing order only moves its status/description — the basket
-    // and its prices are fixed at creation from the catalogue.
+    // Editing an existing order only changes its description — the basket and
+    // its prices are fixed at creation from the catalogue.
     const updatedData = {
       Description,
-      status,
     };
 
     dispatch( updatestatusOrder({ OrderId: selectedOrder._id,  updatedData }))
@@ -191,7 +189,6 @@ function Orderpage() {
       user: Authuser?.id || "",
       supplier,
       Description,
-      status: status || "pending",
       // Price is deliberately not sent — the server reads it from the catalogue.
       Products: lines.map((line) => ({
         product: line.productId,
@@ -217,12 +214,11 @@ function Orderpage() {
     setQuantity("");
     setLines([]);
     setDescription("");
-    setstatus("pending");
   };
 
   const handleEditClick = (order) => {
     setselectedOrder(order);
-    // The basket is read-only once placed; only status/description are editable.
+    // The basket is read-only once placed; only the description is editable.
     setLines(
       (order.Products || []).map((line) => ({
         productId: line.product?._id || String(line.product),
@@ -231,7 +227,6 @@ function Orderpage() {
         quantity: Number(line.quantity || 0),
       }))
     );
-    setstatus(order.status|| "");
     setDescription(order.Description|| "");
     setIsFormVisible(true);
   };
@@ -443,20 +438,6 @@ function Orderpage() {
                   </div>
                 </div>
               )}
-
-              <div>
-                <label className="text-sm">{t("orders.status")}</label>
-                <select
-                  className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
-                  value={status}
-                  onChange={(e) => setstatus(e.target.value)}
-                >
-                   <option value="">{t("orders.selectStatus")}</option>
-                  <option value="pending">{t("common.statuses.pending")}</option>
-                  <option value="shipped">{t("common.statuses.shipped")}</option>
-                  <option value="delivered">{t("common.statuses.delivered")}</option>
-                </select>
-              </div>
               </div>
 
               <div className="border-t border-base-300 px-5 py-3">
@@ -482,7 +463,7 @@ function Orderpage() {
                   <th className="px-3 py-2 bg-base-100 border">{t("orders.quantity")}</th>
                   <th className="px-3 py-2 bg-base-100 border">{t("common.description")}</th>
                   <th className="px-3 py-2  bg-base-100  border">{t("orders.totalAmount")}</th>
-                  <th className="px-3 py-2 bg-base-100  border">{t("orders.status")}</th>
+                  <th className="px-3 py-2 bg-base-100  border">{t("orders.supplier")}</th>
                   <th className="px-3 py-2 bg-base-100 border">{t("orders.createdBy")}</th>
                   <th className="px-3 py-2 bg-base-100 border">{t("orders.timestamp")}</th>
                   <th className="px-3 py-2 bg-base-100 border">{t("common.operations")}</th>
@@ -521,7 +502,7 @@ function Orderpage() {
                       <td className="px-3 py-2 border">{order?.Description}</td>
                  
                       <td className="px-3 py-2 border">{order?.totalAmount}</td>
-                      <td className="px-3 py-2 border">{order?.status ? t(`common.statuses.${order.status}`, order.status) : ""}</td>
+                      <td className="px-3 py-2 border">{order?.supplierName || "—"}</td>
                       <td className="px-3 py-2 border">{order.user?.name}</td>
                       <td className="px-3 py-2 border">
                         <FormattedTime timestamp={order?.createdAt} />
