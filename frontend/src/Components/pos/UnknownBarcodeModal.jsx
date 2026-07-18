@@ -19,7 +19,9 @@ function UnknownBarcodeModal({ barcode, products, categories, onResolved, onClos
   const [form, setForm] = useState({
     name: "",
     Price: "",
-    Category: "",
+    // Default to the "Miscellaneous" catch-all so a cashier who doesn't know the
+    // category can still add the product; they can pick a real one if they do.
+    Category: "miscellaneous",
     quantity: "1",
   });
 
@@ -195,12 +197,18 @@ function UnknownBarcodeModal({ barcode, products, categories, onResolved, onClos
               onChange={(event) => setForm({ ...form, Category: event.target.value })}
               className="w-full border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-cyan-500"
             >
-              <option value="">{t("pos.unknownBarcode.selectCategory")}</option>
-              {categories.map((category) => (
-                <option key={category._id} value={category._id}>
-                  {category.name}
-                </option>
-              ))}
+              {/* Always available, even before any product uses it — the server
+                  files it under the permanent "Miscellaneous" category. */}
+              <option value="miscellaneous">
+                {t("pos.unknownBarcode.miscellaneous", "Miscellaneous")}
+              </option>
+              {categories
+                .filter((category) => category.name !== "Miscellaneous")
+                .map((category) => (
+                  <option key={category._id} value={category._id}>
+                    {category.name}
+                  </option>
+                ))}
             </select>
           </div>
 

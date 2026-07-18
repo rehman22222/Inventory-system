@@ -537,6 +537,7 @@
       "openingStock": "Opening stock",
       "category": "Category",
       "selectCategory": "Choose a category",
+      "miscellaneous": "Miscellaneous",
       "barcodeLabel": "Barcode",
       "createAndAdd": "Create and add to sale",
       "created": "{{name}} created",

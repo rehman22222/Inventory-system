@@ -8,6 +8,7 @@ const { ean13FromSequence } = require('../libs/barcode')
 const { nextSequence } = require('../models/Countermodel')
 
 const RANDOM_CATEGORY = "Random";
+const MISC_CATEGORY = "Miscellaneous";
 
 // Escape a user string so it's a literal in a regex — stops a stray "(" or "*"
 // throwing, and closes off regex-injection on the search box.
@@ -112,6 +113,19 @@ module.exports.quickAddProduct = async (req, res) => {
     return res
       .status(400)
       .json({ message: "Quick add is for scanned items — a barcode is required" });
+  }
+
+  // Category is optional at the till, but rather than leaving the item
+  // uncategorised we drop it into the permanent "Miscellaneous" bucket — so a
+  // cashier who doesn't know (or remember) the category can still add the
+  // product cleanly. A real category id, when chosen, is always respected.
+  if (!mongoose.isValidObjectId(String(req.body?.Category || ""))) {
+    try {
+      const misc = await ensureMiscCategory();
+      req.body.Category = misc._id;
+    } catch (error) {
+      console.error("[quick-add] misc category failed:", error.message);
+    }
   }
 
   return module.exports.Addproduct(req, res);
@@ -353,6 +367,26 @@ const ensureRandomCategory = async () => {
     category = await Category.create({
       name: RANDOM_CATEGORY,
       description: "System category for generated price-point barcodes",
+      system: true,
+    });
+  } else if (!category.system) {
+    category.system = true;
+    await category.save();
+  }
+
+  return category;
+};
+
+// The permanent "Miscellaneous" catch-all. When a cashier quick-adds a scanned
+// item at the till but doesn't know its category, it lands here instead of being
+// left uncategorised. Created on demand and flagged system so it always exists.
+const ensureMiscCategory = async () => {
+  let category = await Category.findOne({ name: MISC_CATEGORY });
+
+  if (!category) {
+    category = await Category.create({
+      name: MISC_CATEGORY,
+      description: "Catch-all for till quick-adds with no chosen category",
       system: true,
     });
   } else if (!category.system) {
