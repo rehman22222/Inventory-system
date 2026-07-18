@@ -66,7 +66,10 @@ function Orderpage() {
     setPrice(chosenProduct ? String(chosenProduct.Price ?? "") : "");
   }, [chosenProduct]);
 
-  const linesTotal = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
+  const linesTotal = lines.reduce(
+    (sum, line) => sum + line.price * (Number(line.quantity) || 0),
+    0
+  );
 
   // Add the currently-picked product to the basket. Re-picking the same product
   // just raises its quantity rather than adding a second row.
@@ -91,7 +94,7 @@ function Orderpage() {
       if (existing) {
         return current.map((line) =>
           line.productId === chosenProduct._id
-            ? { ...line, quantity: line.quantity + wanted }
+            ? { ...line, quantity: Number(line.quantity || 0) + wanted }
             : line
         );
       }
@@ -113,6 +116,17 @@ function Orderpage() {
 
   const removeLine = (productId) =>
     setLines((current) => current.filter((line) => line.productId !== productId));
+
+  // Edit a line's quantity inline. Kept as raw text while typing (so the field
+  // can be cleared to retype) and coerced to a number on submit.
+  const updateLineQuantity = (productId, value) =>
+    setLines((current) =>
+      current.map((line) =>
+        line.productId === productId
+          ? { ...line, quantity: value === "" ? "" : Math.max(1, Number(value) || 1) }
+          : line
+      )
+    );
 
   useEffect(() => {
     dispatch(gettingallOrder());
@@ -154,10 +168,19 @@ function Orderpage() {
 
     if (!selectedOrder) return;
 
-    // Editing an existing order only changes its description — the basket and
-    // its prices are fixed at creation from the catalogue.
+    if (lines.length === 0) {
+      toast.error(t("orders.requiredFields"));
+      return;
+    }
+
+    // Quantities are editable; prices come from the catalogue on the server, so
+    // we only send the product and the (new) quantity for each line.
     const updatedData = {
       Description,
+      Products: lines.map((line) => ({
+        product: line.productId,
+        quantity: Number(line.quantity) || 1,
+      })),
     };
 
     dispatch( updatestatusOrder({ OrderId: selectedOrder._id,  updatedData }))
@@ -218,7 +241,11 @@ function Orderpage() {
 
   const handleEditClick = (order) => {
     setselectedOrder(order);
-    // The basket is read-only once placed; only the description is editable.
+    // Set the supplier so more of that supplier's products can be added while
+    // editing; existing lines' quantities can be changed and lines removed.
+    setSupplier(String(order.supplier?._id || order.supplier || ""));
+    setProduct("");
+    setQuantity("");
     setLines(
       (order.Products || []).map((line) => ({
         productId: line.product?._id || String(line.product),
@@ -340,9 +367,9 @@ function Orderpage() {
                 />
               </div>
 
-              {/* The basket. Hidden while editing — an order's lines and prices
-                  are fixed once it is placed. */}
-              {!selectedOrder && (
+              {/* Add more of the supplier's products to the basket — available
+                  when creating and when editing an existing order. */}
+              {(
                 <div className="mb-4 rounded-lg border-2 border-base-300 p-3">
                   <label className="text-sm font-semibold">{t("orders.product")}</label>
 
@@ -414,22 +441,28 @@ function Orderpage() {
                       className="flex items-center gap-2 rounded-lg border border-base-300 bg-base-200/40 px-2 py-1.5 text-sm"
                     >
                       <span className="min-w-0 flex-1 truncate">{line.name}</span>
-                      <span className="tabular-nums text-base-content/60">
-                        {line.quantity} × ${line.price.toFixed(2)}
+                      <input
+                        type="number"
+                        min="1"
+                        value={line.quantity}
+                        onChange={(e) => updateLineQuantity(line.productId, e.target.value)}
+                        className="h-8 w-16 rounded-md border border-base-300 bg-base-100 px-2 text-center tabular-nums text-base-content"
+                        aria-label={t("common.quantity")}
+                      />
+                      <span className="tabular-nums text-base-content/50">
+                        × ${line.price.toFixed(2)}
                       </span>
                       <span className="w-16 text-end font-semibold tabular-nums">
-                        ${(line.quantity * line.price).toFixed(2)}
+                        ${((Number(line.quantity) || 0) * line.price).toFixed(2)}
                       </span>
-                      {!selectedOrder && (
-                        <button
-                          type="button"
-                          onClick={() => removeLine(line.productId)}
-                          className="px-1 text-red-500 hover:text-red-700"
-                          aria-label={t("common.remove")}
-                        >
-                          ×
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeLine(line.productId)}
+                        className="px-1 text-red-500 hover:text-red-700"
+                        aria-label={t("common.remove")}
+                      >
+                        ×
+                      </button>
                     </div>
                   ))}
                   <div className="flex justify-between border-t border-base-300 px-2 pt-2 text-sm font-bold">

@@ -797,7 +797,34 @@ function localStorageRouter(app) {
     const store = readStore();
     const order = store.orders.find((item) => item._id === req.params.OrderId);
     if (!order) return res.status(404).json({ message: "Order not found" });
-    Object.assign(order, req.body, { updatedAt: now() });
+
+    const updates = { ...req.body, updatedAt: now() };
+    // The total is never trusted from the client.
+    delete updates.totalAmount;
+
+    // If the basket is being edited, re-validate and re-price every line from
+    // the catalogue, then recompute the order total.
+    if (Array.isArray(updates.Products)) {
+      const lines = [];
+      for (const item of updates.Products) {
+        const product = store.products.find((entry) => entry._id === String(item.product?._id || item.product));
+        if (!product) return res.status(404).json({ message: "Product not found" });
+        const quantity = Number(item.quantity);
+        if (!Number.isFinite(quantity) || quantity <= 0) {
+          return res.status(400).json({ message: `Invalid quantity for ${product.name}` });
+        }
+        lines.push({ product: product._id, quantity, price: money(product.Price) });
+      }
+      if (lines.length === 0) {
+        return res.status(400).json({ message: "An order must have at least one product" });
+      }
+      updates.Products = lines;
+      updates.totalAmount = money(lines.reduce((sum, line) => sum + line.price * line.quantity, 0));
+    } else {
+      delete updates.Products;
+    }
+
+    Object.assign(order, updates);
     writeStore(store);
     res.json({ message: "Order successfully updated", order: populateOrder(store, order) });
   });

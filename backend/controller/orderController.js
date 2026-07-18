@@ -292,14 +292,40 @@ const updatestatusOrder = async (req, res) => {
         const userId = req.user._id;
         const ipAddress = req.ip;
 
-        // This endpoint moves an order along its status; it does not re-price it.
-        // The basket and the total are derived from the catalogue at creation, so
-        // ignore any attempt to send them back in.
-        // (It used to multiply by `item.ProductModelrice`, a mangled "price",
-        // which is always undefined — every recomputed total came out NaN.)
-        delete updates.Products;
-        delete updates.Product;
+        // The total is never taken from the client — it's always derived from the
+        // catalogue. Same for the legacy single-line shape.
         delete updates.totalAmount;
+        delete updates.Product;
+
+        // If the basket itself is being edited (quantities changed, a line
+        // removed), re-validate every line and re-price it from the catalogue,
+        // then recompute the order total. The client sets quantities, never prices.
+        if (Array.isArray(updates.Products)) {
+            const lines = [];
+            for (const item of updates.Products) {
+                const productId = String(item?.product?._id || item?.product || "");
+                if (!mongoose.isValidObjectId(productId)) {
+                    return res.status(400).json({ message: `Invalid product id: ${productId}` });
+                }
+                const productRecord = await ProductModel.findById(productId);
+                if (!productRecord) return res.status(404).json({ message: "Product not found" });
+
+                const quantity = Number(item?.quantity || 0);
+                if (!Number.isFinite(quantity) || quantity <= 0) {
+                    return res.status(400).json({ message: `Invalid quantity for ${productRecord.name}` });
+                }
+
+                const unitCost = money(productRecord.costPrice || productRecord.Price);
+                lines.push({ product: productRecord._id, quantity, price: unitCost });
+            }
+            if (lines.length === 0) {
+                return res.status(400).json({ message: "An order must have at least one product" });
+            }
+            updates.Products = lines;
+            updates.totalAmount = money(lines.reduce((sum, line) => sum + line.price * line.quantity, 0));
+        } else {
+            delete updates.Products;
+        }
 
         const updatedOrder = await Order.findByIdAndUpdate(OrderId, updates, { new: true })
             .populate("Products.product", "name Price barcode")
