@@ -74,6 +74,7 @@ const menuByRole = {
     { label: "sidebar.categories", path: "category", icon: MdOutlineCategory },
     { label: "sidebar.suppliers", path: "supplier", icon: TfiSupport },
     { label: "sidebar.sales", path: "sales", icon: MdPointOfSale },
+    { label: "sidebar.dayClosings", path: "day-closings", icon: FiLock },
     { label: "sidebar.orders", path: "order", icon: FiShoppingCart },
     { label: "sidebar.vouchers", path: "vouchers", icon: FiTag },
     { label: "sidebar.stock", path: "stock-transaction", icon: RiStockLine },

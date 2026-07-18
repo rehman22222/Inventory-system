@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import TopNavbar from "../Components/TopNavbar";
 import { IoMdAdd } from "react-icons/io";
 import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
+import { FiLock } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import {gettingallproducts} from '../features/productSlice'
@@ -11,6 +12,7 @@ import {
 } from "../features/salesSlice";
 import SalesChart from '../lib/Salesgraph';
 import ReportButton from "../Components/ReportButton";
+import DayClosingModal from "../Components/pos/DayClosingModal";
 import toast from "react-hot-toast";
 
 
@@ -36,6 +38,8 @@ function Salespage() {
   const [selectedSales, setselectedSales] = useState(null);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  // End-of-shift close, also available here (not just at the POS till).
+  const [showCloseDay, setShowCloseDay] = useState(false);
 
 
 
@@ -223,7 +227,27 @@ function Salespage() {
           >
             <IoMdAdd className="text-xl mr-2" /> {t("sales.addSales")}
           </button>
+          {/* Close the day from here too — hands this cashier's open takings over
+              (up the chain) and clears them from their own view. */}
+          <button
+            onClick={() => setShowCloseDay(true)}
+            className="flex h-12 w-44 items-center justify-center rounded-lg border-2 border-blue-800 font-semibold text-blue-800 transition hover:bg-blue-800 hover:text-white"
+          >
+            <FiLock className="mr-2 text-lg" /> {t("sales.closeDay")}
+          </button>
         </div>
+
+        {showCloseDay && (
+          <DayClosingModal
+            onClose={() => setShowCloseDay(false)}
+            onClosed={() => {
+              setShowCloseDay(false);
+              // Closed rows leave this cashier's scope — refresh so the list and
+              // revenue reset to their new (open) state.
+              dispatch(gettingallSales());
+            }}
+          />
+        )}
 
         {isFormVisible && (
           <div className="fixed right-0 top-0 z-50 flex h-svh w-full max-w-2xl flex-col overflow-hidden border-l-2 border-base-300 bg-base-100 shadow-xl">
