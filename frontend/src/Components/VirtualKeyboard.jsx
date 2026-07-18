@@ -8,7 +8,27 @@ import { MdKeyboard, MdKeyboardHide } from "react-icons/md";
 // focusing any text field pops a keyboard up from the bottom; tapping keys types
 // into that field. A physical keyboard keeps working alongside it. The shop
 // turns it on/off with the floating button (remembered per device); it defaults
-// ON for touch/coarse-pointer screens and OFF for a normal mouse desktop.
+// ON for desktop-class touch monitors and OFF for a normal mouse desktop.
+
+// Phones and tablets already raise their OWN soft keyboard when a field is
+// focused, so our keyboard would just fight it (two keyboards, focus flicker).
+// A POS touch monitor runs a desktop OS where Chrome does NOT auto-raise one —
+// that's the only place this keyboard is wanted. Detect the native-keyboard
+// devices and stay out of their way entirely.
+const hasNativeSoftKeyboard = () => {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  // Mobile phones and tablets (Android, iOS, iPadOS, Windows Phone). Desktop
+  // touch monitors report a plain Windows/Mac UA with no "Mobile"/"Android".
+  if (/Android|iPhone|iPad|iPod|Windows Phone|Mobile|Tablet|Silk|Kindle/i.test(ua)) {
+    return true;
+  }
+  // iPadOS 13+ masquerades as desktop Safari but is a touch device with a
+  // native keyboard: Mac UA + real touch points.
+  const isTouchMac =
+    /Macintosh/.test(ua) && typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1;
+  return isTouchMac;
+};
 
 // Which fields the keyboard drives (skip checkboxes, files, pickers, buttons…).
 const EDITABLE_SELECTOR =
@@ -35,7 +55,12 @@ function VirtualKeyboard() {
   const keyboard = useRef(null);
   const activeEl = useRef(null);
 
+  // On phones/tablets the OS keyboard already handles input — decided once, up
+  // front, so the whole component (button included) stays off those devices.
+  const nativeKeyboard = useRef(hasNativeSoftKeyboard());
+
   const [enabled, setEnabled] = useState(() => {
+    if (nativeKeyboard.current) return false;
     const saved = typeof localStorage !== "undefined" ? localStorage.getItem("osk-enabled") : null;
     if (saved !== null) return saved === "1";
     return (
@@ -108,6 +133,10 @@ function VirtualKeyboard() {
       }
     }
   }, []);
+
+  // Devices with a native soft keyboard (phones/tablets) get nothing from us —
+  // not even the toggle — so the OS keyboard is the only one that ever appears.
+  if (nativeKeyboard.current) return null;
 
   return (
     <>
