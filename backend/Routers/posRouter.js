@@ -46,9 +46,11 @@ router.patch("/receipt/:receiptNo/payment", authmiddleware, changePaymentMethod)
 // Day closing: a cashier previews and closes their OWN takings...
 router.get("/day-closing/summary", authmiddleware, dayClosingSummary);
 router.post("/day-closing/close", authmiddleware, closeDay);
-// ...and once handed over, only the owner side can read the batch back.
-router.get("/day-closings", authmiddleware, adminOrSuperadmin, getDayClosings);
-router.get("/day-closings/:closingId", authmiddleware, adminOrSuperadmin, getDayClosing);
+// ...and once handed over, the batch reads back UP THE CHAIN: a manager sees
+// their staff's (and own) closings, the owner side sees all. The controller
+// scopes the results by role, so the route only needs auth.
+router.get("/day-closings", authmiddleware, getDayClosings);
+router.get("/day-closings/:closingId", authmiddleware, getDayClosing);
 
 router.post("/hold", authmiddleware, holdSale);
 router.get("/held", authmiddleware, getHeldSales);

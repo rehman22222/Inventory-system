@@ -37,6 +37,29 @@ const canLookupAnyReceipt = (user) =>
 // have not yet been handed over at day closing.
 const ownOpenScope = (user) => ({ cashier: user._id, dayClosing: null });
 
+// Who sees whose day-closing batches, up the chain:
+//   staff closing   → manager + admin + superadmin
+//   manager closing → admin + superadmin
+// So a manager sees their staff's closings and their own, but never another
+// manager's or the admin's. Owner side sees everything. Uses cashierRole, which
+// is snapshotted on every DayClosing.
+const closingScope = (user) => {
+  if (seesAllSales(user)) return {};
+  if (user?.role === "manager") {
+    return { $or: [{ cashierRole: "staff" }, { cashier: user._id }] };
+  }
+  return { cashier: user?._id };
+};
+
+// Does one already-loaded closing fall within a viewer's scope? (Same rule as
+// closingScope, checked in memory so getDayClosing needs no second query.)
+const canSeeClosing = (user, closing) => {
+  if (seesAllSales(user)) return true;
+  const isOwn = String(closing.cashier) === String(user?._id);
+  if (user?.role === "manager") return isOwn || closing.cashierRole === "staff";
+  return isOwn;
+};
+
 const opts = (session) => (session ? { session } : {});
 
 const receiptNumber = async (session) => {
@@ -1570,7 +1593,10 @@ module.exports.closeDay = async (req, res) => {
 module.exports.getDayClosings = async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit || 50), 200);
-    const filter = {};
+    // Start from what this viewer is allowed to see (owner: all; manager: their
+    // staff + own; staff: own), then optionally narrow to one cashier — AND-ed
+    // with the scope, so a manager can't request a peer's or the admin's batches.
+    const filter = closingScope(req.user);
 
     if (req.query.cashier) {
       if (!mongoose.isValidObjectId(req.query.cashier)) {
@@ -1606,6 +1632,11 @@ module.exports.getDayClosing = async (req, res) => {
 
     if (!closing) {
       return res.status(404).json({ message: "Day closing not found" });
+    }
+
+    // A manager may only open their staff's or their own batch, never a peer's.
+    if (!canSeeClosing(req.user, closing)) {
+      return res.status(403).json({ message: "You don't have access to this day closing" });
     }
 
     return res.status(200).json({ closing });
