@@ -339,10 +339,12 @@ const getOrder = async (req, res) => {
         // "ProductModelrice" was a mangled "Price" — it selected a field that does
         // not exist, so the price never reached the client and had to be typed in
         // by hand.
+        // .lean(): read-only list — skip document hydration for speed.
         const orders = await Order.find({})
   .populate("Products.product", "name Price barcode")
   .populate("user", "name email")
-  .sort({ createdAt: -1 });
+  .sort({ createdAt: -1 })
+  .lean();
 
         res.status(200).json(orders);
     } catch (error) {
