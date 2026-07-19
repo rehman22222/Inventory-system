@@ -1,5 +1,11 @@
 // Shared helpers for the POS terminal.
 
+// The permanent catch-all category. A cashier who scans something the system
+// has never seen can add it on the spot without having to decide where it
+// belongs — it lands here. The name must match MISC_CATEGORY in the backend's
+// productController, which is what creates and guarantees the category.
+export const MISC_CATEGORY = "Miscellaneous";
+
 // The shop picks its currency at the till. This is a *display* setting: the
 // server stores plain numbers, so switching currency re-labels prices, it does
 // not convert them.

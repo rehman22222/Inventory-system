@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import axiosInstance from "../../lib/axios";
 import PosModal from "./PosModal";
-import { currency } from "./posUtils";
+import { currency, MISC_CATEGORY } from "./posUtils";
 
 // The imported catalogue has PLU codes but no barcodes, so most first scans of a
 // product will miss. Instead of a dead-end toast, let the cashier resolve it on
@@ -200,10 +200,10 @@ function UnknownBarcodeModal({ barcode, products, categories, onResolved, onClos
               {/* Always available, even before any product uses it — the server
                   files it under the permanent "Miscellaneous" category. */}
               <option value="miscellaneous">
-                {t("pos.unknownBarcode.miscellaneous", "Miscellaneous")}
+                {t("pos.unknownBarcode.miscellaneous", MISC_CATEGORY)}
               </option>
               {categories
-                .filter((category) => category.name !== "Miscellaneous")
+                .filter((category) => category.name !== MISC_CATEGORY)
                 .map((category) => (
                   <option key={category._id} value={category._id}>
                     {category.name}

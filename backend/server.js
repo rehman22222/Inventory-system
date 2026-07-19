@@ -315,6 +315,20 @@ if (keepAliveUrl) {
 // itself only emails a given product once per 24h, so running it hourly just
 // makes the "24h" boundary responsive without spamming — each low product still
 // gets at most one email per day, plus the immediate one when it first goes low.
+// Make sure the "Miscellaneous" catch-all category exists before the first
+// sale. It is what a cashier picks when a scanned item is new and they don't
+// know where it belongs, and the till pins it to the front of the category
+// tiles — so it needs to be there from the start, not only after someone has
+// already quick-added something. Idempotent: a no-op once it exists.
+if (!useLocalStorage) {
+  const { ensureMiscCategory } = require("./controller/productController");
+  setTimeout(() => {
+    ensureMiscCategory()
+      .then((category) => console.log(`[catalogue] "${category.name}" category ready`))
+      .catch((err) => console.warn(`[catalogue] misc category failed: ${err.message}`));
+  }, 5 * 1000);
+}
+
 if (!useLocalStorage) {
   const { remindLowStock } = require("./controller/reorderController");
   const SWEEP_INTERVAL_MS = 60 * 60 * 1000; // hourly check; per-product 24h cap inside

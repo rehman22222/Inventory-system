@@ -43,6 +43,7 @@ import {
   initCurrency,
   setCurrencyCode,
   applicableDeals,
+  MISC_CATEGORY,
 } from "../Components/pos/posUtils";
 import {
   cacheGet,
@@ -245,13 +246,23 @@ function POSPage() {
     });
   }, [getallproduct, getallCategory, allDeals]);
 
-  // Deals ride at the front of the tiles so a cashier can ring a whole bundle
-  // with one tap instead of hunting each item down.
+  // Tile order at the till is about reach, not alphabet. Deals go first so a
+  // cashier can ring a whole bundle with one tap, and "Miscellaneous" follows
+  // — it is the catch-all for items that were just quick-added at the counter,
+  // so it is reached for constantly and must not be buried mid-list. Everything
+  // else keeps the order the server sent.
   const categories = useMemo(() => {
-    if (activeDeals.length === 0) return realCategories;
+    const isMisc = (entry) => entry?.name === MISC_CATEGORY;
+    const pinned = [
+      ...realCategories.filter(isMisc),
+      ...realCategories.filter((entry) => !isMisc(entry)),
+    ];
+
+    if (activeDeals.length === 0) return pinned;
+
     return [
       { _id: DEALS_TAB, name: t("pos.dealsTile"), productCount: activeDeals.length },
-      ...realCategories,
+      ...pinned,
     ];
   }, [realCategories, activeDeals, t]);
 

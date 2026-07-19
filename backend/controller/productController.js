@@ -405,6 +405,13 @@ const ensureMiscCategory = async () => {
   return category;
 };
 
+// Exported so the server can guarantee the catch-all exists at boot. Until now
+// it was only created the first time a cashier quick-added an item with no
+// category, which meant the till showed no Miscellaneous tile on a fresh shop —
+// exactly when a cashier is most likely to need it.
+module.exports.ensureMiscCategory = ensureMiscCategory;
+module.exports.MISC_CATEGORY = MISC_CATEGORY;
+
 
 // Generate a batch of price-point products with fresh EAN-13 barcodes, split
 // across the given price tiers. A shop can print these labels for generic items
