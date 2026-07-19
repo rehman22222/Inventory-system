@@ -558,7 +558,7 @@ function Orderpage() {
                       <td className="px-3 py-2 border">
                         <FormattedTime timestamp={order?.createdAt} />
                       </td>
-                      <td className="px-4 py-2 border">
+                      <td className="min-w-[190px] px-4 py-2 border">
                         <div className="flex flex-col gap-2">
                           {/* Deliberate send — nothing reaches the supplier until
                               this is pressed. Shows "Sent" once it has gone. */}
@@ -588,7 +588,8 @@ function Orderpage() {
                           ) : (
                             <button
                               onClick={() => handleReceive(order)}
-                              className="h-9 rounded-md border-2 border-emerald-600 px-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-600 hover:text-white"
+                              title={t("orders.markReceivedHint")}
+                              className="h-9 whitespace-nowrap rounded-md border-2 border-emerald-600 px-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-600 hover:text-white"
                             >
                               {t("orders.markReceived")}
                             </button>

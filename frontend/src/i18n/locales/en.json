@@ -722,7 +722,8 @@
     "noSupplier": "No supplier",
     "ordersCount": "{{count}} order",
     "ordersCount_other": "{{count}} orders",
-    "markReceived": "Mark received (add to inventory)",
+    "markReceived": "Mark received",
+    "markReceivedHint": "Adds the ordered quantities to inventory",
     "received": "Received ✓",
     "receiveConfirm": "Has this order arrived? This will add the ordered quantities to your inventory. This can't be undone.",
     "receiveFail": "Could not add the order to inventory"
