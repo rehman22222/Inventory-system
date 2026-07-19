@@ -97,7 +97,10 @@ module.exports.createSupplier = async (req, res) => {
 
 module.exports.getAllSuppliers = async (req, res) => {
   try {
-    const Suppliers = await Supplier.find().populate("productsSupplied", "name Price barcode");
+    // .lean(): read-only list — skip document hydration for speed.
+    const Suppliers = await Supplier.find()
+      .populate("productsSupplied", "name Price barcode")
+      .lean();
 
     res.status(200).json(Suppliers);
   } catch (error) {

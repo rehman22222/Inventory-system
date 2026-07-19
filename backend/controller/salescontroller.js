@@ -66,9 +66,11 @@ module.exports.createSale = async (req, res) => {
 
 module.exports.getAllSales = async (req, res) => {
   try {
+    // .lean(): read-only list — skip document hydration for speed.
     const sales = await Sale.find(salesScope(req.user))
       .populate("products.product")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.status(200).json({ success: true, sales });
   } catch (error) {

@@ -103,18 +103,19 @@ module.exports.RemoveCategory=async(req,res)=>{
 
 module.exports.getCategory = async (req, res) => {
   try {
-    const allCategory = await Category.find({});
+    // One query for the categories, ONE aggregation for every count — instead
+    // of the old per-category countDocuments (an N+1 that fired 50+ queries per
+    // page load on a big catalogue).
+    const [allCategory, counts] = await Promise.all([
+      Category.find({}).lean(),
+      Product.aggregate([{ $group: { _id: "$Category", count: { $sum: 1 } } }]),
+    ]);
+    const countByCat = new Map(counts.map((c) => [String(c._id), c.count]));
 
-    const categoriesWithCount = await Promise.all(
-      allCategory.map(async (category) => {
-        const count = await Product.countDocuments({ Category: category._id }); 
-        return {
-          ...category.toObject(),
-          productCount: count,
-        };
-      })
-    );
-    
+    const categoriesWithCount = allCategory.map((category) => ({
+      ...category,
+      productCount: countByCat.get(String(category._id)) || 0,
+    }));
 
     res.status(200).json({ categoriesWithCount });
 
