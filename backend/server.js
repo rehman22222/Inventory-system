@@ -95,6 +95,30 @@ io.on("connection", (socket) => {
 
 app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ limit: "15mb", extended: true }));
+
+// NoSQL-injection guard: strip any key that starts with "$" or contains a "."
+// from user-supplied objects, recursively. Stops payloads like
+// {"email": {"$gt": ""}} from ever reaching a Mongo query. Values are left
+// untouched — only hostile KEYS are dropped — so normal requests are unaffected.
+const stripUnsafeKeys = (value) => {
+  if (Array.isArray(value)) {
+    value.forEach(stripUnsafeKeys);
+  } else if (value && typeof value === "object") {
+    for (const key of Object.keys(value)) {
+      if (key.startsWith("$") || key.includes(".")) delete value[key];
+      else stripUnsafeKeys(value[key]);
+    }
+  }
+  return value;
+};
+app.use((req, _res, next) => {
+  if (req.body) stripUnsafeKeys(req.body);
+  if (req.params) stripUnsafeKeys(req.params);
+  // req.query is a getter in Express 5-style routers; mutate its contents only.
+  if (req.query) stripUnsafeKeys(req.query);
+  next();
+});
+
 app.set("io", io);
 app.use(cookieParser());
 

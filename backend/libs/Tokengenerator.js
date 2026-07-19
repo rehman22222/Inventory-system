@@ -20,14 +20,19 @@ const generateToken = async (user, res) => {
       { expiresIn: '7d' }
     );
 
-    console.log("Generated JWT:", token); 
+    // Never log the JWT itself — anything written to server logs outlives the
+    // session and leaks a valid credential.
 
     const isProduction = process.env.NODE_ENV === "production";
 
+    // Frontend and API are served from the SAME origin in production, so 'Lax'
+    // is safe everywhere and blocks the cookie from riding along on cross-site
+    // requests (CSRF hardening). 'None' was only needed when the frontend lived
+    // on a different domain.
     res.cookie("Inventorymanagmentsystem", token, {
       maxAge: 7 * 24 * 60 * 60 * 1000,
       httpOnly: true,
-      sameSite: isProduction ? 'None' : 'Lax',
+      sameSite: 'Lax',
       secure: isProduction,
     });
     
