@@ -213,11 +213,14 @@ module.exports.updateProfile = async (req, res) => {
           folder: "profile_inventory_system",
         });
 
+        // -password: this document is sent straight back to the browser (and the
+        // client stores it), so without this the account's bcrypt hash was
+        // handed out on every profile-picture change.
         const updatedUser = await User.findOneAndUpdate(
           { _id: userId },
           { ProfilePic: uploadResponse.secure_url },
           { new: true }
-        );
+        ).select("-password");
 
         if (!updatedUser) {
           return res.status(404).json({ message: "User not found" });

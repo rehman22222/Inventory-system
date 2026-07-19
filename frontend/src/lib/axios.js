@@ -12,15 +12,21 @@ const axiosInstance = axios.create({
     withCredentials: true,
   });
 
-axiosInstance.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  return config;
-});
+// The session rides on the httpOnly `Inventorymanagmentsystem` cookie, which
+// `withCredentials` sends on every call. We deliberately do NOT read a JWT out
+// of localStorage and attach it as a Bearer header: anything JavaScript can
+// read, an XSS can steal, and that token is valid for seven days. The cookie is
+// httpOnly + sameSite=Lax, so script can't read it and it isn't sent
+// cross-site. The API is same-origin in production and same-site in dev
+// (localhost:3000 -> localhost:3003), so the cookie covers both.
+//
+// Clear any token left in storage by an older build, so upgrading actually
+// removes the copy rather than leaving it behind forever.
+try {
+  localStorage.removeItem("token");
+} catch {
+  /* private mode — nothing to clean up */
+}
 
 // Paths where a 401 is the answer to a question, not the end of a session.
 const isAuthCall = (url = "") => url.includes("auth/login") || url.includes("auth/signup");

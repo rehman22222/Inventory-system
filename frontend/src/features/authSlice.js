@@ -2,15 +2,36 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axiosInstance from "../lib/axios";
 import toast from 'react-hot-toast';
 
+// The session lives in the httpOnly cookie (see lib/axios.js). The JWT must
+// never be persisted where script can read it, so we keep the user's profile
+// for the UI but strip the token off it before it is written — the login
+// response nests `token` inside `user`, so storing that object verbatim used to
+// put the JWT in localStorage even without a separate "token" key.
+const withoutToken = (user) => {
+  if (!user) return user;
+  const { token, ...safe } = user;
+  return safe;
+};
+
+// Legacy sessions may already have a token embedded in the stored user.
+const storedUser = () => {
+  try {
+    return withoutToken(JSON.parse(localStorage.getItem("user"))) || null;
+  } catch {
+    return null;
+  }
+};
+
 const initialState = {
-  Authuser: JSON.parse(localStorage.getItem("user")) || null, 
+  Authuser: storedUser(),
   isUserSignup: false,
   iscreatinguser: false,
   staffuser:null,
   manageruser:null,
   adminuser:null,
   isUserLogin: false,
-  token: localStorage.getItem("token") || null,
+  // Kept in memory only — never read back from storage.
+  token: null,
   isupdateProfile: false,
 };
 
@@ -20,8 +41,7 @@ export const signup = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.post("auth/signup", credentials, { withCredentials: true });
-      localStorage.setItem("user", JSON.stringify(response.data.savedUser)); 
-      localStorage.setItem("token", response.data.savedUser.token); 
+      localStorage.setItem("user", JSON.stringify(withoutToken(response.data.savedUser)));
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Signup failed");
@@ -51,8 +71,8 @@ export const login = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.post("auth/login", credentials, { withCredentials: true });
-      localStorage.setItem("user", JSON.stringify(response.data.user)); 
-      localStorage.setItem("token", response.data.user.token); 
+      // The cookie the server just set is what authenticates us from here on.
+      localStorage.setItem("user", JSON.stringify(withoutToken(response.data.user)));
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Login failed");
@@ -79,32 +99,30 @@ export const updateProfile = createAsyncThunk(
   async (base64Image, { rejectWithValue }) => {
     try {
   
-      const storedUser = JSON.parse(localStorage.getItem('user'));
-      const token = localStorage.getItem('token');
+      // This used to also require a localStorage token and send it as a Bearer
+      // header. The session cookie carries the auth now, so the profile is the
+      // only thing we need — gating on a token that no longer exists would
+      // reject every update.
+      const currentUser = storedUser();
 
-
-      if (!storedUser || !token) {
+      if (!currentUser) {
         return rejectWithValue('User not authenticated. Please log in again.');
       }
 
-     
       const response = await axiosInstance.put(
         'auth/updateProfile',
         { ProfilePic: base64Image },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { 'Content-Type': 'application/json' } }
       );
 
       const updatedData = response.data;
 
     
       if (updatedData && updatedData.updatedUser) {
-        // Merge so we keep fields like token that aren't returned by the update.
-        const mergedUser = { ...storedUser, ...updatedData.updatedUser };
+        // Merge so we keep profile fields the update doesn't return. Stripped
+        // again on the way in: whatever the server sends, the JWT does not go
+        // into storage.
+        const mergedUser = withoutToken({ ...currentUser, ...updatedData.updatedUser });
         localStorage.setItem('user', JSON.stringify(mergedUser));
         return mergedUser;
       } else {
