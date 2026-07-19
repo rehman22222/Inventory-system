@@ -26,7 +26,16 @@ module.exports = (app) => {
   const emitNewLog = async (logId) => {
     try {
       const log = await ActivityLog.findById(logId).populate("userId").select("-password");
-      io.emit("newActivityLog", log);
+
+      // The audit trail is gated behind activityLogAccess on the REST side, so
+      // broadcasting the entry to every socket handed it to everyone anyway.
+      // The people allowed to read it get the entry; everyone else gets a
+      // payload-free nudge, which is all the dashboard ever used it for (it
+      // ignores the argument and refetches through the guarded endpoint).
+      const auditRoom = app.get("auditRoom");
+
+      io.to(auditRoom).emit("newActivityLog", log);
+      io.except(auditRoom).emit("newActivityLog");
     } catch (error) {
       console.error("Error emitting new log:", error);
     }

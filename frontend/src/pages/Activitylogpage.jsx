@@ -74,6 +74,11 @@ function Activitylogpage() {
     }
 
     socket.on("newActivityLog", (newLog) => {
+      // The server only sends the entry itself to sockets allowed to read the
+      // audit trail; everyone else gets the event with no payload. If our grant
+      // expired while the page was open we'd land here empty-handed, so ignore
+      // it rather than pushing an undefined row into the table.
+      if (!newLog) return;
       setLogs((prevLogs) => [newLog, ...prevLogs]);
     });
 

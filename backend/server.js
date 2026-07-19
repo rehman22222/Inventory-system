@@ -81,14 +81,66 @@ app.use(cors({
 
 
 
-io.on("connection", (socket) => {
-  console.log("A user connected");
+// Socket.IO had no authentication at all: anyone who could reach the server
+// could open a socket and receive every broadcast, including the full activity
+// log — which the HTTP API deliberately gates behind activityLogAccess. The
+// handshake carries the same httpOnly cookie the REST calls use (every client
+// connects with withCredentials), so we verify it here and refuse the
+// connection outright if it isn't a real session.
+const jwt = require("jsonwebtoken");
+const User = require("./models/Usermodel");
 
- 
+// Room for the people actually allowed to read the audit trail. Everyone else
+// gets a payload-free nudge so their page can refetch through the REST endpoint,
+// where the access rules are enforced.
+const AUDIT_ROOM = "audit-trail";
+
+const cookieFromHandshake = (raw, name) => {
+  const found = (raw || "")
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`));
+
+  return found ? decodeURIComponent(found.slice(name.length + 1)) : null;
+};
+
+io.use(async (socket, next) => {
+  try {
+    const token =
+      cookieFromHandshake(socket.handshake.headers.cookie, "Inventorymanagmentsystem") ||
+      socket.handshake.auth?.token;
+
+    if (!token) return next(new Error("Unauthorized"));
+
+    const decoded = jwt.verify(token, process.env.SecretKey || process.env.SECRETKEY);
+    if (!decoded?.userId) return next(new Error("Unauthorized"));
+
+    const user = await User.findById(decoded.userId).select("role logAccessUntil");
+    if (!user) return next(new Error("Unauthorized"));
+
+    socket.user = user;
+    return next();
+  } catch (error) {
+    return next(new Error("Unauthorized"));
+  }
+});
+
+io.on("connection", (socket) => {
+  // Same rule as middleware/Authmiddleware.activityLogAccess: the owner always,
+  // anyone else only inside an unexpired grant.
+  const until = socket.user?.logAccessUntil;
+  const mayReadAudit =
+    socket.user?.role === "superadmin" ||
+    (until && new Date(until).getTime() > Date.now());
+
+  if (mayReadAudit) socket.join(AUDIT_ROOM);
+
   socket.on("disconnect", () => {
-    console.log("A user disconnected");
+    // no-op; kept for parity with the previous handler
   });
 })
+
+app.set("auditRoom", AUDIT_ROOM);
 
 
 
