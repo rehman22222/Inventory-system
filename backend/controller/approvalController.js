@@ -190,7 +190,13 @@ module.exports.getRequests = async (req, res) => {
     const filter = {};
     if (req.query.status) filter.status = req.query.status;
 
-    const requests = await ApprovalRequest.find(filter).sort({ createdAt: -1 });
+    // The queue is never pruned, so cap the history. The pending count below is
+    // a separate countDocuments, so the badge stays exact even if the list is
+    // capped. (stripPassword handles plain objects, so .lean() is safe.)
+    const requests = await ApprovalRequest.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(500)
+      .lean();
     const pending = await ApprovalRequest.countDocuments({ status: "pending" });
 
     return res.status(200).json({ requests: requests.map(stripPassword), pending });
@@ -202,9 +208,10 @@ module.exports.getRequests = async (req, res) => {
 // An admin follows the fate of their own requests.
 module.exports.getMyRequests = async (req, res) => {
   try {
-    const requests = await ApprovalRequest.find({ requestedBy: req.user._id }).sort({
-      createdAt: -1,
-    });
+    const requests = await ApprovalRequest.find({ requestedBy: req.user._id })
+      .sort({ createdAt: -1 })
+      .limit(500)
+      .lean();
 
     return res.status(200).json({ requests: requests.map(stripPassword) });
   } catch (error) {

@@ -149,6 +149,19 @@ module.exports.checkout = async (req, res) => {
     // position 3 must not leave items 1 and 2 already sold.
     const lines = [];
 
+    // One round trip for the whole basket instead of a findById per line. A
+    // 20-item cart used to mean 20 sequential queries before the sale even
+    // started, which is felt as lag at the till. The checks below still run in
+    // basket order, so the error a cashier sees for a bad cart is unchanged.
+    const basketIds = items
+      .map((item) => item.product)
+      .filter((id) => mongoose.isValidObjectId(id));
+
+    const foundProducts = await Product.find({ _id: { $in: basketIds } });
+    const productsById = new Map(
+      foundProducts.map((product) => [String(product._id), product]),
+    );
+
     for (const item of items) {
       // A malformed id would otherwise throw a CastError and surface as an
       // opaque 500.
@@ -158,7 +171,7 @@ module.exports.checkout = async (req, res) => {
           .json({ message: `Invalid product id: ${item.product}` });
       }
 
-      const product = await Product.findById(item.product);
+      const product = productsById.get(String(item.product));
 
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
@@ -994,12 +1007,24 @@ const syncOneSale = async (sale, user, ip) => {
   const priceFlags = [];
   const lines = [];
 
+  // Batched for the same reason as checkout — and it matters more here: a till
+  // coming back online flushes its whole queue, so this ran once per item of
+  // every queued sale.
+  const syncIds = items
+    .map((item) => item.product)
+    .filter((id) => mongoose.isValidObjectId(id));
+
+  const syncProducts = await Product.find({ _id: { $in: syncIds } });
+  const syncProductsById = new Map(
+    syncProducts.map((product) => [String(product._id), product]),
+  );
+
   for (const item of items) {
     if (!mongoose.isValidObjectId(item.product)) {
       return { ok: false, clientRef, message: `Invalid product id: ${item.product}` };
     }
 
-    const product = await Product.findById(item.product);
+    const product = syncProductsById.get(String(item.product));
     if (!product) {
       return { ok: false, clientRef, message: "A product on this sale no longer exists" };
     }

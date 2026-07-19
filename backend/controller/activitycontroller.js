@@ -29,7 +29,9 @@ module.exports.createActivityLog = async (req, res) => {
 
 module.exports.getAllActivityLogs = async (req, res) => {
   try {
-    const logs = await ActivityLog.find().sort({ createdAt: -1 });
+    // The audit trail only ever grows. Cap it to match the routed handler in
+    // Routers/activityRouter.js, which already limits to 5000.
+    const logs = await ActivityLog.find().sort({ createdAt: -1 }).limit(5000).lean();
 
     res.status(200).json({ success: true, logs });
   } catch (error) {

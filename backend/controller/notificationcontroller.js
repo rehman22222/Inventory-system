@@ -29,7 +29,14 @@ module.exports.createNotification = async (req, res) => {
 
 module.exports.getAllNotifications = async (req, res) => {
   try {
-    const notifications = await Notification.find().sort({ createdAt: -1 });
+    // Notifications are never pruned, so an unbounded read grows without limit
+    // as the shop ages. Newest-first with a cap keeps the page the same for any
+    // realistic history (it already shows the recent ones first) while stopping
+    // the response from growing forever.
+    const notifications = await Notification.find()
+      .sort({ createdAt: -1 })
+      .limit(500)
+      .lean();
     res.status(200).json(notifications );
   } catch (error) {
     res.status(500).json({ message: "Error fetching notifications.", error });
@@ -39,7 +46,10 @@ module.exports.getAllNotifications = async (req, res) => {
 
 module.exports.getUnreadNotifications = async (req, res) => {
   try {
-    const unreadNotifications = await Notification.find({ read: false }).sort({ createdAt: -1 });
+    const unreadNotifications = await Notification.find({ read: false })
+      .sort({ createdAt: -1 })
+      .limit(500)
+      .lean();
     res.status(200).json({ success: true, unreadNotifications });
   } catch (error) {
     res.status(500).json({ success: false, message: "Error fetching unread notifications.", error });

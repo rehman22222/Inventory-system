@@ -139,7 +139,15 @@ module.exports.quickAddProduct = async (req, res) => {
           // the wire JSON is identical, but the server skips hydrating every
           // product on each request, which is the single biggest win when a
           // catalogue of thousands of SKUs is fetched by many tills at once.
-          const Products = await Product.find({}).populate('Category').lean();
+          // The whole catalogue still comes back in one call — the till and the
+          // product pages filter and search client-side, so paginating here
+          // would break them. What we can cut for free is the payload: every
+          // consumer only ever reads Category._id and Category.name, so there
+          // is no reason to ship the rest of each category document with every
+          // product row.
+          const Products = await Product.find({})
+            .populate('Category', 'name')
+            .lean();
 
           // estimatedDocumentCount() reads collection metadata (O(1)) instead of
           // scanning to count — accurate enough for a total, far cheaper.
