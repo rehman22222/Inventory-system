@@ -22,3 +22,8 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Generated at build time by scripts/generate-seo.js. sitemap.xml carries a
+# <lastmod> date, so tracking it would rewrite the file on every build; the
+# deploy regenerates it from REACT_APP_SITE_URL anyway.
+/public/sitemap.xml
