@@ -230,6 +230,10 @@ module.exports.getReorders = async (req, res) => {
 // Adjust the quantity before approving.
 module.exports.updateReorder = async (req, res) => {
   try {
+    // A malformed id would otherwise throw a CastError and surface as a 500.
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: "Invalid reorder id" });
+    }
     const reorder = await Reorder.findById(req.params.id);
     if (!reorder) return res.status(404).json({ message: "Reorder not found" });
     if (reorder.status !== "pending") {
@@ -251,6 +255,10 @@ module.exports.updateReorder = async (req, res) => {
 // ── Approve → email the supplier ────────────────────────────────────────────
 module.exports.approveReorder = async (req, res) => {
   try {
+    // A malformed id would otherwise throw a CastError and surface as a 500.
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: "Invalid reorder id" });
+    }
     const reorder = await Reorder.findById(req.params.id);
     if (!reorder) return res.status(404).json({ message: "Reorder not found" });
     if (reorder.status !== "pending") {
@@ -320,6 +328,10 @@ module.exports.approveReorder = async (req, res) => {
 
 module.exports.rejectReorder = async (req, res) => {
   try {
+    // A malformed id would otherwise throw a CastError and surface as a 500.
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: "Invalid reorder id" });
+    }
     const reorder = await Reorder.findById(req.params.id);
     if (!reorder) return res.status(404).json({ message: "Reorder not found" });
     if (reorder.status !== "pending") {

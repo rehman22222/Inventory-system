@@ -161,6 +161,11 @@ const createOrder = async (req, res) => {
 const sendOrder = async (req, res) => {
     try {
         const { OrderId } = req.params;
+        // Without this a malformed id throws a CastError and surfaces as an
+        // opaque 500 — the same guard checkout already uses.
+        if (!mongoose.isValidObjectId(OrderId)) {
+            return res.status(400).json({ message: "Invalid order id" });
+        }
         const order = await Order.findById(OrderId).populate("Products.product", "name");
         if (!order) return res.status(404).json({ message: "Order not found" });
 
@@ -245,6 +250,9 @@ const sendOrder = async (req, res) => {
 const receiveOrder = async (req, res) => {
     try {
         const { OrderId } = req.params;
+        if (!mongoose.isValidObjectId(OrderId)) {
+            return res.status(400).json({ message: "Invalid order id" });
+        }
         const order = await Order.findById(OrderId);
         if (!order) return res.status(404).json({ message: "Order not found" });
 
@@ -311,6 +319,10 @@ const Removeorder = async (req, res) => {
         const userId = req.user._id;
         const ipAddress = req.ip;
 
+        if (!mongoose.isValidObjectId(OrdertId)) {
+            return res.status(400).json({ message: "Invalid order id" });
+        }
+
         const Deletedorder = await Order.findByIdAndDelete(OrdertId);
 
         if (!Deletedorder) {
@@ -361,6 +373,10 @@ const updatestatusOrder = async (req, res) => {
         const updates = { ...req.body };
         const userId = req.user._id;
         const ipAddress = req.ip;
+
+        if (!mongoose.isValidObjectId(OrderId)) {
+            return res.status(400).json({ message: "Invalid order id" });
+        }
 
         // The total is never taken from the client — it's always derived from the
         // catalogue. Same for the legacy single-line shape.
