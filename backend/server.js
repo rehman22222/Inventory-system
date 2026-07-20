@@ -179,12 +179,49 @@ app.get(["/health", "/api/health"], (req, res) => {
   res.status(200).json({ status: "ok", uptime: process.uptime() });
 });
 
-// Rate limiting. Generous enough that a busy shop with many tills never notices
-// it, but low enough to blunt scripted abuse and credential-stuffing. The health
-// check sits above this and is never throttled (keep-alive pings hit it often).
+// Rate limiting. The health check sits above this and is never throttled
+// (keep-alive pings hit it often).
+//
+// The limit is per IP, and that is the part worth understanding: every till in
+// a shop sits behind the same broadband connection, so they all share ONE
+// bucket. A four-till shop at the counter is a single IP spending requests for
+// four cashiers at once — one barcode lookup per item scanned, plus the
+// checkout itself, so a 20-item basket is ~21 requests on its own.
+//
+// Being throttled mid-sale is a real loss: the cashier cannot finish, in front
+// of a customer, with a queue behind them. So the paths the till actually uses
+// are held to a separate, far higher ceiling.
+const TILL_PREFIXES = [
+  "/api/pos",
+  "/api/product",
+  "/api/category",
+  "/api/deal",
+  "/api/voucher",
+  "/api/store",
+];
+
+// originalUrl, not path: this runs mounted at "/api", where req.path has
+// already had the mount point stripped off.
+const isTillTraffic = (req) =>
+  TILL_PREFIXES.some((prefix) => req.originalUrl.startsWith(prefix));
+
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: Number(process.env.RATE_LIMIT_MAX) || 600, // per IP per minute
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: isTillTraffic, // the till answers to tillLimiter below instead
+  message: { message: "Too many requests — please slow down and try again shortly." },
+});
+
+// The till's ceiling. Deliberately far above anything a shop full of cashiers
+// can produce — this is not here to police normal trade, it is a backstop so a
+// runaway client loop cannot exhaust the Mongo pool (maxPoolSize 20) and take
+// the whole shop down. Every one of these routes requires a session, so an
+// anonymous flood is refused by authmiddleware before it reaches a controller.
+const tillLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: Number(process.env.TILL_RATE_LIMIT_MAX) || 6000, // ~100 req/sec per shop
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests — please slow down and try again shortly." },
@@ -202,6 +239,7 @@ const authLimiter = rateLimit({
 });
 
 app.use("/api", apiLimiter);
+TILL_PREFIXES.forEach((prefix) => app.use(prefix, tillLimiter));
 app.use("/api/auth/login", authLimiter);
 
 if (useLocalStorage) {
