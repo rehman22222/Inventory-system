@@ -259,9 +259,52 @@ if (clientBuild) {
       immutable: true,
     })
   );
+  // Every path the React router actually knows about. Anything not matching
+  // gets a real 404 below.
+  //
+  // Without this list the catch-all answered 200 + index.html for literally any
+  // URL, which meant every typo and every crawler-invented path looked like a
+  // real page to Google — an unbounded set of URLs all serving identical
+  // content. Serving the shell is still right for known deep links (a refresh
+  // on /AdminDashboard/product has to work), but only for those.
+  const CLIENT_ROUTES = [
+    "/",
+    "/about",
+    "/LoginPage",
+    "/pos",
+    "/AdminDashboard",
+    "/ManagerDashboard",
+    "/SuperAdmin",
+    "/StaffDashboard",
+  ];
+
+  // Only the landing page belongs in search results. Everything else is either
+  // a sign-in form or a private console, and this header enforces that at the
+  // HTTP level — it does not depend on the crawler running our JavaScript or
+  // honouring robots.txt.
+  const isPublic = (p) => p === "/" || p === "";
+
+  const isKnownRoute = (p) =>
+    CLIENT_ROUTES.some((route) =>
+      route === "/" ? p === "/" : p === route || p.startsWith(`${route}/`)
+    );
+
   app.get("*", (req, res, next) => {
     if (req.path.startsWith("/api")) return next();
+
     res.set("Cache-Control", "no-cache");
+
+    if (!isKnownRoute(req.path)) {
+      // Unknown path: tell crawlers it is gone, and still hand the SPA to
+      // humans so the app can render its own not-found UI.
+      res.set("X-Robots-Tag", "noindex, nofollow");
+      return res.status(404).sendFile(path.join(clientBuild, "index.html"));
+    }
+
+    if (!isPublic(req.path)) {
+      res.set("X-Robots-Tag", "noindex, nofollow");
+    }
+
     res.sendFile(path.join(clientBuild, "index.html"));
   });
   console.log(`[static] serving frontend build from ${clientBuild}`);

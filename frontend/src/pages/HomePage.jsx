@@ -5,6 +5,7 @@ import Navbar from '../Components/Navbar';
 import Footer from '../Components/Footer';
 import Reveal from '../Components/Reveal';
 import CountUp from '../Components/CountUp';
+import useSeo, { homeJsonLd } from '../lib/useSeo';
 
 const CHART_BARS = [55, 70, 45, 88, 60, 78, 52, 92, 67, 95, 72, 85];
 const FEATURE_TAGS = ['RT-STOCK', 'ACCESS', 'POS', 'ANALYTICS', 'SUPPLY', 'AUDIT'];
@@ -25,6 +26,18 @@ function SectionLabel({ index, name, meta, dark }) {
 function HomePage() {
   const { t } = useTranslation();
   const [openFAQ, setOpenFAQ] = useState(0);
+
+  // The only indexable page in the app. Kept in English regardless of the
+  // active locale: the language switcher does not change the URL, so there is
+  // one URL per site and Google can only ever index one version of it.
+  useSeo({
+    title: 'E360 — Inventory Management & POS Software',
+    description:
+      'Real-time stock control, a built-in POS, and role-based access in one ' +
+      'system. Track SKUs, manage suppliers and orders, and close the month in minutes.',
+    path: '/',
+    jsonLd: homeJsonLd,
+  });
 
   const featureItems = t('features.items', { returnObjects: true }) || [];
   const steps = t('workflow.steps', { returnObjects: true }) || [];

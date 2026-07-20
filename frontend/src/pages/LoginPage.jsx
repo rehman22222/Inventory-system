@@ -9,9 +9,20 @@ import { useTranslation } from "react-i18next";
 import * as yup from "yup";
 import { login } from "../features/authSlice";
 import e360LogoDark from "../images/e360-logo-dark.png";
+import useSeo from "../lib/useSeo";
 
 function LoginPage() {
   const { t } = useTranslation();
+
+  // Publicly reachable but kept out of search: a sign-in form ranking for the
+  // brand pushes the landing page down and gives searchers a dead end. Accounts
+  // are provisioned by hand, so there is nothing here for a stranger anyway.
+  useSeo({
+    title: "Sign in — E360 Inventory Suite",
+    description: "Sign in to your E360 Inventory Suite account.",
+    path: "/LoginPage",
+    noindex: true,
+  });
   const { isUserLogin } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const navigator = useNavigate();
