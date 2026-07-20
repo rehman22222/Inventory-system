@@ -45,6 +45,34 @@ app.set("trust proxy", 1);
 // Don't advertise the framework — one less thing for a scanner to fingerprint.
 app.disable("x-powered-by");
 
+// One canonical hostname. www.<domain> and <domain> were both serving the app
+// with no redirect between them, which cost us twice:
+//
+//   - The session cookie is host-only. Signing in on the bare domain and then
+//     opening the www one showed a logged-out app, because the cookie simply
+//     wasn't sent to that host.
+//   - Google saw two hostnames serving identical pages. The canonical tag
+//     points at the bare domain, so it resolves — but only after Google has
+//     crawled both and worked it out.
+//
+// This is deliberately narrow: it folds a leading "www." onto the bare host and
+// touches nothing else. It cannot misdirect the main domain, and it is a no-op
+// in local dev (localhost has no www). Set KEEP_WWW=true on a deployment whose
+// canonical hostname really is the www one.
+const keepWww = process.env.KEEP_WWW === "true";
+
+app.use((req, res, next) => {
+  const host = (req.headers.host || "").toLowerCase();
+
+  if (keepWww || !host.startsWith("www.")) return next();
+
+  // trust proxy is set above, so req.protocol reflects X-Forwarded-Proto and an
+  // http://www hit is folded to https on the bare host in a single hop.
+  const scheme = req.protocol === "http" ? "http" : "https";
+
+  return res.redirect(301, `${scheme}://${host.slice(4)}${req.originalUrl}`);
+});
+
 // Security headers. This is a JSON API with a separate frontend, so the two
 // headers that assume you're serving HTML (CSP, cross-origin resource policy)
 // are turned off — they'd add nothing here and can block the SPA's XHR. What we
