@@ -12,7 +12,10 @@
 // Offline API behaviour is the app's job (it queues sales in IndexedDB), not
 // this file's.
 
-const VERSION = "e360-v1";
+// Bumped to v2: the activate handler drops every cache that isn't this version,
+// so any till that already cached a 404 as its shell (see the navigate handler)
+// gets a clean slate on the next load instead of carrying it forever.
+const VERSION = "e360-v2";
 const SHELL = `${VERSION}-shell`;
 const ASSETS = `${VERSION}-assets`;
 
@@ -65,8 +68,15 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(SHELL).then((cache) => cache.put("/index.html", copy));
+          // ONLY a successful shell may become the offline fallback. The server
+          // answers unknown paths with 404 + the index.html body (so crawlers
+          // get a real 404 while humans still see the app). Caching that
+          // response as /index.html would poison the shell: one mistyped URL
+          // and the next offline navigation serves a 404 to the till.
+          if (response && response.ok) {
+            const copy = response.clone();
+            caches.open(SHELL).then((cache) => cache.put("/index.html", copy));
+          }
           return response;
         })
         .catch(() =>
