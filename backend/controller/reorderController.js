@@ -162,8 +162,56 @@ const sendLowStockDigest = async () => {
 // Scheduled sweep: give every low product its own reorder + immediate email the
 // first time it's seen (case 1, incl. items that went low without a sale), then
 // send the once‑a‑day combined digest (case 2).
+// CASE 3 — close reorders whose product has recovered.
+//
+// A pending reorder is the flag that says "this product is short". Nothing ever
+// cleared that flag: status only moved when a human approved or rejected it. So
+// a shop that simply restocked the shelf — which is the normal way stock comes
+// back — left the reorder pending forever, and because raiseReorderForProduct
+// skips any product that already has one, that product could never raise a
+// reorder or send a low-stock email again. One restock silently disabled the
+// alert for that item for good.
+//
+// Cancelled rather than deleted: the record is a paper trail of what ran short
+// and when, and `cancelled` is already in the schema's status enum.
+const closeRecoveredReorders = async () => {
+  const pending = await Reorder.find({ status: "pending" }).select("product").lean();
+  if (!pending.length) return 0;
+
+  const productIds = pending.map((r) => r.product).filter(Boolean);
+
+  // Back above its threshold — the shortage is over.
+  const recovered = await Product.find({
+    _id: { $in: productIds },
+    $expr: { $gt: ["$quantity", { $ifNull: ["$lowStockThreshold", DEFAULT_LOW_STOCK] }] },
+  })
+    .select("_id")
+    .lean();
+
+  // A reorder pointing at a product that no longer exists can never be actioned
+  // either, and it holds the same per-product lock.
+  const alive = await Product.find({ _id: { $in: productIds } }).select("_id").lean();
+  const aliveIds = new Set(alive.map((p) => String(p._id)));
+  const orphaned = productIds.filter((id) => !aliveIds.has(String(id)));
+
+  const toClose = [...recovered.map((p) => p._id), ...orphaned];
+  if (!toClose.length) return 0;
+
+  const result = await Reorder.updateMany(
+    { product: { $in: toClose }, status: "pending" },
+    { $set: { status: "cancelled", note: "Closed automatically — stock is back above the threshold." } }
+  );
+
+  return result.modifiedCount || 0;
+};
+
 const remindLowStock = async () => {
   try {
+    // Clear recovered items FIRST, so a product that dipped, was restocked and
+    // has dipped again can raise a fresh reorder in this same pass.
+    const closed = await closeRecoveredReorders();
+    if (closed) console.log(`[reorder] closed ${closed} recovered reorder(s)`);
+
     const low = await Product.find({
       $expr: { $lte: ["$quantity", { $ifNull: ["$lowStockThreshold", DEFAULT_LOW_STOCK] }] },
     })
@@ -350,3 +398,5 @@ module.exports.rejectReorder = async (req, res) => {
 
 module.exports.raiseReorderForProduct = raiseReorderForProduct;
 module.exports.remindLowStock = remindLowStock;
+// Exported so the recovery rule can be exercised on its own.
+module.exports.closeRecoveredReorders = closeRecoveredReorders;
