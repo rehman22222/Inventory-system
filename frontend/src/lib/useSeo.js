@@ -114,7 +114,7 @@ export function homeJsonLd(base) {
   const publisher = {
     "@type": "Organization",
     name: "Eiretech",
-    email: "support@e360.app",
+    email: "support@e360pro.com",
     ...(base ? { url: base } : {}),
   };
 
@@ -125,7 +125,7 @@ export function homeJsonLd(base) {
         "@type": "Organization",
         ...(base ? { "@id": `${base}/#organization`, url: base } : {}),
         name: "Eiretech",
-        email: "support@e360.app",
+        email: "support@e360pro.com",
         ...(base ? { logo: `${base}/logo512.png` } : {}),
       },
       {

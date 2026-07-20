@@ -39,7 +39,7 @@ function Footer() {
           <div className="md:col-span-3">
             <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.25em] text-paper/40">{t('footer.colContact')}</p>
             <ul className="space-y-3 font-mono text-xs text-paper/55">
-              <li>support@e360.app</li>
+              <li>support@e360pro.com</li>
               <li>+022 338 983 902</li>
               <li>Dublin · Tech City</li>
             </ul>
