@@ -12,14 +12,16 @@ and Cloud plans, and supports Node 20, 22, and 24.
 
 - Framework: `Other` (TanStack Start / Nitro)
 - Node.js version: `22`
-- Install command: `npm ci`
-- Build command: `npm run build`
-- Output directory: `.output`
-- Entry file: `.output/server/index.mjs`
+- Package manager: `npm`
+- Entry file: `hostinger-entry.mjs`
 - Start command: `npm start`
 
 The production build is server-rendered. Do not configure it as a static Vite
-site because checkout and inventory requests run in server functions.
+site because checkout and inventory requests run in server functions. Hostinger
+currently only asks for a package manager and entry file with the `Other`
+preset. Its dependency install invokes the package's `postinstall` script,
+which generates `.output`; `hostinger-entry.mjs` then starts the generated
+Nitro server.
 
 ## Required environment variables
 
