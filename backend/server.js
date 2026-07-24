@@ -112,9 +112,17 @@ app.use(
 // Gzip responses. Reports, product lists and sales history are large JSON
 // payloads; compressing them cuts transfer size ~70% and speeds every client.
 app.use(compression());
-const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000,https://advanced-inventory-management-system.vercel.app")
+const configuredOrigins = (
+  process.env.CORS_ORIGIN || "https://advanced-inventory-management-system.vercel.app"
+)
   .split(",")
-  .map((origin) => origin.trim());
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const localDevelopmentOrigins =
+  process.env.NODE_ENV === "production"
+    ? []
+    : ["http://localhost:3000", "http://127.0.0.1:3000"];
+const allowedOrigins = [...new Set([...configuredOrigins, ...localDevelopmentOrigins])];
 
 const io = new Server(server, {
   cors: {
