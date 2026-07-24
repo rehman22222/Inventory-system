@@ -21,7 +21,9 @@ site because checkout and inventory requests run in server functions. Hostinger
 currently only asks for a package manager and entry file with the `Other`
 preset. Its dependency install invokes the package's `postinstall` script,
 which generates `.output`; `hostinger-entry.mjs` then starts the generated
-Nitro server.
+Nitro server. Vite, the React Vite plugin, and Nitro intentionally remain in
+`dependencies` because Hostinger installs with `NODE_ENV=production` and would
+otherwise omit the build tooling.
 
 ## Required environment variables
 
