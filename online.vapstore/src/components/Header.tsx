@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Search, ShoppingBag, User, Menu, X, ArrowRight, ChevronDown } from "lucide-react";
+import { Search, ShoppingBag, Menu, X, ArrowRight, ChevronDown } from "lucide-react";
 import { productsByCategory, type Category, type CategorySlug } from "@/lib/catalog";
 import { useCatalog } from "@/lib/catalog-context";
 import logo from "@/assets/logo-cop.png";
@@ -119,9 +119,6 @@ export function Header() {
           <button aria-label="Search" className="lg:hidden p-2">
             <Search className="h-5 w-5" />
           </button>
-          <Link to="/account" className="hidden md:inline-flex p-2" aria-label="Account">
-            <User className="h-5 w-5" />
-          </Link>
           <Link
             to="/cart"
             className="relative p-2 inline-flex items-center gap-2"
@@ -227,13 +224,6 @@ export function Header() {
               className="py-2.5 font-display text-sm uppercase tracking-widest text-[color:var(--sale)]"
             >
               Sale
-            </Link>
-            <Link
-              to="/account"
-              onClick={() => setMobileOpen(false)}
-              className="py-2.5 text-sm text-ink-muted"
-            >
-              Account
             </Link>
           </div>
         </div>

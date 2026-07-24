@@ -1061,7 +1061,25 @@ function HeroSlides({ slides, listings }) {
   const save = async (event) => {
     event.preventDefault();
     if (!draft.titleTop.trim()) return toast.error("Headline is required");
-    const payload = { ...draft, listing: draft.listing || null };
+    if (!draft.listing)
+      return toast.error("Choose the product this slide should open");
+    const selectedListing = listings.find(
+      (listing) => listing._id === draft.listing,
+    );
+    const payload = {
+      ...draft,
+      listing: draft.listing,
+      ctaPrimary: {
+        label: draft.ctaPrimary.label || "Shop this product",
+        to: "/product/$id",
+        params: selectedListing?.slug ? { id: selectedListing.slug } : {},
+      },
+      ctaSecondary: {
+        label: draft.ctaSecondary.label || "Browse all",
+        to: "/shop",
+        params: {},
+      },
+    };
     const result = await dispatch(
       editingId
         ? updateHeroSlide({ id: editingId, ...payload })
@@ -1137,9 +1155,10 @@ function HeroSlides({ slides, listings }) {
         <select
           className="select select-sm select-bordered w-full"
           value={draft.listing}
+          required
           onChange={(event) => set("listing", event.target.value)}
         >
-          <option value="">Showcase product (optional)</option>
+          <option value="">Choose showcase product *</option>
           {listings
             .filter((listing) => listing.listed)
             .map((listing) => (
@@ -1173,7 +1192,7 @@ function HeroSlides({ slides, listings }) {
         <div className="grid grid-cols-2 gap-2">
           <input
             className="input input-sm input-bordered"
-            placeholder="Primary button"
+            placeholder="Shop this product"
             value={draft.ctaPrimary.label}
             onChange={(event) =>
               setNested("ctaPrimary", "label", event.target.value)
@@ -1181,12 +1200,18 @@ function HeroSlides({ slides, listings }) {
           />
           <input
             className="input input-sm input-bordered"
-            placeholder="/shop"
-            value={draft.ctaPrimary.to}
+            placeholder="Browse all"
+            value={draft.ctaSecondary.label}
             onChange={(event) =>
-              setNested("ctaPrimary", "to", event.target.value)
+              setNested("ctaSecondary", "label", event.target.value)
             }
           />
+        </div>
+        <p className="text-[11px] leading-relaxed text-base-content/50">
+          The first button automatically opens the selected product. The second
+          always opens the complete online catalogue.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
           <select
             className="select select-sm select-bordered"
             value={draft.tone}

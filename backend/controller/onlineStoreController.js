@@ -1472,6 +1472,11 @@ module.exports.createHeroSlide = async (req, res) => {
     if (!req.body.titleTop?.trim())
       return res.status(400).json({ message: "The slide needs a headline" });
     const payload = { ...req.body, store };
+    if (!payload.listing) {
+      return res
+        .status(400)
+        .json({ message: "Choose the product this hero slide should open" });
+    }
     if (payload.listing) {
       if (!mongoose.isValidObjectId(payload.listing)) {
         return res
@@ -1532,7 +1537,9 @@ module.exports.updateHeroSlide = async (req, res) => {
         if (!updates.imageAlt)
           updates.imageAlt = listing.webName || listing.product?.name || "";
       } else {
-        updates.listing = null;
+        return res
+          .status(400)
+          .json({ message: "Choose the product this hero slide should open" });
       }
     }
     const slide = await OnlineHeroSlide.findOneAndUpdate(
@@ -2006,38 +2013,49 @@ module.exports.storefrontHero = async (req, res) => {
       .lean();
 
     return res.status(200).json({
-      slides: slides.map((s) => ({
-        id: String(s._id),
-        eyebrow: s.eyebrow,
-        titleTop: s.titleTop,
-        titleItalic: s.titleItalic,
-        titleBadge: s.titleBadge,
-        titleBottom: s.titleBottom,
-        copy: s.copy,
-        ctaPrimary: s.ctaPrimary,
-        ctaSecondary: s.ctaSecondary,
-        image: s.image,
-        imageAlt: s.imageAlt,
-        burst: s.burst,
-        tone: s.tone,
-        product: s.listing?.product
-          ? {
-              slug: s.listing.slug,
-              name: s.listing.webName || s.listing.product.name,
-              brand: s.listing.brand,
-              price: money(effectiveItemPrice(s.listing, s.listing.product)),
-              was: saleIsActive(s.listing)
-                ? money(
-                    Math.max(
-                      Number(s.listing.compareAtPrice || 0),
-                      regularItemPrice(s.listing, s.listing.product),
-                    ),
-                  )
-                : s.listing.compareAtPrice || null,
-              stock: Number(s.listing.product.quantity || 0),
-            }
-          : null,
-      })),
+      slides: slides.map((s) => {
+        const productSlug = String(s.listing?.slug || "");
+        return {
+          id: String(s._id),
+          eyebrow: s.eyebrow,
+          titleTop: s.titleTop,
+          titleItalic: s.titleItalic,
+          titleBadge: s.titleBadge,
+          titleBottom: s.titleBottom,
+          copy: s.copy,
+          ctaPrimary: {
+            label: String(s.ctaPrimary?.label || "").trim() || "Shop this product",
+            to: productSlug ? "/product/$id" : "/shop",
+            params: productSlug ? { id: productSlug } : {},
+          },
+          ctaSecondary: {
+            label: String(s.ctaSecondary?.label || "").trim() || "Browse all",
+            to: "/shop",
+            params: {},
+          },
+          image: s.image,
+          imageAlt: s.imageAlt,
+          burst: s.burst,
+          tone: s.tone,
+          product: s.listing?.product
+            ? {
+                slug: productSlug,
+                name: s.listing.webName || s.listing.product.name,
+                brand: s.listing.brand,
+                price: money(effectiveItemPrice(s.listing, s.listing.product)),
+                was: saleIsActive(s.listing)
+                  ? money(
+                      Math.max(
+                        Number(s.listing.compareAtPrice || 0),
+                        regularItemPrice(s.listing, s.listing.product),
+                      ),
+                    )
+                  : s.listing.compareAtPrice || null,
+                stock: Number(s.listing.product.quantity || 0),
+              }
+            : null,
+        };
+      }),
     });
   } catch (error) {
     return res

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import {
   ArrowRight,
   ChevronLeft,
@@ -13,6 +14,43 @@ import type { HeroSlide } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
 
 const AUTOPLAY_MS = 6000;
+
+function HeroProductLink({
+  slide,
+  active,
+  className,
+  children,
+}: {
+  slide: HeroSlide;
+  active: boolean;
+  className: string;
+  children: ReactNode;
+}) {
+  const stopCarouselDrag = (event: React.PointerEvent) => event.stopPropagation();
+  if (!slide.product?.slug) {
+    return (
+      <Link
+        to="/shop"
+        tabIndex={active ? 0 : -1}
+        onPointerDown={stopCarouselDrag}
+        className={className}
+      >
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <Link
+      to="/product/$id"
+      params={{ id: slide.product.slug }}
+      tabIndex={active ? 0 : -1}
+      onPointerDown={stopCarouselDrag}
+      className={className}
+    >
+      {children}
+    </Link>
+  );
+}
 
 export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   const n = slides.length;
@@ -158,25 +196,22 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                   </p>
 
                   <div className="flex flex-wrap items-center gap-3">
-                    <Link
-                      to={s.ctaPrimary.to as never}
-                      params={s.ctaPrimary.params as never}
-                      tabIndex={i === index ? 0 : -1}
+                    <HeroProductLink
+                      slide={s}
+                      active={i === index}
                       className="group inline-flex items-center gap-2 bg-accent text-accent-foreground border border-accent px-5 py-3 font-display text-xs uppercase tracking-[0.12em] hover:bg-primary-foreground hover:text-ink hover:border-primary-foreground transition-colors"
                     >
-                      {s.ctaPrimary.label}
+                      {s.ctaPrimary.label || "Shop this product"}
                       <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </HeroProductLink>
+                    <Link
+                      to="/shop"
+                      tabIndex={i === index ? 0 : -1}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      className="inline-flex items-center gap-2 border border-primary-foreground/30 px-5 py-3 font-display text-xs uppercase tracking-[0.12em] hover:bg-primary-foreground hover:text-ink transition-colors"
+                    >
+                      {s.ctaSecondary?.label || "Browse all"} <ArrowRight className="h-4 w-4" />
                     </Link>
-                    {s.ctaSecondary?.label && s.ctaSecondary?.to && (
-                      <Link
-                        to={s.ctaSecondary.to as never}
-                        params={s.ctaSecondary.params as never}
-                        tabIndex={i === index ? 0 : -1}
-                        className="inline-flex items-center gap-2 border border-primary-foreground/30 px-5 py-3 font-display text-xs uppercase tracking-[0.12em] hover:bg-primary-foreground hover:text-ink transition-colors"
-                      >
-                        {s.ctaSecondary.label} <ArrowRight className="h-4 w-4" />
-                      </Link>
-                    )}
                   </div>
 
                   {/* Trust row */}
@@ -211,10 +246,9 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                     </div>
                   </div>
 
-                  <Link
-                    to={s.ctaPrimary.to as never}
-                    params={s.ctaPrimary.params as never}
-                    tabIndex={i === index ? 0 : -1}
+                  <HeroProductLink
+                    slide={s}
+                    active={i === index}
                     className="relative block bg-primary-foreground text-ink border-2 border-ink group"
                   >
                     <img
@@ -261,7 +295,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                         </div>
                       </div>
                     </div>
-                  </Link>
+                  </HeroProductLink>
                 </div>
               </div>
             </div>
