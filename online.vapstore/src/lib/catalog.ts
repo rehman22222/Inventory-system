@@ -28,6 +28,7 @@ export interface Product {
   compareAt?: number;
   sale?: boolean;
   saleEndsAt?: string;
+  publishedAt?: string;
   image: string;
   gallery: { url: string; alt?: string }[];
   tags?: ("new" | "bestseller" | "sale" | "limited")[];
@@ -64,6 +65,21 @@ export interface StorefrontSettings {
     primary: string;
     secondary: string;
   };
+  newThisWeek: {
+    enabled: boolean;
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    limit: number;
+  };
+  deals: {
+    enabled: boolean;
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    ctaLabel: string;
+    limit: number;
+  };
 }
 
 export interface HeroSlide {
@@ -99,7 +115,15 @@ export const productsByCategory = (products: Product[], slug: CategorySlug) =>
 export const saleProducts = (products: Product[]) => products.filter((p) => !!p.compareAt);
 
 export const newArrivals = (products: Product[], limit = 8) =>
-  products.filter((p) => p.tags?.includes("new")).slice(0, limit);
+  (() => {
+    const selected = products.filter((p) => p.tags?.includes("new"));
+    const pool = selected.length
+      ? selected
+      : [...products].sort(
+          (a, b) => (Date.parse(b.publishedAt || "") || 0) - (Date.parse(a.publishedAt || "") || 0),
+        );
+    return pool.slice(0, limit);
+  })();
 
 export const bestSellers = (products: Product[], limit = 8) => {
   const flagged = products.filter((p) => p.tags?.includes("bestseller"));

@@ -11,6 +11,7 @@ import {
   FiGrid,
   FiImage,
   FiPlus,
+  FiPercent,
   FiRefreshCw,
   FiSave,
   FiSettings,
@@ -21,6 +22,7 @@ import {
   FiTrash2,
   FiUpload,
   FiX,
+  FiZap,
 } from "react-icons/fi";
 import {
   createHeroSlide,
@@ -54,7 +56,9 @@ const TABS = [
   { id: "products", label: "Products", icon: FiGrid },
   { id: "categories", label: "Categories", icon: FiGlobe },
   { id: "hero", label: "Hero slides", icon: FiImage },
-  { id: "promotions", label: "Promotions", icon: FiTag },
+  { id: "new-this-week", label: "New this week", icon: FiZap },
+  { id: "deals", label: "Deals", icon: FiPercent },
+  { id: "promotions", label: "Vouchers", icon: FiTag },
   { id: "orders", label: "Orders", icon: FiShoppingCart },
   { id: "settings", label: "Settings", icon: FiSettings },
 ];
@@ -149,6 +153,20 @@ export default function OnlineStorePage() {
       {tab === "categories" && <Categories categories={online.categories} />}
       {tab === "hero" && (
         <HeroSlides slides={online.slides} listings={online.listings} />
+      )}
+      {tab === "new-this-week" && (
+        <NewThisWeekControls
+          listings={online.listings}
+          settings={online.settings}
+          isActing={online.isActing}
+        />
+      )}
+      {tab === "deals" && (
+        <DealsControls
+          listings={online.listings}
+          settings={online.settings}
+          isActing={online.isActing}
+        />
       )}
       {tab === "promotions" && (
         <Promotions
@@ -639,12 +657,16 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
         </Field>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-4 text-xs">
-        {["new", "bestseller", "limited"].map((tag) => (
+        {[
+          ["new", "New this week"],
+          ["bestseller", "Bestseller"],
+          ["limited", "Limited"],
+        ].map(([tag, label]) => (
           <Check
             key={tag}
             checked={draft.tags.includes(tag)}
             onChange={() => toggleTag(tag)}
-            label={tag}
+            label={label}
           />
         ))}
         <Check
@@ -1239,6 +1261,646 @@ function HeroSlides({ slides, listings }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+const DEFAULT_NEW_THIS_WEEK = {
+  enabled: true,
+  eyebrow: "Fresh drops",
+  title: "New this week.",
+  subtitle:
+    "The latest products to land in store, selected by the Candy Cloud team.",
+  limit: 8,
+};
+
+function NewThisWeekControls({ listings, settings, isActing }) {
+  const dispatch = useDispatch();
+  const [query, setQuery] = useState("");
+  const [draft, setDraft] = useState(DEFAULT_NEW_THIS_WEEK);
+
+  useEffect(() => {
+    setDraft({
+      ...DEFAULT_NEW_THIS_WEEK,
+      ...(settings?.newThisWeek || {}),
+    });
+  }, [settings]);
+
+  const selectedCount = listings.filter((listing) =>
+    listing.tags?.includes("new"),
+  ).length;
+  const shown = useMemo(() => {
+    const search = query.trim().toLowerCase();
+    return listings.filter((listing) => {
+      if (!listing.listed) return false;
+      if (!search) return true;
+      return `${listing.webName || listing.product?.name || ""} ${
+        listing.brand || ""
+      }`
+        .toLowerCase()
+        .includes(search);
+    });
+  }, [listings, query]);
+
+  const set = (key, value) =>
+    setDraft((current) => ({ ...current, [key]: value }));
+
+  const saveSection = async (event) => {
+    event.preventDefault();
+    const result = await dispatch(
+      saveOnlineSettings({
+        newThisWeek: { ...draft, limit: Number(draft.limit) },
+      }),
+    );
+    result.error
+      ? toast.error(result.payload || "Could not save the homepage section")
+      : toast.success("New this week section saved");
+  };
+
+  const toggleProduct = async (listing) => {
+    const tags = (listing.tags || []).filter((tag) => tag !== "sale");
+    const selected = tags.includes("new");
+    const result = await dispatch(
+      updateOnlineListing({
+        id: listing._id,
+        tags: selected ? tags.filter((tag) => tag !== "new") : [...tags, "new"],
+      }),
+    );
+    result.error
+      ? toast.error(result.payload || "Could not update the homepage product")
+      : toast.success(
+          selected ? "Removed from New this week" : "Added to New this week",
+        );
+  };
+
+  return (
+    <div className="grid gap-6 xl:grid-cols-[390px_1fr]">
+      <form
+        onSubmit={saveSection}
+        className="h-fit space-y-4 rounded-xl border bg-base-100 p-5"
+      >
+        <div>
+          <h3 className="flex items-center gap-2 font-display text-lg font-bold">
+            <FiZap /> Homepage section
+          </h3>
+          <p className="mt-1 text-xs leading-relaxed text-base-content/55">
+            This block appears directly below the hero. Product prices and stock
+            still come from the shared inventory.
+          </p>
+        </div>
+        <Check
+          checked={draft.enabled}
+          onChange={(value) => set("enabled", value)}
+          label="Show New this week on the storefront"
+        />
+        <Field label="Small heading">
+          <input
+            className="input input-sm input-bordered"
+            maxLength={80}
+            value={draft.eyebrow}
+            onChange={(event) => set("eyebrow", event.target.value)}
+          />
+        </Field>
+        <Field label="Main heading">
+          <input
+            className="input input-sm input-bordered"
+            maxLength={120}
+            value={draft.title}
+            onChange={(event) => set("title", event.target.value)}
+          />
+        </Field>
+        <Field label="Supporting text">
+          <textarea
+            className="textarea textarea-sm textarea-bordered"
+            rows={3}
+            maxLength={300}
+            value={draft.subtitle}
+            onChange={(event) => set("subtitle", event.target.value)}
+          />
+        </Field>
+        <Field label="Maximum products">
+          <select
+            className="select select-sm select-bordered"
+            value={draft.limit}
+            onChange={(event) => set("limit", Number(event.target.value))}
+          >
+            <option value={4}>4 products</option>
+            <option value={8}>8 products</option>
+            <option value={12}>12 products</option>
+          </select>
+        </Field>
+        <button
+          className="btn btn-primary btn-sm w-full gap-2"
+          disabled={isActing}
+        >
+          <FiSave /> Save section
+        </button>
+      </form>
+
+      <section className="overflow-hidden rounded-xl border bg-base-100">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4">
+          <div>
+            <h3 className="font-display font-bold">Choose products</h3>
+            <p className="text-xs text-base-content/50">
+              {selectedCount
+                ? `${selectedCount} manually selected · the first ${draft.limit} are shown`
+                : `No manual selection yet · the newest ${draft.limit} products are shown automatically`}
+            </p>
+          </div>
+          <input
+            className="input input-sm input-bordered"
+            placeholder="Search live products…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </div>
+        <div className="max-h-[620px] divide-y overflow-y-auto">
+          {shown.map((listing) => {
+            const selected = listing.tags?.includes("new");
+            const stock = listing.variants?.length
+              ? listing.variants.reduce(
+                  (sum, option) => sum + Number(option.product?.quantity || 0),
+                  0,
+                )
+              : Number(listing.product?.quantity || 0);
+            return (
+              <div
+                key={listing._id}
+                className={`flex items-center justify-between gap-4 p-4 ${
+                  selected ? "bg-primary/5" : ""
+                }`}
+              >
+                <div className="min-w-0">
+                  <div className="truncate font-medium">
+                    {listing.webName || listing.product?.name}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-base-content/50">
+                    <span>{listing.brand || "Unbranded"}</span>
+                    <span>·</span>
+                    <span>{stock} in shared stock</span>
+                    {selected && (
+                      <span className="badge badge-primary badge-xs">
+                        New this week
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className={`btn btn-sm shrink-0 ${
+                    selected ? "btn-primary" : "btn-outline"
+                  }`}
+                  disabled={isActing}
+                  onClick={() => toggleProduct(listing)}
+                >
+                  {selected ? "Selected" : "Add"}
+                </button>
+              </div>
+            );
+          })}
+          {!shown.length && (
+            <div className="p-10 text-center text-sm text-base-content/50">
+              No live products match this search.
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+const DEFAULT_DEALS = {
+  enabled: true,
+  eyebrow: "Live sale",
+  title: "Weekly deals.",
+  subtitle:
+    "Limited-time online prices selected by the Candy Cloud team. Stock updates from the same inventory used at the till.",
+  ctaLabel: "See the deals",
+  limit: 4,
+};
+
+const BLANK_DEAL = {
+  id: "",
+  salePrice: "",
+  saleStartsAt: "",
+  saleEndsAt: "",
+};
+
+const dealState = (listing) => {
+  const now = Date.now();
+  if (!listing.salePrice) return "none";
+  if (listing.saleStartsAt && new Date(listing.saleStartsAt).getTime() > now) {
+    return "scheduled";
+  }
+  if (listing.saleEndsAt && new Date(listing.saleEndsAt).getTime() < now) {
+    return "ended";
+  }
+  return "live";
+};
+
+function DealsControls({ listings, settings, isActing }) {
+  const dispatch = useDispatch();
+  const [section, setSection] = useState(DEFAULT_DEALS);
+  const [deal, setDeal] = useState(BLANK_DEAL);
+
+  useEffect(() => {
+    setSection({
+      ...DEFAULT_DEALS,
+      ...(settings?.deals || {}),
+    });
+  }, [settings]);
+
+  const dealListings = useMemo(
+    () =>
+      listings
+        .filter((listing) => listing.listed || listing.salePrice != null)
+        .sort((a, b) =>
+          String(a.webName || a.product?.name || "").localeCompare(
+            String(b.webName || b.product?.name || ""),
+          ),
+        ),
+    [listings],
+  );
+  const configuredDeals = useMemo(
+    () =>
+      listings
+        .filter((listing) => listing.salePrice != null)
+        .sort((a, b) => {
+          const order = { live: 0, scheduled: 1, ended: 2, none: 3 };
+          return order[dealState(a)] - order[dealState(b)];
+        }),
+    [listings],
+  );
+  const selectedListing = listings.find((listing) => listing._id === deal.id);
+  const regularPrice = selectedListing
+    ? Number(
+        selectedListing.priceOverride ?? selectedListing.product?.Price ?? 0,
+      )
+    : 0;
+
+  const setSectionField = (key, value) =>
+    setSection((current) => ({ ...current, [key]: value }));
+  const setDealField = (key, value) =>
+    setDeal((current) => ({ ...current, [key]: value }));
+
+  const editDeal = (listing) => {
+    setDeal({
+      id: listing._id,
+      salePrice: listing.salePrice ?? "",
+      saleStartsAt: toLocalDateTime(listing.saleStartsAt),
+      saleEndsAt: toLocalDateTime(listing.saleEndsAt),
+    });
+  };
+
+  const saveSection = async (event) => {
+    event.preventDefault();
+    const result = await dispatch(
+      saveOnlineSettings({
+        deals: { ...section, limit: Number(section.limit) },
+      }),
+    );
+    result.error
+      ? toast.error(result.payload || "Could not save Deals settings")
+      : toast.success("Deals section saved");
+  };
+
+  const saveDeal = async (event) => {
+    event.preventDefault();
+    if (!selectedListing) return toast.error("Choose a website product");
+    const salePrice = Number(deal.salePrice);
+    if (!Number.isFinite(salePrice) || salePrice <= 0) {
+      return toast.error("Enter a valid deal price");
+    }
+    if (regularPrice > 0 && salePrice >= regularPrice) {
+      return toast.error(
+        "Deal price must be lower than the regular online price",
+      );
+    }
+    if (
+      deal.saleStartsAt &&
+      deal.saleEndsAt &&
+      new Date(deal.saleEndsAt) <= new Date(deal.saleStartsAt)
+    ) {
+      return toast.error("Deal end must be after its start");
+    }
+    const result = await dispatch(
+      updateOnlineListing({
+        id: selectedListing._id,
+        salePrice,
+        saleStartsAt: deal.saleStartsAt || null,
+        saleEndsAt: deal.saleEndsAt || null,
+      }),
+    );
+    if (result.error) {
+      return toast.error(result.payload || "Could not save the deal");
+    }
+    toast.success("Online deal saved; inventory/POS price was not changed");
+    setDeal(BLANK_DEAL);
+  };
+
+  const clearDeal = async (listing) => {
+    if (
+      !window.confirm(
+        `Remove the online deal from ${
+          listing.webName || listing.product?.name
+        }?`,
+      )
+    ) {
+      return;
+    }
+    const result = await dispatch(
+      updateOnlineListing({
+        id: listing._id,
+        salePrice: null,
+        saleStartsAt: null,
+        saleEndsAt: null,
+      }),
+    );
+    if (result.error) {
+      return toast.error(result.payload || "Could not clear the deal");
+    }
+    if (deal.id === listing._id) setDeal(BLANK_DEAL);
+    toast.success("Online deal removed");
+  };
+
+  return (
+    <div className="grid gap-6 xl:grid-cols-[410px_1fr]">
+      <div className="space-y-5">
+        <form
+          onSubmit={saveSection}
+          className="space-y-4 rounded-xl border bg-base-100 p-5"
+        >
+          <div>
+            <h3 className="flex items-center gap-2 font-display text-lg font-bold">
+              <FiPercent /> Deals homepage section
+            </h3>
+            <p className="mt-1 text-xs leading-relaxed text-base-content/55">
+              The discount percentage is calculated automatically from active
+              deals. This copy only changes the storefront presentation.
+            </p>
+          </div>
+          <Check
+            checked={section.enabled}
+            onChange={(value) => setSectionField("enabled", value)}
+            label="Show Deals section on the storefront"
+          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Small heading">
+              <input
+                className="input input-sm input-bordered"
+                maxLength={80}
+                value={section.eyebrow}
+                onChange={(event) =>
+                  setSectionField("eyebrow", event.target.value)
+                }
+              />
+            </Field>
+            <Field label="Button label">
+              <input
+                className="input input-sm input-bordered"
+                maxLength={40}
+                value={section.ctaLabel}
+                onChange={(event) =>
+                  setSectionField("ctaLabel", event.target.value)
+                }
+              />
+            </Field>
+          </div>
+          <Field label="Main heading">
+            <input
+              className="input input-sm input-bordered"
+              maxLength={120}
+              value={section.title}
+              onChange={(event) => setSectionField("title", event.target.value)}
+            />
+          </Field>
+          <Field label="Supporting text">
+            <textarea
+              className="textarea textarea-sm textarea-bordered"
+              rows={3}
+              maxLength={300}
+              value={section.subtitle}
+              onChange={(event) =>
+                setSectionField("subtitle", event.target.value)
+              }
+            />
+          </Field>
+          <Field label="Maximum deal products">
+            <select
+              className="select select-sm select-bordered"
+              value={section.limit}
+              onChange={(event) =>
+                setSectionField("limit", Number(event.target.value))
+              }
+            >
+              {[2, 4, 6, 8].map((limit) => (
+                <option key={limit} value={limit}>
+                  {limit} products
+                </option>
+              ))}
+            </select>
+          </Field>
+          <button
+            className="btn btn-primary btn-sm w-full gap-2"
+            disabled={isActing}
+          >
+            <FiSave /> Save Deals section
+          </button>
+        </form>
+
+        <form
+          onSubmit={saveDeal}
+          className="space-y-4 rounded-xl border bg-base-100 p-5"
+        >
+          <div>
+            <h3 className="font-display text-lg font-bold">
+              {deal.id ? "Edit product deal" : "Add product deal"}
+            </h3>
+            <p className="mt-1 text-xs text-base-content/55">
+              Online price only. Shared stock and POS price are unchanged.
+            </p>
+          </div>
+          <Field label="Live website product">
+            <select
+              className="select select-sm select-bordered"
+              value={deal.id}
+              onChange={(event) => {
+                const listing = listings.find(
+                  (item) => item._id === event.target.value,
+                );
+                listing ? editDeal(listing) : setDeal(BLANK_DEAL);
+              }}
+              required
+            >
+              <option value="">Choose product</option>
+              {dealListings.map((listing) => (
+                <option key={listing._id} value={listing._id}>
+                  {listing.webName || listing.product?.name}
+                  {listing.listed ? "" : " (hidden)"}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Regular online price">
+              <input
+                className="input input-sm input-bordered"
+                value={regularPrice ? `€${money(regularPrice)}` : "—"}
+                disabled
+              />
+            </Field>
+            <Field label="Deal price (€)">
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                className="input input-sm input-bordered"
+                value={deal.salePrice}
+                onChange={(event) =>
+                  setDealField("salePrice", event.target.value)
+                }
+                required
+              />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Starts (optional)">
+              <input
+                type="datetime-local"
+                className="input input-sm input-bordered"
+                value={deal.saleStartsAt}
+                onChange={(event) =>
+                  setDealField("saleStartsAt", event.target.value)
+                }
+              />
+            </Field>
+            <Field label="Ends (optional)">
+              <input
+                type="datetime-local"
+                className="input input-sm input-bordered"
+                value={deal.saleEndsAt}
+                onChange={(event) =>
+                  setDealField("saleEndsAt", event.target.value)
+                }
+              />
+            </Field>
+          </div>
+          <div className="flex gap-2">
+            {deal.id && (
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => setDeal(BLANK_DEAL)}
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              className="btn btn-primary btn-sm flex-1 gap-2"
+              disabled={isActing}
+            >
+              <FiSave /> Save online deal
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <section className="overflow-hidden rounded-xl border bg-base-100">
+        <div className="border-b p-4">
+          <h3 className="font-display font-bold">Configured product deals</h3>
+          <p className="text-xs text-base-content/50">
+            Live, scheduled, and ended offers remain visible here for audit and
+            quick reuse.
+          </p>
+        </div>
+        <div className="divide-y">
+          {configuredDeals.map((listing) => {
+            const state = dealState(listing);
+            const regular = Number(
+              listing.priceOverride ?? listing.product?.Price ?? 0,
+            );
+            const discount =
+              regular > Number(listing.salePrice)
+                ? Math.round(
+                    ((regular - Number(listing.salePrice)) / regular) * 100,
+                  )
+                : 0;
+            return (
+              <article
+                key={listing._id}
+                className="flex flex-wrap items-center justify-between gap-4 p-4"
+              >
+                <div className="min-w-0">
+                  <div className="truncate font-medium">
+                    {listing.webName || listing.product?.name}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-base-content/50">
+                      €{money(regular)}
+                    </span>
+                    <span>→</span>
+                    <strong className="text-error">
+                      €{money(listing.salePrice)}
+                    </strong>
+                    {discount > 0 && (
+                      <span className="badge badge-error badge-sm">
+                        -{discount}%
+                      </span>
+                    )}
+                    <span
+                      className={`badge badge-sm ${
+                        state === "live"
+                          ? "badge-success"
+                          : state === "scheduled"
+                            ? "badge-info"
+                            : "badge-ghost"
+                      }`}
+                    >
+                      {state}
+                    </span>
+                  </div>
+                  {(listing.saleStartsAt || listing.saleEndsAt) && (
+                    <div className="mt-1 text-[11px] text-base-content/45">
+                      {listing.saleStartsAt
+                        ? `Starts ${new Date(
+                            listing.saleStartsAt,
+                          ).toLocaleString()}`
+                        : "Starts immediately"}
+                      {" · "}
+                      {listing.saleEndsAt
+                        ? `Ends ${new Date(listing.saleEndsAt).toLocaleString()}`
+                        : "No end date"}
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs"
+                    disabled={isActing}
+                    onClick={() => editDeal(listing)}
+                  >
+                    <FiEdit2 /> Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs text-error"
+                    disabled={isActing}
+                    onClick={() => clearDeal(listing)}
+                  >
+                    <FiTrash2 /> Clear
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+          {!configuredDeals.length && (
+            <div className="p-10 text-center text-sm text-base-content/50">
+              No product deals configured yet.
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

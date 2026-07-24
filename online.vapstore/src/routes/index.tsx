@@ -9,6 +9,7 @@ import { bestSellers, newArrivals, saleProducts } from "@/lib/catalog";
 import { getHero } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
 import { HeroCarousel } from "@/components/HeroCarousel";
+import { formatPrice } from "@/lib/format";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -33,25 +34,60 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const { hero } = Route.useLoaderData();
-  const { categories, products } = useCatalog();
+  const { categories, products, settings } = useCatalog();
   const best = bestSellers(products, 8);
-  const news = newArrivals(products, 8);
-  const sale = saleProducts(products).slice(0, 4);
+  const news = newArrivals(products, settings.newThisWeek.limit);
+  const sale = saleProducts(products).slice(0, settings.deals.limit);
+  const maxDealPercent = sale.reduce((highest, product) => {
+    const regular = Number(product.regularPrice || product.compareAt || 0);
+    if (regular <= 0 || product.price >= regular) return highest;
+    return Math.max(highest, Math.round(((regular - product.price) / regular) * 100));
+  }, 0);
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
 
-      {/* HERO — auto-sliding, swipeable offer slider. The trust row and the
-          category rail live inside it. Edit slides in src/data/promos.ts. */}
+      {/* HERO — a compact, swipeable offer slider managed from the admin. */}
       {hero.length > 0 && <HeroCarousel slides={hero} />}
+
+      {/* NEW THIS WEEK — curated in Online Store → New this week. When a shop
+          has not curated the rail yet, the newest catalogue rows fill it so
+          the homepage never launches with an empty feature. */}
+      {settings.newThisWeek.enabled && news.length > 0 && (
+        <section className="border-b hair bg-surface py-12 md:py-16">
+          <div className="container-x">
+            <div className="mb-8 flex items-end justify-between gap-6 md:mb-10">
+              <div className="max-w-3xl">
+                <div className="eyebrow">§ 01 — {settings.newThisWeek.eyebrow}</div>
+                <h2 className="mt-3 font-display text-4xl leading-none tracking-tight md:text-6xl">
+                  {settings.newThisWeek.title}
+                </h2>
+                {settings.newThisWeek.subtitle && (
+                  <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink-muted md:text-base">
+                    {settings.newThisWeek.subtitle}
+                  </p>
+                )}
+              </div>
+              <Link to="/shop" className="btn-outline hidden md:inline-flex">
+                Shop all <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+              {news.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* CATEGORIES */}
       <section className="py-16 md:py-24">
         <div className="container-x">
           <div className="flex items-end justify-between gap-6 mb-10">
             <div>
-              <div className="eyebrow">§ 01 — Categories</div>
+              <div className="eyebrow">§ 02 — Categories</div>
               <h2 className="mt-3 font-display text-4xl md:text-6xl leading-none tracking-tight">
                 Shop by{" "}
                 <span
@@ -106,7 +142,7 @@ function Home() {
         <div className="container-x">
           <div className="flex items-end justify-between gap-6 mb-10">
             <div>
-              <div className="eyebrow">§ 02 — Bestsellers</div>
+              <div className="eyebrow">§ 03 — Bestsellers</div>
               <h2 className="mt-3 font-display text-4xl md:text-6xl leading-none tracking-tight">
                 What everyone's
                 <br />
@@ -127,79 +163,90 @@ function Home() {
         </div>
       </section>
 
-      {/* SALE BANNER */}
-      <section className="border-b hair bg-ink text-primary-foreground">
-        <div className="container-x py-16 md:py-24 grid gap-10 lg:grid-cols-[1.4fr_1fr] items-center">
-          <div>
-            <div className="font-mono text-[11px] uppercase tracking-widest text-accent">
-              § 03 — Live Sale
-            </div>
-            <h2 className="mt-4 font-display text-4xl sm:text-5xl md:text-8xl leading-[0.95] md:leading-[0.9] tracking-tight break-words">
-              UP&nbsp;TO
-              <br />
-              <span className="bg-accent text-accent-foreground px-2 -mx-2 inline-block">
-                -40% OFF
-              </span>
-              <br />
-              Disposables&nbsp;&amp;
-              <br />
-              nic&nbsp;salts.
-            </h2>
-            <p className="mt-6 max-w-md text-sm text-primary-foreground/70">
-              Weekly rotating deals on the flavours you actually vape. Stock is limited — once it's
-              gone, it's gone.
-            </p>
-            <Link
-              to="/sale"
-              className="mt-8 inline-flex btn-primary bg-accent text-accent-foreground border-accent hover:bg-primary-foreground hover:text-ink hover:border-primary-foreground"
-            >
-              See the deals <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {sale.map((p) => (
-              <Link
-                key={p.id}
-                to="/product/$id"
-                params={{ id: p.id }}
-                className="border border-primary-foreground/20 bg-surface text-ink block"
-              >
-                <img
-                  src={p.image}
-                  alt={p.name}
-                  loading="lazy"
-                  className="aspect-square w-full object-cover"
-                />
-                <div className="p-3">
-                  <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted">
-                    {p.brand}
-                  </div>
-                  <div className="font-display text-xs leading-tight truncate">{p.name}</div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* NEW ARRIVALS */}
-      <section className="py-16 md:py-24">
-        <div className="container-x">
-          <div className="flex items-end justify-between gap-6 mb-10">
+      {/* DEALS — pricing and schedule come from each online listing; section
+          content is managed independently from the admin Deals tab. */}
+      {settings.deals.enabled && sale.length > 0 && (
+        <section className="border-b hair bg-ink text-primary-foreground">
+          <div className="container-x py-16 md:py-24 grid gap-10 lg:grid-cols-[1.4fr_1fr] items-center">
             <div>
-              <div className="eyebrow">§ 04 — Fresh drops</div>
-              <h2 className="mt-3 font-display text-4xl md:text-6xl leading-none tracking-tight">
-                New this week.
+              <div className="font-mono text-[11px] uppercase tracking-widest text-accent">
+                § 04 — {settings.deals.eyebrow}
+              </div>
+              <h2 className="mt-4 font-display text-4xl sm:text-5xl md:text-7xl leading-[0.95] md:leading-[0.9] tracking-tight break-words">
+                {maxDealPercent > 0 && (
+                  <>
+                    UP&nbsp;TO
+                    <br />
+                    <span className="bg-accent text-accent-foreground px-2 -mx-2 inline-block">
+                      -{maxDealPercent}% OFF
+                    </span>
+                    <br />
+                  </>
+                )}
+                {settings.deals.title}
               </h2>
+              {settings.deals.subtitle && (
+                <p className="mt-6 max-w-md text-sm text-primary-foreground/70">
+                  {settings.deals.subtitle}
+                </p>
+              )}
+              <Link
+                to="/sale"
+                className="mt-8 inline-flex btn-primary bg-accent text-accent-foreground border-accent hover:bg-primary-foreground hover:text-ink hover:border-primary-foreground"
+              >
+                {settings.deals.ctaLabel} <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {sale.map((product) => {
+                const regular = Number(product.regularPrice || product.compareAt || 0);
+                const saving =
+                  regular > product.price
+                    ? Math.round(((regular - product.price) / regular) * 100)
+                    : 0;
+                return (
+                  <Link
+                    key={product.id}
+                    to="/product/$id"
+                    params={{ id: product.id }}
+                    className="group block border border-primary-foreground/20 bg-surface text-ink"
+                  >
+                    <div className="relative overflow-hidden">
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        loading="lazy"
+                        className="aspect-square w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                      />
+                      {saving > 0 && (
+                        <span className="absolute left-2 top-2 bg-accent px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-accent-foreground">
+                          Save {saving}%
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted">
+                        {product.brand}
+                      </div>
+                      <div className="truncate font-display text-xs leading-tight">
+                        {product.name}
+                      </div>
+                      <div className="mt-2 flex items-baseline gap-2">
+                        <span className="font-display text-lg">{formatPrice(product.price)}</span>
+                        {regular > product.price && (
+                          <span className="font-mono text-[9px] text-ink-muted line-through">
+                            {formatPrice(regular)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </div>
-          <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {news.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* EDITORIAL / ABOUT */}
       <section className="border-y hair bg-surface">

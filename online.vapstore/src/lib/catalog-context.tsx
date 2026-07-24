@@ -28,6 +28,22 @@ export const defaultStorefrontSettings: StorefrontSettings = {
     primary: "Free shipping over €50 · Same-day dispatch",
     secondary: "21+ only · Nicotine warning",
   },
+  newThisWeek: {
+    enabled: true,
+    eyebrow: "Fresh drops",
+    title: "New this week.",
+    subtitle: "The latest products to land in store, selected by the Candy Cloud team.",
+    limit: 8,
+  },
+  deals: {
+    enabled: true,
+    eyebrow: "Live sale",
+    title: "Weekly deals.",
+    subtitle:
+      "Limited-time online prices selected by the Candy Cloud team. Stock updates from the same inventory used at the till.",
+    ctaLabel: "See the deals",
+    limit: 4,
+  },
 };
 
 const CatalogContext = createContext<CatalogValue>({

@@ -142,6 +142,7 @@ const publicListing = (l) => {
     compareAt: compareAt > price ? compareAt : null,
     sale: activeSale,
     saleEndsAt: activeSale && l.saleEndsAt ? l.saleEndsAt : null,
+    publishedAt: l.createdAt,
     // Live from the shared ledger — the same number the till reads.
     stock,
     featured: l.featured,
@@ -1381,6 +1382,55 @@ module.exports.updateStoreSettings = async (req, res) => {
         settings.announcement[key] = String(announcement[key] || "").trim();
       }
     }
+    const newThisWeek = req.body.newThisWeek || {};
+    if (Object.prototype.hasOwnProperty.call(newThisWeek, "enabled")) {
+      settings.newThisWeek.enabled = Boolean(newThisWeek.enabled);
+    }
+    for (const [key, maxLength] of [
+      ["eyebrow", 80],
+      ["title", 120],
+      ["subtitle", 300],
+    ]) {
+      if (Object.prototype.hasOwnProperty.call(newThisWeek, key)) {
+        settings.newThisWeek[key] = String(newThisWeek[key] || "")
+          .trim()
+          .slice(0, maxLength);
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(newThisWeek, "limit")) {
+      const limit = Number(newThisWeek.limit);
+      if (!Number.isInteger(limit) || limit < 4 || limit > 12) {
+        return res.status(400).json({
+          message: "New this week product limit must be between 4 and 12",
+        });
+      }
+      settings.newThisWeek.limit = limit;
+    }
+    const deals = req.body.deals || {};
+    if (Object.prototype.hasOwnProperty.call(deals, "enabled")) {
+      settings.deals.enabled = Boolean(deals.enabled);
+    }
+    for (const [key, maxLength] of [
+      ["eyebrow", 80],
+      ["title", 120],
+      ["subtitle", 300],
+      ["ctaLabel", 40],
+    ]) {
+      if (Object.prototype.hasOwnProperty.call(deals, key)) {
+        settings.deals[key] = String(deals[key] || "")
+          .trim()
+          .slice(0, maxLength);
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(deals, "limit")) {
+      const limit = Number(deals.limit);
+      if (!Number.isInteger(limit) || limit < 2 || limit > 8) {
+        return res.status(400).json({
+          message: "Deals product limit must be between 2 and 8",
+        });
+      }
+      settings.deals.limit = limit;
+    }
     settings.updatedBy = req.user?._id;
     await settings.save();
     emit(req, "onlineSettingsChanged", {});
@@ -1881,6 +1931,8 @@ module.exports.storefrontSettings = async (req, res) => {
         social: settings.social,
         footer: settings.footer,
         announcement: settings.announcement,
+        newThisWeek: settings.newThisWeek,
+        deals: settings.deals,
       },
     });
   } catch (error) {

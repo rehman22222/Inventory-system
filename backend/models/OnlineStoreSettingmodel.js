@@ -38,6 +38,58 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
         trim: true,
       },
     },
+    newThisWeek: {
+      enabled: { type: Boolean, default: true },
+      eyebrow: {
+        type: String,
+        default: "Fresh drops",
+        trim: true,
+        maxlength: 80,
+      },
+      title: {
+        type: String,
+        default: "New this week.",
+        trim: true,
+        maxlength: 120,
+      },
+      subtitle: {
+        type: String,
+        default:
+          "The latest products to land in store, selected by the Candy Cloud team.",
+        trim: true,
+        maxlength: 300,
+      },
+      limit: { type: Number, default: 8, min: 4, max: 12 },
+    },
+    deals: {
+      enabled: { type: Boolean, default: true },
+      eyebrow: {
+        type: String,
+        default: "Live sale",
+        trim: true,
+        maxlength: 80,
+      },
+      title: {
+        type: String,
+        default: "Weekly deals.",
+        trim: true,
+        maxlength: 120,
+      },
+      subtitle: {
+        type: String,
+        default:
+          "Limited-time online prices selected by the Candy Cloud team. Stock updates from the same inventory used at the till.",
+        trim: true,
+        maxlength: 300,
+      },
+      ctaLabel: {
+        type: String,
+        default: "See the deals",
+        trim: true,
+        maxlength: 40,
+      },
+      limit: { type: Number, default: 4, min: 2, max: 8 },
+    },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
