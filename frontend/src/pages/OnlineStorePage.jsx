@@ -1301,7 +1301,7 @@ const DEFAULT_NEW_THIS_WEEK = {
   eyebrow: "Fresh drops",
   title: "New this week.",
   subtitle:
-    "The latest products to land in store, selected by the Candy Cloud team.",
+    "The latest products to land in store, selected by the CliffsOfPuff team.",
   limit: 8,
 };
 
@@ -1505,7 +1505,7 @@ const DEFAULT_DEALS = {
   eyebrow: "Live sale",
   title: "Weekly deals.",
   subtitle:
-    "Limited-time online prices selected by the Candy Cloud team. Stock updates from the same inventory used at the till.",
+    "Limited-time online prices selected by the CliffsOfPuff team. Stock updates from the same inventory used at the till.",
   ctaLabel: "See the deals",
   limit: 4,
 };
@@ -2392,7 +2392,7 @@ function StorefrontSettings({ settings, isActing }) {
           <input
             className="input input-sm input-bordered"
             value={draft.announcement.secondary}
-            placeholder="21+ only · Nicotine warning"
+            placeholder="18+ only · Nicotine warning"
             onChange={(event) =>
               set("announcement", "secondary", event.target.value)
             }

@@ -58,7 +58,7 @@ export function Footer() {
         <div>
           <img
             src={logo}
-            alt="Cliffs of Puff"
+            alt="CliffsOfPuff"
             width={640}
             height={640}
             loading="lazy"
@@ -160,12 +160,12 @@ export function Footer() {
 
       <div className="border-t border-primary-foreground/10">
         <div className="container-x flex flex-col gap-2 py-4 font-mono text-[9px] uppercase tracking-[0.15em] text-primary-foreground/40 sm:flex-row sm:items-center sm:justify-between">
-          <span>© {year} Cliffs of Puff</span>
+          <span>© {year} CliffsOfPuff</span>
           <span className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-accent" />
             Contains nicotine · Highly addictive substance
           </span>
-          <span>21+ only · EUR storefront</span>
+          <span>18+ only · EUR storefront</span>
         </div>
       </div>
     </footer>

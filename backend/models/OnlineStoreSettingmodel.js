@@ -19,7 +19,7 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
       description: {
         type: String,
         default:
-          "Premium vape products, trusted flavours and reliable service from Candy Cloud Vape.",
+          "Premium vape products, trusted flavours and reliable service from CliffsOfPuff.",
         trim: true,
       },
       supportEmail: { type: String, default: "", trim: true, lowercase: true },
@@ -34,7 +34,7 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
       },
       secondary: {
         type: String,
-        default: "21+ only · Nicotine warning",
+        default: "18+ only · Nicotine warning",
         trim: true,
       },
     },
@@ -55,7 +55,7 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
       subtitle: {
         type: String,
         default:
-          "The latest products to land in store, selected by the Candy Cloud team.",
+          "The latest products to land in store, selected by the CliffsOfPuff team.",
         trim: true,
         maxlength: 300,
       },
@@ -78,7 +78,7 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
       subtitle: {
         type: String,
         default:
-          "Limited-time online prices selected by the Candy Cloud team. Stock updates from the same inventory used at the till.",
+          "Limited-time online prices selected by the CliffsOfPuff team. Stock updates from the same inventory used at the till.",
         trim: true,
         maxlength: 300,
       },

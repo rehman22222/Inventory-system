@@ -5,21 +5,20 @@ import type { Category, HeroSlide, Product, StorefrontSettings } from "./catalog
 const defaultStorefrontSettings: StorefrontSettings = {
   social: { instagram: "", facebook: "", twitter: "", tiktok: "" },
   footer: {
-    description:
-      "Premium vape products, trusted flavours and reliable service from Candy Cloud Vape.",
+    description: "Premium vape products, trusted flavours and reliable service from CliffsOfPuff.",
     supportEmail: "",
     supportPhone: "",
     address: "",
   },
   announcement: {
     primary: "Free shipping over €50 · Same-day dispatch",
-    secondary: "21+ only · Nicotine warning",
+    secondary: "18+ only · Nicotine warning",
   },
   newThisWeek: {
     enabled: true,
     eyebrow: "Fresh drops",
     title: "New this week.",
-    subtitle: "The latest products to land in store, selected by the Candy Cloud team.",
+    subtitle: "The latest products to land in store, selected by the CliffsOfPuff team.",
     limit: 8,
   },
   deals: {
@@ -27,7 +26,7 @@ const defaultStorefrontSettings: StorefrontSettings = {
     eyebrow: "Live sale",
     title: "Weekly deals.",
     subtitle:
-      "Limited-time online prices selected by the Candy Cloud team. Stock updates from the same inventory used at the till.",
+      "Limited-time online prices selected by the CliffsOfPuff team. Stock updates from the same inventory used at the till.",
     ctaLabel: "See the deals",
     limit: 4,
   },

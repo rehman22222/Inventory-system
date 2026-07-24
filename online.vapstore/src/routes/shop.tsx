@@ -10,14 +10,14 @@ export const Route = createFileRoute("/shop")({
   component: Shop,
   head: () => ({
     meta: [
-      { title: "Shop All — ClipsOfPuff" },
+      { title: "Shop All — CliffsOfPuff" },
       {
         name: "description",
         content:
-          "Browse the full ClipsOfPuff catalog: vape kits, pods, disposables, e-liquid, nic salts, tanks and accessories.",
+          "Browse the full CliffsOfPuff catalogue: vape kits, pods, disposables, e-liquid, nic salts, tanks and accessories.",
       },
-      { property: "og:title", content: "Shop All — ClipsOfPuff" },
-      { property: "og:description", content: "Browse the full ClipsOfPuff vape catalogue." },
+      { property: "og:title", content: "Shop All — CliffsOfPuff" },
+      { property: "og:description", content: "Browse the full CliffsOfPuff vape catalogue." },
     ],
   }),
 });

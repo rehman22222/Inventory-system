@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { CartProvider } from "../lib/cart";
 import { CatalogProvider } from "../lib/catalog-context";
 import { getStorefront } from "../lib/catalog-api";
+import { AgeGate } from "../components/AgeGate";
 
 function NotFoundComponent() {
   return (
@@ -78,21 +79,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ClipsOfPuff — Premium Vape Store" },
+      { title: "CliffsOfPuff — Premium Vape Store" },
       {
         name: "description",
         content:
-          "ClipsOfPuff is an independent vape shop. Pod kits, mods, disposables, nic salts and premium e-liquid. Same-day dispatch nationwide.",
+          "CliffsOfPuff is an independent vape shop. Pod kits, mods, disposables, nic salts and premium e-liquid. Same-day dispatch nationwide.",
       },
-      { name: "author", content: "ClipsOfPuff" },
-      { property: "og:title", content: "ClipsOfPuff — Premium Vape Store" },
+      { name: "author", content: "CliffsOfPuff" },
+      { property: "og:title", content: "CliffsOfPuff — Premium Vape Store" },
       {
         property: "og:description",
         content: "Pod kits, mods, disposables and premium e-liquid. Same-day dispatch nationwide.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@clipsofpuff" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -139,8 +139,10 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <CatalogProvider value={catalog}>
         <CartProvider>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
+          <AgeGate>
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+          </AgeGate>
         </CartProvider>
       </CatalogProvider>
     </QueryClientProvider>

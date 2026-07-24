@@ -11,8 +11,8 @@ export const Route = createFileRoute("/checkout")({
   component: Checkout,
   head: () => ({
     meta: [
-      { title: "Checkout — ClipsOfPuff" },
-      { name: "description", content: "Place your ClipsOfPuff order." },
+      { title: "Checkout — CliffsOfPuff" },
+      { name: "description", content: "Place your CliffsOfPuff order." },
     ],
   }),
 });

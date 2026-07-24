@@ -92,10 +92,10 @@ export function Header() {
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
-          <Link to="/" className="flex items-center" aria-label="Cliffs of Puff — home">
+          <Link to="/" className="flex items-center" aria-label="CliffsOfPuff — home">
             <img
               src={logo}
-              alt="Cliffs of Puff"
+              alt="CliffsOfPuff"
               width={2430}
               height={2430}
               className="h-16 w-auto sm:h-20 lg:-my-3 lg:h-24"

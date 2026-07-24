@@ -9,8 +9,8 @@ export const Route = createFileRoute("/cart")({
   component: Cart,
   head: () => ({
     meta: [
-      { title: "Cart — ClipsOfPuff" },
-      { name: "description", content: "Your ClipsOfPuff cart." },
+      { title: "Cart — CliffsOfPuff" },
+      { name: "description", content: "Your CliffsOfPuff cart." },
     ],
   }),
 });

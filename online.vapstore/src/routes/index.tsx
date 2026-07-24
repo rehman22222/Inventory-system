@@ -17,13 +17,13 @@ export const Route = createFileRoute("/")({
   loader: async () => ({ hero: await getHero() }),
   head: () => ({
     meta: [
-      { title: "ClipsOfPuff — Premium Vapes, Pods & E-Liquid" },
+      { title: "CliffsOfPuff — Premium Vapes, Pods & E-Liquid" },
       {
         name: "description",
         content:
-          "ClipsOfPuff is an independent vape store. Shop pod kits, mods, disposables, nic salts and freebase e-liquid from OXVA, Voopoo, Vaporesso, Uwell and more.",
+          "CliffsOfPuff is an independent vape store. Shop pod kits, mods, disposables, nic salts and freebase e-liquid from OXVA, Voopoo, Vaporesso, Uwell and more.",
       },
-      { property: "og:title", content: "ClipsOfPuff — Premium Vape Store" },
+      { property: "og:title", content: "CliffsOfPuff — Premium Vape Store" },
       {
         property: "og:description",
         content: "Pod kits, mods, disposables and premium e-liquid. Same-day dispatch nationwide.",
@@ -268,7 +268,7 @@ function Home() {
           </div>
           <div className="space-y-6 text-base leading-relaxed">
             <p>
-              ClipsOfPuff started with one rule:{" "}
+              CliffsOfPuff started with one rule:{" "}
               <strong>only stock what we'd vape ourselves</strong>. No fake batches, no bulk
               unbranded juice, no pushing whatever's cheapest this month.
             </p>

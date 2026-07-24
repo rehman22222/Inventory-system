@@ -17,12 +17,12 @@ export const Route = createFileRoute("/category/$slug")({
   head: ({ loaderData }) => ({
     meta: loaderData
       ? [
-          { title: `${loaderData.category.name} — ClipsOfPuff` },
+          { title: `${loaderData.category.name} — CliffsOfPuff` },
           {
             name: "description",
-            content: `Shop ${loaderData.category.name.toLowerCase()} at ClipsOfPuff. ${loaderData.category.tagline}.`,
+            content: `Shop ${loaderData.category.name.toLowerCase()} at CliffsOfPuff. ${loaderData.category.tagline}.`,
           },
-          { property: "og:title", content: `${loaderData.category.name} — ClipsOfPuff` },
+          { property: "og:title", content: `${loaderData.category.name} — CliffsOfPuff` },
           { property: "og:description", content: loaderData.category.tagline },
         ]
       : [],
