@@ -27,6 +27,7 @@ const ticketrouter = require("./Routers/ticketRouter");
 const approvalrouter = require("./Routers/approvalRouter");
 const reorderrouter = require("./Routers/reorderRouter");
 const reportrouter = require("./Routers/reportRouter");
+const { adminRouter: onlineAdminRouter, storefrontRouter } = require("./Routers/onlineStoreRouter");
 const localStorageRouter = require("./localStorageRouter");
 
 
@@ -73,14 +74,36 @@ app.use((req, res, next) => {
   return res.redirect(301, `${scheme}://${host.slice(4)}${req.originalUrl}`);
 });
 
-// Security headers. This is a JSON API with a separate frontend, so the two
-// headers that assume you're serving HTML (CSP, cross-origin resource policy)
-// are turned off — they'd add nothing here and can block the SPA's XHR. What we
-// keep is the useful part: nosniff, HSTS, no framing (clickjacking), a locked
-// referrer policy, and DNS-prefetch control.
+// Security headers cover both the JSON API and the React build served below.
+// Images may come from the configured product CDN, while scripts remain
+// first-party only. Extra API/socket origins can be supplied by the host.
+const cspConnectSources = [
+  "'self'",
+  "ws:",
+  "wss:",
+  ...(process.env.CSP_CONNECT_SRC || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+];
 app.use(
   helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        baseUri: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        formAction: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
+        connectSrc: cspConnectSources,
+        upgradeInsecureRequests:
+          process.env.NODE_ENV === "production" ? [] : null,
+      },
+    },
     crossOriginResourcePolicy: false,
     crossOriginEmbedderPolicy: false,
   })
@@ -226,6 +249,9 @@ const TILL_PREFIXES = [
   "/api/deal",
   "/api/voucher",
   "/api/store",
+  // The website's SSR server calls this for every page render, all from one
+  // IP, so it belongs on the high ceiling too — not the per-shopper cap.
+  "/api/storefront",
 ];
 
 // originalUrl, not path: this runs mounted at "/api", where req.path has
@@ -291,12 +317,30 @@ if (useLocalStorage) {
   app.use('/api/reports', reportrouter);
   app.use('/api/supplier', supplierrouter);
   app.use("/api/stocktransaction", stocktransactionrouter);
+  // The online store: /api/online is the shop's own admin, /api/storefront is
+  // what the website's server calls. Both read and write the SAME product
+  // stock the till uses — see controller/onlineStoreController.js.
+  app.use("/api/online", onlineAdminRouter);
+  app.use("/api/storefront", storefrontRouter);
 }
 
-// Return JSON (not HTML) for upload/multer errors like oversized or non-image files.
+// Unknown API paths never fall through to the SPA, where a scanner could
+// mistake the HTML shell for an exposed file or directory.
+app.use("/api", (req, res) => {
+  res.status(404).json({ message: "API endpoint not found" });
+});
+
+// Return JSON (not HTML) for upload/multer errors like oversized or non-image
+// files, without reflecting internal errors or stack details to the caller.
 app.use((err, req, res, next) => {
   if (err) {
-    return res.status(400).json({ message: err.message || "Upload failed" });
+    const uploadError = String(err.code || "").startsWith("LIMIT_");
+    const status = Number(err.statusCode || err.status) || (uploadError ? 400 : 500);
+    const message =
+      status >= 500
+        ? "Unexpected server error"
+        : err.message || "The request could not be processed";
+    return res.status(status).json({ message });
   }
   next();
 });
@@ -314,6 +358,17 @@ const clientBuild = [
 ].find((dir) => fs.existsSync(path.join(dir, "index.html")));
 
 if (clientBuild) {
+  const blockedPublicPath =
+    /(?:^|\/)(?:\.git|\.env(?:\.[^/]*)?|node_modules|src|backend|frontend|online\.vapstore)(?:\/|$)|(?:^|\/)(?:package(?:-lock)?\.json|yarn\.lock|pnpm-lock\.yaml)$/i;
+
+  app.use((req, res, next) => {
+    if (req.path.endsWith(".map") || blockedPublicPath.test(req.path)) {
+      res.set("X-Robots-Tag", "noindex, nofollow");
+      return res.status(404).type("text/plain").send("Not found");
+    }
+    return next();
+  });
+
   // Fingerprinted assets (main.<hash>.js, etc.) never change, so cache them hard
   // — repeat visitors and every till stop re-downloading them, cutting server
   // load. index.html is served by the catch-all below with no-cache so app
@@ -321,6 +376,7 @@ if (clientBuild) {
   app.use(
     express.static(clientBuild, {
       index: false,
+      dotfiles: "deny",
       maxAge: "1y",
       immutable: true,
     })

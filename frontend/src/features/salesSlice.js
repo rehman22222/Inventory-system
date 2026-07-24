@@ -55,7 +55,6 @@ export const EditSales = createAsyncThunk(
       toast.success("Sale updated successfully");
       return response.data;
     } catch (error) {
-      console.error("EditSales Error:", error);
       const errorMessage =
         error.response?.data?.message || "Failed to update sale. Please try again.";
       toast.error(errorMessage);
@@ -114,15 +113,15 @@ const salesSlice = createSlice({
 
 
 
-      .addCase( CreateSales .pending, (state) => {
+      .addCase(CreateSales.pending, (state) => {
         state.iscreatedsales = true;
       })
-      .addCase( CreateSales .fulfilled, (state, action) => {
+      .addCase(CreateSales.fulfilled, (state, action) => {
         state.iscreatedsales = false;
         state.getallsales.push(action.payload);
   
       })
-      .addCase( CreateSales .rejected, (state, action) => {
+      .addCase(CreateSales.rejected, (state, action) => {
         state.iscreatedsales = false;
 
       })

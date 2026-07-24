@@ -1,6 +1,5 @@
 import React,{useState,useEffect} from 'react'
 import { IoMdAdd } from "react-icons/io";
-import { FaFileExport } from "react-icons/fa6";
 import FormattedTime from "../lib/FormattedTime ";
 
 
@@ -24,7 +23,7 @@ function Categorypage() {
 
   
   const { t } = useTranslation();
-  const { getallCategory, iscreatedCategory,  searchdata } = useSelector((state) => state.category);
+  const { getallCategory, searchdata } = useSelector((state) => state.category);
   const { Authuser } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const [query, setquery] = useState("");

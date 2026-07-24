@@ -83,15 +83,17 @@ export const login = createAsyncThunk(
 // Logout
 export const logout = createAsyncThunk(
   "auth/logout",
-  async (_, { rejectWithValue }) => {
+  async () => {
     try {
+      await axiosInstance.post("auth/logout");
+    } catch {
+      // An expired/deleted session is already logged out on the server.
+    } finally {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       localStorage.removeItem("authUser");
-      return null;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Logout failed");
     }
+    return null;
   }
 );
 export const updateProfile = createAsyncThunk(
@@ -129,7 +131,6 @@ export const updateProfile = createAsyncThunk(
         throw new Error('Unexpected response structure');
       }
     } catch (error) {
-      console.error('Update profile error:', error);
       return rejectWithValue(
         error.response?.data?.message || 'Failed to update profile'
       );
@@ -202,8 +203,8 @@ const authSlice = createSlice({
       })
       .addCase(signup.fulfilled, (state, action) => {
         state.isUserSignup = false;
-        state.Authuser = action.payload.savedUser; 
-        state.token = action.payload.token; 
+        state.Authuser = withoutToken(action.payload.savedUser);
+        state.token = null;
 
       })
       .addCase(signup.rejected, (state, action) => {
@@ -238,8 +239,8 @@ const authSlice = createSlice({
       })
       .addCase(login.fulfilled, (state, action) => {
         state.isUserLogin = false;
-        state.Authuser = action.payload.user; 
-        state.token = action.payload.token; 
+        state.Authuser = withoutToken(action.payload.user);
+        state.token = null;
  
       })
       .addCase(login.rejected, (state, action) => {
@@ -271,7 +272,7 @@ const authSlice = createSlice({
 
       .addCase(staffUser.fulfilled, (state, action) => {
      
-        state. staffuser = action.payload
+        state.staffuser = action.payload
 
       })
       

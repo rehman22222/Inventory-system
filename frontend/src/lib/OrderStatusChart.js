@@ -14,18 +14,22 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-const currency = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 2,
-});
-
 // Orders no longer carry a "status" — they're purchase orders placed with a
 // supplier. So instead of a meaningless single "pending" bar, show something
 // the shop actually cares about: how much has been ordered from each supplier.
 function OrderStatusChart({ className }) {
   const { t } = useTranslation();
   const { getorder } = useSelector((state) => state.order);
+  const shopCurrency = useSelector((state) => state.store?.store?.currency) || "EUR";
+  const currency = useMemo(
+    () =>
+      new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: shopCurrency,
+        maximumFractionDigits: 2,
+      }),
+    [shopCurrency]
+  );
 
   const [isDark, setIsDark] = useState(
     () => document.documentElement.getAttribute("data-theme") === "dark"

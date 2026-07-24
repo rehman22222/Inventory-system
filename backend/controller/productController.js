@@ -6,6 +6,7 @@ const logActivity=require('../libs/logger')
 const { uploadImage, deleteImage } = require('../libs/cloudinaryImage')
 const { ean13FromSequence } = require('../libs/barcode')
 const { nextSequence } = require('../models/Countermodel')
+const { fxContext, resolveCost } = require('../libs/cost')
 
 const RANDOM_CATEGORY = "Random";
 const MISC_CATEGORY = "Miscellaneous";
@@ -27,6 +28,9 @@ module.exports.Addproduct=async(req,res)=>{
           Category,
           Price,
           costPrice,
+          costCurrency,
+          costRate,
+          costNote,
           quantity,
           lowStockThreshold,
           barcode,
@@ -64,7 +68,15 @@ module.exports.Addproduct=async(req,res)=>{
         if (lowStockThreshold !== undefined && lowStockThreshold !== "")
           productData.lowStockThreshold = Number(lowStockThreshold);
         if (cleanedShelfLabel) productData.shelfLabel = cleanedShelfLabel;
-        if (costPrice !== undefined && costPrice !== "") productData.costPrice = costPrice;
+        // A cost billed in another currency is converted before it is stored,
+        // so reports never subtract pounds from a euro shelf price.
+        if (costPrice !== undefined && costPrice !== "") {
+          const { shopCcy, rates } = await fxContext();
+          const cost = resolveCost({ costPrice, costCurrency, costRate, costNote }, shopCcy, rates);
+          if (!cost.ok) return res.status(400).json({ message: cost.message });
+          productData.costPrice = cost.costPrice;
+          if (cost.costSource) productData.costSource = cost.costSource;
+        }
         if (cleanedBarcode) productData.barcode = cleanedBarcode;
         if (expiryDate) productData.expiryDate = expiryDate;
 
@@ -216,14 +228,34 @@ module.exports.quickAddProduct = async (req, res) => {
           return res.status(404).json({ message: "Product not found." });
         }
 
-        // Apply only the fields that were actually provided.
-        const editable = ["name", "Desciption", "shelfLabel", "Category", "Price", "costPrice", "quantity", "lowStockThreshold", "barcode", "expiryDate"];
+        // Apply only the fields that were actually provided. costPrice is handled
+        // separately below because it may need converting first.
+        const editable = ["name", "Desciption", "shelfLabel", "Category", "Price", "quantity", "lowStockThreshold", "barcode", "expiryDate"];
         editable.forEach((field) => {
           if (source[field] !== undefined && source[field] !== "") {
             product[field] =
               typeof source[field] === "string" ? source[field].trim() : source[field];
           }
         });
+
+        if (source.costPrice !== undefined && source.costPrice !== "") {
+          const { shopCcy, rates } = await fxContext();
+          const cost = resolveCost(
+            {
+              costPrice: source.costPrice,
+              costCurrency: source.costCurrency,
+              costRate: source.costRate,
+              costNote: source.costNote,
+            },
+            shopCcy,
+            rates
+          );
+          if (!cost.ok) return res.status(400).json({ message: cost.message });
+          product.costPrice = cost.costPrice;
+          // Billed in the shop's own currency now: drop any stale conversion so
+          // the record cannot claim a rate that no longer produced this figure.
+          product.costSource = cost.costSource || undefined;
+        }
         if (!product.barcode) {
           product.barcode = undefined;
         }

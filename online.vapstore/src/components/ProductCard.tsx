@@ -1,0 +1,161 @@
+import { Link } from "@tanstack/react-router";
+import { Star, ShoppingBag, Check } from "lucide-react";
+import { useState } from "react";
+import type { Product } from "@/lib/catalog";
+import { formatPrice } from "@/lib/format";
+import { useCart } from "@/lib/cart";
+
+/* Stable pseudo-rating from the id so cards look populated and don't flicker.
+ * Real ratings come later. */
+function ratingFor(id: string): { score: number; count: number } {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return { score: Math.round((4 + (h % 10) / 10) * 10) / 10, count: 8 + (h % 240) };
+}
+
+export function ProductCard({ product }: { product: Product }) {
+  const { add } = useCart();
+  const [added, setAdded] = useState(false);
+  const onSale = !!product.compareAt;
+  const off = onSale ? Math.round((1 - product.price / (product.compareAt || 1)) * 100) : 0;
+  const { score, count } = ratingFor(product.id);
+  const outOfStock = product.stock <= 0;
+  const priceUnavailable = product.price <= 0;
+  const unavailable = outOfStock || priceUnavailable;
+  const onlyVariant = product.variants.length === 1 ? product.variants[0] : null;
+  const needsChoice = product.variants.length > 1;
+
+  const handleAdd = () => {
+    if (unavailable || needsChoice) return;
+    const productId = onlyVariant?.productId || product.productId;
+    add(
+      {
+        id: `${product.id}::${productId}`,
+        slug: product.id,
+        listingId: product.listingId,
+        productId,
+        variantLabel: onlyVariant?.label,
+        name: onlyVariant?.label ? `${product.name} — ${onlyVariant.label}` : product.name,
+        brand: product.brand,
+        price: onlyVariant?.price ?? product.price,
+        image: onlyVariant?.image || product.image,
+        maxStock: onlyVariant?.stock ?? product.stock,
+      },
+      1,
+    );
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1400);
+  };
+
+  return (
+    <div className="group flex flex-col border hair bg-surface">
+      <Link
+        to="/product/$id"
+        params={{ id: product.id }}
+        className="relative block aspect-square overflow-hidden bg-background"
+      >
+        <img
+          src={product.image}
+          alt={product.name}
+          loading="lazy"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
+        />
+        <div className="absolute left-0 top-0 flex flex-col gap-0">
+          {product.tags?.includes("new") && (
+            <span className="bg-accent text-accent-foreground font-mono text-[10px] uppercase tracking-widest px-2 py-1">
+              New
+            </span>
+          )}
+          {onSale && (
+            <span className="bg-[color:var(--sale)] text-primary-foreground font-mono text-[10px] uppercase tracking-widest px-2 py-1">
+              -{off}%
+            </span>
+          )}
+          {product.tags?.includes("bestseller") && (
+            <span className="bg-ink text-primary-foreground font-mono text-[10px] uppercase tracking-widest px-2 py-1">
+              Bestseller
+            </span>
+          )}
+        </div>
+        {outOfStock && (
+          <div className="absolute inset-0 grid place-items-center bg-background/70">
+            <span className="bg-ink text-primary-foreground font-mono text-[11px] uppercase tracking-widest px-3 py-1.5">
+              Out of stock
+            </span>
+          </div>
+        )}
+      </Link>
+
+      <div className="flex flex-1 flex-col border-t hair p-4">
+        <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+          {product.brand}
+        </div>
+        <Link
+          to="/product/$id"
+          params={{ id: product.id }}
+          className="mt-1 font-display text-sm leading-tight tracking-tight line-clamp-2 min-h-[2.5rem] hover:text-accent-foreground hover:bg-accent"
+        >
+          {product.name}
+        </Link>
+
+        {/* Rating */}
+        <div className="mt-2 flex items-center gap-1.5">
+          <span className="flex items-center gap-0.5 text-ink">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <Star
+                key={i}
+                className="h-3 w-3"
+                fill={i < Math.round(score) ? "currentColor" : "none"}
+                strokeWidth={i < Math.round(score) ? 0 : 1.5}
+              />
+            ))}
+          </span>
+          <span className="font-mono text-[10px] text-ink-muted">
+            {score} · {count}
+          </span>
+        </div>
+
+        {/* Price */}
+        <div className="mt-3 flex items-baseline gap-2">
+          <span className="font-display text-base">
+            {priceUnavailable ? "Price to be confirmed" : formatPrice(product.price)}
+          </span>
+          {onSale && (
+            <span className="font-mono text-xs text-ink-muted line-through">
+              {formatPrice(product.compareAt!)}
+            </span>
+          )}
+        </div>
+
+        {/* Add to cart */}
+        {needsChoice && !unavailable ? (
+          <Link
+            to="/product/$id"
+            params={{ id: product.id }}
+            className="mt-4 inline-flex items-center justify-center gap-2 bg-ink text-primary-foreground font-mono text-[11px] uppercase tracking-widest py-2.5 border border-ink transition-colors hover:bg-accent hover:text-accent-foreground hover:border-accent"
+          >
+            <ShoppingBag className="h-3.5 w-3.5" /> Choose options
+          </Link>
+        ) : (
+          <button
+            onClick={handleAdd}
+            disabled={unavailable}
+            className="mt-4 inline-flex items-center justify-center gap-2 bg-ink text-primary-foreground font-mono text-[11px] uppercase tracking-widest py-2.5 border border-ink transition-colors hover:bg-accent hover:text-accent-foreground hover:border-accent disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-ink disabled:hover:text-primary-foreground"
+            aria-label={`Add ${product.name} to cart`}
+          >
+            {added ? (
+              <>
+                <Check className="h-3.5 w-3.5" /> Added
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="h-3.5 w-3.5" />{" "}
+                {unavailable ? "Unavailable" : "Add to cart"}
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}

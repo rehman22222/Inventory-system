@@ -12,33 +12,38 @@
     "postinstall": "node scripts/postinstall.js",
     "dev": "nodemon server",
     "seed": "node scripts/seedUsers.js",
+    "import-shopify-store": "node scripts/importShopifyStorefront.js",
     "create-superadmin": "node scripts/createSuperAdmin.js"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "bcrypt": "^5.1.1",
-    "bcryptjs": "^2.4.3",
-    "chart.js": "^4.4.8",
-    "cloudinary": "^2.5.1",
+    "bcryptjs": "^3.0.3",
+    "chart.js": "^4.5.1",
+    "cloudinary": "^2.10.0",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
     "exceljs": "^4.4.0",
-    "express": "^4.21.2",
+    "express": "^4.22.2",
     "express-rate-limit": "^8.6.0",
     "helmet": "^8.3.0",
-    "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.9.7",
+    "jsonwebtoken": "^9.0.3",
+    "jszip": "^3.10.1",
+    "mongoose": "^8.24.1",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^9.0.3",
     "pdfkit": "^0.19.1",
-    "socket.io": "^4.8.1",
+    "saxes": "^5.0.1",
+    "socket.io": "^4.8.3",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
+  },
+  "overrides": {
+    "uuid": "11.1.1"
   }
 }

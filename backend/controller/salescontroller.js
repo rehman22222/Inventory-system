@@ -83,7 +83,10 @@ module.exports.getSaleById = async (req, res) => {
   try {
     const { saleId } = req.params;
 
-    const sale = await Sale.findById(saleId).populate("products.product");
+    const sale = await Sale.findOne({
+      _id: saleId,
+      ...salesScope(req.user),
+    }).populate("products.product");
 
     if (!sale) {
       return res.status(404).json({ success: false, message: "Sale not found" });

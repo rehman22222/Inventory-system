@@ -41,7 +41,10 @@ const SaleSchema = new mongoose.Schema(
     },
     status: { type: String, enum: ["pending", "completed", "cancelled"], default: "pending" },
     // "refund" rows carry a negative totalAmount and reverse an earlier pos row.
-    source: { type: String, enum: ["sales", "pos", "refund"], default: "sales" },
+    // "online" lets a web order land in the same ledger the till writes to, so
+    // the sales report is POS + web by default and either channel on its own is
+    // just a filter on this field.
+    source: { type: String, enum: ["sales", "pos", "refund", "online"], default: "sales" },
   },
 
 { timestamps: true }

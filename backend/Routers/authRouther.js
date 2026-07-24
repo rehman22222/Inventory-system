@@ -1,7 +1,7 @@
 const express=require("express")
 const router=express.Router()
 const {signup,login,createUser,updateProfile,logout,staffuser,manageruser,adminuser,removeuser}=require('../controller/authcontroller')
-const {authmiddleware,adminmiddleware,managermiddleware,superadminmiddleware}=require('../middleware/Authmiddleware')
+const {authmiddleware,adminOrManager,superadminmiddleware}=require('../middleware/Authmiddleware')
 
 
 
@@ -15,9 +15,9 @@ router.post("/login",login)
 // approval request instead (see /api/approval).
 router.post("/createuser",authmiddleware,superadminmiddleware,createUser)
 router.delete("/removeuser/:UserId",authmiddleware,superadminmiddleware,removeuser)
-router.get("/staffuser",authmiddleware,staffuser)
-router.get("/manageruser",authmiddleware,manageruser)
-router.get("/adminuser",authmiddleware,adminuser)
+router.get("/staffuser",authmiddleware,adminOrManager,staffuser)
+router.get("/manageruser",authmiddleware,adminOrManager,manageruser)
+router.get("/adminuser",authmiddleware,adminOrManager,adminuser)
 router.post("/logout",authmiddleware,logout)
 router.put("/updateProfile",authmiddleware,updateProfile)
 

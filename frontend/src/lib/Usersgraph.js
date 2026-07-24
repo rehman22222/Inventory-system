@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Bar } from "react-chartjs-2";
-import axios from "axios";
 import { Chart, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from "chart.js";
 
 import { useDispatch, useSelector } from "react-redux";
-import image from "../images/user.png";
 import {
   staffUser,
   managerUser,
@@ -33,7 +31,7 @@ const UserRoleChart = () => {
           admin: adminuser?.length || 0,
         });
      
-  }, []);
+  }, [staffuser?.length, manageruser?.length, adminuser?.length]);
 
   const data = {
     labels: ["Staff", "Manager", "Admin"],

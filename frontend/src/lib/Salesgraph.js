@@ -18,7 +18,6 @@ ChartJS.register(
 const SalesChart = () => {
   const dispatch = useDispatch();
   const { getallsales } = useSelector((state) => state.sales);
-  const [messages, setMessages] = useState([]);
   const [chartData, setChartData] = useState({
     labels: [],
     datasets: [],
@@ -29,24 +28,13 @@ const SalesChart = () => {
     dispatch(gettingallSales());
   }, [dispatch]);
 
-  // Update chart data and messages when sales data changes
+  // Update chart data when sales data changes
   useEffect(() => {
     if (getallsales && getallsales.length > 0) {
       // Extract labels (dates) and datasets from sales data
       const labels = getallsales.map((sale) => new Date(sale.createdAt).toLocaleDateString());
       const totalSales = getallsales.map((sale) => sale.totalAmount);
       const paymentStatuses = getallsales.map((sale) => (sale.paymentStatus === "Paid" ? 1 : 0));
-
-      // Prepare customer messages for display
-      const customerMessages = getallsales.map((sale) => ({
-        customerName: sale.customerName,
-        paymentMethod: sale.paymentMethod,
-        paymentStatus: sale.paymentStatus,
-        status: sale.status,
-        totalAmount: sale.totalAmount,
-      }));
-
-      setMessages(customerMessages);
 
       // Update chart data
       setChartData({

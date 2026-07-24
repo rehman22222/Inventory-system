@@ -31,9 +31,16 @@ const clientOut = path.resolve(__dirname, "..", "client");
 
 try {
   console.log(`[postinstall] installing + building frontend → ${clientOut} …`);
-  execSync("npm install && npm run build", {
+  // react-scripts/Tailwind are build-only devDependencies, so include them even
+  // when the host installs with NODE_ENV=production. The memory floor prevents
+  // large catalog bundles from failing on Node hosts with a small default heap.
+  execSync("npm install --include=dev && npm run build", {
     cwd: frontendDir,
-    env: { ...process.env, BUILD_PATH: clientOut },
+    env: {
+      ...process.env,
+      BUILD_PATH: clientOut,
+      NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=4096",
+    },
     stdio: "inherit",
   });
   console.log("[postinstall] frontend build complete");

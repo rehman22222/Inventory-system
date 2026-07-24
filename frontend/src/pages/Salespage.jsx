@@ -91,8 +91,6 @@ function Salespage() {
     status: Status
   };
 
-  console.log("Updated Data:", updatedData); 
-
   dispatch(EditSales({ salesId: selectedSales._id, updatedData }))
     .unwrap()
     .then(() => {
@@ -101,8 +99,7 @@ function Salespage() {
       setselectedSales(null);
       resetForm();
     })
-    .catch((error) => {
-      console.error("Error updating sale:", error);
+    .catch(() => {
       toast.error(t("sales.updateFail"));
     });
 };
@@ -208,8 +205,8 @@ function Salespage() {
                 />
               </div>
               <ReportButton
-                reportKey="sales"
-                label={t("sales.downloadReport")}
+                reportKey="combined-sales"
+                label="POS + Online Report"
                 params={{ from: fromDate || undefined, to: toDate || undefined }}
               />
             </div>

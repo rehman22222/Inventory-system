@@ -6,6 +6,7 @@
 // reached the server.
 const SHOP = {
   name: "Candy Cloud",
+  currency: "EUR",
   addressLines: ["10 Abbeygate Street", "Lower, H91 KV7K"],
   // Shown under the total; e.g. a loyalty URL or "Thank you" note.
   footer: "Thank you for shopping with us",

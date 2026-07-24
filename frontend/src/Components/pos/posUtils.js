@@ -21,34 +21,24 @@ export const CURRENCIES = [
 
 // A sensible starting point for each language the system ships with — the
 // cashier can always override it.
-const CURRENCY_BY_LANGUAGE = {
-  en: "EUR",
-  ga: "EUR",
-  ur: "PKR",
-  hi: "INR",
-  bn: "BDT",
-  ar: "AED",
-};
-
-const KEY = "pos_currency";
-
-let active = localStorage.getItem(KEY) || null;
+let active = "EUR";
 
 export const getCurrencyCode = () => active || "EUR";
 
 export const setCurrencyCode = (code) => {
-  active = code;
-  localStorage.setItem(KEY, code);
+  const normalized = String(code || "").trim().toUpperCase();
+  active = CURRENCIES.some((entry) => entry.code === normalized) ? normalized : "EUR";
+  try {
+    localStorage.removeItem("pos_currency");
+  } catch {
+    /* private mode */
+  }
+  return active;
 };
 
 // Called once on POS start: adopt the language's currency only if the cashier
 // has never chosen one.
-export const initCurrency = (language = "en") => {
-  if (!active) {
-    active = CURRENCY_BY_LANGUAGE[String(language).split("-")[0]] || "EUR";
-  }
-  return active;
-};
+export const initCurrency = () => active;
 
 export const currencySymbol = () =>
   (CURRENCIES.find((entry) => entry.code === getCurrencyCode()) || CURRENCIES[0]).symbol;

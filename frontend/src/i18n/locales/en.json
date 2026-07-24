@@ -215,7 +215,8 @@
     "myRequests": "My Requests",
     "dayClosings": "Day Closings",
     "store": "Store",
-    "ghost": "Ghost Mode"
+    "ghost": "Ghost Mode",
+    "onlineStore": "Online Store"
   },
   "topnav": {
     "welcome": "Welcome, {{name}}",
@@ -342,7 +343,14 @@
     "shelfLabelHint": "Letters and numbers (merchandising location). Optional.",
     "shelfLabelInvalid": "Shelf label must be letters and numbers only.",
     "lowStockThreshold": "Low-stock threshold",
-    "lowStockThresholdHint": "Alert when stock falls to this or below. Default 10."
+    "lowStockThresholdHint": "Alert when stock falls to this or below. Default 10.",
+    "costCurrency": "Cost currency",
+    "costRate": "Exchange rate ({{from}} to {{to}})",
+    "costRatePlaceholder": "e.g. 1.17",
+    "costRateHint": "Use your bank's rate from the payment, not an estimate.",
+    "costConverted": "{{amount}} {{from}} = {{result}} {{to}} — this is what gets stored",
+    "costRateFromSettings": "Settings: {{rate}} (leave blank to use it)",
+    "costRateMissing": "No rate saved for {{currency}} — set one in Settings, or type one here."
   },
   "categories": {
     "totalCategory": "Total Category",
@@ -1132,7 +1140,10 @@
     "requestChanges": "Request changes",
     "requestSent": "Your changes were sent to the owner for approval.",
     "requestFailed": "Could not send your request.",
-    "approvalNotice": "Your changes need the owner's approval before they take effect."
+    "approvalNotice": "Your changes need the owner's approval before they take effect.",
+    "exchangeRates": "Supplier exchange rates",
+    "exchangeRatesHint": "What one unit of each is worth in {{currency}}. Costs entered in these currencies are converted before they are stored. Use your bank's rate, not an estimate.",
+    "exchangeRatesUpdated": "Last updated {{date}}"
   },
   "reorders": {
     "title": "Reorders",

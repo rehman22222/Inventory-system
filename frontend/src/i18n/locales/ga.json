@@ -215,7 +215,8 @@
     "myRequests": "M'Iarratais",
     "dayClosings": "Dúnadh Lae",
     "store": "Siopa",
-    "ghost": "Mód Taibhse"
+    "ghost": "Mód Taibhse",
+    "onlineStore": "Siopa Ar Líne"
   },
   "topnav": {
     "welcome": "Fáilte, {{name}}",
@@ -342,7 +343,14 @@
     "shelfLabelHint": "Litreacha agus uimhreacha (suíomh margaíochta). Roghnach.",
     "shelfLabelInvalid": "Ní mór don lipéad seilfe litreacha agus uimhreacha amháin a bheith ann.",
     "lowStockThreshold": "Tairseach stoic íseal",
-    "lowStockThresholdHint": "Foláireamh nuair a thiteann an stoc go dtí seo nó faoina bhun. Réamhshocrú 10."
+    "lowStockThresholdHint": "Foláireamh nuair a thiteann an stoc go dtí seo nó faoina bhun. Réamhshocrú 10.",
+    "costCurrency": "Airgeadra costais",
+    "costRate": "Ráta malairte ({{from}} go {{to}})",
+    "costRatePlaceholder": "m.sh. 1.17",
+    "costRateHint": "Bain úsáid as ráta do bhainc ón íocaíocht, ní meastachán.",
+    "costConverted": "{{amount}} {{from}} = {{result}} {{to}} — sin a stórálfar",
+    "costRateFromSettings": "Socruithe: {{rate}} (fág folamh chun é a úsáid)",
+    "costRateMissing": "Níl aon ráta sábháilte do {{currency}} — socraigh ceann sna Socruithe, nó clóscríobh ceann anseo."
   },
   "categories": {
     "totalCategory": "Catagóir Iomlán",
@@ -1120,7 +1128,10 @@
     "requestChanges": "Iarr athruithe",
     "requestSent": "Seoladh d'athruithe chuig an úinéir lena gceadú.",
     "requestFailed": "Níorbh fhéidir d'iarratas a sheoladh.",
-    "approvalNotice": "Teastaíonn ceadú an úinéara ó d'athruithe sula dtiocfaidh siad i bhfeidhm."
+    "approvalNotice": "Teastaíonn ceadú an úinéara ó d'athruithe sula dtiocfaidh siad i bhfeidhm.",
+    "exchangeRates": "Rátai malairte soláthraithe",
+    "exchangeRatesHint": "Cad is fiú aonad amháin de gach ceann i {{currency}}. Tiontaítear costais a chuirtear isteach sna hairgeadraí seo sula stórálfar iad. Bain úsáid as ráta do bhainc.",
+    "exchangeRatesUpdated": "Nuashonraithe {{date}}"
   },
   "reorders": {
     "title": "Athorduithe",

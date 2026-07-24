@@ -1836,6 +1836,7 @@ function localStorageRouter(app) {
       const shop = store.shop || { ...DEFAULT_STORE };
       const report = buildShadowNetReport(ghostReportReceipts(store, req.query), req.query);
       const buffer = await format.build({
+        reportType: "ghost-net",
         title: report.title,
         subtitle: report.subtitle,
         generatedBy: `${user?.name || "Demo User"} (${user?.role || "demo"})`,

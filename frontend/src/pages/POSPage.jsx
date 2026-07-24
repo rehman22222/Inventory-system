@@ -40,7 +40,6 @@ import DayClosingModal from "../Components/pos/DayClosingModal";
 import {
   CURRENCIES,
   currency,
-  initCurrency,
   setCurrencyCode,
   applicableDeals,
   MISC_CATEGORY,
@@ -84,7 +83,7 @@ const TAX_RATE_KEY = "pos_tax_rate";
 const DEALS_TAB = "__deals__";
 
 function POSPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const location = useLocation();
   const searchRef = useRef(null);
@@ -117,6 +116,7 @@ function POSPage() {
   // The tax rate is the shop's call, not ours — no hardcoded percentage. The
   // last rate the cashier used is remembered on this till.
   const [taxRate, setTaxRate] = useState(() => localStorage.getItem(TAX_RATE_KEY) || "");
+  const [currencyCode, setCurrency] = useState("EUR");
 
   const [receipt, setReceipt] = useState(null);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
@@ -132,8 +132,6 @@ function POSPage() {
 
   // Display currency. Held in state purely so a change re-renders the whole
   // terminal — the value itself lives in posUtils/localStorage.
-  const [currencyCode, setCurrency] = useState(() => initCurrency(i18n.language));
-
   const [modal, setModal] = useState(null); // refund | voucher | discount | history | held | code
   const [unknownBarcode, setUnknownBarcode] = useState(null);
   const [refundReceiptNo, setRefundReceiptNo] = useState("");
@@ -147,6 +145,11 @@ function POSPage() {
     dispatch(gettingallDeals());
     dispatch(gettingStore());
   }, [dispatch]);
+
+  useEffect(() => {
+    const configured = setCurrencyCode(SHOP?.currency || "EUR");
+    setCurrency(configured);
+  }, [SHOP?.currency]);
 
   // Flush queued sales as soon as the connection is back.
   useEffect(() => startAutoSync(), []);
@@ -895,21 +898,13 @@ function POSPage() {
               {t("pos.itemsCount", { count: cart.reduce((sum, i) => sum + i.quantity, 0) })}
             </span>
           )}
-          <select
-            value={currencyCode}
-            onChange={(event) => {
-              setCurrencyCode(event.target.value);
-              setCurrency(event.target.value);
-            }}
+          <span
             title={t("pos.currencyHint")}
-            className="border border-slate-800 bg-black px-2 py-1.5 text-sm font-semibold text-slate-200 outline-none transition focus:border-cyan-600"
+            className="border border-slate-800 bg-black px-2 py-1.5 text-sm font-semibold text-slate-200"
           >
-            {CURRENCIES.map((entry) => (
-              <option key={entry.code} value={entry.code}>
-                {entry.symbol} {entry.code}
-              </option>
-            ))}
-          </select>
+            {(CURRENCIES.find((entry) => entry.code === currencyCode) || CURRENCIES[0]).symbol}{" "}
+            {currencyCode}
+          </span>
 
           <span className="hidden sm:block">
             <LanguageSwitcher tone="auto" />

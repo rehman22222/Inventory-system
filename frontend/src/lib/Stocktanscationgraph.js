@@ -41,8 +41,8 @@ const StockTransactionGraph = () => {
             },
           ],
         });
-      } catch (error) {
-        console.error("Error fetching transactions", error);
+      } catch {
+        // The graph remains empty; the page-level API state handles recovery.
       }
     };
 

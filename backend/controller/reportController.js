@@ -87,7 +87,7 @@ function ghostReceiptFilter(query, tz = "UTC") {
 }
 
 // ── Sales: the core profit/loss report ──────────────────────────────────────
-async function buildSales(req) {
+async function buildSales(req, options = {}) {
   const { from, to } = req.query;
   const filter = {};
   if (req.user.role === "staff") filter.cashier = req.user._id;
@@ -103,6 +103,12 @@ async function buildSales(req) {
   let totalTax = 0;
   let netRevenue = 0;
   let totalCost = 0;
+  const byChannel = {
+    counter: { receipts: new Set(), revenue: 0 },
+    online: { receipts: new Set(), revenue: 0 },
+    refunds: { receipts: new Set(), revenue: 0 },
+  };
+  const allReceipts = new Set();
 
   const rows = sales.map((s) => {
     // Refund rows reverse an earlier sale: the goods came back, so their value
@@ -121,6 +127,22 @@ async function buildSales(req) {
     totalTax += sign * Number(s.tax || 0);
     netRevenue += Number(s.totalAmount || 0); // already signed
     totalCost += lineCost;
+    const channel =
+      s.source === "online"
+        ? "Online store"
+        : s.source === "refund"
+          ? "Refund"
+          : "POS / counter";
+    const bucket =
+      s.source === "online"
+        ? byChannel.online
+        : s.source === "refund"
+          ? byChannel.refunds
+          : byChannel.counter;
+    const receiptKey = s.receiptNo || String(s._id);
+    bucket.receipts.add(receiptKey);
+    allReceipts.add(receiptKey);
+    bucket.revenue += Number(s.totalAmount || 0);
 
     return [
       s.receiptNo || "",
@@ -136,33 +158,54 @@ async function buildSales(req) {
       money(s.totalAmount),
       s.paymentMethod,
       s.status,
-      s.source,
+      channel,
     ];
   });
 
   const grossProfit = grossSales - totalCost;
   const netProfit = netRevenue - totalCost;
+  const summary = [
+    ["Total Receipts / Orders", allReceipts.size],
+    ["Total Sale Lines", sales.length],
+    ["Gross Sales", money(grossSales)],
+    ["Total Discount", money(totalDiscount)],
+    ["Total Tax", money(totalTax)],
+    ["Net Revenue", money(netRevenue)],
+    ["Total Cost of Goods", money(totalCost)],
+    ["Gross Profit", money(grossProfit)],
+    ["Net Profit / Loss", money(netProfit)],
+  ];
+
+  if (options.combined) {
+    summary.unshift(
+      ["POS / Counter Receipts", byChannel.counter.receipts.size],
+      ["POS / Counter Revenue", money(byChannel.counter.revenue)],
+      ["Online Orders", byChannel.online.receipts.size],
+      ["Online Revenue", money(byChannel.online.revenue)],
+      ["Refund Receipts", byChannel.refunds.receipts.size],
+      ["Refund Value", money(byChannel.refunds.revenue)],
+    );
+  }
 
   return {
-    title: req.user.role === "staff" ? "My Sales Report" : "Sales Report",
+    title: options.combined
+      ? "POS + Online Combined Sales Report"
+      : req.user.role === "staff"
+        ? "My Sales Report"
+        : "Sales Report",
     subtitle: periodLabel(from, to),
     headers: [
       "Receipt No", "Date & Time", "Customer", "Cashier", "Product",
       "Qty", "Unit Price", "Unit Cost", "Line Total", "Line Profit",
-      "Total", "Payment", "Status", "Source",
+      "Total", "Payment", "Status", "Channel",
     ],
     rows,
-    summary: [
-      ["Total Transactions", sales.length],
-      ["Gross Sales", money(grossSales)],
-      ["Total Discount", money(totalDiscount)],
-      ["Total Tax", money(totalTax)],
-      ["Net Revenue", money(netRevenue)],
-      ["Total Cost of Goods", money(totalCost)],
-      ["Gross Profit", money(grossProfit)],
-      ["Net Profit / Loss", money(netProfit)],
-    ],
+    summary,
   };
+}
+
+async function buildCombinedSales(req) {
+  return buildSales(req, { combined: true });
 }
 
 // ── Inventory: stock valuation + potential profit ───────────────────────────
@@ -366,6 +409,11 @@ const REPORTS = {
   // Financial takings report — owner/admin only. A manager oversees closings but
   // does not pull the shop's sales/profit report.
   sales: { label: "Sales", roles: ["superadmin", "admin"], build: buildSales },
+  "combined-sales": {
+    label: "POS + Online Combined Sales",
+    roles: ["superadmin", "admin"],
+    build: buildCombinedSales,
+  },
   inventory: {
     label: "Inventory & Valuation",
     roles: ["superadmin", "admin", "manager"],
@@ -445,6 +493,7 @@ module.exports.downloadReport = async (req, res) => {
     const report = await def.build(req);
 
     const buffer = await format.build({
+      reportType: type,
       title: report.title,
       subtitle: report.subtitle,
       generatedBy: `${req.user.name || "User"} (${req.user.role})`,

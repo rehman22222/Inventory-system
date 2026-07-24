@@ -10,6 +10,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { LuUsers } from "react-icons/lu";
+import { FiGlobe } from "react-icons/fi";
 import { FiX } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { logout } from "../features/authSlice";
@@ -47,6 +48,7 @@ const menuByRole = {
     { label: "sidebar.tickets", path: "tickets", icon: FiInbox },
     { label: "sidebar.activityLog", path: "activity-log", icon: RxActivityLog },
     { label: "sidebar.store", path: "store", icon: FiShoppingBag },
+    { label: "sidebar.onlineStore", path: "online-store", icon: FiGlobe },
   ],
   admin: [
     { label: "sidebar.dashboard", path: "", icon: RxDashboard },
@@ -65,6 +67,7 @@ const menuByRole = {
     { label: "sidebar.myRequests", path: "requests", icon: FiCheckSquare },
     { label: "sidebar.activityLog", path: "activity-log", icon: RxActivityLog },
     { label: "sidebar.store", path: "store", icon: FiShoppingBag },
+    { label: "sidebar.onlineStore", path: "online-store", icon: FiGlobe },
     { label: "sidebar.support", path: "support", icon: FiLifeBuoy },
   ],
   manager: [

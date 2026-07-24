@@ -48,6 +48,9 @@ function StorePage() {
     notificationsEmail: "",
     footer: "",
     qrTemplate: "",
+    // { GBP: "1.17", ... } — what one unit of each is worth in the shop's own
+    // currency. Held as strings so a half-typed "1." doesn't fight the input.
+    exchangeRates: {},
   });
 
   useEffect(() => {
@@ -66,10 +69,19 @@ function StorePage() {
       notificationsEmail: store.notificationsEmail || "",
       footer: store.footer || "",
       qrTemplate: store.qrTemplate || "{ref}",
+      exchangeRates: Object.fromEntries(
+        Object.entries(store.exchangeRates || {}).map(([code, rate]) => [code, String(rate)])
+      ),
     });
   }, [store]);
 
   const set = (key) => (event) => setForm({ ...form, [key]: event.target.value });
+
+  const setRate = (code) => (event) =>
+    setForm((prev) => ({
+      ...prev,
+      exchangeRates: { ...prev.exchangeRates, [code]: event.target.value },
+    }));
 
   const submit = async (event) => {
     event.preventDefault();
@@ -89,6 +101,10 @@ function StorePage() {
       notificationsEmail: form.notificationsEmail,
       footer: form.footer,
       qrTemplate: form.qrTemplate,
+      // Blank boxes mean "no rate for this one"; the server drops them.
+      exchangeRates: Object.fromEntries(
+        Object.entries(form.exchangeRates).filter(([, rate]) => String(rate).trim() !== "")
+      ),
     };
 
     if (isOwner) {
@@ -179,6 +195,43 @@ function StorePage() {
               </select>
               <p className="mt-1 text-xs text-base-content/50">{t("store.currencyHint")}</p>
             </div>
+          </div>
+
+          {/* Suppliers abroad invoice in their own money. Saving what one unit is
+              worth here means a cost can be typed exactly as the invoice prints
+              it, and the system converts on the way in. */}
+          <div className="rounded-xl border-2 border-base-300 bg-base-200/30 p-4">
+            <h3 className="text-sm font-semibold">{t("store.exchangeRates")}</h3>
+            <p className="mt-1 text-xs text-base-content/60">
+              {t("store.exchangeRatesHint", { currency: form.currency })}
+            </p>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {CURRENCIES.filter((entry) => entry.code !== form.currency).map((entry) => (
+                <label key={entry.code} className="flex items-center gap-2 text-sm">
+                  <span className="w-24 shrink-0 tabular-nums">1 {entry.code} =</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.0001"
+                    placeholder="—"
+                    value={form.exchangeRates[entry.code] ?? ""}
+                    onChange={setRate(entry.code)}
+                    className="h-10 w-full min-w-0 rounded-lg border-2 border-base-300 bg-base-100 px-2"
+                  />
+                  <span className="shrink-0 text-base-content/60">{form.currency}</span>
+                </label>
+              ))}
+            </div>
+
+            {store?.exchangeRatesUpdatedAt && (
+              <p className="mt-3 text-xs text-base-content/50">
+                {t("store.exchangeRatesUpdated", {
+                  date: new Date(store.exchangeRatesUpdatedAt).toLocaleDateString(),
+                })}
+              </p>
+            )}
           </div>
 
           {/* Reports and date-range filters use whole calendar days in THIS zone,

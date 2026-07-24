@@ -5,10 +5,10 @@ import e360LogoDark from '../images/e360-logo-dark.png';
 
 function FooterLink({ children }) {
   return (
-    <a href="#" className="group relative inline-block text-sm text-paper/55 transition-colors hover:text-paper">
+    <span className="group relative inline-block text-sm text-paper/55">
       {children}
       <span className="absolute -bottom-0.5 left-0 h-px w-full origin-left scale-x-0 bg-accent transition-transform duration-300 group-hover:scale-x-100" />
-    </a>
+    </span>
   );
 }
 
@@ -45,13 +45,13 @@ function Footer() {
             </ul>
             <div className="mt-5 flex gap-3">
               {[FaTwitter, FaLinkedinIn, FaGithub].map((Icon, i) => (
-                <a
+                <span
                   key={i}
-                  href="#"
-                  className="flex h-9 w-9 items-center justify-center border border-white/15 text-paper/60 transition-colors hover:border-accent hover:text-accent"
+                  aria-hidden="true"
+                  className="flex h-9 w-9 items-center justify-center border border-white/15 text-paper/60"
                 >
                   <Icon className="text-sm" />
-                </a>
+                </span>
               ))}
             </div>
           </div>

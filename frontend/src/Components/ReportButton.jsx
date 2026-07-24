@@ -4,13 +4,14 @@ import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import axiosInstance from "../lib/axios";
 
-// The formats the shop actually asks for. The server also still serves xlsx,
-// which is the default when no format is given.
+// Excel is the presentation-ready default. CSV remains available for imports
+// and analysis, but it cannot retain colours, widths, formulas or print layout.
 const FORMATS = [
+  { key: "xlsx", label: "Excel (.xlsx)", hint: "reports.excelHint" },
   { key: "pdf", label: "PDF", hint: "reports.pdfHint" },
-  { key: "csv", label: "CSV", hint: "reports.csvHint" },
-  { key: "xlsx", label: "Excel", hint: "reports.excelHint" },
+  { key: "csv", label: "CSV (raw data)", hint: "reports.csvHint" },
 ];
+const PRIMARY_FORMAT = "xlsx";
 
 /**
  * Downloads a role-permitted report.
@@ -93,24 +94,33 @@ function ReportButton({ reportKey, label, params, format, className = "" }) {
   }
 
   return (
-    <div ref={boxRef} className={`relative inline-block ${className}`}>
+    <div ref={boxRef} className={`relative inline-flex ${className}`}>
+      <button
+        type="button"
+        onClick={() => download(PRIMARY_FORMAT)}
+        disabled={loading}
+        title={t("reports.downloadAs", { format: "EXCEL" })}
+        className="inline-flex h-full flex-1 items-center justify-center gap-2 rounded-l-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+      >
+        <FiDownload />
+        {loading ? t("reports.generating") : label || t("reports.download")}
+      </button>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         disabled={loading}
+        aria-label="Choose report format"
         aria-haspopup="menu"
         aria-expanded={open}
-        className="inline-flex h-full w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+        className="inline-flex h-full items-center justify-center rounded-r-lg border-l border-emerald-500 bg-emerald-600 px-2.5 text-white transition hover:bg-emerald-700 disabled:opacity-60"
       >
-        <FiDownload />
-        {loading ? t("reports.generating") : label || t("reports.download")}
         <FiChevronDown className={`transition ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
         <div
           role="menu"
-          className="absolute end-0 z-30 mt-1 w-52 overflow-hidden rounded-lg border border-base-300 bg-base-100 shadow-xl"
+          className="absolute end-0 top-full z-30 mt-1 w-52 overflow-hidden rounded-lg border border-base-300 bg-base-100 shadow-xl"
         >
           {FORMATS.map((format) => (
             <button

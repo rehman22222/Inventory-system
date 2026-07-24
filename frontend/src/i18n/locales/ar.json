@@ -215,7 +215,8 @@
     "myRequests": "طلباتي",
     "dayClosings": "إغلاقات اليوم",
     "store": "المتجر",
-    "ghost": "الوضع الخفي"
+    "ghost": "الوضع الخفي",
+    "onlineStore": "المتجر الإلكتروني"
   },
   "topnav": {
     "welcome": "مرحباً، {{name}}",
@@ -342,7 +343,14 @@
     "shelfLabelHint": "حروف وأرقام (موقع العرض). اختياري.",
     "shelfLabelInvalid": "يجب أن يكون ملصق الرف حروفاً وأرقاماً فقط.",
     "lowStockThreshold": "حد المخزون المنخفض",
-    "lowStockThresholdHint": "تنبيه عند وصول المخزون إلى هذا الحد أو أقل. الافتراضي 10."
+    "lowStockThresholdHint": "تنبيه عند وصول المخزون إلى هذا الحد أو أقل. الافتراضي 10.",
+    "costCurrency": "عملة التكلفة",
+    "costRate": "سعر الصرف (من {{from}} إلى {{to}})",
+    "costRatePlaceholder": "مثال 1.17",
+    "costRateHint": "استخدم سعر مصرفك عند الدفع وليس تقديرًا.",
+    "costConverted": "{{amount}} {{from}} = {{result}} {{to}} — هذا ما سيتم حفظه",
+    "costRateFromSettings": "الإعدادات: {{rate}} (اتركه فارغًا لاستخدامه)",
+    "costRateMissing": "لا يوجد سعر محفوظ لـ {{currency}} — حدده في الإعدادات أو اكتبه هنا."
   },
   "categories": {
     "totalCategory": "إجمالي الفئات",
@@ -1120,7 +1128,10 @@
     "requestChanges": "طلب التغييرات",
     "requestSent": "أُرسلت تغييراتك إلى المالك للاعتماد.",
     "requestFailed": "تعذّر إرسال طلبك.",
-    "approvalNotice": "تحتاج تغييراتك إلى موافقة المالك قبل أن تُطبَّق."
+    "approvalNotice": "تحتاج تغييراتك إلى موافقة المالك قبل أن تُطبَّق.",
+    "exchangeRates": "أسعار صرف الموردين",
+    "exchangeRatesHint": "قيمة وحدة واحدة من كل عملة بـ {{currency}}. التكاليف المُدخلة بهذه العملات تُحوَّل قبل حفظها. استخدم سعر مصرفك وليس تقديرًا.",
+    "exchangeRatesUpdated": "آخر تحديث {{date}}"
   },
   "reorders": {
     "title": "إعادة الطلب",

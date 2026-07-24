@@ -25,14 +25,10 @@ root.render(
 // a cached shell just gets in the way of hot reload.
 if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/service-worker.js").catch((error) => {
-      // Not fatal: the app simply loses its offline shell.
-      console.warn("Service worker registration failed:", error.message);
-    });
+    // Not fatal: if registration fails, the app simply loses its offline shell.
+    navigator.serviceWorker.register("/service-worker.js").catch(() => {});
   });
 }
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
+// Performance results can be sent to an analytics endpoint when configured.
 reportWebVitals();

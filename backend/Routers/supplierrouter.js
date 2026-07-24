@@ -11,13 +11,13 @@ const {
 // (type: create_supplier); the superadmin's approval is what creates it.
 router.post("/createsupplier", authmiddleware, superadminmiddleware, createSupplier);
 
-router.get("/getallsupplier", authmiddleware, getAllSuppliers);
+router.get("/getallsupplier", authmiddleware, adminOrManager, getAllSuppliers);
 
 // This MUST stay above "/:supplierId". Registered after it, Express matched the
 // literal word as an id and the search silently became
 // getSupplierById("searchSupplier") — it never once ran.
-router.get("/searchSupplier", authmiddleware, searchSupplier);
-router.get("/:supplierId", authmiddleware, getSupplierById);
+router.get("/searchSupplier", authmiddleware, adminOrManager, searchSupplier);
+router.get("/:supplierId", authmiddleware, adminOrManager, getSupplierById);
 
 // Day-to-day tidying stays with admin/manager, same as products and categories.
 router.put("/updatesupplier/:supplierId", authmiddleware, adminOrManager, editSupplier);

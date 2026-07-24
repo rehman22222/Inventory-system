@@ -19,15 +19,10 @@ import { gettingallproducts } from "../features/productSlice";
 import { gettingallCategory } from "../features/categorySlice";
 import { gettingallOrder } from "../features/orderSlice";
 import { gettingallSales } from "../features/salesSlice";
+import { gettingStore } from "../features/storeSlice";
 import FormattedTime from "../lib/FormattedTime ";
 import { io } from "socket.io-client";
 import { socketURL } from "../lib/socket";
-
-const currency = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
 
 function Dashboardpage() {
   const { t } = useTranslation();
@@ -38,6 +33,16 @@ function Dashboardpage() {
   const { getallCategory } = useSelector((state) => state.category);
   const { getorder } = useSelector((state) => state.order);
   const { getallsales } = useSelector((state) => state.sales);
+  const shopCurrency = useSelector((state) => state.store?.store?.currency) || "EUR";
+  const money = useMemo(
+    () =>
+      new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: shopCurrency,
+        maximumFractionDigits: 0,
+      }),
+    [shopCurrency]
+  );
 
   useEffect(() => {
     dispatch(staffUser());
@@ -48,6 +53,7 @@ function Dashboardpage() {
     dispatch(gettingallOrder());
     dispatch(gettingallSales());
     dispatch(getrecentActivityLogs());
+    dispatch(gettingStore());
 
     const socket = io(socketURL, {
       withCredentials: true,
@@ -99,7 +105,7 @@ function Dashboardpage() {
   const kpis = [
     {
       label: t("dashboard.salesRevenue"),
-      value: currency.format(analytics.revenue),
+      value: money.format(analytics.revenue),
       meta: t("dashboard.completedRecords", { count: analytics.sales.length }),
       icon: FiDollarSign,
       color: "text-emerald-700 dark:text-emerald-400",
@@ -107,7 +113,7 @@ function Dashboardpage() {
     },
     {
       label: t("dashboard.inventoryValue"),
-      value: currency.format(analytics.inventoryValue),
+      value: money.format(analytics.inventoryValue),
       meta: t("dashboard.activeProducts", { count: analytics.products.length }),
       icon: FiBox,
       color: "text-cyan-700 dark:text-cyan-400",

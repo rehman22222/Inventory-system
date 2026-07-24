@@ -40,7 +40,6 @@ function ProfilePage() {
         toast.success(t("profile.updated"));
         setImage(updatedUser?.ProfilePic);
       } catch (error) {
-        console.error("Error uploading image:", error);
         toast.error(error || t("profile.uploadFail"));
       } finally {
         setUploading(false);

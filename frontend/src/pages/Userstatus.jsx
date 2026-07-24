@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import TopNavbar from "../Components/TopNavbar";
 import { IoMdAdd } from "react-icons/io";
-import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { TiDelete } from "react-icons/ti";
@@ -22,7 +21,6 @@ function Userstatus() {
   const { staffuser, manageruser, adminuser } = useSelector((state) => state.auth);
   const { issubmitting } = useSelector((state) => state.approval);
   const dispatch = useDispatch();
-  const { Authuser } = useSelector((state) => state.auth);
   const [form, setForm] = useState(EMPTY_USER);
   const [showPassword, setShowPassword] = useState(false);
 

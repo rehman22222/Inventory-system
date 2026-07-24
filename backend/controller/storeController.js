@@ -4,6 +4,15 @@ const { isValidZone } = require("../libs/time");
 
 const CURRENCIES = ["EUR", "GBP", "USD", "AED", "PKR", "INR", "BDT"];
 
+// Rates may arrive as a JSON string when the form posts as multipart.
+const safeParse = (value) => {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
 // There is only ever one shop record. Create it on first read rather than
 // requiring a seed step, so a fresh install just works.
 const loadStore = async () => {
@@ -30,7 +39,7 @@ module.exports.getStore = async (req, res) => {
 // direct owner edit and the approved-admin-request path, so both routes agree
 // on what's allowed. Returns { ok, message?, status? } and does NOT save.
 const applyStoreChanges = (store, changes = {}) => {
-  const { name, addressLines, phone, footer, qrTemplate, currency, timezone, notificationsEmail } =
+  const { name, addressLines, phone, footer, qrTemplate, currency, timezone, notificationsEmail, exchangeRates } =
     changes;
 
   if (name !== undefined) {
@@ -52,6 +61,34 @@ const applyStoreChanges = (store, changes = {}) => {
       return { ok: false, status: 400, message: `Currency must be one of: ${CURRENCIES.join(", ")}` };
     }
     store.currency = currency;
+  }
+
+  if (exchangeRates !== undefined) {
+    const parsed = typeof exchangeRates === "string" ? safeParse(exchangeRates) : exchangeRates;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return { ok: false, status: 400, message: "Exchange rates must be an object of currency to rate" };
+    }
+
+    const clean = new Map();
+    for (const [code, value] of Object.entries(parsed)) {
+      const upper = String(code).trim().toUpperCase();
+      if (!CURRENCIES.includes(upper)) {
+        return { ok: false, status: 400, message: `Unknown currency in exchange rates: ${code}` };
+      }
+      // Clearing a rate is legitimate; a zero or negative one is not, and would
+      // quietly turn every converted cost into 0.
+      if (value === "" || value === null) continue;
+      const rate = Number(value);
+      if (!Number.isFinite(rate) || rate <= 0) {
+        return { ok: false, status: 400, message: `Exchange rate for ${upper} must be greater than 0` };
+      }
+      // The shop's own currency is always 1 to itself; storing it invites drift.
+      if (upper === store.currency) continue;
+      clean.set(upper, rate);
+    }
+
+    store.exchangeRates = clean;
+    store.exchangeRatesUpdatedAt = new Date();
   }
 
   if (timezone !== undefined) {

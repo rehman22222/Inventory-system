@@ -37,6 +37,7 @@ const SuperAdminUsers = lazy(() => import("./pages/SuperAdminUsers"));
 const StorePage = lazy(() => import("./pages/StorePage"));
 const GhostModePage = lazy(() => import("./pages/GhostModePage"));
 const NotificationPageRead = lazy(() => import("./pages/Notificationpageread"));
+const OnlineStorePage = lazy(() => import("./pages/OnlineStorePage"));
 
 const protect = (element, allowedRoles) => (
   <ProtectedRoute element={element} allowedRoles={allowedRoles} />
@@ -74,6 +75,7 @@ function App() {
           <Route path="vouchers" element={protect(<Voucherpage />, ["admin"])} />
           <Route path="reorders" element={protect(<Reorderspage />, ["admin"])} />
           <Route path="store" element={protect(<StorePage />, ["admin"])} />
+          <Route path="online-store" element={protect(<OnlineStorePage />, ["admin"])} />
           <Route path="day-closings" element={protect(<DayClosingsPage />, ["admin"])} />
           <Route path="support" element={protect(<Supportpage />, ["admin"])} />
           <Route path="notifications" element={protect(<Notificationpage />, ["admin"])} />
@@ -105,6 +107,7 @@ function App() {
           {/* Owner-only */}
           <Route path="ghost" element={protect(<GhostModePage />, ["superadmin"])} />
           <Route path="store" element={protect(<StorePage />, ["superadmin"])} />
+          <Route path="online-store" element={protect(<OnlineStorePage />, ["superadmin"])} />
           <Route path="approvals" element={protect(<ApprovalsPage />, ["superadmin"])} />
           <Route path="reorders" element={protect(<Reorderspage />, ["superadmin"])} />
           <Route path="day-closings" element={protect(<DayClosingsPage />, ["superadmin"])} />

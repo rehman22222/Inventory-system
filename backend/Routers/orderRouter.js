@@ -12,18 +12,18 @@ const {
 } = require("../controller/orderController");
 const {
   authmiddleware,
-  adminmiddleware,
-  managermiddleware,
+  adminOrManager,
 } = require("../middleware/Authmiddleware");
 
-router.post("/createorder",authmiddleware, createOrder);
-router.post("/sendorder/:OrderId", authmiddleware, sendOrder);
-router.post("/receive/:OrderId", authmiddleware, receiveOrder);
-router.get("/getorders", authmiddleware, getOrder);
-router.delete("/removeorder/:OrdertId", authmiddleware, Removeorder);
-router.put("/updatestatusOrder/:OrderId", authmiddleware,updatestatusOrder);
-router.get("/Searchdata", authmiddleware, searchOrder);
-router.get("/graphstatusorder",authmiddleware, getOrderStatistics);
+router.use(authmiddleware, adminOrManager);
+router.post("/createorder", createOrder);
+router.post("/sendorder/:OrderId", sendOrder);
+router.post("/receive/:OrderId", receiveOrder);
+router.get("/getorders", getOrder);
+router.delete("/removeorder/:OrdertId", Removeorder);
+router.put("/updatestatusOrder/:OrderId", updatestatusOrder);
+router.get("/Searchdata", searchOrder);
+router.get("/graphstatusorder", getOrderStatistics);
 
 
 module.exports = router;

@@ -215,7 +215,8 @@
     "myRequests": "میری درخواستیں",
     "dayClosings": "دن کی بندش",
     "store": "اسٹور",
-    "ghost": "گھوسٹ موڈ"
+    "ghost": "گھوسٹ موڈ",
+    "onlineStore": "آن لائن اسٹور"
   },
   "topnav": {
     "welcome": "خوش آمدید، {{name}}",
@@ -342,7 +343,14 @@
     "shelfLabelHint": "حروف اور نمبر (مرچنڈائزنگ مقام)۔ اختیاری۔",
     "shelfLabelInvalid": "شیلف لیبل صرف حروف اور نمبر ہونے چاہئیں۔",
     "lowStockThreshold": "کم اسٹاک کی حد",
-    "lowStockThresholdHint": "اسٹاک اس یا اس سے کم ہونے پر الرٹ۔ ڈیفالٹ 10۔"
+    "lowStockThresholdHint": "اسٹاک اس یا اس سے کم ہونے پر الرٹ۔ ڈیفالٹ 10۔",
+    "costCurrency": "لاگت کی کرنسی",
+    "costRate": "شرحِ تبادلہ ({{from}} سے {{to}})",
+    "costRatePlaceholder": "مثلاً 1.17",
+    "costRateHint": "اندازے کے بجائے ادائیگی پر اپنے بینک کی شرح استعمال کریں۔",
+    "costConverted": "{{amount}} {{from}} = {{result}} {{to}} — یہی محفوظ ہوگا",
+    "costRateFromSettings": "سیٹنگز: {{rate}} (خالی چھوڑیں تو یہی چلے گا)",
+    "costRateMissing": "{{currency}} کے لیے کوئی شرح محفوظ نہیں — سیٹنگز میں مقرر کریں یا یہاں لکھیں۔"
   },
   "categories": {
     "totalCategory": "کل زمرہ",
@@ -1120,7 +1128,10 @@
     "requestChanges": "تبدیلی کی درخواست کریں",
     "requestSent": "آپ کی تبدیلیاں منظوری کے لیے مالک کو بھیج دی گئیں۔",
     "requestFailed": "آپ کی درخواست نہیں بھیجی جا سکی۔",
-    "approvalNotice": "آپ کی تبدیلیاں لاگو ہونے سے پہلے مالک کی منظوری درکار ہے۔"
+    "approvalNotice": "آپ کی تبدیلیاں لاگو ہونے سے پہلے مالک کی منظوری درکار ہے۔",
+    "exchangeRates": "سپلائر کی شرحِ تبادلہ",
+    "exchangeRatesHint": "ہر ایک کی ایک اکائی {{currency}} میں کتنی بنتی ہے۔ ان کرنسیوں میں درج لاگت محفوظ ہونے سے پہلے تبدیل کر دی جاتی ہے۔ اندازے کے بجائے اپنے بینک کی شرح لکھیں۔",
+    "exchangeRatesUpdated": "آخری تبدیلی {{date}}"
   },
   "reorders": {
     "title": "دوبارہ آرڈر",

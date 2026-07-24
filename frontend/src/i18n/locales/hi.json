@@ -215,7 +215,8 @@
     "myRequests": "मेरी विनतियाँ",
     "dayClosings": "दिन की क्लोजिंग",
     "store": "स्टोर",
-    "ghost": "घोस्ट मोड"
+    "ghost": "घोस्ट मोड",
+    "onlineStore": "ऑनलाइन स्टोर"
   },
   "topnav": {
     "welcome": "स्वागत है, {{name}}",
@@ -342,7 +343,14 @@
     "shelfLabelHint": "अक्षर और अंक (मर्चेंडाइज़िंग स्थान)। वैकल्पिक।",
     "shelfLabelInvalid": "शेल्फ लेबल केवल अक्षर और अंक होने चाहिए।",
     "lowStockThreshold": "लो-स्टॉक सीमा",
-    "lowStockThresholdHint": "स्टॉक इस या इससे कम होने पर अलर्ट। डिफ़ॉल्ट 10।"
+    "lowStockThresholdHint": "स्टॉक इस या इससे कम होने पर अलर्ट। डिफ़ॉल्ट 10।",
+    "costCurrency": "लागत मुद्रा",
+    "costRate": "विनिमय दर ({{from}} से {{to}})",
+    "costRatePlaceholder": "जैसे 1.17",
+    "costRateHint": "अनुमान के बजाय भुगतान पर अपने बैंक की दर उपयोग करें।",
+    "costConverted": "{{amount}} {{from}} = {{result}} {{to}} — यही संग्रहीत होगा",
+    "costRateFromSettings": "सेटिंग्स: {{rate}} (खाली छोड़ें तो यही लगेगा)",
+    "costRateMissing": "{{currency}} के लिए कोई दर सहेजी नहीं — सेटिंग्स में तय करें या यहाँ लिखें।"
   },
   "categories": {
     "totalCategory": "कुल श्रेणी",
@@ -1120,7 +1128,10 @@
     "requestChanges": "बदलाव का अनुरोध करें",
     "requestSent": "आपके बदलाव अनुमोदन के लिए मालिक को भेज दिए गए।",
     "requestFailed": "आपका अनुरोध नहीं भेजा जा सका।",
-    "approvalNotice": "आपके बदलाव लागू होने से पहले मालिक की मंज़ूरी ज़रूरी है।"
+    "approvalNotice": "आपके बदलाव लागू होने से पहले मालिक की मंज़ूरी ज़रूरी है।",
+    "exchangeRates": "आपूर्तिकर्ता विनिमय दरें",
+    "exchangeRatesHint": "प्रत्येक की एक इकाई {{currency}} में कितनी है। इन मुद्राओं में दर्ज लागत संग्रह से पहले बदल दी जाती है। अनुमान नहीं, अपने बैंक की दर लिखें।",
+    "exchangeRatesUpdated": "अंतिम बदलाव {{date}}"
   },
   "reorders": {
     "title": "पुनः ऑर्डर",

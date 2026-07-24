@@ -143,7 +143,7 @@ module.exports.login=async(req,res)=>{
             return res.status(400).json({ message: "The password is incorrect", reason: "password" })
         }
 
-        const token=await generateToken(duplicatedUser,res)
+        await generateToken(duplicatedUser,res)
 
 
 
@@ -164,8 +164,7 @@ module.exports.login=async(req,res)=>{
         name:duplicatedUser.name,
         email:duplicatedUser.email,
         role:duplicatedUser.role,
-        ProfilePic:duplicatedUser.ProfilePic,
-        token
+        ProfilePic:duplicatedUser.ProfilePic
 
     }
 
@@ -183,8 +182,12 @@ module.exports.login=async(req,res)=>{
 
 module.exports.logout=async(req,res)=>{
   try {
-     res.cookie("Inventorymanagmentsystem",'',{maxAge:0})
-       res.status(200).json({message:"Logged out successfully"})
+     res.clearCookie("Inventorymanagmentsystem", {
+       httpOnly: true,
+       sameSite: "Lax",
+       secure: process.env.NODE_ENV === "production",
+     });
+     res.status(200).json({message:"Logged out successfully"})
 
   } catch (error) {
      res.status(500).json({

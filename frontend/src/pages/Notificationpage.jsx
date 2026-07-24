@@ -19,15 +19,12 @@ function NotificationPage() {
   const [name, setName] = useState("");
   const [type, setType] = useState("");
   const [isFormVisible, setIsFormVisible] = useState(false);
-  const [socket, setSocket] = useState(null);
 
   useEffect(() => {
     const newSocket = io(socketURL, {
       withCredentials: true,
       transports: ["websocket", "polling"],
     });
-    setSocket(newSocket);
-
     dispatch(getAllNotifications());
 
     newSocket.on("newNotification", (newNotification) => {

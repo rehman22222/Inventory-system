@@ -5,7 +5,6 @@ import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
 import { FiImage } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import FormattedTime from "../lib/FormattedTime ";
 import {
   Addproduct,
   gettingallproducts,
@@ -14,10 +13,15 @@ import {
   EditProduct,
 } from "../features/productSlice";
 import { gettingallCategory } from "../features/categorySlice";
+import { gettingStore } from "../features/storeSlice";
 import GenerateBarcodesModal from "../Components/GenerateBarcodesModal";
 import DealsModal from "../Components/DealsModal";
 import ReportButton from "../Components/ReportButton";
 import toast from "react-hot-toast";
+
+// Currencies a supplier might invoice in. Mirrors the server's list in
+// libs/cost.js, which mirrors the shop's own currency options.
+const COST_CURRENCIES = ["EUR", "GBP", "USD", "AED", "PKR", "INR", "BDT"];
 
 // Clean thumbnail with a placeholder fallback when a product has no image.
 function ProductThumb({ url, alt, className = "" }) {
@@ -49,6 +53,11 @@ function Productpage() {
   );
   const { getallCategory } = useSelector((state) => state.category);
   const { Authuser } = useSelector((state) => state.auth);
+  // What the shop trades in. Costs are stored in this, whatever the supplier bills.
+  const shopCurrency = useSelector((state) => state.store?.store?.currency) || "EUR";
+  // Rates the owner saved in Settings, so a foreign cost converts without
+  // anyone re-typing the rate on every product.
+  const savedRates = useSelector((state) => state.store?.store?.exchangeRates) || {};
   const isAdmin = Authuser?.role === "admin";
   // Deals are a merchandising tool — admin and manager can both build them.
   const canManageDeals = ["admin", "manager", "superadmin"].includes(Authuser?.role);
@@ -61,6 +70,10 @@ function Productpage() {
   const [Category, setCategory] = useState("");
   const [Price, setPrice] = useState("");
   const [costPrice, setCostPrice] = useState("");
+  // A supplier abroad bills in its own money. The cost is stored converted, so
+  // these two only describe how that figure was reached.
+  const [costCurrency, setCostCurrency] = useState("");
+  const [costRate, setCostRate] = useState("");
   const [quantity, setQuantity] = useState("");
   const [Desciption, setDesciption] = useState("");
   const [shelfLabel, setShelfLabel] = useState("");
@@ -78,6 +91,13 @@ function Productpage() {
     dispatch(gettingallproducts());
     dispatch(gettingallCategory());
   }, [dispatch, editedProduct, isproductadd]);
+
+  // The cost field needs the shop's own currency and its saved exchange rates;
+  // this page is reachable without passing through the till, which is the only
+  // other place that loads them.
+  useEffect(() => {
+    dispatch(gettingStore());
+  }, [dispatch]);
 
   useEffect(() => {
     if (query.trim() !== "") {
@@ -109,7 +129,14 @@ function Productpage() {
     if (Category) formData.append("Category", Category);
     if (Desciption) formData.append("Desciption", Desciption);
     if (shelfLabel) formData.append("shelfLabel", shelfLabel);
-    if (costPrice !== "") formData.append("costPrice", costPrice);
+    if (costPrice !== "") {
+      formData.append("costPrice", costPrice);
+      // Sent only for a foreign supplier; the server converts and records both.
+      if (costCurrency && costCurrency !== shopCurrency) {
+        formData.append("costCurrency", costCurrency);
+        formData.append("costRate", costRate);
+      }
+    }
     if (quantity !== "") formData.append("quantity", quantity);
     if (lowStockThreshold !== "") formData.append("lowStockThreshold", lowStockThreshold);
     if (barcode) formData.append("barcode", barcode);
@@ -117,6 +144,11 @@ function Productpage() {
     if (imageFile) formData.append("image", imageFile);
     return formData;
   };
+
+  // The rate this cost will actually convert at: what was typed, else the one
+  // saved in Settings. Mirrors resolveCost() on the server.
+  const effectiveRate =
+    Number(costRate) > 0 ? Number(costRate) : Number(savedRates[costCurrency]) || 0;
 
   // Shelf label is optional, but if given it must be letters/numbers.
   const shelfLabelValid = shelfLabel === "" || /^[A-Za-z0-9][A-Za-z0-9\- ]*$/.test(shelfLabel);
@@ -168,6 +200,8 @@ function Productpage() {
     setCategory("");
     setPrice("");
     setCostPrice("");
+    setCostCurrency("");
+    setCostRate("");
     setQuantity("");
     setDesciption("");
     setShelfLabel("");
@@ -183,7 +217,11 @@ function Productpage() {
     setName(product.name);
     setCategory(product.Category?._id || "");
     setPrice(product.Price);
-    setCostPrice(product.costPrice ?? "");
+    // Show the invoice's own figure where there was one, so re-saving without
+    // touching the field reproduces exactly the same converted cost.
+    setCostPrice(product.costSource?.amount ?? product.costPrice ?? "");
+    setCostCurrency(product.costSource?.currency || "");
+    setCostRate(product.costSource?.rate ?? "");
     setQuantity(product.quantity);
     setDesciption(product.Desciption || "");
     setShelfLabel(product.shelfLabel || "");
@@ -366,15 +404,65 @@ function Productpage() {
 
                   <div>
                     <label className="text-sm">{t("products.costPrice")}</label>
-                    <input
-                      type="number"
-                      placeholder={t("products.costPricePlaceholder")}
-                      value={costPrice}
-                      onChange={(e) => setCostPrice(e.target.value)}
-                      className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
-                      min="0"
-                      step="0.01"
-                    />
+                    <div className="mt-1 flex gap-2">
+                      <input
+                        type="number"
+                        placeholder={t("products.costPricePlaceholder")}
+                        value={costPrice}
+                        onChange={(e) => setCostPrice(e.target.value)}
+                        className="h-10 w-full min-w-0 rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                        min="0"
+                        step="0.01"
+                      />
+                      {/* Suppliers abroad bill in their own money. Naming it here
+                          keeps the figure on the invoice enterable as-is. */}
+                      <select
+                        value={costCurrency || shopCurrency}
+                        onChange={(e) => setCostCurrency(e.target.value)}
+                        className="h-10 shrink-0 rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                        aria-label={t("products.costCurrency")}
+                      >
+                        {COST_CURRENCIES.map((code) => (
+                          <option key={code} value={code}>
+                            {code}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {costCurrency && costCurrency !== shopCurrency && (
+                      <div className="mt-2 rounded-lg border-2 border-base-300 bg-base-200/40 p-2">
+                        <label className="text-xs">
+                          {t("products.costRate", { from: costCurrency, to: shopCurrency })}
+                        </label>
+                        <input
+                          type="number"
+                          // Blank uses the rate from Settings; typing here
+                          // overrides it for this one product.
+                          placeholder={
+                            effectiveRate
+                              ? t("products.costRateFromSettings", { rate: effectiveRate })
+                              : t("products.costRatePlaceholder")
+                          }
+                          value={costRate}
+                          onChange={(e) => setCostRate(e.target.value)}
+                          className="mt-1 h-9 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
+                          min="0"
+                          step="0.0001"
+                          required={!savedRates[costCurrency]}
+                        />
+                        <p className="mt-1 text-xs opacity-70">
+                          {Number(costPrice) > 0 && effectiveRate > 0
+                            ? t("products.costConverted", {
+                                amount: Number(costPrice).toFixed(2),
+                                from: costCurrency,
+                                result: (Number(costPrice) * effectiveRate).toFixed(2),
+                                to: shopCurrency,
+                              })
+                            : t("products.costRateMissing", { currency: costCurrency })}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div>

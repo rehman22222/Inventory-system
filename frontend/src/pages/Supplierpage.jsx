@@ -59,7 +59,7 @@ function Supplierpage() {
     // The product picker in the form needs the catalogue loaded, otherwise it
     // shows "No products match" for everything. This page never fetched it.
     dispatch(gettingallproducts());
-  }, [dispatch, deleteSupplier, editedsupplier]);
+  }, [dispatch, editedsupplier]);
 
   useEffect(() => {
     if (query.trim() !== "") {

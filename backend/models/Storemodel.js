@@ -23,6 +23,23 @@ const StoreSchema = new mongoose.Schema(
       enum: ["EUR", "GBP", "USD", "AED", "PKR", "INR", "BDT"],
       default: "EUR",
     },
+    // What a supplier's currency is worth in the shop's own — "1 GBP = 1.17 EUR"
+    // is stored as { GBP: 1.17 }. Set once by the owner (off their bank
+    // statement, ideally) so a cost off a foreign invoice can be entered as
+    // printed and converted without anyone typing a rate each time.
+    //
+    // Deliberately manual: a live feed would silently reprice the shop's margins
+    // overnight, and for the books what matters is the rate the bank actually
+    // charged, not today's mid-market number.
+    exchangeRates: {
+      type: Map,
+      of: Number,
+      default: undefined,
+    },
+    // When the owner last touched those rates — shown beside them, because a
+    // rate nobody has reviewed in a year should look stale.
+    exchangeRatesUpdatedAt: { type: Date, default: null },
+
     // The shop's own timezone (an IANA name, e.g. "Europe/Dublin"). Times are
     // always stored in UTC; this is only used to render reports and to work out
     // where a trading day starts and ends — so the same database serves shops in

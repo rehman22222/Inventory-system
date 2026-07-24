@@ -17,7 +17,7 @@ function Activitylogpage() {
   const [currentPage, setCurrentPage] = useState(1);
   const logsPerPage = 10;
 
-  const { activityLogs, isFetching, userdata, accessError, logRange } = useSelector(
+  const { activityLogs, accessError, logRange } = useSelector(
     (state) => state.activity
   );
   const { Authuser } = useSelector((state) => state.auth);
@@ -63,11 +63,12 @@ function Activitylogpage() {
     );
   };
 
-  const socket = io(socketURL, {
-     withCredentials: true,
-     transports: ["websocket", "polling"], });
-
   useEffect(() => {
+    const socket = io(socketURL, {
+      withCredentials: true,
+      transports: ["websocket", "polling"],
+    });
+
     if (Authuser?.id) {
       dispatch(getAllActivityLogs());
       dispatch(getsingleUserActivityLogs(Authuser.id));
@@ -83,7 +84,7 @@ function Activitylogpage() {
     });
 
     return () => {
-      socket.off("newActivityLog");
+      socket.disconnect();
     };
   }, [dispatch, Authuser?.id]);
 

@@ -92,12 +92,13 @@ module.exports = (app) => {
   });
 
   
-  // The dashboard's three-line "recent activity" strip. Left open to any
-  // signed-in user (it had no auth at all before) rather than gated: it is a
-  // glance at the shop, not the audit trail. Gate it here too if that changes.
+  // The dashboard's three-line strip must not bypass the audit-log grant. The
+  // owner sees shop-wide activity; everyone else sees only their own actions.
   router.get("/getrecentActivitys", authmiddleware, async(req,res)=>{
     try{
-      const logs=await ActivityLog.find().sort({createdAt: -1}).limit(3);
+      const scope =
+        req.user?.role === "superadmin" ? {} : { userId: req.user?._id };
+      const logs=await ActivityLog.find(scope).sort({createdAt: -1}).limit(3);
       res.status(200).json(logs);
     }
     catch(error){

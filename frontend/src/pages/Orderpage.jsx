@@ -5,7 +5,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { IoMdAdd } from "react-icons/io";
 import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
-import { signup } from "../features/authSlice";
 import FormattedTime from "../lib/FormattedTime ";
 import OrderStatusChart from "../lib/OrderStatusChart"
 import {
@@ -19,26 +18,18 @@ import {
 } from "../features/orderSlice";
 
 import { gettingallproducts } from "../features/productSlice";
-import { gettingallCategory } from "../features/categorySlice";
 import { gettingallSupplier } from "../features/SupplierSlice";
 
 function Orderpage() {
   const { t } = useTranslation();
   const {
     getorder,
-    isgetorder,
-    isorderadd,
-    isorderremove,
     editorder,
-    iseditorder,
     searchdata,
-    isshowgraph,
-  statusgraph
   } = useSelector((state) => state.order);
   const { getallproduct } = useSelector((state) => state.product);
-  const { getallCategory } = useSelector((state) => state.category);
   const { getallSupplier } = useSelector((state) => state.supplier);
-  const { Authuser, isUserSignup } = useSelector((state) => state.auth);
+  const { Authuser } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const [query, setquery] = useState("");
   // Which supplier we're ordering from — a purchase order is placed with one.
@@ -132,7 +123,6 @@ function Orderpage() {
   useEffect(() => {
     dispatch(gettingallOrder());
     dispatch(gettingallproducts());
-    dispatch(gettingallCategory());
     dispatch(gettingallSupplier());
 
   }, [dispatch,Authuser]);
@@ -228,7 +218,6 @@ function Orderpage() {
       resetForm();
       setIsFormVisible(false);
     } catch (error) {
-      console.error("Order creation failed:", error);
       toast.error(error?.message || error || t("orders.createFail"));
     }
   };
