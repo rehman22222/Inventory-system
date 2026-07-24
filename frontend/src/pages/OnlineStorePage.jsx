@@ -25,6 +25,12 @@ import {
   FiZap,
 } from "react-icons/fi";
 import {
+  FaFacebookF,
+  FaInstagram,
+  FaTiktok,
+  FaXTwitter,
+} from "react-icons/fa6";
+import {
   createHeroSlide,
   createOnlineCategory,
   deleteHeroSlide,
@@ -2208,6 +2214,33 @@ const BLANK_SETTINGS = {
   announcement: { primary: "", secondary: "" },
 };
 
+const SOCIAL_CHANNELS = [
+  {
+    key: "instagram",
+    label: "Instagram",
+    placeholder: "https://instagram.com/your-profile",
+    Icon: FaInstagram,
+  },
+  {
+    key: "facebook",
+    label: "Facebook",
+    placeholder: "https://facebook.com/your-page",
+    Icon: FaFacebookF,
+  },
+  {
+    key: "twitter",
+    label: "X / Twitter",
+    placeholder: "https://x.com/your-profile",
+    Icon: FaXTwitter,
+  },
+  {
+    key: "tiktok",
+    label: "TikTok",
+    placeholder: "https://tiktok.com/@your-profile",
+    Icon: FaTiktok,
+  },
+];
+
 function StorefrontSettings({ settings, isActing }) {
   const dispatch = useDispatch();
   const [draft, setDraft] = useState(BLANK_SETTINGS);
@@ -2241,34 +2274,39 @@ function StorefrontSettings({ settings, isActing }) {
         <section className="rounded-xl border bg-base-100 p-5">
           <h3 className="font-display text-lg font-bold">Social channels</h3>
           <p className="text-xs text-base-content/50">
-            Empty channels stay hidden. Saved links open the exact public
-            profile.
+            Add the public profile links shown as icons in the online store
+            footer. Empty channels stay hidden.
           </p>
           <div className="mt-4 space-y-3">
-            {["instagram", "facebook", "twitter", "tiktok"].map((platform) => (
-              <Field key={platform} label={`${platform} profile URL`}>
-                <div className="join">
-                  <input
-                    type="url"
-                    className="input input-sm input-bordered join-item w-full"
-                    placeholder={`https://${
-                      platform === "twitter" ? "x.com" : `${platform}.com`
-                    }/profile`}
-                    value={draft.social[platform]}
-                    onChange={(event) =>
-                      set("social", platform, event.target.value)
-                    }
-                  />
-                  {draft.social[platform] && (
-                    <a
-                      className="btn btn-sm join-item"
-                      href={draft.social[platform]}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <FiExternalLink />
-                    </a>
-                  )}
+            {SOCIAL_CHANNELS.map(({ key, label, placeholder, Icon }) => (
+              <Field key={key} label={`${label} profile URL`}>
+                <div className="flex items-center gap-2">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-base-200 text-base-content/70">
+                    <Icon className="h-3.5 w-3.5" />
+                  </span>
+                  <div className="join w-full">
+                    <input
+                      type="url"
+                      className="input input-sm input-bordered join-item w-full"
+                      placeholder={placeholder}
+                      value={draft.social[key]}
+                      onChange={(event) =>
+                        set("social", key, event.target.value)
+                      }
+                    />
+                    {draft.social[key] && (
+                      <a
+                        className="btn btn-sm join-item"
+                        href={draft.social[key]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Open ${label} profile`}
+                        title={`Preview ${label}`}
+                      >
+                        <FiExternalLink />
+                      </a>
+                    )}
+                  </div>
                 </div>
               </Field>
             ))}
