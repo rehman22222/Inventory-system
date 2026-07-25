@@ -54,6 +54,15 @@ const accounts = {
 const accountConfigured = (account) =>
   Boolean(account && account.host && account.user && account.pass);
 
+// One-time startup summary in the deploy logs. Shows which sender identities are
+// live (email addresses only, never passwords) so a misconfigured STORE_SMTP_*
+// is obvious — if "store" reads NOT configured, order confirmations fall back to
+// the system (e360) address instead of the shop's own mailbox.
+console.log(
+  `[mailer] system: ${accountConfigured(accounts.system) ? accounts.system.user : "NOT configured"} | ` +
+    `store: ${accountConfigured(accounts.store) ? accounts.store.user : "NOT configured"}`,
+);
+
 // Pick the requested account if it's configured; otherwise fall back to system.
 const resolveAccount = (name) => {
   if (accountConfigured(accounts[name])) return accounts[name];
