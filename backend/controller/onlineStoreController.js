@@ -9,8 +9,10 @@ const Product = require("../models/Productmodel");
 const Sale = require("../models/Salesmodel");
 const StockTransaction = require("../models/StockTranscationmodel");
 const Store = require("../models/Storemodel");
+const Category = require("../models/ Categorymodel");
 const { nextSequence } = require("../models/Countermodel");
 const logActivity = require("../libs/logger");
+const { sendMail, brandedHtml, esc } = require("../libs/mailer");
 
 // Same rounding the till uses, so a web total and a counter total can never
 // disagree by a stray fraction of a cent.
@@ -84,6 +86,7 @@ const publicListing = (l) => {
     .map((variant) => ({
       productId: String(variant.product._id),
       label: variant.label,
+      kind: variant.kind || "option",
       price: money(effectiveItemPrice(l, variant.product, variant)),
       regularPrice: money(regularItemPrice(l, variant.product, variant)),
       stock: Number(variant.product.quantity || 0),
@@ -652,6 +655,71 @@ module.exports.uploadListingImage = async (req, res) => {
   }
 };
 
+// Create a brand-new inventory product straight from the online options editor,
+// so an owner adding a flavour/colour the shop has never stocked doesn't have to
+// leave for the inventory screen first. It writes a normal Product — the same
+// row the till reads — optionally filed under an existing inventory category.
+// Stock is shared from the moment it exists.
+module.exports.createInventoryProduct = async (req, res) => {
+  try {
+    const name = String(req.body.name || "").trim();
+    const price = Number(req.body.price);
+    const quantityRaw = req.body.quantity;
+    const quantity =
+      quantityRaw === "" || quantityRaw == null ? 0 : Number(quantityRaw);
+
+    if (!name) {
+      return res.status(400).json({ message: "Product name is required" });
+    }
+    if (!Number.isFinite(price) || price < 0) {
+      return res.status(400).json({ message: "Enter a valid price" });
+    }
+    if (!Number.isInteger(quantity) || quantity < 0) {
+      return res.status(400).json({ message: "Enter a valid stock quantity" });
+    }
+
+    let categoryId = null;
+    if (req.body.category) {
+      if (!mongoose.isValidObjectId(req.body.category)) {
+        return res.status(400).json({ message: "Invalid inventory category" });
+      }
+      const category = await Category.findById(req.body.category).select("_id");
+      if (!category) {
+        return res.status(400).json({ message: "Inventory category not found" });
+      }
+      categoryId = category._id;
+    }
+
+    const product = await Product.create({
+      name,
+      Price: money(price),
+      quantity,
+      ...(categoryId ? { Category: categoryId } : {}),
+    });
+    await product.populate("Category", "name");
+
+    await logActivity({
+      action: "Add Product",
+      description: `Product ${name} created from the online store options editor.`,
+      entity: "product",
+      entityId: product._id,
+      userId: req.user?._id,
+      ipAddress: req.ip,
+    });
+
+    return res.status(201).json({ message: "Product created", product });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res
+        .status(400)
+        .json({ message: "A product with that value already exists" });
+    }
+    return res
+      .status(500)
+      .json({ message: "Could not create the product", error: error.message });
+  }
+};
+
 /* ───────────────────────────────────────── ADMIN — listings ─────────────── */
 
 // The catalogue as the admin sees it: every product, with its listing state.
@@ -972,6 +1040,94 @@ module.exports.updateListing = async (req, res) => {
     }
     if (Object.prototype.hasOwnProperty.call(req.body, "sortWeight")) {
       listing.sortWeight = Number(req.body.sortWeight || 0);
+    }
+
+    // Web gallery. Editable after creation so the shop can add, swap or remove
+    // photography without recreating the listing. Presentation only — never
+    // touches the linked Product.
+    if (Object.prototype.hasOwnProperty.call(req.body, "gallery")) {
+      const fallbackAlt = listing.webName || listing.product?.name || "";
+      listing.gallery = (Array.isArray(req.body.gallery) ? req.body.gallery : [])
+        .filter(
+          (image) => image && typeof image.url === "string" && image.url.trim(),
+        )
+        .slice(0, 8)
+        .map((image) => ({
+          url: image.url.trim(),
+          publicId:
+            typeof image.publicId === "string" ? image.publicId.trim() : "",
+          alt: typeof image.alt === "string" && image.alt.trim()
+            ? image.alt.trim()
+            : fallbackAlt,
+        }));
+    }
+
+    // Options — flavours / colours. Each option points at a REAL inventory
+    // Product that owns its stock, so selling an option decrements that Product
+    // (never the parent placeholder) exactly like the till. We validate that
+    // every referenced product exists and that no two options share one SKU.
+    if (Object.prototype.hasOwnProperty.call(req.body, "variants")) {
+      const raw = Array.isArray(req.body.variants) ? req.body.variants : [];
+      if (raw.length > 200) {
+        return res
+          .status(400)
+          .json({ message: "A product can have at most 200 options" });
+      }
+      const seen = new Set();
+      const normalised = [];
+      for (const entry of raw) {
+        const productId = entry?.product?._id || entry?.product;
+        if (!mongoose.isValidObjectId(productId)) {
+          return res.status(400).json({
+            message: "Each option must be linked to an inventory product",
+          });
+        }
+        const key = String(productId);
+        if (seen.has(key)) {
+          return res.status(400).json({
+            message: "Each option must use a different inventory product",
+          });
+        }
+        const label = String(entry.label || "").trim();
+        if (!label) {
+          return res.status(400).json({
+            message: "Every option needs a name (e.g. a flavour or colour)",
+          });
+        }
+        let priceOverride = null;
+        if (entry.priceOverride !== "" && entry.priceOverride != null) {
+          const value = Number(entry.priceOverride);
+          if (!Number.isFinite(value) || value < 0) {
+            return res
+              .status(400)
+              .json({ message: `Invalid price for option "${label}"` });
+          }
+          priceOverride = money(value);
+        }
+        const kind = ["flavour", "colour", "option"].includes(entry.kind)
+          ? entry.kind
+          : "option";
+        seen.add(key);
+        normalised.push({
+          product: productId,
+          label: label.slice(0, 120),
+          kind,
+          image: typeof entry.image === "string" ? entry.image.trim() : "",
+          priceOverride,
+          externalId:
+            typeof entry.externalId === "string" ? entry.externalId.trim() : "",
+        });
+      }
+      if (normalised.length) {
+        const ids = normalised.map((variant) => variant.product);
+        const found = await Product.countDocuments({ _id: { $in: ids } });
+        if (found !== ids.length) {
+          return res.status(400).json({
+            message: "An option references a product that no longer exists",
+          });
+        }
+      }
+      listing.variants = normalised;
     }
 
     // Optional bulk override for Shopify options. Still writes only listing
@@ -1430,6 +1586,28 @@ module.exports.updateStoreSettings = async (req, res) => {
         });
       }
       settings.deals.limit = limit;
+    }
+    const business = req.body.business || {};
+    for (const key of ["legalName", "tradingName", "companyNumber", "vatNumber"]) {
+      if (Object.prototype.hasOwnProperty.call(business, key)) {
+        settings.business[key] = String(business[key] || "")
+          .trim()
+          .slice(0, 200);
+      }
+    }
+    const policies = req.body.policies || {};
+    for (const key of [
+      "terms",
+      "privacy",
+      "shippingReturns",
+      "refunds",
+      "cookies",
+    ]) {
+      if (Object.prototype.hasOwnProperty.call(policies, key)) {
+        settings.policies[key] = String(policies[key] || "")
+          .trim()
+          .slice(0, 20000);
+      }
     }
     settings.updatedBy = req.user?._id;
     await settings.save();
@@ -1940,12 +2118,76 @@ module.exports.storefrontSettings = async (req, res) => {
         announcement: settings.announcement,
         newThisWeek: settings.newThisWeek,
         deals: settings.deals,
+        business: settings.business,
+        policies: settings.policies,
       },
     });
   } catch (error) {
     return res
       .status(500)
       .json({ message: "Could not load store settings", error: error.message });
+  }
+};
+
+// Public contact form. Emails the shop's own support inbox (falling back to the
+// notifications address) using the shared mailer, branded as the shop. Best
+// effort by design — a mail hiccup or an unconfigured mailbox must not surface
+// as an error to the visitor, and a bot that trips the honeypot is dropped
+// silently so it gets no signal either way.
+module.exports.submitContactMessage = async (req, res) => {
+  try {
+    const { name, email, subject, message, website } = req.body || {};
+
+    // Honeypot: a hidden field no human ever fills. If it's set, it's a bot —
+    // acknowledge and discard.
+    if (website) {
+      return res.status(200).json({ message: "Thanks — your message has been sent." });
+    }
+
+    const cleanName = String(name || "").trim().slice(0, 120);
+    const cleanEmail = String(email || "").trim().toLowerCase().slice(0, 200);
+    const cleanSubject = String(subject || "").trim().slice(0, 150) || "Website enquiry";
+    const cleanMessage = String(message || "").trim().slice(0, 4000);
+
+    if (cleanName.length < 2 || cleanMessage.length < 5) {
+      return res
+        .status(400)
+        .json({ message: "Please add your name and a short message." });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return res.status(400).json({ message: "Please enter a valid email address." });
+    }
+
+    const store = await storeId();
+    const [shop, settings] = await Promise.all([
+      Store.findById(store).lean(),
+      getOrCreateSettings(store),
+    ]);
+    const to =
+      settings?.footer?.supportEmail || shop?.notificationsEmail || "";
+
+    const bodyHtml = `
+      <p style="margin:0 0 12px;">You received a new message from the website contact form.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <tr><td style="padding:4px 0;color:#6b7280;width:90px;">Name</td><td style="padding:4px 0;">${esc(cleanName)}</td></tr>
+        <tr><td style="padding:4px 0;color:#6b7280;">Email</td><td style="padding:4px 0;"><a href="mailto:${esc(cleanEmail)}">${esc(cleanEmail)}</a></td></tr>
+        <tr><td style="padding:4px 0;color:#6b7280;">Subject</td><td style="padding:4px 0;">${esc(cleanSubject)}</td></tr>
+      </table>
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid #e5e7eb;white-space:pre-wrap;">${esc(cleanMessage)}</div>
+    `;
+
+    await sendMail({
+      to,
+      subject: `Website enquiry — ${cleanSubject}`,
+      html: brandedHtml(shop, bodyHtml),
+      fromName: shop?.name || "Online store",
+    });
+
+    return res.status(200).json({ message: "Thanks — your message has been sent." });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Could not send your message. Please try again shortly." });
   }
 };
 
@@ -2385,6 +2627,134 @@ module.exports.placeOrderLegacy = async (req, res) => {
   }
 };
 
+/* ── Order emails ─────────────────────────────────────────────────────────────
+ * Sent from the shop's own mailbox (the SMTP_USER configured on the server, e.g.
+ * orders@theshop.com) with the shop's name as the From display name, so the
+ * customer sees a branded confirmation — not a bare no-reply. Best-effort: an
+ * unconfigured mailbox or a transient SMTP error must never fail a placed order,
+ * which is why placeOrder calls this fire-and-forget.
+ * ------------------------------------------------------------------------- */
+const orderItemsTable = (order) => {
+  const rows = (order.items || [])
+    .map(
+      (item) => `
+      <tr>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;">
+          ${esc(item.name)}
+          ${item.brand ? `<div style="font-size:12px;color:#6b7280;">${esc(item.brand)}</div>` : ""}
+        </td>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:center;">${Number(item.quantity)}</td>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;">€${money(item.lineTotal)}</td>
+      </tr>`,
+    )
+    .join("");
+
+  const totalRow = (label, value, opts = {}) =>
+    `<tr>
+      <td style="padding:2px 0;${opts.bold ? "font-weight:bold;" : "color:#6b7280;"}">${esc(label)}</td>
+      <td style="padding:2px 0;text-align:right;${opts.bold ? "font-weight:bold;font-size:16px;" : ""}">${opts.negative ? "−" : ""}€${money(Math.abs(value))}</td>
+    </tr>`;
+
+  return `
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:8px 0;border-bottom:2px solid #111827;">Item</th>
+          <th style="text-align:center;padding:8px 0;border-bottom:2px solid #111827;">Qty</th>
+          <th style="text-align:right;padding:8px 0;border-bottom:2px solid #111827;">Total</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:12px;">
+      ${totalRow("Subtotal", order.subtotal)}
+      ${order.discount ? totalRow("Discount", order.discount, { negative: true }) : ""}
+      ${totalRow("Shipping", order.shipping)}
+      ${order.tax ? totalRow("Tax", order.tax) : ""}
+      ${totalRow("Total", order.total, { bold: true })}
+    </table>`;
+};
+
+const shippingAddressBlock = (order) => {
+  const a = order.shippingAddress || {};
+  const lines = [
+    a.line1,
+    a.line2,
+    [a.city, a.region].filter(Boolean).join(", "),
+    a.postcode,
+    a.country,
+  ]
+    .filter(Boolean)
+    .map(esc)
+    .join("<br>");
+  return `
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;">Delivery address</div>
+      <div style="margin-top:6px;font-size:14px;line-height:1.5;">${lines || "—"}</div>
+    </div>`;
+};
+
+const customerConfirmationBody = (order, shop, supportEmail) => `
+  <p style="margin:0 0 8px;">Hi ${esc(order.customer?.name || "there")},</p>
+  <p style="margin:0 0 16px;">Thank you for your order with ${esc(shop?.name || "us")} — we've received it and it's now being prepared.</p>
+  <p style="margin:0 0 16px;font-size:16px;"><strong>Order ${esc(order.orderNo)}</strong></p>
+  ${orderItemsTable(order)}
+  ${shippingAddressBlock(order)}
+  <div style="margin-top:16px;padding:12px 16px;background:#f9fafb;border-radius:8px;font-size:14px;">
+    <strong>Payment — cash on delivery.</strong> Please have €${money(order.total)} ready when your order arrives.
+  </div>
+  <p style="margin:20px 0 0;font-size:13px;color:#6b7280;">
+    Questions about your order?${supportEmail ? ` Contact us at <a href="mailto:${esc(supportEmail)}">${esc(supportEmail)}</a> and quote ${esc(order.orderNo)}.` : ` Just quote your order number ${esc(order.orderNo)}.`}
+  </p>`;
+
+const shopAlertBody = (order) => `
+  <p style="margin:0 0 16px;">A new online order has been placed.</p>
+  <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:12px;">
+    <tr><td style="padding:4px 0;color:#6b7280;width:110px;">Order</td><td style="padding:4px 0;font-weight:bold;">${esc(order.orderNo)}</td></tr>
+    <tr><td style="padding:4px 0;color:#6b7280;">Customer</td><td style="padding:4px 0;">${esc(order.customer?.name || "")}</td></tr>
+    <tr><td style="padding:4px 0;color:#6b7280;">Email</td><td style="padding:4px 0;">${esc(order.customer?.email || "")}</td></tr>
+    <tr><td style="padding:4px 0;color:#6b7280;">Phone</td><td style="padding:4px 0;">${esc(order.customer?.phone || "—")}</td></tr>
+    <tr><td style="padding:4px 0;color:#6b7280;">Payment</td><td style="padding:4px 0;">Cash on delivery</td></tr>
+  </table>
+  ${orderItemsTable(order)}
+  ${shippingAddressBlock(order)}`;
+
+const sendOrderEmails = async (store, order) => {
+  try {
+    const [shop, settings] = await Promise.all([
+      Store.findById(store).lean(),
+      getOrCreateSettings(store),
+    ]);
+    const supportEmail = settings?.footer?.supportEmail || "";
+    const fromName = shop?.name || "Online store";
+
+    if (order.customer?.email) {
+      await sendMail({
+        to: order.customer.email,
+        subject: `Your ${fromName} order ${order.orderNo} is confirmed`,
+        html: brandedHtml(shop, customerConfirmationBody(order, shop, supportEmail)),
+        fromName,
+        // Customer-facing → from the shop's own mailbox (store account).
+        account: "store",
+      });
+    }
+
+    const shopInbox = supportEmail || shop?.notificationsEmail || "";
+    if (shopInbox) {
+      await sendMail({
+        to: shopInbox,
+        subject: `New online order — ${order.orderNo} (€${money(order.total)})`,
+        html: brandedHtml(shop, shopAlertBody(order)),
+        fromName,
+        // Internal alert → system account (default), kept explicit for clarity.
+        account: "system",
+      });
+    }
+  } catch (error) {
+    console.error("[online] order emails failed:", error.message);
+  }
+};
+
 // Voucher-aware checkout. This supersedes the original implementation above
 // while preserving its guarded, shared-inventory decrement behavior.
 module.exports.placeOrder = async (req, res) => {
@@ -2586,6 +2956,10 @@ module.exports.placeOrder = async (req, res) => {
         entityId: order._id,
         ipAddress: req.ip,
       });
+      // Confirmation to the customer + alert to the shop, from the shop's own
+      // mailbox. Fire-and-forget so a slow or unconfigured mailbox never delays
+      // or fails a placed order.
+      sendOrderEmails(store, order).catch(() => {});
       return res.status(201).json({ message: "Order placed", order });
     } catch (error) {
       await Promise.all(

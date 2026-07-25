@@ -43,6 +43,14 @@ export const defaultStorefrontSettings: StorefrontSettings = {
     ctaLabel: "See the deals",
     limit: 4,
   },
+  business: { legalName: "", tradingName: "", companyNumber: "", vatNumber: "" },
+  policies: {
+    terms: "",
+    privacy: "",
+    shippingReturns: "",
+    refunds: "",
+    cookies: "",
+  },
 };
 
 const CatalogContext = createContext<CatalogValue>({

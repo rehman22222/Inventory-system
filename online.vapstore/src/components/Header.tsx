@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Search, ShoppingBag, Menu, X, ArrowRight, ChevronDown } from "lucide-react";
 import { productsByCategory, type Category, type CategorySlug } from "@/lib/catalog";
 import { useCatalog } from "@/lib/catalog-context";
@@ -10,6 +10,8 @@ import { useCart } from "@/lib/cart";
 export function Header() {
   const { categories, products, settings } = useCatalog();
   const { count, ready } = useCart();
+  const navigate = useNavigate();
+  const [query, setQuery] = useState("");
   const [hidden, setHidden] = useState(false);
   const [openSlug, setOpenSlug] = useState<CategorySlug | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -59,6 +61,11 @@ export function Header() {
   const primaryCategories = categories.slice(0, 7);
   const overflowCategories = categories.slice(7);
 
+  const submitSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    navigate({ to: "/search", search: { q: query.trim() } });
+  };
+
   return (
     <header
       className={`sticky top-0 z-50 border-b hair bg-background/95 backdrop-blur transition-transform duration-300 ${
@@ -103,20 +110,30 @@ export function Header() {
           </Link>
         </div>
 
-        <div className="hidden lg:flex items-center border hair">
+        <form onSubmit={submitSearch} className="hidden lg:flex items-center border hair">
           <Search className="ml-3 h-4 w-4 text-ink-muted shrink-0" />
           <input
             type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
             placeholder="Search devices, flavours, brands…"
+            aria-label="Search products"
             className="w-full bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-ink-muted"
           />
-          <button className="bg-ink px-4 py-2.5 text-primary-foreground font-mono text-[11px] uppercase tracking-widest">
+          <button
+            type="submit"
+            className="bg-ink px-4 py-2.5 text-primary-foreground font-mono text-[11px] uppercase tracking-widest"
+          >
             Search
           </button>
-        </div>
+        </form>
 
         <nav className="flex items-center gap-1">
-          <button aria-label="Search" className="lg:hidden p-2">
+          <button
+            aria-label="Search"
+            className="lg:hidden p-2"
+            onClick={() => navigate({ to: "/search", search: { q: "" } })}
+          >
             <Search className="h-5 w-5" />
           </button>
           <Link

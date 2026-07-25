@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { Category, HeroSlide, Product, StorefrontSettings } from "./catalog";
+import { cldAuto } from "./img";
 
 const defaultStorefrontSettings: StorefrontSettings = {
   social: { instagram: "", facebook: "", twitter: "", tiktok: "" },
@@ -29,6 +30,14 @@ const defaultStorefrontSettings: StorefrontSettings = {
       "Limited-time online prices selected by the CliffsOfPuff team. Stock updates from the same inventory used at the till.",
     ctaLabel: "See the deals",
     limit: 4,
+  },
+  business: { legalName: "", tradingName: "", companyNumber: "", vatNumber: "" },
+  policies: {
+    terms: "",
+    privacy: "",
+    shippingReturns: "",
+    refunds: "",
+    cookies: "",
   },
 };
 
@@ -104,6 +113,7 @@ type ApiProduct = {
   variants: {
     productId: string;
     label: string;
+    kind?: "flavour" | "colour" | "option";
     price: number;
     stock: number;
     image?: string;
@@ -133,15 +143,18 @@ const toProduct = (p: ApiProduct): Product => ({
   sale: p.sale,
   saleEndsAt: p.saleEndsAt ?? undefined,
   publishedAt: p.publishedAt ?? undefined,
-  image: p.image,
-  gallery: p.gallery || [],
+  image: cldAuto(p.image),
+  gallery: (p.gallery || []).map((image) => ({ ...image, url: cldAuto(image.url) })),
   tags: p.tags || [],
   short: p.short || "",
   description: p.description || "",
   specs: p.specs || {},
   flavor: p.flavour || undefined,
   optionLabel: p.optionLabel || undefined,
-  variants: p.variants || [],
+  variants: (p.variants || []).map((variant) => ({
+    ...variant,
+    image: variant.image ? cldAuto(variant.image) : variant.image,
+  })),
   stock: p.stock,
   featured: p.featured,
 });
@@ -154,7 +167,7 @@ const loadCategories = async (): Promise<Category[]> => {
     slug: c.slug,
     name: c.name,
     tagline: c.description || "",
-    image: c.image || "",
+    image: cldAuto(c.image || ""),
   }));
 };
 
@@ -183,6 +196,14 @@ const loadSettings = async (): Promise<StorefrontSettings> => {
       ...defaultStorefrontSettings.deals,
       ...(data.settings?.deals || {}),
     },
+    business: {
+      ...defaultStorefrontSettings.business,
+      ...(data.settings?.business || {}),
+    },
+    policies: {
+      ...defaultStorefrontSettings.policies,
+      ...(data.settings?.policies || {}),
+    },
   };
 };
 
@@ -206,7 +227,7 @@ export const getStorefront = createServerFn({ method: "GET" }).handler(
 
 export const getHero = createServerFn({ method: "GET" }).handler(async (): Promise<HeroSlide[]> => {
   const data = await get<{ slides: HeroSlide[] }>("/hero", { slides: [] });
-  return data.slides;
+  return data.slides.map((slide) => ({ ...slide, image: cldAuto(slide.image) }));
 });
 
 export const getCategoryPage = createServerFn({ method: "GET" })
@@ -293,6 +314,21 @@ export const validateStorefrontVoucher = createServerFn({ method: "POST" })
       message: string;
     }> => post("/vouchers/validate", data),
   );
+
+const contactSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  email: z.string().trim().email().max(200),
+  subject: z.string().trim().max(150).default(""),
+  message: z.string().trim().min(5).max(4000),
+  // Honeypot: must stay empty. Real users never see this field.
+  website: z.string().max(0).optional().default(""),
+});
+
+export type ContactInput = z.infer<typeof contactSchema>;
+
+export const submitContactMessage = createServerFn({ method: "POST" })
+  .validator((input: ContactInput) => contactSchema.parse(input))
+  .handler(async ({ data }): Promise<{ message: string }> => post("/contact", data));
 
 /** Used by the sitemap server route, which already runs on the server. */
 export const storefrontForSitemap = async () => {

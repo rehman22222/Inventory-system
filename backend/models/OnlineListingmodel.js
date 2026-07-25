@@ -50,6 +50,14 @@ const OnlineListingSchema = new mongoose.Schema(
           required: true,
         },
         label: { type: String, required: true, trim: true },
+        // What axis this option belongs to, so the storefront can group and
+        // label "Flavour" choices separately from "Colour" choices. "option" is
+        // the neutral fallback used by legacy/imported listings.
+        kind: {
+          type: String,
+          enum: ["flavour", "colour", "option"],
+          default: "option",
+        },
         priceOverride: { type: Number, default: null, min: 0 },
         image: { type: String, default: "" },
         externalId: { type: String, trim: true, default: "" },

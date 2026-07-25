@@ -32,6 +32,7 @@ import {
 } from "react-icons/fa6";
 import {
   createHeroSlide,
+  createInventoryProduct,
   createOnlineCategory,
   deleteHeroSlide,
   deleteOnlineCategory,
@@ -49,6 +50,7 @@ import {
   saveOnlineListing,
   saveOnlineSettings,
   saveOnlineVoucher,
+  searchInventoryProducts,
   setOrderStatus,
   toggleOnlineListing,
   updateHeroSlide,
@@ -499,6 +501,22 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
     featured: Boolean(listing.featured),
     listed: Boolean(listing.listed),
     tags: (listing.tags || []).filter((tag) => tag !== "sale"),
+    gallery: (listing.gallery || []).map((image) => ({
+      url: image.url,
+      publicId: image.publicId || "",
+      alt: image.alt || "",
+    })),
+    variants: (listing.variants || [])
+      .filter((variant) => variant.product)
+      .map((variant) => ({
+        product: variant.product?._id || variant.product,
+        productName: variant.product?.name || "",
+        productStock: Number(variant.product?.quantity ?? 0),
+        label: variant.label || "",
+        kind: variant.kind || "option",
+        image: variant.image || "",
+        priceOverride: variant.priceOverride ?? "",
+      })),
   });
   const set = (key, value) =>
     setDraft((current) => ({ ...current, [key]: value }));
@@ -510,11 +528,177 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
         : [...draft.tags, tag],
     );
 
+  const isUploading = useSelector((state) => state.onlineStore.isUploading);
+  const categoryState = useSelector((state) => state.category.getallCategory);
+  const inventoryCategories = Array.isArray(categoryState?.categoriesWithCount)
+    ? categoryState.categoriesWithCount
+    : Array.isArray(categoryState)
+      ? categoryState
+      : [];
+
+  // Inventory picker used when adding an option (flavour / colour). Each option
+  // must link to a real inventory product so its stock stays shared — either an
+  // existing product (optionally filtered by inventory category) or a brand-new
+  // one created inline. `optionKind` doubles as the open flag ("" = closed).
+  const [optionKind, setOptionKind] = useState("");
+  const [optionSearch, setOptionSearch] = useState("");
+  const [optionCategory, setOptionCategory] = useState("");
+  const [optionResults, setOptionResults] = useState([]);
+  const [creatingOption, setCreatingOption] = useState(false);
+  const [newOption, setNewOption] = useState({
+    name: "",
+    category: "",
+    price: "",
+    quantity: "",
+  });
+  // Which option row (index) currently has its "pick from product photos" tray
+  // open. null = none open.
+  const [pickPhotoFor, setPickPhotoFor] = useState(null);
+  const optionPickerOpen = Boolean(optionKind);
+
+  useEffect(() => {
+    if (!optionPickerOpen) return;
+    const timer = setTimeout(async () => {
+      const result = await dispatch(
+        searchInventoryProducts({
+          search: optionSearch,
+          category: optionCategory,
+        }),
+      );
+      if (!result.error) setOptionResults(result.payload.products || []);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [dispatch, optionSearch, optionCategory, optionPickerOpen]);
+
+  const openOptionPicker = (kind) => {
+    setOptionKind(kind);
+    setCreatingOption(false);
+    setOptionSearch("");
+    setOptionResults([]);
+    setNewOption({ name: "", category: "", price: "", quantity: "" });
+  };
+  const closeOptionPicker = () => setOptionKind("");
+
+  const uploadGallery = async (files) => {
+    const selected = Array.from(files || []);
+    if (!selected.length) return;
+    if (draft.gallery.length + selected.length > 8)
+      return toast.error("Maximum 8 photos");
+    const result = await dispatch(uploadListingImages(selected));
+    if (result.error) return toast.error(result.payload || "Upload failed");
+    set(
+      "gallery",
+      [
+        ...draft.gallery,
+        ...result.payload.map((image) => ({
+          url: image.url,
+          publicId: image.publicId || "",
+          alt: draft.webName,
+        })),
+      ].slice(0, 8),
+    );
+  };
+  const removeGalleryImage = (index) =>
+    set(
+      "gallery",
+      draft.gallery.filter((_, i) => i !== index),
+    );
+
+  const setVariantField = (index, key, value) =>
+    set(
+      "variants",
+      draft.variants.map((variant, i) =>
+        i === index ? { ...variant, [key]: value } : variant,
+      ),
+    );
+  const removeVariant = (index) =>
+    set(
+      "variants",
+      draft.variants.filter((_, i) => i !== index),
+    );
+  const addVariant = (product) => {
+    if (draft.variants.some((variant) => variant.product === product._id)) {
+      return toast.error("That product is already an option");
+    }
+    set("variants", [
+      ...draft.variants,
+      {
+        product: product._id,
+        productName: product.name,
+        productStock: Number(product.quantity ?? 0),
+        label: product.name,
+        kind: optionKind || "option",
+        image: "",
+        priceOverride: "",
+      },
+    ]);
+    closeOptionPicker();
+  };
+  const createOption = async () => {
+    const name = newOption.name.trim();
+    if (!name) return toast.error("Enter a product name");
+    if (Number(newOption.price) <= 0) return toast.error("Enter a valid price");
+    const result = await dispatch(
+      createInventoryProduct({
+        name,
+        category: newOption.category || undefined,
+        price: newOption.price,
+        quantity: newOption.quantity === "" ? 0 : newOption.quantity,
+      }),
+    );
+    if (result.error) {
+      return toast.error(result.payload || "Could not create the product");
+    }
+    toast.success(`${result.payload.name} added to inventory`);
+    addVariant(result.payload);
+  };
+  const uploadVariantImage = async (index, files) => {
+    const selected = Array.from(files || []);
+    if (!selected.length) return;
+    const result = await dispatch(uploadListingImages([selected[0]]));
+    if (result.error) return toast.error(result.payload || "Upload failed");
+    const image = result.payload[0];
+    if (image?.url) setVariantField(index, "image", image.url);
+  };
+
+  // Many imported products have per-flavour photos in the gallery, listed in the
+  // same order as the options, but with no flavour name in the filename to match
+  // on. The first photo is the product's main/hero image; the rest are the
+  // per-option shots. So we reserve the first photo and assign the REST to the
+  // options in order — one click links them all, and the owner just checks the
+  // thumbnails before saving. Only fills options that don't already have a photo.
+  const autofillFromGallery = () => {
+    if (draft.gallery.length < 2) {
+      return toast.error("Add at least two product photos first");
+    }
+    const used = new Set(draft.variants.map((v) => v.image).filter(Boolean));
+    const pool = draft.gallery
+      .slice(1)
+      .map((image) => image.url)
+      .filter((url) => !used.has(url));
+    if (!pool.length) {
+      return toast.error("No unused product photos to assign");
+    }
+    let poolIndex = 0;
+    set(
+      "variants",
+      draft.variants.map((variant) =>
+        variant.image || poolIndex >= pool.length
+          ? variant
+          : { ...variant, image: pool[poolIndex++] },
+      ),
+    );
+    toast.success("Photos filled in order — check the thumbnails, then Save");
+  };
+
   const save = async (event) => {
     event.preventDefault();
     if (!draft.category) return toast.error("Choose an online category");
     if (!useInventoryPrice && Number(draft.priceOverride) <= 0) {
       return toast.error("Enter a valid online price");
+    }
+    if (draft.variants.some((variant) => !variant.label.trim())) {
+      return toast.error("Every option needs a name (flavour or colour)");
     }
     const result = await dispatch(
       updateOnlineListing({
@@ -524,6 +708,21 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
         salePrice: draft.salePrice || null,
         saleStartsAt: draft.saleStartsAt || null,
         saleEndsAt: draft.saleEndsAt || null,
+        gallery: draft.gallery.map((image) => ({
+          url: image.url,
+          publicId: image.publicId || "",
+          alt: image.alt || draft.webName,
+        })),
+        variants: draft.variants.map((variant) => ({
+          product: variant.product,
+          label: variant.label.trim(),
+          kind: variant.kind || "option",
+          image: variant.image || "",
+          priceOverride:
+            variant.priceOverride === "" || variant.priceOverride == null
+              ? null
+              : Number(variant.priceOverride),
+        })),
         applyPriceToVariants: applyToOptions,
       }),
     );
@@ -662,6 +861,422 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
           />
         </Field>
       </div>
+
+      <div className="mt-4 rounded-lg border border-base-300 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h4 className="flex items-center gap-2 text-sm font-semibold">
+              <FiImage /> Product photos
+            </h4>
+            <p className="text-[11px] text-base-content/50">
+              Shown in the website gallery — the first photo is the main image.
+              Up to 8.
+            </p>
+          </div>
+          <label className="btn btn-xs gap-1">
+            <FiUpload /> Add photos
+            <input
+              hidden
+              multiple
+              type="file"
+              accept="image/*"
+              disabled={isUploading}
+              onChange={(event) => {
+                uploadGallery(event.target.files);
+                event.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+        {draft.gallery.length ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {draft.gallery.map((image, index) => (
+              <div key={`${image.url}-${index}`} className="relative">
+                <img
+                  className="h-16 w-16 rounded border object-cover"
+                  src={image.url}
+                  alt=""
+                />
+                {index === 0 && (
+                  <span className="badge badge-primary badge-xs absolute -left-1 -top-2">
+                    Main
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-circle btn-error btn-xs absolute -right-2 -top-2"
+                  onClick={() => removeGalleryImage(index)}
+                >
+                  <FiX />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 text-[11px] text-base-content/40">
+            No web photos yet — the till image is used as a fallback.
+          </p>
+        )}
+      </div>
+
+      <div className="mt-4 rounded-lg border border-base-300 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h4 className="flex items-center gap-2 text-sm font-semibold">
+              <FiTag /> Options — flavours &amp; colours
+            </h4>
+            <p className="text-[11px] text-base-content/50">
+              Each option links to an inventory product, so its stock stays
+              shared with the till. Add as many as you need; give each a name and
+              its own photo.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {draft.variants.length > 0 && draft.gallery.length > 0 && (
+              <button
+                type="button"
+                className="btn btn-xs gap-1"
+                title="Assign gallery photos to options in order"
+                onClick={autofillFromGallery}
+              >
+                <FiImage /> Auto-fill from photos
+              </button>
+            )}
+            <button
+              type="button"
+              className={`btn btn-xs gap-1 ${optionKind === "flavour" ? "btn-primary" : ""}`}
+              onClick={() => openOptionPicker("flavour")}
+            >
+              <FiPlus /> Add flavour
+            </button>
+            <button
+              type="button"
+              className={`btn btn-xs gap-1 ${optionKind === "colour" ? "btn-primary" : ""}`}
+              onClick={() => openOptionPicker("colour")}
+            >
+              <FiPlus /> Add colour
+            </button>
+          </div>
+        </div>
+
+        {optionPickerOpen && (
+          <div className="mt-3 rounded-lg border border-primary/30 bg-base-200/40 p-3">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-semibold capitalize">
+                Add {optionKind}
+                <span className="ml-1 font-normal text-base-content/50">
+                  — link an inventory product, or create a new one
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className={`btn btn-xs ${creatingOption ? "" : "btn-primary"}`}
+                  onClick={() => setCreatingOption(false)}
+                >
+                  Existing
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-xs ${creatingOption ? "btn-primary" : ""}`}
+                  onClick={() => setCreatingOption(true)}
+                >
+                  Create new
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  onClick={closeOptionPicker}
+                >
+                  <FiX />
+                </button>
+              </div>
+            </div>
+
+            {creatingOption ? (
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <input
+                  className="input input-sm input-bordered sm:col-span-2"
+                  placeholder={`New ${optionKind} product name (e.g. Strawberry)`}
+                  value={newOption.name}
+                  onChange={(event) =>
+                    setNewOption((current) => ({
+                      ...current,
+                      name: event.target.value,
+                    }))
+                  }
+                />
+                <select
+                  className="select select-sm select-bordered sm:col-span-2"
+                  value={newOption.category}
+                  onChange={(event) =>
+                    setNewOption((current) => ({
+                      ...current,
+                      category: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Inventory category (optional)</option>
+                  {inventoryCategories.map((category) => (
+                    <option key={category._id} value={category._id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  className="input input-sm input-bordered"
+                  placeholder="Price €"
+                  value={newOption.price}
+                  onChange={(event) =>
+                    setNewOption((current) => ({
+                      ...current,
+                      price: event.target.value,
+                    }))
+                  }
+                />
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  className="input input-sm input-bordered"
+                  placeholder="Opening stock"
+                  value={newOption.quantity}
+                  onChange={(event) =>
+                    setNewOption((current) => ({
+                      ...current,
+                      quantity: event.target.value,
+                    }))
+                  }
+                />
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm gap-1 sm:col-span-2"
+                  disabled={isActing}
+                  onClick={createOption}
+                >
+                  <FiPlus /> Create &amp; add as {optionKind}
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <input
+                    className="input input-sm input-bordered"
+                    autoFocus
+                    placeholder="Search inventory…"
+                    value={optionSearch}
+                    onChange={(event) => setOptionSearch(event.target.value)}
+                  />
+                  <select
+                    className="select select-sm select-bordered"
+                    value={optionCategory}
+                    onChange={(event) => setOptionCategory(event.target.value)}
+                  >
+                    <option value="">All inventory categories</option>
+                    {inventoryCategories.map((category) => (
+                      <option key={category._id} value={category._id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mt-2 max-h-56 overflow-auto">
+                  <table className="table table-xs">
+                    <tbody>
+                      {optionResults.map((product) => {
+                        const already = draft.variants.some(
+                          (variant) => variant.product === product._id,
+                        );
+                        return (
+                          <tr key={product._id}>
+                            <td>
+                              <div className="font-medium">{product.name}</div>
+                              <div className="text-[11px] text-base-content/50">
+                                {product.Category?.name || "—"} ·{" "}
+                                {product.quantity} in stock · €
+                                {money(product.Price)}
+                              </div>
+                            </td>
+                            <td className="text-right">
+                              <button
+                                type="button"
+                                className="btn btn-primary btn-xs"
+                                disabled={already}
+                                onClick={() => addVariant(product)}
+                              >
+                                {already ? "Added" : "Add"}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {!optionResults.length && (
+                        <tr>
+                          <td className="py-4 text-center text-[11px] text-base-content/40">
+                            {optionSearch || optionCategory
+                              ? "No products match — try Create new."
+                              : "Search your inventory, or switch to Create new."}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {draft.variants.length ? (
+          <div className="mt-3 space-y-2">
+            {draft.variants.map((variant, index) => (
+              <div
+                key={variant.product}
+                className="rounded-lg border border-base-300 bg-base-100 p-2"
+              >
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="relative">
+                    {variant.image ? (
+                      <img
+                        className="h-14 w-14 rounded border object-cover"
+                        src={variant.image}
+                        alt=""
+                      />
+                    ) : (
+                      <div className="grid h-14 w-14 place-items-center rounded border border-dashed text-base-content/30">
+                        <FiImage />
+                      </div>
+                    )}
+                    <label
+                      className="btn btn-circle btn-xs absolute -bottom-2 -right-2"
+                      title="Upload option photo"
+                    >
+                      <FiUpload />
+                      <input
+                        hidden
+                        type="file"
+                        accept="image/*"
+                        disabled={isUploading}
+                        onChange={(event) => {
+                          uploadVariantImage(index, event.target.files);
+                          event.target.value = "";
+                        }}
+                      />
+                    </label>
+                    {variant.image && (
+                      <button
+                        type="button"
+                        className="btn btn-circle btn-error btn-xs absolute -right-2 -top-2"
+                        onClick={() => setVariantField(index, "image", "")}
+                      >
+                        <FiX />
+                      </button>
+                    )}
+                  </div>
+                  <div className="min-w-[8rem] flex-1">
+                    <input
+                      className="input input-sm input-bordered w-full"
+                      placeholder="Option name (e.g. Strawberry, Blue)"
+                      value={variant.label}
+                      onChange={(event) =>
+                        setVariantField(index, "label", event.target.value)
+                      }
+                    />
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-base-content/50">
+                      <span className="badge badge-xs capitalize">
+                        {variant.kind || "option"}
+                      </span>
+                      <span>
+                        {variant.productName} · {variant.productStock} in shared
+                        stock
+                      </span>
+                      {draft.gallery.length > 0 && (
+                        <button
+                          type="button"
+                          className="text-primary underline"
+                          onClick={() =>
+                            setPickPhotoFor(
+                              pickPhotoFor === index ? null : index,
+                            )
+                          }
+                        >
+                          {pickPhotoFor === index
+                            ? "Close photos"
+                            : "Pick from product photos"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="w-28">
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      className="input input-sm input-bordered w-full"
+                      placeholder="Price €"
+                      value={variant.priceOverride}
+                      onChange={(event) =>
+                        setVariantField(
+                          index,
+                          "priceOverride",
+                          event.target.value,
+                        )
+                      }
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs text-error"
+                    onClick={() => removeVariant(index)}
+                  >
+                    <FiTrash2 />
+                  </button>
+                </div>
+
+                {pickPhotoFor === index && draft.gallery.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2 border-t border-base-200 pt-2">
+                    <span className="w-full text-[11px] text-base-content/50">
+                      Tap a photo to use it for “{variant.label || "this option"}”
+                      on the website.
+                    </span>
+                    {draft.gallery.map((image, galleryIndex) => (
+                      <button
+                        type="button"
+                        key={`${image.url}-${galleryIndex}`}
+                        title="Use this photo"
+                        onClick={() => {
+                          setVariantField(index, "image", image.url);
+                          setPickPhotoFor(null);
+                        }}
+                        className={`overflow-hidden rounded border ${
+                          image.url === variant.image
+                            ? "ring-2 ring-primary"
+                            : ""
+                        }`}
+                      >
+                        <img
+                          className="h-12 w-12 object-cover"
+                          src={image.url}
+                          alt=""
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 text-[11px] text-base-content/40">
+            No options yet. Without options the product sells as a single item
+            using its own stock.
+          </p>
+        )}
+      </div>
+
       <div className="mt-3 flex flex-wrap items-center gap-4 text-xs">
         {[
           ["new", "New this week"],
@@ -2237,7 +2852,28 @@ const BLANK_SETTINGS = {
   social: { instagram: "", facebook: "", twitter: "", tiktok: "" },
   footer: { description: "", supportEmail: "", supportPhone: "", address: "" },
   announcement: { primary: "", secondary: "" },
+  business: {
+    legalName: "",
+    tradingName: "",
+    companyNumber: "",
+    vatNumber: "",
+  },
+  policies: {
+    terms: "",
+    privacy: "",
+    shippingReturns: "",
+    refunds: "",
+    cookies: "",
+  },
 };
+
+const POLICY_FIELDS = [
+  ["terms", "Terms & Conditions", "/terms"],
+  ["privacy", "Privacy Policy", "/privacy"],
+  ["shippingReturns", "Shipping & Returns", "/shipping-returns"],
+  ["refunds", "Refund Policy", "/refunds"],
+  ["cookies", "Cookie Policy", "/cookies"],
+];
 
 const SOCIAL_CHANNELS = [
   {
@@ -2278,6 +2914,8 @@ function StorefrontSettings({ settings, isActing }) {
           ...BLANK_SETTINGS.announcement,
           ...(settings.announcement || {}),
         },
+        business: { ...BLANK_SETTINGS.business, ...(settings.business || {}) },
+        policies: { ...BLANK_SETTINGS.policies, ...(settings.policies || {}) },
       });
     }
   }, [settings]);
@@ -2397,6 +3035,75 @@ function StorefrontSettings({ settings, isActing }) {
               set("announcement", "secondary", event.target.value)
             }
           />
+        </div>
+      </section>
+      <section className="rounded-xl border bg-base-100 p-5">
+        <h3 className="font-display text-lg font-bold">Business &amp; legal</h3>
+        <p className="text-xs text-base-content/50">
+          Shown in the online store footer for transparency. Leave any field
+          blank if it does not apply to your business.
+        </p>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <Field label="Registered / legal name">
+            <input
+              className="input input-sm input-bordered"
+              placeholder="e.g. Cliffs Retail Ltd"
+              value={draft.business.legalName}
+              onChange={(event) =>
+                set("business", "legalName", event.target.value)
+              }
+            />
+          </Field>
+          <Field label="Trading name (if different)">
+            <input
+              className="input input-sm input-bordered"
+              placeholder="e.g. CliffsOfPuff"
+              value={draft.business.tradingName}
+              onChange={(event) =>
+                set("business", "tradingName", event.target.value)
+              }
+            />
+          </Field>
+          <Field label="Company registration number">
+            <input
+              className="input input-sm input-bordered"
+              placeholder="e.g. 123456"
+              value={draft.business.companyNumber}
+              onChange={(event) =>
+                set("business", "companyNumber", event.target.value)
+              }
+            />
+          </Field>
+          <Field label="VAT number">
+            <input
+              className="input input-sm input-bordered"
+              placeholder="e.g. IE1234567X"
+              value={draft.business.vatNumber}
+              onChange={(event) =>
+                set("business", "vatNumber", event.target.value)
+              }
+            />
+          </Field>
+        </div>
+      </section>
+      <section className="rounded-xl border bg-base-100 p-5">
+        <h3 className="font-display text-lg font-bold">Policies &amp; legal pages</h3>
+        <p className="text-xs text-base-content/50">
+          These appear on the online store and are linked in the footer. Starter
+          wording is provided — review and adapt it to your business. Use a line
+          starting with <code>## </code> for a section heading.
+        </p>
+        <div className="mt-4 space-y-4">
+          {POLICY_FIELDS.map(([key, label, path]) => (
+            <Field key={key} label={`${label} · ${path}`}>
+              <textarea
+                className="textarea textarea-bordered font-mono text-xs leading-relaxed"
+                rows={8}
+                value={draft.policies[key]}
+                onChange={(event) => set("policies", key, event.target.value)}
+              />
+            </Field>
+          ))}
         </div>
       </section>
       <div className="flex justify-end">

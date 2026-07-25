@@ -162,7 +162,7 @@ function Checkout() {
           <h1 className="mt-3 font-display text-4xl sm:text-6xl leading-none">Thank you.</h1>
           <p className="mt-6 text-ink-muted">
             Your order <strong className="text-ink">{confirmed.orderNo}</strong> has been received
-            and its stock is reserved in E360Pro.
+            and its stock has been reserved for you.
           </p>
           <div className="mt-6 border hair bg-surface p-5">
             <div className="font-mono text-[11px] uppercase tracking-widest text-ink-muted">

@@ -1,24 +1,15 @@
 import { Link } from "@tanstack/react-router";
-import { Star, ShoppingBag, Check } from "lucide-react";
+import { ShoppingBag, Check } from "lucide-react";
 import { useState } from "react";
 import type { Product } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/lib/cart";
-
-/* Stable pseudo-rating from the id so cards look populated and don't flicker.
- * Real ratings come later. */
-function ratingFor(id: string): { score: number; count: number } {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return { score: Math.round((4 + (h % 10) / 10) * 10) / 10, count: 8 + (h % 240) };
-}
 
 export function ProductCard({ product }: { product: Product }) {
   const { add } = useCart();
   const [added, setAdded] = useState(false);
   const onSale = !!product.compareAt;
   const off = onSale ? Math.round((1 - product.price / (product.compareAt || 1)) * 100) : 0;
-  const { score, count } = ratingFor(product.id);
   const outOfStock = product.stock <= 0;
   const priceUnavailable = product.price <= 0;
   const unavailable = outOfStock || priceUnavailable;
@@ -97,23 +88,6 @@ export function ProductCard({ product }: { product: Product }) {
         >
           {product.name}
         </Link>
-
-        {/* Rating */}
-        <div className="mt-2 flex items-center gap-1.5">
-          <span className="flex items-center gap-0.5 text-ink">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <Star
-                key={i}
-                className="h-3 w-3"
-                fill={i < Math.round(score) ? "currentColor" : "none"}
-                strokeWidth={i < Math.round(score) ? 0 : 1.5}
-              />
-            ))}
-          </span>
-          <span className="font-mono text-[10px] text-ink-muted">
-            {score} · {count}
-          </span>
-        </div>
 
         {/* Price */}
         <div className="mt-3 flex items-baseline gap-2">

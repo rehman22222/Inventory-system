@@ -40,6 +40,7 @@ export interface Product {
   variants: {
     productId: string;
     label: string;
+    kind?: "flavour" | "colour" | "option";
     price: number;
     stock: number;
     image?: string;
@@ -80,7 +81,34 @@ export interface StorefrontSettings {
     ctaLabel: string;
     limit: number;
   };
+  business: {
+    legalName: string;
+    tradingName: string;
+    companyNumber: string;
+    vatNumber: string;
+  };
+  policies: {
+    terms: string;
+    privacy: string;
+    shippingReturns: string;
+    refunds: string;
+    cookies: string;
+  };
 }
+
+/* Availability shown to shoppers is deliberately coarse. Exposing an exact
+ * "1 in stock" both looks broken on a shop that restocks constantly and invites
+ * the frustration of a basket item selling out mid-checkout. Below the low-stock
+ * threshold we nudge with urgency without publishing the precise figure. */
+export const LOW_STOCK_THRESHOLD = 5;
+
+export type Availability = { label: string; tone: "in" | "low" | "out" };
+
+export const availabilityOf = (stock: number): Availability => {
+  if (stock <= 0) return { label: "Out of stock", tone: "out" };
+  if (stock <= LOW_STOCK_THRESHOLD) return { label: "Low stock", tone: "low" };
+  return { label: "In stock", tone: "in" };
+};
 
 export interface HeroSlide {
   id: string;

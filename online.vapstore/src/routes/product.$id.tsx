@@ -4,7 +4,7 @@ import { Minus, Plus, ShieldCheck, Truck, RotateCcw, Check } from "lucide-react"
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
-import type { Product } from "@/lib/catalog";
+import { availabilityOf, type Product } from "@/lib/catalog";
 import { getProductPage } from "@/lib/catalog-api";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/lib/cart";
@@ -64,14 +64,51 @@ function ProductPage() {
   const activeProductId = selectedVariant?.productId || product.productId;
   const activePrice = selectedVariant?.price ?? product.price;
   const activeStock = selectedVariant?.stock ?? product.stock;
-  const activeImage = selectedVariant?.image || product.image;
-  const gallery = [activeImage, ...product.gallery.map((image) => image.url)].filter(
-    (url, index, urls) => Boolean(url) && urls.indexOf(url) === index,
+  // Options imported without their own image can often still be matched to one
+  // of the product's gallery photos by name (e.g. the "Cola" flavour ↔ a
+  // "cuba-cola.webp" gallery image). Display-only and conservative: it fires
+  // only when the option has no explicit image and only on an exact
+  // name-in-filename match, so it can never show the wrong flavour.
+  const normalizeName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const imageForVariant = (variant: Product["variants"][number]): string => {
+    if (variant.image) return variant.image;
+    const key = normalizeName(variant.label);
+    if (key.length < 4) return "";
+    const hit = product.gallery.find((image) =>
+      normalizeName(image.url.split("/").pop() || "").includes(key),
+    );
+    return hit?.url || "";
+  };
+  const activeImage =
+    (selectedVariant ? imageForVariant(selectedVariant) : "") || product.image;
+  // A manually clicked thumbnail wins until the shopper changes option; picking a
+  // different flavour/colour clears it so that option's own photo shows.
+  const [imageOverride, setImageOverride] = useState<string | null>(null);
+  const heroImage = imageOverride ?? activeImage;
+  // Every distinct picture: the option images sit alongside the gallery so a
+  // shopper can click any flavour/colour photo to open it.
+  const gallery = [
+    activeImage,
+    ...product.variants.map((variant) => variant.image),
+    ...product.gallery.map((image) => image.url),
+  ].filter(
+    (url, index, urls): url is string => Boolean(url) && urls.indexOf(url) === index,
   );
   const onSale = !!product.compareAt;
   const outOfStock = activeStock <= 0;
+  const availability = availabilityOf(activeStock);
   const priceUnavailable = activePrice <= 0;
   const unavailable = outOfStock || priceUnavailable;
+
+  // Options are grouped by kind so flavours and colours appear as separate
+  // choice rows, each with its own heading.
+  const variantGroups = (["flavour", "colour", "option"] as const)
+    .map((kind) => ({
+      kind,
+      label: kind === "option" ? product.optionLabel || "option" : kind,
+      items: product.variants.filter((variant) => (variant.kind || "option") === kind),
+    }))
+    .filter((group) => group.items.length > 0);
 
   const lineFor = () => ({
     id: `${product.id}::${activeProductId}`,
@@ -115,27 +152,34 @@ function ProductPage() {
         <span className="text-ink truncate">{product.name}</span>
       </div>
 
-      <section className="container-x pb-16 grid gap-10 lg:grid-cols-[1.1fr_1fr]">
+      <section className="container-x pb-12 grid gap-8 lg:grid-cols-[1fr_1fr]">
         {/* Gallery */}
-        <div className="grid gap-3">
-          <div className="border hair bg-surface aspect-square overflow-hidden relative">
-            <img src={activeImage} alt={product.name} className="h-full w-full object-cover" />
+        <div className="grid gap-3 lg:sticky lg:top-28 lg:self-start">
+          <div className="border hair bg-surface h-[320px] sm:h-[400px] lg:h-[460px] overflow-hidden relative">
+            <img src={heroImage} alt={product.name} className="h-full w-full object-cover" />
             {onSale && (
               <span className="absolute left-0 top-0 bg-[color:var(--sale)] text-primary-foreground font-mono text-[10px] uppercase tracking-widest px-2 py-1">
                 -{Math.round((1 - activePrice / (product.compareAt || 1)) * 100)}%
               </span>
             )}
           </div>
-          <div className="grid grid-cols-4 gap-3">
-            {gallery.slice(0, 4).map((image, i) => (
-              <div
-                key={image}
-                className={`border hair bg-surface aspect-square overflow-hidden ${i === 0 ? "outline outline-2 outline-ink" : ""}`}
-              >
-                <img src={image} alt="" className="h-full w-full object-cover" />
-              </div>
-            ))}
-          </div>
+          {gallery.length > 1 && (
+            <div className="grid grid-cols-4 gap-3">
+              {gallery.slice(0, 8).map((image) => (
+                <button
+                  type="button"
+                  key={image}
+                  onClick={() => setImageOverride(image)}
+                  aria-label="View this photo"
+                  className={`border hair bg-surface aspect-square overflow-hidden transition-opacity hover:opacity-90 ${
+                    image === heroImage ? "outline outline-2 outline-ink" : ""
+                  }`}
+                >
+                  <img src={image} alt="" className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Details */}
@@ -159,31 +203,36 @@ function ProductPage() {
             )}
           </div>
 
-          {product.variants.length > 0 ? (
-            <fieldset className="mt-8">
-              <legend className="eyebrow mb-2">Choose {product.optionLabel || "option"}</legend>
-              <div className="flex flex-wrap gap-2">
-                {product.variants.map((variant) => (
-                  <button
-                    type="button"
-                    key={variant.productId}
-                    onClick={() => {
-                      setSelectedProductId(variant.productId);
-                      setQty(1);
-                    }}
-                    disabled={variant.stock <= 0}
-                    className={`border hair px-3 py-2 font-display text-sm transition-colors ${
-                      variant.productId === activeProductId
-                        ? "bg-ink text-primary-foreground"
-                        : "hover:bg-accent hover:text-accent-foreground"
-                    } disabled:cursor-not-allowed disabled:opacity-40`}
-                  >
-                    {variant.label}
-                    {variant.stock <= 0 ? " · sold out" : ""}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
+          {variantGroups.length > 0 ? (
+            <div className="mt-8 space-y-5">
+              {variantGroups.map((group) => (
+                <fieldset key={group.kind}>
+                  <legend className="eyebrow mb-2">Choose {group.label}</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {group.items.map((variant) => (
+                      <button
+                        type="button"
+                        key={variant.productId}
+                        onClick={() => {
+                          setSelectedProductId(variant.productId);
+                          setQty(1);
+                          setImageOverride(null);
+                        }}
+                        disabled={variant.stock <= 0}
+                        className={`border hair px-3 py-2 font-display text-sm transition-colors ${
+                          variant.productId === activeProductId
+                            ? "bg-ink text-primary-foreground"
+                            : "hover:bg-accent hover:text-accent-foreground"
+                        } disabled:cursor-not-allowed disabled:opacity-40`}
+                      >
+                        {variant.label}
+                        {variant.stock <= 0 ? " · sold out" : ""}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              ))}
+            </div>
           ) : product.flavor ? (
             <div className="mt-8">
               <div className="eyebrow mb-2">Flavour</div>
@@ -246,7 +295,7 @@ function ProductPage() {
               ? "Visible in catalogue · contact the shop for price"
               : outOfStock
                 ? "Currently unavailable"
-                : `${activeStock} in stock · ships today`}
+                : `${availability.label} · ships today`}
           </div>
 
           <div className="mt-8 grid grid-cols-3 gap-3 border-y hair py-6">
@@ -266,7 +315,18 @@ function ProductPage() {
           <div className="mt-8">
             <div className="eyebrow mb-3">Specifications</div>
             <dl className="divide-y hair border-y hair">
-              {Object.entries(product.specs).map(([k, v]) => (
+              {Object.entries(product.specs)
+                .filter(([k]) => {
+                  // Hide developer/internal specs — shoppers only need the
+                  // availability line below, not our catalogue id or raw counts.
+                  const key = k.toLowerCase();
+                  return (
+                    !key.includes("catalogue") &&
+                    !key.includes("source") &&
+                    !key.includes("stock")
+                  );
+                })
+                .map(([k, v]) => (
                 <div
                   key={k}
                   className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-1 sm:gap-4 py-3"
@@ -279,9 +339,9 @@ function ProductPage() {
               ))}
               <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-1 sm:gap-4 py-3">
                 <dt className="font-mono text-[11px] uppercase tracking-widest text-ink-muted">
-                  In stock
+                  Availability
                 </dt>
-                <dd className="text-sm">{activeStock} units</dd>
+                <dd className="text-sm">{availability.label}</dd>
               </div>
             </dl>
           </div>
@@ -295,7 +355,7 @@ function ProductPage() {
       </section>
 
       {/* Related */}
-      <section className="border-t hair py-16">
+      <section className="border-t hair py-12">
         <div className="container-x">
           <h2 className="font-display text-3xl md:text-5xl leading-none tracking-tight mb-8">
             You may also like.

@@ -176,3 +176,15 @@
   text-transform: uppercase;
   color: var(--color-ink-muted);
 }
+
+@utility input-field {
+  width: 100%;
+  border: 1px solid var(--color-line);
+  background: var(--color-background);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  outline: none;
+  &:focus {
+    box-shadow: 0 0 0 2px var(--color-ink);
+  }
+}

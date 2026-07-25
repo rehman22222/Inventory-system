@@ -29,11 +29,13 @@ const {
   storefrontHero,
   validateStorefrontVoucher,
   placeOrder,
+  submitContactMessage,
 } = require("../controller/onlineStoreController");
 const {
   catalogue,
   importCategories,
   uploadListingImage,
+  createInventoryProduct,
 } = require("../controller/onlineStoreController");
 const {
   authmiddleware,
@@ -53,6 +55,8 @@ adminRouter.get("/summary", salesSummary);
 
 // The "Add product" picker: the whole inventory, searchable and filterable.
 adminRouter.get("/catalogue", catalogue);
+// Create a new inventory product inline (e.g. a brand-new flavour/colour).
+adminRouter.post("/inventory-products", createInventoryProduct);
 // Web-only photography, uploaded to its own Cloudinary folder.
 adminRouter.post("/upload", upload.array("images", 8), uploadListingImage);
 
@@ -125,5 +129,6 @@ storefrontRouter.get("/products/:slug", storefrontProduct);
 storefrontRouter.get("/hero", storefrontHero);
 storefrontRouter.post("/vouchers/validate", validateStorefrontVoucher);
 storefrontRouter.post("/orders", placeOrder);
+storefrontRouter.post("/contact", submitContactMessage);
 
 module.exports = { adminRouter, storefrontRouter };

@@ -45,6 +45,43 @@ export const getCatalogue = createAsyncThunk(
   },
 );
 
+// Search the inventory for options (flavours / colours). Returns the payload
+// directly to the caller (kept in the editor's local state) so it never fights
+// the shared `catalogue` slice the "Add product" picker uses.
+export const searchInventoryProducts = createAsyncThunk(
+  "online/inventory/search",
+  async ({ search = "", category = "", page = 1 } = {}, { rejectWithValue }) => {
+    try {
+      const qs = new URLSearchParams({ page: String(page), limit: "20" });
+      if (search) qs.set("search", search);
+      if (category) qs.set("category", category);
+      const { data } = await axiosInstance.get(
+        `online/catalogue?${qs.toString()}`,
+      );
+      return data;
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not search inventory"));
+    }
+  },
+);
+
+// Create a brand-new inventory product inline (e.g. a new flavour/colour that
+// the shop has never stocked). Returns the created product to the caller.
+export const createInventoryProduct = createAsyncThunk(
+  "online/inventory/create",
+  async (payload, { rejectWithValue }) => {
+    try {
+      const { data } = await axiosInstance.post(
+        "online/inventory-products",
+        payload,
+      );
+      return data.product;
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not create the product"));
+    }
+  },
+);
+
 // Upload a web-only picture; returns { url, publicId } to attach to a listing.
 export const uploadListingImages = createAsyncThunk(
   "online/upload",

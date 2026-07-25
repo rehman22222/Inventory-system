@@ -30,6 +30,22 @@ export function Footer() {
     { key: "tiktok", label: "TikTok", href: settings.social.tiktok, Icon: TikTokIcon },
   ].filter((item) => item.href);
 
+  const business = settings.business;
+  const businessBits = [
+    business.legalName || business.tradingName,
+    business.companyNumber && `Company no. ${business.companyNumber}`,
+    business.vatNumber && `VAT ${business.vatNumber}`,
+  ].filter(Boolean);
+
+  const legal = [
+    { to: "/terms" as const, label: "Terms" },
+    { to: "/privacy" as const, label: "Privacy" },
+    { to: "/shipping-returns" as const, label: "Shipping & Returns" },
+    { to: "/refunds" as const, label: "Refunds" },
+    { to: "/cookies" as const, label: "Cookies" },
+    { to: "/contact" as const, label: "Contact" },
+  ];
+
   return (
     <footer className="mt-16 overflow-hidden bg-ink text-primary-foreground">
       <div className="border-y border-primary-foreground/10 bg-primary-foreground/[0.025]">
@@ -37,7 +53,7 @@ export function Footer() {
           {[
             { Icon: Truck, title: "Free shipping", sub: "On orders over €50" },
             { Icon: Clock3, title: "Same-day dispatch", sub: "Fast local fulfilment" },
-            { Icon: ShieldCheck, title: "Authentic products", sub: "Stock shared with E360Pro" },
+            { Icon: ShieldCheck, title: "Authentic products", sub: "Genuine, sealed stock" },
           ].map(({ Icon, title, sub }) => (
             <div key={title} className="flex items-center gap-3 py-3.5 sm:px-5">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground">
@@ -154,9 +170,37 @@ export function Footer() {
             >
               View basket
             </Link>
+            <Link
+              to="/contact"
+              className="text-primary-foreground/65 transition-colors hover:text-accent"
+            >
+              Contact us
+            </Link>
           </div>
         </div>
       </div>
+
+      <div className="border-t border-primary-foreground/10">
+        <div className="container-x flex flex-wrap gap-x-5 gap-y-2 py-4 text-[12px]">
+          {legal.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className="text-primary-foreground/60 transition-colors hover:text-accent"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {businessBits.length > 0 && (
+        <div className="border-t border-primary-foreground/10">
+          <div className="container-x py-3 font-mono text-[10px] tracking-[0.05em] text-primary-foreground/45">
+            {businessBits.join("  ·  ")}
+          </div>
+        </div>
+      )}
 
       <div className="border-t border-primary-foreground/10">
         <div className="container-x flex flex-col gap-2 py-4 font-mono text-[9px] uppercase tracking-[0.15em] text-primary-foreground/40 sm:flex-row sm:items-center sm:justify-between">
