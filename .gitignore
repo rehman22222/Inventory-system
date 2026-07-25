@@ -2,5 +2,6 @@
 /tmp/
 /online-vapstore-hostinger-*.zip
 /online store artifact.pdf
-# Generated working artifacts (image audits/exports) — not source
+# Generated working artifacts (image audits/exports, email previews) — not source
 /*.csv
+/order-email-preview.html

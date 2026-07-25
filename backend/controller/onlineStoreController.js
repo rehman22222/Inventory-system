@@ -2694,18 +2694,168 @@ const shippingAddressBlock = (order) => {
     </div>`;
 };
 
-const customerConfirmationBody = (order, brand, supportEmail) => `
-  <p style="margin:0 0 8px;">Hi ${esc(order.customer?.name || "there")},</p>
-  <p style="margin:0 0 16px;">Thank you for your order with ${esc(brand?.name || "us")} — we've received it and it's now being prepared.</p>
-  <p style="margin:0 0 16px;font-size:16px;"><strong>Order ${esc(order.orderNo)}</strong></p>
-  ${orderItemsTable(order)}
-  ${shippingAddressBlock(order)}
-  <div style="margin-top:16px;padding:12px 16px;background:#f9fafb;border-radius:8px;font-size:14px;">
-    <strong>Payment — cash on delivery.</strong> Please have €${money(order.total)} ready when your order arrives.
-  </div>
-  <p style="margin:20px 0 0;font-size:13px;color:#6b7280;">
-    Questions about your order?${supportEmail ? ` Contact us at <a href="mailto:${esc(supportEmail)}">${esc(supportEmail)}</a> and quote ${esc(order.orderNo)}.` : ` Just quote your order number ${esc(order.orderNo)}.`}
-  </p>`;
+// A polished, self-contained order-confirmation email in the style real
+// e-commerce stores send: table-based layout with inline styles only (so it
+// renders in Gmail/Outlook/Apple Mail), branded header, order summary, delivery
+// + payment, next steps, and a footer with the shop's own contact/business/social
+// details. Everything is pulled from the online-store settings, so it's the
+// website's identity end to end.
+const professionalOrderEmail = (order, settings) => {
+  const INK = "#111827";
+  const ACCENT = "#b6f000"; // lime
+  const MUTED = "#6b7280";
+  const LINE = "#e5e7eb";
+  const business = settings?.business || {};
+  const footer = settings?.footer || {};
+  const social = settings?.social || {};
+  const brandName = business.tradingName || business.legalName || "Our Store";
+  const supportEmail = footer.supportEmail || "";
+  const firstName = String(order.customer?.name || "there").trim().split(/\s+/)[0];
+
+  const itemRows = (order.items || [])
+    .map(
+      (item) => `
+      <tr>
+        <td style="padding:14px 0;border-bottom:1px solid ${LINE};font-size:14px;font-weight:600;color:${INK};">
+          ${esc(item.name)}
+          ${item.brand ? `<div style="font-size:12px;font-weight:400;color:${MUTED};margin-top:2px;">${esc(item.brand)}</div>` : ""}
+        </td>
+        <td style="padding:14px 0;border-bottom:1px solid ${LINE};text-align:center;font-size:14px;color:${MUTED};">&times;${Number(item.quantity)}</td>
+        <td style="padding:14px 0;border-bottom:1px solid ${LINE};text-align:right;font-size:14px;font-weight:600;color:${INK};white-space:nowrap;">&euro;${money(item.lineTotal)}</td>
+      </tr>`,
+    )
+    .join("");
+
+  const totalRow = (label, value, opts = {}) => `
+    <tr>
+      <td style="padding:4px 0;font-size:${opts.big ? "15px" : "13px"};color:${opts.big ? INK : MUTED};${opts.big ? "font-weight:700;" : ""}">${esc(label)}</td>
+      <td style="padding:4px 0;text-align:right;font-size:${opts.big ? "20px" : "13px"};color:${INK};font-weight:${opts.big ? "800" : "600"};">${opts.neg ? "&minus;" : ""}&euro;${money(Math.abs(value))}</td>
+    </tr>`;
+
+  const a = order.shippingAddress || {};
+  const addressHtml =
+    [a.line1, a.line2, [a.city, a.region].filter(Boolean).join(", "), a.postcode, a.country]
+      .filter(Boolean)
+      .map(esc)
+      .join("<br>") || "&mdash;";
+
+  const socialLinks = [
+    social.instagram && ["Instagram", social.instagram],
+    social.facebook && ["Facebook", social.facebook],
+    social.twitter && ["X", social.twitter],
+    social.tiktok && ["TikTok", social.tiktok],
+  ]
+    .filter(Boolean)
+    .map(([label, href]) => `<a href="${esc(href)}" style="color:${MUTED};text-decoration:none;">${label}</a>`)
+    .join(" &nbsp;&middot;&nbsp; ");
+
+  const businessBits = [
+    business.legalName || business.tradingName,
+    business.companyNumber && `Company no. ${business.companyNumber}`,
+    business.vatNumber && `VAT ${business.vatNumber}`,
+  ]
+    .filter(Boolean)
+    .map(esc)
+    .join(" &middot; ");
+
+  const orderDate = new Date(order.createdAt || Date.now()).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+  return `<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:${INK};">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Order ${esc(order.orderNo)} confirmed &mdash; thank you for shopping with ${esc(brandName)}.</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:24px 12px;">
+      <tr><td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;">
+          <tr><td style="background:${INK};padding:28px 36px;">
+            <div style="font-size:23px;font-weight:800;letter-spacing:0.01em;color:#ffffff;">${esc(brandName)}</div>
+            <div style="height:3px;width:46px;background:${ACCENT};margin-top:11px;border-radius:2px;"></div>
+          </td></tr>
+
+          <tr><td style="padding:34px 36px 6px;">
+            <span style="display:inline-block;background:${ACCENT};color:${INK};font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.09em;padding:6px 13px;border-radius:100px;">Order confirmed</span>
+            <h1 style="margin:18px 0 8px;font-size:26px;line-height:1.2;color:${INK};">Thank you, ${esc(firstName)}!</h1>
+            <p style="margin:0;font-size:15px;line-height:1.6;color:${MUTED};">We&rsquo;ve received your order and it&rsquo;s now being prepared. Here&rsquo;s a summary of your purchase.</p>
+          </td></tr>
+
+          <tr><td style="padding:22px 36px 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:12px;">
+              <tr>
+                <td style="padding:15px 18px;font-size:11px;color:${MUTED};letter-spacing:0.04em;">ORDER NUMBER<br><span style="font-size:16px;color:${INK};font-weight:700;letter-spacing:0;">${esc(order.orderNo)}</span></td>
+                <td style="padding:15px 18px;font-size:11px;color:${MUTED};letter-spacing:0.04em;text-align:right;">ORDER DATE<br><span style="font-size:16px;color:${INK};font-weight:700;letter-spacing:0;">${orderDate}</span></td>
+              </tr>
+            </table>
+          </td></tr>
+
+          <tr><td style="padding:26px 36px 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${MUTED};border-bottom:2px solid ${INK};">Item</td>
+                <td style="padding-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${MUTED};border-bottom:2px solid ${INK};text-align:center;">Qty</td>
+                <td style="padding-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${MUTED};border-bottom:2px solid ${INK};text-align:right;">Total</td>
+              </tr>
+              ${itemRows}
+            </table>
+          </td></tr>
+
+          <tr><td style="padding:16px 36px 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              ${totalRow("Subtotal", order.subtotal)}
+              ${order.discount ? totalRow("Discount", order.discount, { neg: true }) : ""}
+              ${totalRow("Shipping", order.shipping)}
+              ${order.tax ? totalRow("Tax", order.tax) : ""}
+              <tr><td colspan="2" style="padding-top:8px;border-top:1px solid ${LINE};"></td></tr>
+              ${totalRow("Total", order.total, { big: true })}
+            </table>
+          </td></tr>
+
+          <tr><td style="padding:26px 36px 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td width="50%" valign="top" style="padding-right:12px;">
+                  <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${MUTED};margin-bottom:7px;">Delivery address</div>
+                  <div style="font-size:14px;line-height:1.6;color:${INK};">${esc(order.customer?.name || "")}<br>${addressHtml}</div>
+                </td>
+                <td width="50%" valign="top" style="padding-left:12px;">
+                  <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${MUTED};margin-bottom:7px;">Payment</div>
+                  <div style="font-size:14px;line-height:1.6;color:${INK};">Cash on delivery<br><span style="color:${MUTED};">Please have <strong style="color:${INK};">&euro;${money(order.total)}</strong> ready on arrival.</span></div>
+                </td>
+              </tr>
+            </table>
+          </td></tr>
+
+          <tr><td style="padding:26px 36px 0;">
+            <div style="background:#f9fafb;border-radius:12px;padding:16px 18px;font-size:14px;line-height:1.6;color:${MUTED};">
+              <strong style="color:${INK};">What happens next?</strong><br>
+              We&rsquo;re preparing your order for dispatch &mdash; same-day dispatch on in-stock items. It&rsquo;ll be on its way to you shortly.
+            </div>
+          </td></tr>
+
+          <tr><td style="padding:22px 36px 6px;">
+            <p style="margin:0;font-size:14px;line-height:1.6;color:${MUTED};">
+              Questions? ${supportEmail ? `Reply to this email or write to <a href="mailto:${esc(supportEmail)}" style="color:${INK};font-weight:600;text-decoration:none;">${esc(supportEmail)}</a>` : "just reply to this email"}${footer.supportPhone ? ` &middot; ${esc(footer.supportPhone)}` : ""}. Quote <strong style="color:${INK};">${esc(order.orderNo)}</strong>.
+            </p>
+          </td></tr>
+
+          <tr><td style="padding:24px 36px 30px;">
+            <div style="border-top:1px solid ${LINE};padding-top:22px;">
+              <div style="font-size:16px;font-weight:800;color:${INK};">${esc(brandName)}</div>
+              ${footer.address ? `<div style="font-size:12px;color:${MUTED};margin-top:5px;">${esc(footer.address)}</div>` : ""}
+              ${socialLinks ? `<div style="margin-top:11px;font-size:12px;">${socialLinks}</div>` : ""}
+              ${businessBits ? `<div style="font-size:11px;color:${MUTED};margin-top:11px;">${businessBits}</div>` : ""}
+              <div style="font-size:11px;color:${MUTED};margin-top:13px;line-height:1.5;">18+ only &middot; Contains nicotine, a highly addictive substance. You received this email to confirm your order.</div>
+            </div>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>`;
+};
 
 const shopAlertBody = (order) => `
   <p style="margin:0 0 16px;">A new online order has been placed.</p>
@@ -2744,7 +2894,7 @@ const sendOrderEmails = async (store, order) => {
       await sendMail({
         to: order.customer.email,
         subject: `Your ${brand.name} order ${order.orderNo} is confirmed`,
-        html: brandedHtml(brand, customerConfirmationBody(order, brand, supportEmail)),
+        html: professionalOrderEmail(order, settings),
         fromName: brand.name,
         // Customer-facing → from the store's own mailbox (store SMTP account).
         account: "store",
