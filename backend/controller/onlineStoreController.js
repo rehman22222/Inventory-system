@@ -2694,9 +2694,9 @@ const shippingAddressBlock = (order) => {
     </div>`;
 };
 
-const customerConfirmationBody = (order, shop, supportEmail) => `
+const customerConfirmationBody = (order, brand, supportEmail) => `
   <p style="margin:0 0 8px;">Hi ${esc(order.customer?.name || "there")},</p>
-  <p style="margin:0 0 16px;">Thank you for your order with ${esc(shop?.name || "us")} — we've received it and it's now being prepared.</p>
+  <p style="margin:0 0 16px;">Thank you for your order with ${esc(brand?.name || "us")} — we've received it and it's now being prepared.</p>
   <p style="margin:0 0 16px;font-size:16px;"><strong>Order ${esc(order.orderNo)}</strong></p>
   ${orderItemsTable(order)}
   ${shippingAddressBlock(order)}
@@ -2726,15 +2726,27 @@ const sendOrderEmails = async (store, order) => {
       getOrCreateSettings(store),
     ]);
     const supportEmail = settings?.footer?.supportEmail || "";
-    const fromName = shop?.name || "Online store";
+    // The ONLINE STORE's own identity — deliberately independent of the
+    // POS/inventory Store (which brands till receipts and reorder alerts). A
+    // shopper's confirmation carries the website brand + website contact, never
+    // the back-office name. Set from the online-store settings (Business & legal
+    // → Trading name, Footer & contact → address/phone).
+    const brand = {
+      name:
+        settings?.business?.tradingName ||
+        settings?.business?.legalName ||
+        "Online Store",
+      addressLines: settings?.footer?.address ? [settings.footer.address] : [],
+      phone: settings?.footer?.supportPhone || "",
+    };
 
     if (order.customer?.email) {
       await sendMail({
         to: order.customer.email,
-        subject: `Your ${fromName} order ${order.orderNo} is confirmed`,
-        html: brandedHtml(shop, customerConfirmationBody(order, shop, supportEmail)),
-        fromName,
-        // Customer-facing → from the shop's own mailbox (store account).
+        subject: `Your ${brand.name} order ${order.orderNo} is confirmed`,
+        html: brandedHtml(brand, customerConfirmationBody(order, brand, supportEmail)),
+        fromName: brand.name,
+        // Customer-facing → from the store's own mailbox (store SMTP account).
         account: "store",
       });
     }
@@ -2744,8 +2756,8 @@ const sendOrderEmails = async (store, order) => {
       await sendMail({
         to: shopInbox,
         subject: `New online order — ${order.orderNo} (€${money(order.total)})`,
-        html: brandedHtml(shop, shopAlertBody(order)),
-        fromName,
+        html: brandedHtml(brand, shopAlertBody(order)),
+        fromName: brand.name,
         // Internal alert → system account (default), kept explicit for clarity.
         account: "system",
       });
