@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkfrontend=self.webpackChunkfrontend||[]).push([[850],{5850(n,t,e){e.r(t);e(9950);var u=e(97),r=e(4414);const o=function(){return(0,u.A)({title:"About \u2014 E360 Inventory Suite",path:"/about",noindex:!0}),(0,r.jsx)("div",{children:"S"})};e.d(t,["default",0,o])}}]);
