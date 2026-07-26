@@ -155,8 +155,8 @@ function ProductPage() {
       <section className="container-x pb-12 grid gap-8 lg:grid-cols-[1fr_1fr]">
         {/* Gallery */}
         <div className="grid gap-3 lg:sticky lg:top-28 lg:self-start">
-          <div className="border hair bg-surface h-[320px] sm:h-[400px] lg:h-[460px] overflow-hidden relative">
-            <img src={heroImage} alt={product.name} className="h-full w-full object-cover" />
+          <div className="border hair bg-surface h-[320px] sm:h-[400px] lg:h-[460px] overflow-hidden relative p-4 sm:p-6">
+            <img src={heroImage} alt={product.name} className="h-full w-full object-contain" />
             {onSale && (
               <span className="absolute left-0 top-0 bg-[color:var(--sale)] text-primary-foreground font-mono text-[10px] uppercase tracking-widest px-2 py-1">
                 -{Math.round((1 - activePrice / (product.compareAt || 1)) * 100)}%
@@ -171,11 +171,11 @@ function ProductPage() {
                   key={image}
                   onClick={() => setImageOverride(image)}
                   aria-label="View this photo"
-                  className={`border hair bg-surface aspect-square overflow-hidden transition-opacity hover:opacity-90 ${
+                  className={`border hair bg-surface aspect-square overflow-hidden p-1.5 transition-opacity hover:opacity-90 ${
                     image === heroImage ? "outline outline-2 outline-ink" : ""
                   }`}
                 >
-                  <img src={image} alt="" className="h-full w-full object-cover" />
+                  <img src={image} alt="" className="h-full w-full object-contain" />
                 </button>
               ))}
             </div>
