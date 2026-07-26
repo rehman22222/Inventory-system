@@ -58,8 +58,46 @@ export function Header() {
       setMoreOpen(false);
     }, 120);
   };
-  const primaryCategories = categories.slice(0, 7);
-  const overflowCategories = categories.slice(7);
+  // "Priority+" nav: show as many categories as fit on ONE line, the rest go
+  // under "More". A hidden row (measureRef) is rendered at natural width so we
+  // can measure each item and work out how many fit the visible container.
+  const navRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [visibleCount, setVisibleCount] = useState(categories.length);
+
+  useEffect(() => {
+    const container = navRef.current;
+    const measure = measureRef.current;
+    if (!container || !measure) return;
+    const GAP = 20; // matches gap-5
+    const compute = () => {
+      const width = container.clientWidth;
+      if (!width) return;
+      const items = Array.from(measure.children) as HTMLElement[];
+      if (items.length < 2) return;
+      const homeW = items[0].offsetWidth;
+      const moreW = items[items.length - 1].offsetWidth;
+      let used = homeW;
+      let count = 0;
+      for (let i = 0; i < categories.length; i++) {
+        const w = items[1 + i]?.offsetWidth ?? 0;
+        const isLast = i === categories.length - 1;
+        const reserve = isLast ? 0 : moreW + GAP; // keep room for "More"
+        if (used + GAP + w + reserve <= width) {
+          used += GAP + w;
+          count += 1;
+        } else break;
+      }
+      setVisibleCount(count);
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [categories]);
+
+  const visibleCategories = categories.slice(0, visibleCount);
+  const overflowCategories = categories.slice(visibleCount);
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -153,46 +191,71 @@ export function Header() {
 
       {/* Category nav + mega menu */}
       <div className="hidden lg:block border-t hair" onMouseLeave={scheduleClose}>
-        <div className="container-x flex items-center gap-5 py-3">
-          <Link
-            to="/"
-            className="font-display text-[13px] uppercase tracking-widest hover:text-accent-foreground hover:bg-accent px-1"
-          >
-            Home
-          </Link>
-          {primaryCategories.map((c) => (
+        {/* The category names can be long ("… Ireland"), so the row scrolls
+            horizontally (scrollbar hidden) instead of overflowing the page. */}
+        <div className="container-x py-3 relative overflow-hidden">
+          {/* Visible row — measured to fit on one line. */}
+          <div ref={navRef} className="flex items-center gap-5 overflow-hidden">
             <Link
-              key={c.slug}
-              to="/category/$slug"
-              params={{ slug: c.slug }}
-              onMouseEnter={() => openMenu(c.slug)}
-              onFocus={() => openMenu(c.slug)}
-              aria-expanded={openSlug === c.slug}
-              className={`font-display text-[13px] uppercase tracking-widest whitespace-nowrap transition-colors ${
-                openSlug === c.slug
-                  ? "text-accent-foreground bg-accent px-1"
-                  : "text-ink-muted hover:text-ink"
-              }`}
+              to="/"
+              className="shrink-0 font-display text-[13px] uppercase tracking-widest whitespace-nowrap hover:text-accent-foreground hover:bg-accent px-1"
             >
-              {c.name}
+              Home
             </Link>
-          ))}
-          {overflowCategories.length > 0 && (
-            <button
-              type="button"
-              onMouseEnter={openMore}
-              onFocus={openMore}
-              aria-expanded={moreOpen}
-              className={`ml-auto inline-flex items-center gap-1 font-display text-[13px] uppercase tracking-widest whitespace-nowrap transition-colors ${
-                moreOpen ? "bg-accent px-1 text-accent-foreground" : "text-ink-muted hover:text-ink"
-              }`}
-            >
+            {visibleCategories.map((c) => (
+              <Link
+                key={c.slug}
+                to="/category/$slug"
+                params={{ slug: c.slug }}
+                onMouseEnter={() => openMenu(c.slug)}
+                onFocus={() => openMenu(c.slug)}
+                aria-expanded={openSlug === c.slug}
+                className={`shrink-0 font-display text-[13px] uppercase tracking-widest whitespace-nowrap transition-colors ${
+                  openSlug === c.slug
+                    ? "text-accent-foreground bg-accent px-1"
+                    : "text-ink-muted hover:text-ink"
+                }`}
+              >
+                {c.name}
+              </Link>
+            ))}
+            {overflowCategories.length > 0 && (
+              <button
+                type="button"
+                onMouseEnter={openMore}
+                onFocus={openMore}
+                aria-expanded={moreOpen}
+                className={`shrink-0 inline-flex items-center gap-1 font-display text-[13px] uppercase tracking-widest whitespace-nowrap transition-colors ${
+                  moreOpen ? "bg-accent px-1 text-accent-foreground" : "text-ink-muted hover:text-ink"
+                }`}
+              >
+                More
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform ${moreOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+            )}
+          </div>
+          {/* Hidden measurement row: every category at natural width. */}
+          <div
+            ref={measureRef}
+            aria-hidden
+            className="pointer-events-none invisible absolute left-0 top-0 flex items-center gap-5 whitespace-nowrap"
+          >
+            <span className="font-display text-[13px] uppercase tracking-widest px-1">Home</span>
+            {categories.map((c) => (
+              <span
+                key={c.slug}
+                className="font-display text-[13px] uppercase tracking-widest px-1"
+              >
+                {c.name}
+              </span>
+            ))}
+            <span className="inline-flex items-center gap-1 font-display text-[13px] uppercase tracking-widest px-1">
               More
-              <ChevronDown
-                className={`h-3.5 w-3.5 transition-transform ${moreOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-          )}
+              <span className="inline-block h-3.5 w-3.5" />
+            </span>
+          </div>
         </div>
 
         {openSlug && (

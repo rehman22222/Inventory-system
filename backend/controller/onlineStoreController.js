@@ -920,6 +920,22 @@ module.exports.updateListing = async (req, res) => {
       listing.categories = [...categoryIds];
     }
 
+    // Full multi-category membership. The product shows on every one of these
+    // category pages; the primary `category` above is always included.
+    if (Object.prototype.hasOwnProperty.call(req.body, "categories")) {
+      const requested = Array.isArray(req.body.categories) ? req.body.categories : [];
+      const valid = await OnlineCategory.find({
+        _id: { $in: requested.filter((id) => mongoose.isValidObjectId(id)) },
+        store,
+      }).select("_id");
+      const ids = new Set(valid.map((c) => String(c._id)));
+      if (listing.category) ids.add(String(listing.category));
+      listing.categories = [...ids];
+      if (!listing.category && listing.categories.length) {
+        listing.category = listing.categories[0];
+      }
+    }
+
     const textFields = [
       "webName",
       "brand",

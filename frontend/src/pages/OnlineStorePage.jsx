@@ -492,6 +492,7 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
     webName: listing.webName || listing.product?.name || "",
     brand: listing.brand || "",
     category: listing.category?._id || "",
+    categories: (listing.categories || []).map((c) => c._id || c),
     priceOverride: listing.priceOverride ?? listing.product?.Price ?? "",
     salePrice: listing.salePrice ?? "",
     saleStartsAt: toLocalDateTime(listing.saleStartsAt),
@@ -785,6 +786,39 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
               </option>
             ))}
           </select>
+        </Field>
+        <Field label="Also show in (extra categories)" className="md:col-span-2">
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => {
+              const isPrimary = draft.category === category._id;
+              const checked = isPrimary || draft.categories.includes(category._id);
+              return (
+                <label
+                  key={category._id}
+                  className={`flex cursor-pointer items-center gap-1.5 rounded border px-2 py-1 text-xs ${
+                    checked ? "border-primary bg-primary/10" : "border-base-300"
+                  } ${isPrimary ? "opacity-70" : ""}`}
+                >
+                  <input
+                    type="checkbox"
+                    className="checkbox checkbox-xs"
+                    checked={checked}
+                    disabled={isPrimary}
+                    onChange={() =>
+                      set(
+                        "categories",
+                        draft.categories.includes(category._id)
+                          ? draft.categories.filter((id) => id !== category._id)
+                          : [...draft.categories, category._id],
+                      )
+                    }
+                  />
+                  {category.name}
+                  {isPrimary ? " · primary" : ""}
+                </label>
+              );
+            })}
+          </div>
         </Field>
       </div>
       <div className="mt-3 rounded-lg bg-base-200/70 p-3">

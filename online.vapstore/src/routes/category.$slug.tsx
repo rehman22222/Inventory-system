@@ -1,9 +1,12 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
-import type { Category, Product } from "@/lib/catalog";
+import { FilterSidebar } from "@/components/FilterSidebar";
+import { brandsOf, type Category, type Product } from "@/lib/catalog";
 import { getCategoryPage } from "@/lib/catalog-api";
+import { useProductFilters, type Sort } from "@/lib/useProductFilters";
 
 export const Route = createFileRoute("/category/$slug")({
   component: CategoryPage,
@@ -52,6 +55,10 @@ function CategoryPage() {
     category: Category;
     products: Product[];
   };
+  const brands = useMemo(() => brandsOf(products), [products]);
+  const filters = useProductFilters(products, category.slug);
+  const list = filters.filtered;
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -98,11 +105,65 @@ function CategoryPage() {
         </div>
       </section>
 
-      <section className="container-x py-12 md:py-16">
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {products.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
+      <section className="container-x py-10 md:py-14 grid gap-8 lg:grid-cols-[240px_1fr]">
+        <button
+          onClick={() => setFiltersOpen((v) => !v)}
+          aria-expanded={filtersOpen}
+          className="lg:hidden flex items-center justify-between border hair px-4 py-3 font-display text-xs uppercase tracking-widest"
+        >
+          <span>
+            Filters
+            {filters.activeCount > 0 && (
+              <span className="ml-2 bg-accent text-accent-foreground px-1.5 py-0.5 font-mono text-[10px]">
+                {filters.activeCount}
+              </span>
+            )}
+          </span>
+          <span className="font-mono text-[11px]">{filtersOpen ? "Close ✕" : "Open +"}</span>
+        </button>
+
+        <FilterSidebar
+          filters={filters}
+          categories={[]}
+          brands={brands}
+          showCategory={false}
+          open={filtersOpen}
+        />
+
+        <div>
+          <div className="flex items-center justify-between border-b hair pb-4 mb-6">
+            <div className="font-mono text-[11px] uppercase tracking-widest text-ink-muted">
+              {list.length} results
+            </div>
+            <label className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest">
+              Sort
+              <select
+                value={filters.state.sort}
+                onChange={(e) => filters.set.setSort(e.target.value as Sort)}
+                className="border hair bg-background px-2 py-1 font-mono text-[11px] uppercase tracking-widest"
+              >
+                <option value="featured">Featured</option>
+                <option value="new">Newest</option>
+                <option value="price-asc">Price ↑</option>
+                <option value="price-desc">Price ↓</option>
+              </select>
+            </label>
+          </div>
+
+          {list.length === 0 ? (
+            <div className="border hair p-10 text-center">
+              <div className="font-display text-2xl">No products match.</div>
+              <button onClick={filters.reset} className="mt-4 inline-block btn-outline">
+                Reset filters
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
+              {list.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

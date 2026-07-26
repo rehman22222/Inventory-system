@@ -1,7 +1,13 @@
 /outputs/
 /tmp/
 /online-vapstore-hostinger-*.zip
+/*.zip
 /online store artifact.pdf
-# Generated working artifacts (image audits/exports, email previews) — not source
+# Generated working artifacts (image audits/exports, email previews, data
+# backups) — not source
 /*.csv
 /order-email-preview.html
+/rename-*.json
+/product-name-backup.json
+/product-category-backup.json
+/unmatched-final.json

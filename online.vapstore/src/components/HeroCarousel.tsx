@@ -10,7 +10,7 @@ import {
   ShieldCheck,
   Package,
 } from "lucide-react";
-import type { HeroSlide } from "@/lib/catalog";
+import { availabilityOf, type HeroSlide } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
 
 const AUTOPLAY_MS = 6000;
@@ -232,9 +232,10 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
 
                 {/* RIGHT — product showcase */}
                 <div className="relative min-w-0">
-                  {/* Rotated burst badge. On small screens it sits top-RIGHT so
-                      it can't cover the product's own badges on the left. */}
-                  <div className="absolute -top-3 -right-3 md:-top-2 md:left-[-1.5rem] md:right-auto z-20 grid place-items-center h-20 w-20 md:h-24 md:w-24 bg-ink text-primary-foreground border-2 border-accent rotate-[-8deg]">
+                  {/* Rotated burst badge. Kept top-RIGHT on every size so it can
+                      never cover the eyebrow / "In stock" badges that sit on the
+                      image's top-left. */}
+                  <div className="absolute -top-3 -right-3 md:-top-4 md:-right-4 z-20 grid place-items-center h-20 w-20 md:h-24 md:w-24 bg-ink text-primary-foreground border-2 border-accent rotate-[-8deg]">
                     <div className="text-center leading-none">
                       <div className="font-mono text-[8px] md:text-[9px] uppercase tracking-widest text-accent">
                         {s.burst.top}
@@ -260,8 +261,8 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                       className="aspect-[4/3] w-full object-cover pointer-events-none lg:aspect-[16/10]"
                     />
 
-                    <div className="absolute left-3 top-3 flex flex-col gap-2">
-                      <span className="font-mono text-[10px] uppercase tracking-widest bg-accent text-accent-foreground px-2 py-1">
+                    <div className="absolute left-3 top-3 z-10 flex max-w-[calc(100%-4.5rem)] flex-col items-start gap-2">
+                      <span className="max-w-full truncate font-mono text-[10px] uppercase tracking-widest bg-accent text-accent-foreground px-2 py-1">
                         ● {s.eyebrow}
                       </span>
                       <span className="font-mono text-[10px] uppercase tracking-widest bg-ink text-primary-foreground px-2 py-1">
@@ -278,7 +279,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                           {s.product?.name}
                         </div>
                         <div className="mt-1.5 font-mono text-[10px] uppercase tracking-widest text-primary-foreground/50">
-                          {s.product ? `${s.product.stock} in stock` : ""}
+                          {s.product ? availabilityOf(s.product.stock).label : ""}
                         </div>
                       </div>
                       <div className="flex w-full items-baseline gap-3 sm:w-auto sm:shrink-0 sm:flex-col sm:items-end sm:gap-0 sm:text-right">
