@@ -22,6 +22,13 @@ const money = (value) => Math.round(Number(value || 0) * 100) / 100;
 const FREE_SHIPPING_THRESHOLD = 50; // fallback default when settings unset
 const SHIPPING_FLAT = 4.99; // fallback default when settings unset
 
+// Human-facing order number: a branded prefix plus a 1000-based sequence, so
+// even the first web orders read like an established store (the same #1001
+// convention Shopify uses) rather than exposing a raw "1".
+const ORDER_NO_PREFIX = "CP";
+const ORDER_NO_BASE = 1000;
+const formatOrderNo = (seq) => `${ORDER_NO_PREFIX}-${ORDER_NO_BASE + Number(seq)}`;
+
 // Shipping charged for an order of `amount`, using the shop's configured rate
 // (Admin → Online store → Settings → Shipping) with the constants above as a
 // safe fallback. Free at or above the threshold.
@@ -2746,7 +2753,7 @@ module.exports.placeOrderLegacy = async (req, res) => {
     // silently destroy stock.
     let order;
     try {
-      const orderNo = `WEB-${await nextSequence("onlineOrder")}`;
+      const orderNo = formatOrderNo(await nextSequence("onlineOrder"));
 
       order = await OnlineOrder.create({
         store,
@@ -3679,7 +3686,7 @@ module.exports.placeOrder = async (req, res) => {
 
     let order;
     try {
-      const orderNo = `WEB-${await nextSequence("onlineOrder")}`;
+      const orderNo = formatOrderNo(await nextSequence("onlineOrder"));
       order = await OnlineOrder.create({
         store,
         orderNo,
