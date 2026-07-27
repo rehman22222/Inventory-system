@@ -84,7 +84,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "CliffsOfPuff is an independent vape shop. Pod kits, mods, disposables, nic salts and premium e-liquid. Same-day dispatch nationwide.",
+          "CliffsOfPuff is an independent vape shop. Pod kits, mods, disposables, nic salts and premium e-liquid. Fast dispatch nationwide.",
       },
       { name: "author", content: "CliffsOfPuff" },
       { property: "og:title", content: "CliffsOfPuff — Premium Vape Store" },

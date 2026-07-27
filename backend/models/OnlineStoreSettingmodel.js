@@ -160,7 +160,7 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
     // the free-shipping threshold; orders at or above `freeThreshold` ship free.
     shipping: {
       flatRate: { type: Number, default: 4.99, min: 0 },
-      freeThreshold: { type: Number, default: 50, min: 0 },
+      freeThreshold: { type: Number, default: 100, min: 0 },
     },
     // The trust badges shown on every product page (and echoed in the shipping
     // copy). Editable so the owner keeps them true to how they actually trade —

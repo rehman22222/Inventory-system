@@ -26,7 +26,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "CliffsOfPuff — Premium Vape Store" },
       {
         property: "og:description",
-        content: "Pod kits, mods, disposables and premium e-liquid. Same-day dispatch nationwide.",
+        content: "Pod kits, mods, disposables and premium e-liquid. Fast dispatch nationwide.",
       },
     ],
   }),

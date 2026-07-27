@@ -218,7 +218,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                   <div className="grid grid-cols-2 gap-x-5 gap-y-2 border-t border-primary-foreground/15 pt-4 font-mono text-[10px] uppercase tracking-widest sm:grid-cols-4">
                     {[
                       { icon: Truck, label: "Free shipping" },
-                      { icon: Clock, label: "Same-day dispatch" },
+                      { icon: Clock, label: "Fast dispatch" },
                       { icon: ShieldCheck, label: "100% authentic" },
                       { icon: Package, label: "Discreet packaging" },
                     ].map((v, k) => (

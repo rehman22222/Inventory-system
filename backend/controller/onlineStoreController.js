@@ -19,7 +19,7 @@ const { sendMail, brandedHtml, esc } = require("../libs/mailer");
 // Same rounding the till uses, so a web total and a counter total can never
 // disagree by a stray fraction of a cent.
 const money = (value) => Math.round(Number(value || 0) * 100) / 100;
-const FREE_SHIPPING_THRESHOLD = 50; // fallback default when settings unset
+const FREE_SHIPPING_THRESHOLD = 100; // fallback default when settings unset
 const SHIPPING_FLAT = 4.99; // fallback default when settings unset
 
 // Human-facing order number: a branded prefix plus a 1000-based sequence, so

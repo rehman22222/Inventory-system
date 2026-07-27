@@ -3095,7 +3095,7 @@ const BLANK_SETTINGS = {
   social: { instagram: "", facebook: "", twitter: "", tiktok: "" },
   footer: { description: "", supportEmail: "", supportPhone: "", address: "" },
   announcement: { primary: "", secondary: "" },
-  shipping: { flatRate: 4.99, freeThreshold: 50 },
+  shipping: { flatRate: 4.99, freeThreshold: 100 },
   promises: {
     dispatch: "Fast dispatch",
     returnsDays: 14,

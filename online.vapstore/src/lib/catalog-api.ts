@@ -22,7 +22,7 @@ const defaultStorefrontSettings: StorefrontSettings = {
     primary: "Free shipping over €50 · Fast dispatch",
     secondary: "18+ only · Nicotine warning",
   },
-  shipping: { flatRate: 4.99, freeThreshold: 50 },
+  shipping: { flatRate: 4.99, freeThreshold: 100 },
   promises: {
     dispatch: "Fast dispatch",
     returnsDays: 14,

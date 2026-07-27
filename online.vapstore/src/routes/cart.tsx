@@ -188,7 +188,7 @@ function Cart() {
             {/* Reassurance */}
             <div className="mt-4 grid gap-3">
               {[
-                { icon: Truck, label: "Same-day dispatch before 5 PM" },
+                { icon: Truck, label: `${settings.promises.dispatch} on in-stock orders` },
                 { icon: ShieldCheck, label: "100% authentic, sealed products" },
                 { icon: Lock, label: "Inventory checked before confirmation" },
               ].map((v, i) => (

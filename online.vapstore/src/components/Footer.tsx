@@ -51,8 +51,12 @@ export function Footer() {
       <div className="border-y border-primary-foreground/10 bg-primary-foreground/[0.025]">
         <div className="container-x grid divide-y divide-primary-foreground/10 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           {[
-            { Icon: Truck, title: "Free shipping", sub: "On orders over €50" },
-            { Icon: Clock3, title: "Same-day dispatch", sub: "Fast local fulfilment" },
+            {
+              Icon: Truck,
+              title: "Free shipping",
+              sub: `On orders over €${settings.shipping.freeThreshold}`,
+            },
+            { Icon: Clock3, title: settings.promises.dispatch, sub: "Fast local fulfilment" },
             { Icon: ShieldCheck, title: "Authentic products", sub: "Genuine, sealed stock" },
           ].map(({ Icon, title, sub }) => (
             <div key={title} className="flex items-center gap-3 py-3.5 sm:px-5">
@@ -209,7 +213,7 @@ export function Footer() {
             <span className="h-1.5 w-1.5 rounded-full bg-accent" />
             Contains nicotine · Highly addictive substance
           </span>
-          <span>18+ only · EUR storefront</span>
+          <span>18+ only</span>
         </div>
       </div>
     </footer>
