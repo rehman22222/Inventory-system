@@ -22,10 +22,16 @@ const {
   listOrders,
   updateOrderStatus,
   salesSummary,
+  listReviews,
+  updateReview,
+  deleteReview,
   storefrontCategories,
   storefrontSettings,
   storefrontProducts,
   storefrontProduct,
+  storefrontProductReviews,
+  storefrontReviewContext,
+  submitStorefrontReview,
   storefrontHero,
   validateStorefrontVoucher,
   placeOrder,
@@ -89,6 +95,10 @@ adminRouter.delete("/hero/:id", deleteHeroSlide);
 adminRouter.get("/orders", listOrders);
 adminRouter.patch("/orders/:id/status", updateOrderStatus);
 
+adminRouter.get("/reviews", listReviews);
+adminRouter.patch("/reviews/:id", updateReview);
+adminRouter.delete("/reviews/:id", deleteReview);
+
 /* ── Storefront router — /api/storefront ─────────────────────────────────────
  * Called server-to-server by the website's SSR layer, never from a shopper's
  * browser. A shared key stands in for a session.
@@ -126,6 +136,9 @@ storefrontRouter.get("/categories", storefrontCategories);
 storefrontRouter.get("/settings", storefrontSettings);
 storefrontRouter.get("/products", storefrontProducts);
 storefrontRouter.get("/products/:slug", storefrontProduct);
+storefrontRouter.get("/products/:slug/reviews", storefrontProductReviews);
+storefrontRouter.get("/reviews/context", storefrontReviewContext);
+storefrontRouter.post("/reviews", submitStorefrontReview);
 storefrontRouter.get("/hero", storefrontHero);
 storefrontRouter.post("/vouchers/validate", validateStorefrontVoucher);
 storefrontRouter.post("/orders", placeOrder);

@@ -163,6 +163,45 @@ export const deleteOnlineCategory = createAsyncThunk(
   },
 );
 
+// ── Reviews ─────────────────────────────────────────────────────────────────
+export const getOnlineReviews = createAsyncThunk(
+  "online/reviews/get",
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await axiosInstance.get("online/reviews");
+      return data.reviews;
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not load reviews"));
+    }
+  },
+);
+
+export const updateOnlineReview = createAsyncThunk(
+  "online/reviews/update",
+  async ({ id, status }, { rejectWithValue }) => {
+    try {
+      const { data } = await axiosInstance.patch(`online/reviews/${id}`, {
+        status,
+      });
+      return { id, status: data.review.status };
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not update the review"));
+    }
+  },
+);
+
+export const deleteOnlineReview = createAsyncThunk(
+  "online/reviews/delete",
+  async (id, { rejectWithValue }) => {
+    try {
+      await axiosInstance.delete(`online/reviews/${id}`);
+      return id;
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not delete the review"));
+    }
+  },
+);
+
 // ── Listings ────────────────────────────────────────────────────────────────
 export const getOnlineListings = createAsyncThunk(
   "online/listings/get",
@@ -383,6 +422,7 @@ const initialState = {
   settings: null,
   orders: [],
   pendingOrders: 0,
+  reviews: [],
   // The picker's paged view of the inventory catalogue.
   catalogue: { products: [], total: 0, page: 1, pages: 1 },
   isLoading: false,
@@ -456,6 +496,19 @@ const onlineStoreSlice = createSlice({
       })
       .addCase(deleteOnlineCategory.fulfilled, (s, a) => {
         s.categories = s.categories.filter((c) => c._id !== a.payload);
+      })
+
+      // Reviews
+      .addCase(getOnlineReviews.fulfilled, (s, a) => {
+        s.reviews = a.payload;
+      })
+      .addCase(updateOnlineReview.fulfilled, (s, a) => {
+        s.reviews = s.reviews.map((r) =>
+          r._id === a.payload.id ? { ...r, status: a.payload.status } : r,
+        );
+      })
+      .addCase(deleteOnlineReview.fulfilled, (s, a) => {
+        s.reviews = s.reviews.filter((r) => r._id !== a.payload);
       })
 
       // Listings

@@ -1,6 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import type { Category, HeroSlide, Product, StorefrontSettings } from "./catalog";
+import type {
+  Category,
+  HeroSlide,
+  Product,
+  Review,
+  ReviewSummary,
+  StorefrontSettings,
+} from "./catalog";
 import { cldAuto } from "./img";
 
 const defaultStorefrontSettings: StorefrontSettings = {
@@ -12,8 +19,15 @@ const defaultStorefrontSettings: StorefrontSettings = {
     address: "",
   },
   announcement: {
-    primary: "Free shipping over €50 · Same-day dispatch",
+    primary: "Free shipping over €50 · Fast dispatch",
     secondary: "18+ only · Nicotine warning",
+  },
+  shipping: { flatRate: 4.99, freeThreshold: 50 },
+  promises: {
+    dispatch: "Fast dispatch",
+    returnsDays: 14,
+    authentic: true,
+    authenticLabel: "100% authentic",
   },
   newThisWeek: {
     enabled: true,
@@ -127,6 +141,7 @@ type ApiProduct = {
   publishedAt: string | null;
   stock: number;
   featured: boolean;
+  rating?: { average: number; count: number };
 };
 
 const toProduct = (p: ApiProduct): Product => ({
@@ -157,17 +172,25 @@ const toProduct = (p: ApiProduct): Product => ({
   })),
   stock: p.stock,
   featured: p.featured,
+  rating: p.rating || { average: 0, count: 0 },
 });
 
 const loadCategories = async (): Promise<Category[]> => {
   const data = await get<{
-    categories: { slug: string; name: string; description: string; image: string }[];
+    categories: {
+      slug: string;
+      name: string;
+      description: string;
+      image: string;
+      parent?: string | null;
+    }[];
   }>("/categories", { categories: [] });
   return data.categories.map((c) => ({
     slug: c.slug,
     name: c.name,
     tagline: c.description || "",
     image: cldAuto(c.image || ""),
+    parentSlug: c.parent || null,
   }));
 };
 
@@ -187,6 +210,14 @@ const loadSettings = async (): Promise<StorefrontSettings> => {
     announcement: {
       ...defaultStorefrontSettings.announcement,
       ...(data.settings?.announcement || {}),
+    },
+    shipping: {
+      ...defaultStorefrontSettings.shipping,
+      ...(data.settings?.shipping || {}),
+    },
+    promises: {
+      ...defaultStorefrontSettings.promises,
+      ...(data.settings?.promises || {}),
     },
     newThisWeek: {
       ...defaultStorefrontSettings.newThisWeek,
@@ -329,6 +360,62 @@ export type ContactInput = z.infer<typeof contactSchema>;
 export const submitContactMessage = createServerFn({ method: "POST" })
   .validator((input: ContactInput) => contactSchema.parse(input))
   .handler(async ({ data }): Promise<{ message: string }> => post("/contact", data));
+
+/* ── Reviews ───────────────────────────────────────────────────────────────*/
+
+export const getProductReviews = createServerFn({ method: "GET" })
+  .validator((slug: string) => String(slug))
+  .handler(
+    async ({
+      data: slug,
+    }): Promise<{ reviews: Review[]; summary: ReviewSummary }> =>
+      get(`/products/${encodeURIComponent(slug)}/reviews`, {
+        reviews: [],
+        summary: { average: 0, count: 0, breakdown: {} },
+      }),
+  );
+
+const reviewContextSchema = z.object({
+  order: z.string().trim().min(1).max(60),
+  token: z.string().trim().min(1).max(128),
+});
+export type ReviewContextInput = z.infer<typeof reviewContextSchema>;
+
+export interface ReviewContext {
+  /** ok = items to review; done = all reviewed; invalid = bad link; not_delivered = too early. */
+  state: "ok" | "done" | "invalid" | "not_delivered";
+  customerName: string;
+  orderNo: string;
+  items: { productId: string; listingId: string; slug: string; name: string; image: string }[];
+}
+
+export const getReviewContext = createServerFn({ method: "GET" })
+  .validator((input: ReviewContextInput) => reviewContextSchema.parse(input))
+  .handler(async ({ data }): Promise<ReviewContext> => {
+    const qs = `?order=${encodeURIComponent(data.order)}&token=${encodeURIComponent(data.token)}`;
+    return get<ReviewContext>(`/reviews/context${qs}`, {
+      state: "invalid",
+      customerName: "",
+      orderNo: data.order,
+      items: [],
+    });
+  });
+
+const submitReviewSchema = z.object({
+  order: z.string().trim().min(1).max(60),
+  token: z.string().trim().min(1).max(128),
+  productId: z.string().trim().min(1).max(60),
+  rating: z.number().int().min(1).max(5),
+  title: z.string().trim().max(120).default(""),
+  body: z.string().trim().max(2000).default(""),
+});
+export type SubmitReviewInput = z.infer<typeof submitReviewSchema>;
+
+export const submitReview = createServerFn({ method: "POST" })
+  .validator((input: SubmitReviewInput) => submitReviewSchema.parse(input))
+  .handler(async ({ data }): Promise<{ message: string; id: string }> =>
+    post("/reviews", data),
+  );
 
 /** Used by the sitemap server route, which already runs on the server. */
 export const storefrontForSitemap = async () => {

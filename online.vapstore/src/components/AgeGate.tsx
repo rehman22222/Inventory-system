@@ -8,32 +8,15 @@ import {
 } from "react";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import logo from "@/assets/logo-cop.png";
+import { getCookie, setCookie } from "@/lib/cookies";
+import { getSessionId, SESSION_TTL_SECONDS } from "@/lib/session";
 
-const CONSENT_STORAGE_KEY = "cliffsofpuff-age-consent-v1";
-const CONSENT_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
+// Consent lives in a first-party cookie tied to the visitor's session id, and
+// both expire together after 24 hours — so age is confirmed once per 24h session.
+const CONSENT_COOKIE = "cop_age_ok";
 
-type StoredConsent = {
-  accepted: true;
-  expiresAt: number;
-};
-
-function hasValidStoredConsent() {
-  try {
-    const stored = window.localStorage.getItem(CONSENT_STORAGE_KEY);
-    if (!stored) return false;
-
-    const consent = JSON.parse(stored) as Partial<StoredConsent>;
-    if (consent.accepted === true && Number(consent.expiresAt) > Date.now()) {
-      return true;
-    }
-
-    window.localStorage.removeItem(CONSENT_STORAGE_KEY);
-  } catch {
-    // Storage can be unavailable in strict privacy modes. The visitor can
-    // still confirm their age for the current browser session.
-  }
-
-  return false;
+function hasValidConsent(sessionId: string) {
+  return getCookie(CONSENT_COOKIE) === sessionId;
 }
 
 export function AgeGate({ children }: { children: ReactNode }) {
@@ -43,7 +26,10 @@ export function AgeGate({ children }: { children: ReactNode }) {
   const checkboxRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (hasValidStoredConsent()) setAccepted(true);
+    // Ensure a session id exists (creates the cookie on first visit), then skip
+    // the gate if this session already confirmed 18+ within the last 24h.
+    const sid = getSessionId();
+    if (hasValidConsent(sid)) setAccepted(true);
   }, []);
 
   useEffect(() => {
@@ -91,15 +77,9 @@ export function AgeGate({ children }: { children: ReactNode }) {
     event.preventDefault();
     if (!confirmed) return;
 
-    const consent: StoredConsent = {
-      accepted: true,
-      expiresAt: Date.now() + CONSENT_LIFETIME_MS,
-    };
-    try {
-      window.localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(consent));
-    } catch {
-      // Session-only acceptance is still allowed if persistent storage is blocked.
-    }
+    // Bind the consent to the session id and cache both for 24h.
+    const sid = getSessionId();
+    setCookie(CONSENT_COOKIE, sid, SESSION_TTL_SECONDS);
     setAccepted(true);
   };
 
@@ -181,7 +161,7 @@ export function AgeGate({ children }: { children: ReactNode }) {
                   >
                     I am under 18 — leave this site
                   </a>
-                  <span>Remembered for 30 days</span>
+                  <span>Remembered for 24 hours</span>
                 </div>
               </div>
             </div>

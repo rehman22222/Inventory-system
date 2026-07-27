@@ -12,6 +12,8 @@ export interface Category {
   name: string;
   tagline: string;
   image: string;
+  /** Slug of the parent category, or null for a top-level category. */
+  parentSlug?: CategorySlug | null;
 }
 
 export interface Product {
@@ -47,6 +49,24 @@ export interface Product {
   }[];
   stock: number;
   featured?: boolean;
+  /** Verified-purchase review summary. `count` 0 when nobody has reviewed yet. */
+  rating?: { average: number; count: number };
+}
+
+export interface Review {
+  id: string;
+  name: string;
+  rating: number;
+  title: string;
+  body: string;
+  verified: boolean;
+  createdAt: string;
+}
+
+export interface ReviewSummary {
+  average: number;
+  count: number;
+  breakdown: Record<string, number>;
 }
 
 export interface StorefrontSettings {
@@ -65,6 +85,18 @@ export interface StorefrontSettings {
   announcement: {
     primary: string;
     secondary: string;
+  };
+  /** Checkout shipping, set by the shop owner in admin. */
+  shipping: {
+    flatRate: number;
+    freeThreshold: number;
+  };
+  /** Trust badges on the product page, set by the shop owner in admin. */
+  promises: {
+    dispatch: string;
+    returnsDays: number;
+    authentic: boolean;
+    authenticLabel: string;
   };
   newThisWeek: {
     enabled: boolean;
@@ -106,7 +138,7 @@ export type Availability = { label: string; tone: "in" | "low" | "out" };
 
 export const availabilityOf = (stock: number): Availability => {
   if (stock <= 0) return { label: "Out of stock", tone: "out" };
-  if (stock <= LOW_STOCK_THRESHOLD) return { label: "Low stock", tone: "low" };
+  if (stock <= LOW_STOCK_THRESHOLD) return { label: "Limited stock", tone: "low" };
   return { label: "In stock", tone: "in" };
 };
 
@@ -139,6 +171,17 @@ export interface HeroSlide {
 
 export const productsByCategory = (products: Product[], slug: CategorySlug) =>
   products.filter((p) => p.category === slug || p.categories.includes(slug));
+
+/* ── Category hierarchy. `parentSlug` is set by the backend; a category with no
+ *    parent (or one that points at a missing/hidden parent) is top-level. ──── */
+
+export const topLevelCategories = (categories: Category[]) => {
+  const known = new Set(categories.map((c) => c.slug));
+  return categories.filter((c) => !c.parentSlug || !known.has(c.parentSlug));
+};
+
+export const childCategories = (categories: Category[], parentSlug: CategorySlug) =>
+  categories.filter((c) => c.parentSlug === parentSlug);
 
 export const saleProducts = (products: Product[]) => products.filter((p) => !!p.compareAt);
 

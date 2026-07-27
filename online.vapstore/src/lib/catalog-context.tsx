@@ -24,8 +24,15 @@ export const defaultStorefrontSettings: StorefrontSettings = {
     address: "",
   },
   announcement: {
-    primary: "Free shipping over €50 · Same-day dispatch",
+    primary: "Free shipping over €50 · Fast dispatch",
     secondary: "18+ only · Nicotine warning",
+  },
+  shipping: { flatRate: 4.99, freeThreshold: 50 },
+  promises: {
+    dispatch: "Fast dispatch",
+    returnsDays: 14,
+    authentic: true,
+    authenticLabel: "100% authentic",
   },
   newThisWeek: {
     enabled: true,

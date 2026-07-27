@@ -14,6 +14,7 @@ import { CartProvider } from "../lib/cart";
 import { CatalogProvider } from "../lib/catalog-context";
 import { getStorefront } from "../lib/catalog-api";
 import { AgeGate } from "../components/AgeGate";
+import { CookieConsent } from "../components/CookieConsent";
 
 function NotFoundComponent() {
   return (
@@ -142,6 +143,7 @@ function RootComponent() {
           <AgeGate>
             {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
             <Outlet />
+            <CookieConsent />
           </AgeGate>
         </CartProvider>
       </CatalogProvider>

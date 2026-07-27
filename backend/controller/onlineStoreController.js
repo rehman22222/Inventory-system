@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const mongoose = require("mongoose");
 const OnlineCategory = require("../models/OnlineCategorymodel");
 const OnlineListing = require("../models/OnlineListingmodel");
@@ -5,6 +6,7 @@ const OnlineHeroSlide = require("../models/OnlineHeroSlidemodel");
 const OnlineOrder = require("../models/OnlineOrdermodel");
 const OnlineVoucher = require("../models/OnlineVouchermodel");
 const OnlineStoreSetting = require("../models/OnlineStoreSettingmodel");
+const OnlineReview = require("../models/OnlineReviewmodel");
 const Product = require("../models/Productmodel");
 const Sale = require("../models/Salesmodel");
 const StockTransaction = require("../models/StockTranscationmodel");
@@ -17,8 +19,17 @@ const { sendMail, brandedHtml, esc } = require("../libs/mailer");
 // Same rounding the till uses, so a web total and a counter total can never
 // disagree by a stray fraction of a cent.
 const money = (value) => Math.round(Number(value || 0) * 100) / 100;
-const FREE_SHIPPING_THRESHOLD = 50;
-const SHIPPING_FLAT = 4.99;
+const FREE_SHIPPING_THRESHOLD = 50; // fallback default when settings unset
+const SHIPPING_FLAT = 4.99; // fallback default when settings unset
+
+// Shipping charged for an order of `amount`, using the shop's configured rate
+// (Admin → Online store → Settings → Shipping) with the constants above as a
+// safe fallback. Free at or above the threshold.
+const shippingFor = (settings, amount) => {
+  const flat = Number(settings?.shipping?.flatRate ?? SHIPPING_FLAT);
+  const free = Number(settings?.shipping?.freeThreshold ?? FREE_SHIPPING_THRESHOLD);
+  return amount >= free ? 0 : Math.round(flat * 100) / 100;
+};
 
 /* ───────────────────────────────────────────────────────────────────────────
  * Tenant scope.
@@ -149,8 +160,36 @@ const publicListing = (l) => {
     // Live from the shared ledger — the same number the till reads.
     stock,
     featured: l.featured,
+    // Verified-purchase review summary, attached by the caller (0/0 if none).
+    rating: l.rating || { average: 0, count: 0 },
   };
 };
+
+// Published-review summary per listing for a store, as
+// { listingId -> { average, count } }. One aggregation feeds both the product
+// page and the listing grids so stars can render without an N+1.
+async function ratingByListing(store, listingIds = null) {
+  const match = { store, status: "published" };
+  if (listingIds) match.listing = { $in: listingIds };
+  const rows = await OnlineReview.aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: "$listing",
+        average: { $avg: "$rating" },
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+  const map = new Map();
+  for (const r of rows) {
+    map.set(String(r._id), {
+      average: Math.round((r.average || 0) * 10) / 10,
+      count: r.count,
+    });
+  }
+  return map;
+}
 
 const requestError = (statusCode, message, extra = {}) =>
   Object.assign(new Error(message), { statusCode, ...extra });
@@ -403,6 +442,20 @@ module.exports.createCategory = async (req, res) => {
         .status(400)
         .json({ message: "A category with this slug already exists" });
 
+    // Optional parent: must be a real category in this shop.
+    let parent = null;
+    if (req.body.parent) {
+      if (!mongoose.isValidObjectId(req.body.parent))
+        return res.status(400).json({ message: "Invalid parent category" });
+      const parentCat = await OnlineCategory.findOne({
+        _id: req.body.parent,
+        store,
+      }).select("_id");
+      if (!parentCat)
+        return res.status(400).json({ message: "Parent category not found" });
+      parent = parentCat._id;
+    }
+
     const category = await OnlineCategory.create({
       store,
       name: name.trim(),
@@ -410,6 +463,7 @@ module.exports.createCategory = async (req, res) => {
       description,
       image,
       sortWeight,
+      parent,
     });
     await logActivity({
       action: "Online Category Created",
@@ -427,6 +481,27 @@ module.exports.createCategory = async (req, res) => {
   }
 };
 
+// All descendant category ids of `rootId` within a shop (children, grandchildren
+// and deeper). Used to keep the parent hierarchy acyclic and to gather every
+// product that sits under a parent category.
+async function collectDescendantIds(store, rootId) {
+  const all = await OnlineCategory.find({ store }).select("_id parent").lean();
+  const childrenOf = new Map();
+  for (const c of all) {
+    const p = c.parent ? String(c.parent) : "";
+    if (!childrenOf.has(p)) childrenOf.set(p, []);
+    childrenOf.get(p).push(String(c._id));
+  }
+  const out = [];
+  const stack = [...(childrenOf.get(String(rootId)) || [])];
+  while (stack.length) {
+    const id = stack.pop();
+    out.push(id);
+    for (const child of childrenOf.get(id) || []) stack.push(child);
+  }
+  return out;
+}
+
 module.exports.updateCategory = async (req, res) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id))
@@ -436,6 +511,32 @@ module.exports.updateCategory = async (req, res) => {
     if (updates.slug || updates.name)
       updates.slug = slugify(updates.slug || updates.name);
     delete updates.store;
+
+    // Re-parenting: validate the new parent and refuse any move that would form
+    // a cycle (a category cannot become its own descendant, nor its own parent).
+    if ("parent" in updates) {
+      if (!updates.parent) {
+        updates.parent = null;
+      } else {
+        if (!mongoose.isValidObjectId(updates.parent))
+          return res.status(400).json({ message: "Invalid parent category" });
+        if (String(updates.parent) === String(req.params.id))
+          return res
+            .status(400)
+            .json({ message: "A category cannot be its own parent" });
+        const parentCat = await OnlineCategory.findOne({
+          _id: updates.parent,
+          store,
+        }).select("_id");
+        if (!parentCat)
+          return res.status(400).json({ message: "Parent category not found" });
+        const descendants = await collectDescendantIds(store, req.params.id);
+        if (descendants.includes(String(updates.parent)))
+          return res.status(400).json({
+            message: "Cannot nest a category under one of its own sub-categories",
+          });
+      }
+    }
 
     const category = await OnlineCategory.findOneAndUpdate(
       { _id: req.params.id, store },
@@ -466,6 +567,17 @@ module.exports.deleteCategory = async (req, res) => {
     if (inUse > 0) {
       return res.status(400).json({
         message: `${inUse} product(s) are still in this category — move them first, or switch the category off instead.`,
+      });
+    }
+
+    // Don't orphan sub-categories: a parent must be emptied of children first.
+    const childCount = await OnlineCategory.countDocuments({
+      store,
+      parent: req.params.id,
+    });
+    if (childCount > 0) {
+      return res.status(400).json({
+        message: `${childCount} sub-categor${childCount === 1 ? "y is" : "ies are"} still nested under this one — move or remove them first.`,
       });
     }
 
@@ -1531,6 +1643,9 @@ module.exports.updateStoreSettings = async (req, res) => {
   try {
     const store = await storeId();
     const settings = await getOrCreateSettings(store);
+    if (Object.prototype.hasOwnProperty.call(req.body, "logo")) {
+      settings.logo = String(req.body.logo || "").trim();
+    }
     const social = req.body.social || {};
     for (const platform of Object.keys(SOCIAL_HOSTS)) {
       if (Object.prototype.hasOwnProperty.call(social, platform)) {
@@ -1554,6 +1669,40 @@ module.exports.updateStoreSettings = async (req, res) => {
         settings.announcement[key] = String(announcement[key] || "").trim();
       }
     }
+    const shipping = req.body.shipping || {};
+    if (!settings.shipping) settings.shipping = {};
+    for (const key of ["flatRate", "freeThreshold"]) {
+      if (Object.prototype.hasOwnProperty.call(shipping, key)) {
+        settings.shipping[key] = Math.max(0, Number(shipping[key]) || 0);
+      }
+    }
+    settings.markModified("shipping");
+    const promises = req.body.promises || {};
+    // `promises` is a newer field: on settings docs created before it existed it
+    // is only a hydrated default, so ensure the object is real before writing.
+    if (!settings.promises) settings.promises = {};
+    for (const [key, maxLength] of [
+      ["dispatch", 40],
+      ["authenticLabel", 40],
+    ]) {
+      if (Object.prototype.hasOwnProperty.call(promises, key)) {
+        settings.promises[key] = String(promises[key] || "")
+          .trim()
+          .slice(0, maxLength);
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(promises, "returnsDays")) {
+      settings.promises.returnsDays = Math.max(
+        0,
+        Math.min(365, Math.round(Number(promises.returnsDays) || 0)),
+      );
+    }
+    if (Object.prototype.hasOwnProperty.call(promises, "authentic")) {
+      settings.promises.authentic = Boolean(promises.authentic);
+    }
+    // Mongoose doesn't reliably flag sub-path edits on a defaulted nested
+    // object; mark it so the whole `promises` object is actually persisted.
+    settings.markModified("promises");
     const newThisWeek = req.body.newThisWeek || {};
     if (Object.prototype.hasOwnProperty.call(newThisWeek, "enabled")) {
       settings.newThisWeek.enabled = Boolean(newThisWeek.enabled);
@@ -1829,7 +1978,9 @@ module.exports.updateOrderStatus = async (req, res) => {
       const transitions = {
         pending_payment: ["paid", "cancelled"],
         paid: ["processing", "cancelled", "refunded"],
-        processing: ["shipped", "cancelled", "refunded"],
+        // A small COD shop fulfils in one step, so processing can go straight to
+        // delivered; "shipped" stays available for anyone who tracks that leg.
+        processing: ["shipped", "delivered", "cancelled", "refunded"],
         shipped: ["delivered", "refunded"],
         delivered: ["refunded"],
         cancelled: [],
@@ -1872,7 +2023,10 @@ module.exports.updateOrderStatus = async (req, res) => {
             status: "completed",
             source: "online",
           })),
-          { session },
+          // `ordered: true` is required by Mongoose to create MULTIPLE docs in a
+          // session — without it, any order with 2+ items throws and the whole
+          // "mark delivered" fails.
+          { session, ordered: true },
         );
         order.sales = saleRows.map((sale) => sale._id);
         order.sale = saleRows[0]?._id || null;
@@ -1947,7 +2101,8 @@ module.exports.updateOrderStatus = async (req, res) => {
             status: "cancelled",
             source: "refund",
           })),
-          { session },
+          // Same Mongoose rule: multiple refund rows in a session need this.
+          { session, ordered: true },
         );
         order.payment.status = "refunded";
         order.refundRecordedAt = new Date();
@@ -1979,8 +2134,28 @@ module.exports.updateOrderStatus = async (req, res) => {
       }
     }
     emit(req, "onlineOrderChanged", { orderNo: order.orderNo, status });
+    // Once delivered, invite the customer to review what they bought. Fires for
+    // ANY payment method (COD today, online payment later) — delivery, not
+    // payment, is what makes a review meaningful. Best effort: a mail hiccup
+    // must never fail the status change, and the guard sends it at most once.
+    if (status === "delivered" && !order.reviewRequestedAt) {
+      console.log(
+        `[reviews] order ${order.orderNo} delivered — sending review request email…`,
+      );
+      sendReviewRequestEmail(order).catch((error) =>
+        console.error("[reviews] request email failed:", error.message),
+      );
+    }
     return res.status(200).json({ message: `Order marked ${status}`, order });
   } catch (error) {
+    // Log the real cause: a generic "Could not update order" toast otherwise
+    // hides why a delivered/paid transition failed.
+    if (!error.statusCode) {
+      console.error(
+        `[orders] status update failed (order ${req.params.id} -> ${req.body?.status}):`,
+        error,
+      );
+    }
     return res
       .status(error.statusCode || 500)
       .json({
@@ -2106,6 +2281,10 @@ module.exports.storefrontCategories = async (req, res) => {
     const cats = await OnlineCategory.find({ store, active: true })
       .sort({ sortWeight: 1, name: 1 })
       .lean();
+    // Resolve each parent to its slug so the storefront (which is slug-centric)
+    // can build the tree without a second lookup. A parent that is itself hidden
+    // is treated as top-level so its children don't vanish from the nav.
+    const slugById = new Map(cats.map((c) => [String(c._id), c.slug]));
     return res.status(200).json({
       categories: cats.map((c) => ({
         id: String(c._id),
@@ -2114,6 +2293,7 @@ module.exports.storefrontCategories = async (req, res) => {
         description: c.description,
         image: c.image,
         sortWeight: c.sortWeight,
+        parent: (c.parent && slugById.get(String(c.parent))) || null,
       })),
     });
   } catch (error) {
@@ -2129,9 +2309,12 @@ module.exports.storefrontSettings = async (req, res) => {
     const settings = await getOrCreateSettings(store);
     return res.status(200).json({
       settings: {
+        logo: settings.logo,
         social: settings.social,
         footer: settings.footer,
         announcement: settings.announcement,
+        shipping: settings.shipping,
+        promises: settings.promises,
         newThisWeek: settings.newThisWeek,
         deals: settings.deals,
         business: settings.business,
@@ -2218,7 +2401,13 @@ module.exports.storefrontProducts = async (req, res) => {
       })
         .select("_id")
         .lean();
-      if (cat) filter.$or = [{ category: cat._id }, { categories: cat._id }];
+      if (cat) {
+        // A parent category page gathers its own products plus everything filed
+        // under its sub-categories, so browsing the top level shows the full range.
+        const descendants = await collectDescendantIds(store, cat._id);
+        const ids = [cat._id, ...descendants];
+        filter.$or = [{ category: { $in: ids } }, { categories: { $in: ids } }];
+      }
     }
     const listings = await OnlineListing.find(filter)
       .populate("product", "name Price quantity image")
@@ -2227,6 +2416,11 @@ module.exports.storefrontProducts = async (req, res) => {
       .populate("categories", "name slug")
       .sort({ sortWeight: 1, createdAt: -1 })
       .lean();
+    const ratings = await ratingByListing(
+      store,
+      listings.map((l) => l._id),
+    );
+    for (const l of listings) l.rating = ratings.get(String(l._id));
     return res
       .status(200)
       .json({ products: listings.map(publicListing).filter(Boolean) });
@@ -2251,6 +2445,8 @@ module.exports.storefrontProduct = async (req, res) => {
       .populate("categories", "name slug")
       .lean();
     if (!listing) return res.status(404).json({ message: "Product not found" });
+    const ratings = await ratingByListing(store, [listing._id]);
+    listing.rating = ratings.get(String(listing._id));
     return res.status(200).json({ product: publicListing(listing) });
   } catch (error) {
     return res
@@ -2717,16 +2913,29 @@ const shippingAddressBlock = (order) => {
 // details. Everything is pulled from the online-store settings, so it's the
 // website's identity end to end.
 const professionalOrderEmail = (order, settings) => {
-  const INK = "#111827";
-  const ACCENT = "#b6f000"; // lime
-  const MUTED = "#6b7280";
-  const LINE = "#e5e7eb";
+  // Palette — a clean, professional look: dark header, one teal accent, and a
+  // soft highlight for the order-number strip.
+  // Store brand palette: dark ink + electric lime (matches the logo & site).
+  const HEADER = "#181410"; // dark header — matches the logo's black badge
+  const LIME = "#bdf000"; // electric-lime brand accent (buttons/highlights)
+  const SOFT = "#f0fbcf"; // soft lime tint (highlight row / icon circle)
+  const INK = "#181410";
+  const MUTED = "#6f685b";
+  const LINE = "#e8e3d7";
   const business = settings?.business || {};
   const footer = settings?.footer || {};
   const social = settings?.social || {};
   const brandName = business.tradingName || business.legalName || "Our Store";
+  const logo = settings?.logo || "";
   const supportEmail = footer.supportEmail || "";
   const firstName = String(order.customer?.name || "there").trim().split(/\s+/)[0];
+  const shopUrl = String(
+    process.env.STOREFRONT_PUBLIC_URL || process.env.APP_URL || "",
+  ).replace(/\/+$/, "");
+  // Logo when set, otherwise the brand name as text.
+  const brandMark = logo
+    ? `<img src="${esc(logo)}" alt="${esc(brandName)}" height="52" style="height:52px;width:auto;display:block;border:0;">`
+    : `<span style="font-size:22px;font-weight:800;letter-spacing:0.01em;color:#ffffff;">${esc(brandName)}</span>`;
 
   const itemRows = (order.items || [])
     .map(
@@ -2779,6 +2988,11 @@ const professionalOrderEmail = (order, settings) => {
     month: "short",
     year: "numeric",
   });
+  // A friendly estimate — a few working days out from the order date.
+  const estDelivery = new Date(
+    (order.createdAt ? new Date(order.createdAt).getTime() : Date.now()) +
+      3 * 24 * 60 * 60 * 1000,
+  ).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
   return `<!doctype html>
 <html>
@@ -2787,27 +3001,36 @@ const professionalOrderEmail = (order, settings) => {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:24px 12px;">
       <tr><td align="center">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;">
-          <tr><td style="background:${INK};padding:28px 36px;">
-            <div style="font-size:23px;font-weight:800;letter-spacing:0.01em;color:#ffffff;">${esc(brandName)}</div>
-            <div style="height:3px;width:46px;background:${ACCENT};margin-top:11px;border-radius:2px;"></div>
+
+          <!-- Header bar: brand + shop link -->
+          <tr><td style="background:${HEADER};padding:20px 36px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+              <td>${brandMark}</td>
+              <td align="right">${shopUrl ? `<a href="${esc(shopUrl)}" style="color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;">Shop &nbsp;&#128722;</a>` : ""}</td>
+            </tr></table>
           </td></tr>
 
-          <tr><td style="padding:34px 36px 6px;">
-            <span style="display:inline-block;background:${ACCENT};color:${INK};font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.09em;padding:6px 13px;border-radius:100px;">Order confirmed</span>
-            <h1 style="margin:18px 0 8px;font-size:26px;line-height:1.2;color:${INK};">Thank you, ${esc(firstName)}!</h1>
-            <p style="margin:0;font-size:15px;line-height:1.6;color:${MUTED};">We&rsquo;ve received your order and it&rsquo;s now being prepared. Here&rsquo;s a summary of your purchase.</p>
+          <!-- Checkmark + thank you -->
+          <tr><td align="center" style="padding:40px 36px 4px;">
+            <div style="width:74px;height:74px;line-height:74px;border-radius:50%;background:${LIME};color:${INK};font-size:38px;font-weight:700;margin:0 auto;">&#10003;</div>
+            <h1 style="margin:22px 0 0;font-size:27px;line-height:1.2;color:${INK};">Thank You For Your Order!</h1>
+          </td></tr>
+          <tr><td align="center" style="padding:12px 44px 0;">
+            <p style="margin:0;font-size:15px;line-height:1.6;color:${MUTED};">Hi ${esc(firstName)}, we&rsquo;ve received your order and it&rsquo;s now being prepared. Here&rsquo;s a summary of your purchase.</p>
           </td></tr>
 
-          <tr><td style="padding:22px 36px 0;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:12px;">
+          <!-- Highlighted order number -->
+          <tr><td style="padding:26px 36px 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${SOFT};border-radius:10px;">
               <tr>
-                <td style="padding:15px 18px;font-size:11px;color:${MUTED};letter-spacing:0.04em;">ORDER NUMBER<br><span style="font-size:16px;color:${INK};font-weight:700;letter-spacing:0;">${esc(order.orderNo)}</span></td>
-                <td style="padding:15px 18px;font-size:11px;color:${MUTED};letter-spacing:0.04em;text-align:right;">ORDER DATE<br><span style="font-size:16px;color:${INK};font-weight:700;letter-spacing:0;">${orderDate}</span></td>
+                <td style="padding:16px 20px;font-size:15px;font-weight:700;color:${INK};">Order Confirmation No.</td>
+                <td style="padding:16px 20px;text-align:right;font-size:15px;font-weight:800;color:${INK};">#${esc(order.orderNo)}</td>
               </tr>
             </table>
           </td></tr>
 
-          <tr><td style="padding:26px 36px 0;">
+          <!-- Items -->
+          <tr><td style="padding:24px 36px 0;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
               <tr>
                 <td style="padding-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${MUTED};border-bottom:2px solid ${INK};">Item</td>
@@ -2818,46 +3041,55 @@ const professionalOrderEmail = (order, settings) => {
             </table>
           </td></tr>
 
+          <!-- Totals -->
           <tr><td style="padding:16px 36px 0;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
               ${totalRow("Subtotal", order.subtotal)}
               ${order.discount ? totalRow("Discount", order.discount, { neg: true }) : ""}
-              ${totalRow("Shipping", order.shipping)}
-              ${order.tax ? totalRow("Tax", order.tax) : ""}
+              ${totalRow("Shipping + Handling", order.shipping)}
+              ${order.tax ? totalRow("Sales Tax", order.tax) : ""}
               <tr><td colspan="2" style="padding-top:8px;border-top:1px solid ${LINE};"></td></tr>
               ${totalRow("Total", order.total, { big: true })}
             </table>
           </td></tr>
 
-          <tr><td style="padding:26px 36px 0;">
+          <!-- Delivery address + estimated delivery -->
+          <tr><td style="padding:28px 36px 0;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
               <tr>
-                <td width="50%" valign="top" style="padding-right:12px;">
-                  <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${MUTED};margin-bottom:7px;">Delivery address</div>
-                  <div style="font-size:14px;line-height:1.6;color:${INK};">${esc(order.customer?.name || "")}<br>${addressHtml}</div>
+                <td width="55%" valign="top" style="padding-right:12px;">
+                  <div style="font-size:12px;font-weight:700;color:${INK};margin-bottom:7px;">Delivery Address</div>
+                  <div style="font-size:14px;line-height:1.6;color:${MUTED};">${esc(order.customer?.name || "")}<br>${addressHtml}</div>
                 </td>
-                <td width="50%" valign="top" style="padding-left:12px;">
-                  <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${MUTED};margin-bottom:7px;">Payment</div>
-                  <div style="font-size:14px;line-height:1.6;color:${INK};">Cash on delivery<br><span style="color:${MUTED};">Please have <strong style="color:${INK};">&euro;${money(order.total)}</strong> ready on arrival.</span></div>
+                <td width="45%" valign="top" style="padding-left:12px;">
+                  <div style="font-size:12px;font-weight:700;color:${INK};margin-bottom:7px;">Estimated Delivery</div>
+                  <div style="font-size:14px;line-height:1.6;color:${MUTED};">${estDelivery}</div>
+                  <div style="font-size:12px;font-weight:700;color:${INK};margin:14px 0 7px;">Payment</div>
+                  <div style="font-size:14px;line-height:1.6;color:${MUTED};">Cash on delivery &mdash; have <strong style="color:${INK};">&euro;${money(order.total)}</strong> ready on arrival.</div>
                 </td>
               </tr>
             </table>
           </td></tr>
 
-          <tr><td style="padding:26px 36px 0;">
-            <div style="background:#f9fafb;border-radius:12px;padding:16px 18px;font-size:14px;line-height:1.6;color:${MUTED};">
-              <strong style="color:${INK};">What happens next?</strong><br>
-              We&rsquo;re preparing your order for dispatch &mdash; same-day dispatch on in-stock items. It&rsquo;ll be on its way to you shortly.
-            </div>
-          </td></tr>
+          <!-- CTA banner -->
+          ${shopUrl ? `<tr><td style="padding:30px 36px 6px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${HEADER};border-radius:12px;">
+              <tr><td align="center" style="padding:28px 24px;">
+                <div style="font-size:19px;font-weight:800;color:#ffffff;margin-bottom:16px;">Discover more at ${esc(brandName)}.</div>
+                <a href="${esc(shopUrl)}" style="display:inline-block;background:${LIME};color:${INK};text-decoration:none;font-size:14px;font-weight:800;padding:12px 28px;border-radius:8px;">Continue shopping</a>
+              </td></tr>
+            </table>
+          </td></tr>` : ""}
 
-          <tr><td style="padding:22px 36px 6px;">
+          <!-- Support line -->
+          <tr><td style="padding:24px 36px 6px;">
             <p style="margin:0;font-size:14px;line-height:1.6;color:${MUTED};">
-              Questions? ${supportEmail ? `Reply to this email or write to <a href="mailto:${esc(supportEmail)}" style="color:${INK};font-weight:600;text-decoration:none;">${esc(supportEmail)}</a>` : "just reply to this email"}${footer.supportPhone ? ` &middot; ${esc(footer.supportPhone)}` : ""}. Quote <strong style="color:${INK};">${esc(order.orderNo)}</strong>.
+              Questions? ${supportEmail ? `Reply to this email or write to <a href="mailto:${esc(supportEmail)}" style="color:${INK};font-weight:700;text-decoration:underline;">${esc(supportEmail)}</a>` : "just reply to this email"}${footer.supportPhone ? ` &middot; ${esc(footer.supportPhone)}` : ""}. Quote <strong style="color:${INK};">${esc(order.orderNo)}</strong>.
             </p>
           </td></tr>
 
-          <tr><td style="padding:24px 36px 30px;">
+          <!-- Footer -->
+          <tr><td style="padding:12px 36px 32px;">
             <div style="border-top:1px solid ${LINE};padding-top:22px;">
               <div style="font-size:16px;font-weight:800;color:${INK};">${esc(brandName)}</div>
               ${footer.address ? `<div style="font-size:12px;color:${MUTED};margin-top:5px;">${esc(footer.address)}</div>` : ""}
@@ -2933,6 +3165,391 @@ const sendOrderEmails = async (store, order) => {
   }
 };
 
+/* ───────────────────────────────────────── REVIEWS ──────────────────────────
+ * Verified-purchase reviews. The only way to create one is the tokenised link
+ * emailed after an order is delivered, so a review always maps to a real,
+ * received purchase.
+ * ------------------------------------------------------------------------- */
+
+const storefrontBase = () =>
+  String(process.env.STOREFRONT_PUBLIC_URL || process.env.APP_URL || "").replace(
+    /\/+$/,
+    "",
+  );
+
+// Resolve the online-store brand (name/address/phone) the same way order
+// confirmations do, so review emails carry the website's identity.
+const onlineBrand = (settings) => ({
+  name:
+    settings?.business?.tradingName ||
+    settings?.business?.legalName ||
+    "Online Store",
+  addressLines: settings?.footer?.address ? [settings.footer.address] : [],
+  phone: settings?.footer?.supportPhone || "",
+});
+
+// The "leave a review" email — same branded shell as the order confirmation so
+// every message from the shop looks like one store.
+const reviewRequestEmail = (order, link, brand, settings) => {
+  // Store brand palette: dark ink + electric lime (matches the logo & site).
+  const HEADER = "#181410";
+  const LIME = "#bdf000";
+  const SOFT = "#f0fbcf";
+  const INK = "#181410";
+  const MUTED = "#6f685b";
+  const LINE = "#e8e3d7";
+  const footer = settings?.footer || {};
+  const brandName = brand.name;
+  const logo = settings?.logo || "";
+  const shopUrl = String(
+    process.env.STOREFRONT_PUBLIC_URL || process.env.APP_URL || "",
+  ).replace(/\/+$/, "");
+  const firstName = String(order.customer?.name || "there").trim().split(/\s+/)[0];
+  const brandMark = logo
+    ? `<img src="${esc(logo)}" alt="${esc(brandName)}" height="52" style="height:52px;width:auto;display:block;border:0;">`
+    : `<span style="font-size:22px;font-weight:800;color:#ffffff;">${esc(brandName)}</span>`;
+
+  return `<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:${INK};">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:24px 12px;">
+      <tr><td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;">
+          <tr><td style="background:${HEADER};padding:20px 36px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+              <td>${brandMark}</td>
+              <td align="right">${shopUrl ? `<a href="${esc(shopUrl)}" style="color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;">Shop &nbsp;&#128722;</a>` : ""}</td>
+            </tr></table>
+          </td></tr>
+
+          <tr><td align="center" style="padding:40px 36px 4px;">
+            <div style="width:74px;height:74px;line-height:74px;border-radius:50%;background:${SOFT};color:#f59e0b;font-size:34px;margin:0 auto;">&#9733;</div>
+            <h1 style="margin:22px 0 0;font-size:26px;line-height:1.2;color:${INK};">How was your order?</h1>
+          </td></tr>
+          <tr><td align="center" style="padding:12px 44px 0;">
+            <p style="margin:0;font-size:15px;line-height:1.6;color:${MUTED};">Hi ${esc(firstName)}, thanks for your order <strong style="color:${INK};">#${esc(order.orderNo)}</strong> — we hope you're loving it! A quick review helps other shoppers and takes less than a minute.</p>
+          </td></tr>
+
+          <tr><td align="center" style="padding:28px 36px 4px;">
+            <a href="${esc(link)}" style="display:inline-block;background:${LIME};color:${INK};text-decoration:none;font-size:15px;font-weight:800;padding:14px 34px;border-radius:8px;">Write a review</a>
+          </td></tr>
+          <tr><td align="center" style="padding:16px 44px 30px;">
+            <p style="margin:0;color:${MUTED};font-size:12px;line-height:1.5;">If the button doesn't work, paste this link into your browser:<br><span style="color:${INK};">${esc(link)}</span></p>
+          </td></tr>
+
+          <tr><td style="padding:0 36px 32px;">
+            <div style="border-top:1px solid ${LINE};padding-top:22px;">
+              <div style="font-size:16px;font-weight:800;color:${INK};">${esc(brandName)}</div>
+              ${footer.address ? `<div style="font-size:12px;color:${MUTED};margin-top:5px;">${esc(footer.address)}</div>` : ""}
+              <div style="font-size:11px;color:${MUTED};margin-top:13px;line-height:1.5;">18+ only &middot; Contains nicotine, a highly addictive substance. You received this email because you placed an order with us.</div>
+            </div>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>`;
+};
+
+// Exposed so scripts (resend / preview) build the identical branded emails.
+module.exports.reviewRequestEmail = reviewRequestEmail;
+module.exports.professionalOrderEmail = professionalOrderEmail;
+
+// Best-effort "review your purchase" email. Claims the send atomically so a
+// retried/duplicate delivered-transition cannot email the customer twice.
+async function sendReviewRequestEmail(order) {
+  const token = crypto.randomBytes(24).toString("hex");
+  const claimed = await OnlineOrder.findOneAndUpdate(
+    { _id: order._id, reviewRequestedAt: null },
+    { $set: { reviewToken: token, reviewRequestedAt: new Date() } },
+    { new: true },
+  ).lean();
+  if (!claimed || !claimed.customer?.email) return; // already sent, or no email
+
+  const settings = await getOrCreateSettings(order.store);
+  const brand = onlineBrand(settings);
+  const base = storefrontBase();
+  if (!base) {
+    console.warn(
+      "[reviews] STOREFRONT_PUBLIC_URL (or APP_URL) not set — the review link in the email will be relative and won't open. Set it in the backend .env.",
+    );
+  }
+  const link = `${base}/review/${encodeURIComponent(claimed.orderNo)}/${token}`;
+
+  const html = reviewRequestEmail(claimed, link, brand, settings);
+
+  // Same "store" mailbox that sends order confirmations, so the review email
+  // comes from the shop's own address, not a different one.
+  const result = await sendMail({
+    to: claimed.customer.email,
+    subject: `How was your order? Leave a review · ${brand.name}`,
+    html,
+    fromName: brand.name,
+    account: "store",
+  });
+  if (result.ok) {
+    console.log(
+      `[reviews] review email sent to ${claimed.customer.email} for order ${claimed.orderNo}`,
+    );
+  } else {
+    console.warn(
+      `[reviews] review email NOT sent for order ${claimed.orderNo}:`,
+      result.skipped ? result.reason : result.error,
+    );
+    // The send failed (e.g. SMTP down): release the claim so a later retry can
+    // send it, rather than leaving the order marked as "review requested" for a
+    // mail that never went out. The token is kept so the same link stays valid.
+    await OnlineOrder.updateOne(
+      { _id: order._id },
+      { $set: { reviewRequestedAt: null } },
+    );
+  }
+}
+
+// Resolve the OnlineListing for an order item — items usually carry it, but
+// legacy rows may only have the product, so fall back to a lookup.
+async function listingForItem(store, item) {
+  if (item.listing) return item.listing;
+  const found = await OnlineListing.findOne({ store, product: item.product })
+    .select("_id")
+    .lean();
+  return found?._id || null;
+}
+
+// STOREFRONT — published reviews + summary for a product page.
+module.exports.storefrontProductReviews = async (req, res) => {
+  try {
+    const store = await storeId();
+    const listing = await OnlineListing.findOne({
+      store,
+      slug: String(req.params.slug).toLowerCase(),
+    })
+      .select("_id")
+      .lean();
+    if (!listing) return res.status(200).json({ reviews: [], summary: { average: 0, count: 0, breakdown: {} } });
+
+    const reviews = await OnlineReview.find({
+      store,
+      listing: listing._id,
+      status: "published",
+    })
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
+
+    const breakdown = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    let sum = 0;
+    for (const r of reviews) {
+      breakdown[r.rating] = (breakdown[r.rating] || 0) + 1;
+      sum += r.rating;
+    }
+    const count = reviews.length;
+    return res.status(200).json({
+      reviews: reviews.map((r) => ({
+        id: String(r._id),
+        name: r.customerName,
+        rating: r.rating,
+        title: r.title,
+        body: r.body,
+        verified: r.verified,
+        createdAt: r.createdAt,
+      })),
+      summary: {
+        average: count ? Math.round((sum / count) * 10) / 10 : 0,
+        count,
+        breakdown,
+      },
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Could not load reviews", error: error.message });
+  }
+};
+
+// STOREFRONT — validate a review link and return the items still to review.
+// Always 200 with a `state` so the review page can tell an invalid link apart
+// from an already-completed one (the storefront's fetch helper swallows non-2xx
+// into a fallback, which would otherwise flatten those cases together).
+module.exports.storefrontReviewContext = async (req, res) => {
+  const empty = (state) => ({ state, customerName: "", orderNo: "", items: [] });
+  try {
+    const store = await storeId();
+    const { order: orderNo, token } = req.query;
+    if (!orderNo || !token) return res.status(200).json(empty("invalid"));
+    const order = await OnlineOrder.findOne({
+      store,
+      orderNo: String(orderNo),
+      reviewToken: String(token),
+    }).lean();
+    if (!order) return res.status(200).json(empty("invalid"));
+    if (order.status !== "delivered")
+      return res.status(200).json(empty("not_delivered"));
+
+    const done = await OnlineReview.find({ order: order._id })
+      .select("product")
+      .lean();
+    const reviewed = new Set(done.map((r) => String(r.product)));
+
+    const items = [];
+    for (const item of order.items) {
+      if (reviewed.has(String(item.product))) continue;
+      const listingId = await listingForItem(store, item);
+      if (!listingId) continue;
+      const listing = await OnlineListing.findById(listingId)
+        .select("slug webName gallery")
+        .populate("product", "image name")
+        .lean();
+      items.push({
+        productId: String(item.product),
+        listingId: String(listingId),
+        slug: listing?.slug || "",
+        name: item.name,
+        image: listing?.gallery?.[0]?.url || listing?.product?.image?.url || "",
+      });
+    }
+
+    return res.status(200).json({
+      state: items.length ? "ok" : "done",
+      customerName: order.customer?.name || "",
+      orderNo: order.orderNo,
+      items,
+    });
+  } catch (error) {
+    return res.status(200).json(empty("invalid"));
+  }
+};
+
+// STOREFRONT — create a verified review from a valid review link.
+module.exports.submitStorefrontReview = async (req, res) => {
+  try {
+    const store = await storeId();
+    const { order: orderNo, token, productId, rating, title, body } = req.body || {};
+    const stars = Math.round(Number(rating));
+    if (!orderNo || !token)
+      return res.status(400).json({ message: "Missing review link details" });
+    if (!(stars >= 1 && stars <= 5))
+      return res.status(400).json({ message: "Please choose a rating from 1 to 5 stars." });
+
+    const order = await OnlineOrder.findOne({
+      store,
+      orderNo: String(orderNo),
+      reviewToken: String(token),
+    }).lean();
+    if (!order)
+      return res.status(404).json({ message: "This review link is invalid or has expired." });
+    if (order.status !== "delivered")
+      return res.status(409).json({ message: "This order isn't marked delivered yet." });
+
+    const item = order.items.find((i) => String(i.product) === String(productId));
+    if (!item)
+      return res.status(400).json({ message: "That product isn't part of this order." });
+    const listingId = await listingForItem(store, item);
+    if (!listingId)
+      return res.status(400).json({ message: "This product is no longer on the store." });
+
+    try {
+      const review = await OnlineReview.create({
+        store,
+        listing: listingId,
+        product: item.product,
+        order: order._id,
+        orderNo: order.orderNo,
+        customerName: order.customer?.name || "Verified buyer",
+        customerEmail: order.customer?.email || "",
+        rating: stars,
+        title: String(title || "").trim().slice(0, 120),
+        body: String(body || "").trim().slice(0, 2000),
+        verified: true,
+        status: "published",
+      });
+      return res.status(201).json({ message: "Thanks for your review!", id: String(review._id) });
+    } catch (error) {
+      if (error.code === 11000)
+        return res.status(409).json({ message: "You've already reviewed this item." });
+      throw error;
+    }
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Could not save your review", error: error.message });
+  }
+};
+
+// ADMIN — moderate reviews.
+module.exports.listReviews = async (req, res) => {
+  try {
+    const store = await storeId();
+    const filter = { store };
+    if (req.query.status === "published" || req.query.status === "hidden")
+      filter.status = req.query.status;
+    const reviews = await OnlineReview.find(filter)
+      .populate("listing", "slug webName")
+      .sort({ createdAt: -1 })
+      .limit(500)
+      .lean();
+    return res.status(200).json({
+      reviews: reviews.map((r) => ({
+        _id: String(r._id),
+        product: r.listing?.webName || r.orderNo,
+        slug: r.listing?.slug || "",
+        orderNo: r.orderNo,
+        customerName: r.customerName,
+        rating: r.rating,
+        title: r.title,
+        body: r.body,
+        verified: r.verified,
+        status: r.status,
+        createdAt: r.createdAt,
+      })),
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Could not load reviews", error: error.message });
+  }
+};
+
+module.exports.updateReview = async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id))
+      return res.status(400).json({ message: "Invalid review id" });
+    const store = await storeId();
+    const status = req.body.status;
+    if (!["published", "hidden"].includes(status))
+      return res.status(400).json({ message: "Status must be published or hidden" });
+    const review = await OnlineReview.findOneAndUpdate(
+      { _id: req.params.id, store },
+      { status },
+      { new: true },
+    ).lean();
+    if (!review) return res.status(404).json({ message: "Review not found" });
+    return res.status(200).json({ message: `Review ${status}`, review: { _id: String(review._id), status: review.status } });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Could not update review", error: error.message });
+  }
+};
+
+module.exports.deleteReview = async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id))
+      return res.status(400).json({ message: "Invalid review id" });
+    const store = await storeId();
+    const deleted = await OnlineReview.findOneAndDelete({
+      _id: req.params.id,
+      store,
+    });
+    if (!deleted) return res.status(404).json({ message: "Review not found" });
+    return res.status(200).json({ message: "Review deleted", id: req.params.id });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Could not delete review", error: error.message });
+  }
+};
+
 // Voucher-aware checkout. This supersedes the original implementation above
 // while preserving its guarded, shared-inventory decrement behavior.
 module.exports.placeOrder = async (req, res) => {
@@ -2992,8 +3609,8 @@ module.exports.placeOrder = async (req, res) => {
     const discount = money(voucherResult?.discount || 0);
     const tax = 0;
     const merchandiseTotal = money(subtotal - discount);
-    const shipping =
-      merchandiseTotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FLAT;
+    const settings = await getOrCreateSettings(store);
+    const shipping = shippingFor(settings, merchandiseTotal);
     const total = money(merchandiseTotal + shipping);
 
     // POS and web compete on this exact Product.quantity guard. If either

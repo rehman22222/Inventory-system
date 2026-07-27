@@ -129,6 +129,12 @@ const OnlineOrderSchema = new mongoose.Schema(
 
     note: { type: String, default: "" },
     failureReason: { type: String, default: "" },
+
+    // Minted once when the order is first marked delivered. It is the secret in
+    // the "review your purchase" email link, so only the person who received
+    // the order can leave a review for it.
+    reviewToken: { type: String, default: null },
+    reviewRequestedAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

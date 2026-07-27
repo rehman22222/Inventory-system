@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Search, ShoppingBag, Menu, X, ArrowRight, ChevronDown } from "lucide-react";
-import { productsByCategory, type Category, type CategorySlug } from "@/lib/catalog";
+import {
+  productsByCategory,
+  topLevelCategories,
+  childCategories,
+  type Category,
+  type CategorySlug,
+} from "@/lib/catalog";
 import { useCatalog } from "@/lib/catalog-context";
 import logo from "@/assets/logo-cop.png";
 import { formatPrice } from "@/lib/format";
@@ -9,6 +15,9 @@ import { useCart } from "@/lib/cart";
 
 export function Header() {
   const { categories, products, settings } = useCatalog();
+  // The top nav lists parents only; each parent's children live in its mega
+  // menu, so a two-deep catalogue doesn't flatten out into one long row.
+  const topLevel = useMemo(() => topLevelCategories(categories), [categories]);
   const { count, ready } = useCart();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
@@ -63,7 +72,7 @@ export function Header() {
   // can measure each item and work out how many fit the visible container.
   const navRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
-  const [visibleCount, setVisibleCount] = useState(categories.length);
+  const [visibleCount, setVisibleCount] = useState(topLevel.length);
 
   useEffect(() => {
     const container = navRef.current;
@@ -79,9 +88,9 @@ export function Header() {
       const moreW = items[items.length - 1].offsetWidth;
       let used = homeW;
       let count = 0;
-      for (let i = 0; i < categories.length; i++) {
+      for (let i = 0; i < topLevel.length; i++) {
         const w = items[1 + i]?.offsetWidth ?? 0;
-        const isLast = i === categories.length - 1;
+        const isLast = i === topLevel.length - 1;
         const reserve = isLast ? 0 : moreW + GAP; // keep room for "More"
         if (used + GAP + w + reserve <= width) {
           used += GAP + w;
@@ -94,10 +103,10 @@ export function Header() {
     const ro = new ResizeObserver(compute);
     ro.observe(container);
     return () => ro.disconnect();
-  }, [categories]);
+  }, [topLevel]);
 
-  const visibleCategories = categories.slice(0, visibleCount);
-  const overflowCategories = categories.slice(visibleCount);
+  const visibleCategories = topLevel.slice(0, visibleCount);
+  const overflowCategories = topLevel.slice(visibleCount);
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -243,7 +252,7 @@ export function Header() {
             className="pointer-events-none invisible absolute left-0 top-0 flex items-center gap-5 whitespace-nowrap"
           >
             <span className="font-display text-[13px] uppercase tracking-widest px-1">Home</span>
-            {categories.map((c) => (
+            {topLevel.map((c) => (
               <span
                 key={c.slug}
                 className="font-display text-[13px] uppercase tracking-widest px-1"
@@ -284,20 +293,40 @@ export function Header() {
             >
               Shop All
             </Link>
-            {categories.map((c) => (
-              <Link
-                key={c.slug}
-                to="/category/$slug"
-                params={{ slug: c.slug }}
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center justify-between py-2.5 text-sm text-ink-muted border-b hair"
-              >
-                {c.name}
-                <span className="font-mono text-[10px] tabular-nums">
-                  {productsByCategory(products, c.slug).length}
-                </span>
-              </Link>
-            ))}
+            {topLevel.map((c) => {
+              const kids = childCategories(categories, c.slug);
+              return (
+                <div key={c.slug}>
+                  <Link
+                    to="/category/$slug"
+                    params={{ slug: c.slug }}
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center justify-between py-2.5 text-sm text-ink-muted border-b hair"
+                  >
+                    {c.name}
+                    <span className="font-mono text-[10px] tabular-nums">
+                      {productsByCategory(products, c.slug).length}
+                    </span>
+                  </Link>
+                  {kids.map((k) => (
+                    <Link
+                      key={k.slug}
+                      to="/category/$slug"
+                      params={{ slug: k.slug }}
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center justify-between py-2 pl-4 text-sm text-ink-muted/80 border-b hair"
+                    >
+                      <span className="before:mr-2 before:text-ink-muted/40 before:content-['—']">
+                        {k.name}
+                      </span>
+                      <span className="font-mono text-[10px] tabular-nums">
+                        {productsByCategory(products, k.slug).length}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              );
+            })}
             <Link
               to="/sale"
               onClick={() => setMobileOpen(false)}
@@ -362,7 +391,7 @@ function MegaMenu({
   onLeave: () => void;
 }) {
   const { categories, products } = useCatalog();
-  const { category, brands, featured, total } = useMemo(() => {
+  const { category, brands, featured, total, kids } = useMemo(() => {
     const items = productsByCategory(products, slug);
     const cat = categories.find((c) => c.slug === slug)!;
     return {
@@ -370,6 +399,7 @@ function MegaMenu({
       brands: [...new Set(items.map((p) => p.brand))].sort(),
       featured: [...items].sort((a, b) => b.stock - a.stock).slice(0, 3),
       total: items.length,
+      kids: childCategories(categories, slug),
     };
   }, [slug, categories, products]);
 
@@ -400,8 +430,19 @@ function MegaMenu({
 
         {/* Quick links */}
         <div>
-          <div className="eyebrow mb-4">Quick links</div>
+          <div className="eyebrow mb-4">{kids.length > 0 ? "Sub-categories" : "Quick links"}</div>
           <ul className="space-y-2">
+            {kids.map((k) => (
+              <li key={k.slug}>
+                <Link
+                  to="/category/$slug"
+                  params={{ slug: k.slug }}
+                  className="text-sm font-display uppercase tracking-tight hover:text-accent-foreground hover:bg-accent px-1"
+                >
+                  {k.name}
+                </Link>
+              </li>
+            ))}
             <li>
               <Link
                 to="/category/$slug"

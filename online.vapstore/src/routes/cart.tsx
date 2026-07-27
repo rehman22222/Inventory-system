@@ -3,6 +3,7 @@ import { Minus, Plus, Trash2, ShieldCheck, Truck, Lock } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useCart } from "@/lib/cart";
+import { useCatalog } from "@/lib/catalog-context";
 import { formatPrice } from "@/lib/format";
 
 export const Route = createFileRoute("/cart")({
@@ -15,18 +16,17 @@ export const Route = createFileRoute("/cart")({
   }),
 });
 
-const FREE_SHIPPING_THRESHOLD = 50;
-const SHIPPING_FLAT = 4.99;
-
 function Cart() {
   const { lines, subtotal, count, setQty, remove, ready } = useCart();
+  const { settings } = useCatalog();
+  const { flatRate, freeThreshold } = settings.shipping;
 
   // Render nothing cart-specific until hydrated, to avoid a flash of the empty
   // state on a page the customer loaded with items already in storage.
   const empty = ready && lines.length === 0;
-  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD || subtotal === 0 ? 0 : SHIPPING_FLAT;
+  const shipping = subtotal >= freeThreshold || subtotal === 0 ? 0 : flatRate;
   const total = subtotal + shipping;
-  const toFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
+  const toFreeShipping = Math.max(0, freeThreshold - subtotal);
 
   if (empty) {
     return (

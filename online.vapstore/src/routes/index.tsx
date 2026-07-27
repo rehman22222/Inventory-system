@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { CategoryTile } from "@/components/CategoryTile";
 import { ProductCard } from "@/components/ProductCard";
 import { BrandMarquee } from "@/components/BrandMarquee";
-import { bestSellers, newArrivals, saleProducts } from "@/lib/catalog";
+import { bestSellers, newArrivals, saleProducts, topLevelCategories } from "@/lib/catalog";
 import { getHero } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
 import { HeroCarousel } from "@/components/HeroCarousel";
@@ -107,9 +107,10 @@ function Home() {
           </div>
 
           {/* Uniform grid — every category carries the same weight. The last
-              cell completes the row with a route into the full catalogue. */}
+              cell completes the row with a route into the full catalogue.
+              Parents only; their sub-categories surface on the parent's page. */}
           <div className="grid gap-4 md:gap-5 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {categories.map((c, i) => (
+            {topLevelCategories(categories).map((c, i) => (
               <CategoryTile key={c.slug} category={c} index={i + 1} />
             ))}
 

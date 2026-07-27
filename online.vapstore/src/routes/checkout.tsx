@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { useCart } from "@/lib/cart";
+import { useCatalog } from "@/lib/catalog-context";
 import { placeStorefrontOrder, validateStorefrontVoucher } from "@/lib/catalog-api";
 import { formatPrice } from "@/lib/format";
 
@@ -17,14 +18,13 @@ export const Route = createFileRoute("/checkout")({
   }),
 });
 
-const FREE_SHIPPING_THRESHOLD = 50;
-const SHIPPING_FLAT = 4.99;
-
 const freshClientRef = () =>
   globalThis.crypto?.randomUUID?.() || `web-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 function Checkout() {
   const { lines, subtotal, clear, ready } = useCart();
+  const { settings } = useCatalog();
+  const { flatRate, freeThreshold } = settings.shipping;
   const clientRef = useRef("");
   const [busy, setBusy] = useState(false);
   const [voucherBusy, setVoucherBusy] = useState(false);
@@ -55,7 +55,7 @@ function Checkout() {
   const discount = appliedVoucher?.discount || 0;
   const merchandiseTotal = Math.max(0, subtotal - discount);
   const shipping =
-    merchandiseTotal === 0 || merchandiseTotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FLAT;
+    merchandiseTotal === 0 || merchandiseTotal >= freeThreshold ? 0 : flatRate;
   const total = merchandiseTotal + shipping;
   const missingReferences = lines.some((line) => !line.listingId || !line.productId);
   const cartSignature = lines

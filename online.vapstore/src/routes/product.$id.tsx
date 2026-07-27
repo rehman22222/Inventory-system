@@ -4,8 +4,10 @@ import { Minus, Plus, ShieldCheck, Truck, RotateCcw, Check } from "lucide-react"
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
-import { availabilityOf, type Product } from "@/lib/catalog";
-import { getProductPage } from "@/lib/catalog-api";
+import { availabilityOf, type Product, type Review, type ReviewSummary } from "@/lib/catalog";
+import { getProductPage, getProductReviews } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
+import { Stars } from "@/components/Stars";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/lib/cart";
 
@@ -13,10 +15,20 @@ export const Route = createFileRoute("/product/$id")({
   component: ProductPage,
   // `params.id` is the listing slug. Price and stock come back live, so the
   // page always shows what the shop currently holds.
-  loader: async ({ params }): Promise<{ product: Product; related: Product[] }> => {
-    const { product, related } = await getProductPage({ data: params.id });
+  loader: async ({
+    params,
+  }): Promise<{
+    product: Product;
+    related: Product[];
+    reviews: Review[];
+    summary: ReviewSummary;
+  }> => {
+    const [{ product, related }, reviewData] = await Promise.all([
+      getProductPage({ data: params.id }),
+      getProductReviews({ data: params.id }),
+    ]);
     if (!product) throw notFound();
-    return { product, related };
+    return { product, related, reviews: reviewData.reviews, summary: reviewData.summary };
   },
   head: ({ loaderData }) => ({
     meta: loaderData
@@ -48,7 +60,14 @@ export const Route = createFileRoute("/product/$id")({
 });
 
 function ProductPage() {
-  const { product, related } = Route.useLoaderData() as { product: Product; related: Product[] };
+  const { product, related, reviews, summary } = Route.useLoaderData() as {
+    product: Product;
+    related: Product[];
+    reviews: Review[];
+    summary: ReviewSummary;
+  };
+  const { settings } = useCatalog();
+  const { promises } = settings;
   const { add } = useCart();
   const navigate = useNavigate();
   const [qty, setQty] = useState(1);
@@ -190,6 +209,14 @@ function ProductPage() {
           <h1 className="mt-3 font-display text-3xl sm:text-4xl md:text-5xl leading-[1] md:leading-[0.95] tracking-tight break-words">
             {product.name}
           </h1>
+          {summary.count > 0 && (
+            <a href="#reviews" className="mt-3 inline-flex items-center gap-2 hover:opacity-80">
+              <Stars value={summary.average} size={15} />
+              <span className="font-mono text-[11px] uppercase tracking-widest text-ink-muted">
+                {summary.average.toFixed(1)} · {summary.count} review{summary.count > 1 ? "s" : ""}
+              </span>
+            </a>
+          )}
           <p className="mt-4 text-base text-ink-muted">{product.short}</p>
 
           <div className="mt-8 flex items-baseline gap-4">
@@ -295,14 +322,16 @@ function ProductPage() {
               ? "Visible in catalogue · contact the shop for price"
               : outOfStock
                 ? "Currently unavailable"
-                : `${availability.label} · ships today`}
+                : `${availability.label} · ${promises.dispatch}`}
           </div>
 
           <div className="mt-8 grid grid-cols-3 gap-3 border-y hair py-6">
             {[
-              { icon: Truck, label: "Same-day dispatch" },
-              { icon: ShieldCheck, label: "100% authentic" },
-              { icon: RotateCcw, label: "7-day returns" },
+              { icon: Truck, label: promises.dispatch },
+              ...(promises.authentic
+                ? [{ icon: ShieldCheck, label: promises.authenticLabel }]
+                : []),
+              { icon: RotateCcw, label: `${promises.returnsDays}-day returns` },
             ].map((v, i) => (
               <div key={i} className="flex items-start gap-2">
                 <v.icon className="h-4 w-4 mt-0.5 shrink-0" />
@@ -351,6 +380,73 @@ function ProductPage() {
             <div className="eyebrow mb-3">About this product</div>
             <p className="text-base leading-relaxed text-ink-muted">{product.description}</p>
           </div>
+        </div>
+      </section>
+
+      {/* Reviews */}
+      <section id="reviews" className="border-t hair py-12 scroll-mt-24">
+        <div className="container-x">
+          <h2 className="font-display text-3xl md:text-5xl leading-none tracking-tight mb-8">
+            Reviews.
+          </h2>
+          {summary.count === 0 ? (
+            <p className="text-ink-muted">
+              No reviews yet. Verified reviews from customers appear here after
+              their order is delivered.
+            </p>
+          ) : (
+            <div className="grid gap-10 lg:grid-cols-[260px_1fr]">
+              {/* Summary */}
+              <div className="lg:sticky lg:top-24 h-fit">
+                <div className="font-display text-6xl leading-none">
+                  {summary.average.toFixed(1)}
+                </div>
+                <Stars value={summary.average} size={18} className="mt-2" />
+                <div className="mt-2 font-mono text-[11px] uppercase tracking-widest text-ink-muted">
+                  {summary.count} verified review{summary.count > 1 ? "s" : ""}
+                </div>
+                <div className="mt-5 space-y-1.5">
+                  {[5, 4, 3, 2, 1].map((n) => {
+                    const c = summary.breakdown[n] || 0;
+                    const pct = summary.count ? (c / summary.count) * 100 : 0;
+                    return (
+                      <div key={n} className="flex items-center gap-2 text-[11px]">
+                        <span className="w-3 font-mono text-ink-muted">{n}</span>
+                        <div className="h-1.5 flex-1 bg-ink/10">
+                          <div className="h-full bg-amber-500" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="w-6 text-right font-mono tabular-nums text-ink-muted">
+                          {c}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              {/* List */}
+              <div className="divide-y hair border-y hair">
+                {reviews.map((r) => (
+                  <article key={r.id} className="py-6">
+                    <div className="flex items-center gap-3">
+                      <Stars value={r.rating} size={14} />
+                      {r.verified && (
+                        <span className="inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest text-emerald-600">
+                          <Check className="h-3 w-3" /> Verified Purchase
+                        </span>
+                      )}
+                    </div>
+                    {r.title && <div className="mt-2 font-display text-lg">{r.title}</div>}
+                    {r.body && (
+                      <p className="mt-1 text-sm leading-relaxed text-ink-muted">{r.body}</p>
+                    )}
+                    <div className="mt-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                      {r.name} · {new Date(r.createdAt).toLocaleDateString()}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

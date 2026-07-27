@@ -19,6 +19,17 @@ const OnlineCategorySchema = new mongoose.Schema(
     // Cloudinary URL for the category tile.
     image: { type: String, default: "" },
 
+    // Optional parent for a one-deep (or deeper) browse hierarchy. A top-level
+    // category leaves this null; a sub-category points at its parent. Nesting is
+    // presentation only — listings still belong to whichever category the owner
+    // assigns, and a parent page simply gathers its descendants' products too.
+    parent: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "OnlineCategory",
+      default: null,
+      index: true,
+    },
+
     // Merchandising order on the storefront; lower shows first.
     sortWeight: { type: Number, default: 0 },
     // Hidden rather than deleted, so a category can be pulled from the site

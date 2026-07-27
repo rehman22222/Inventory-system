@@ -16,6 +16,7 @@ import {
   FiSave,
   FiSettings,
   FiShoppingCart,
+  FiStar,
   FiTag,
   FiToggleLeft,
   FiToggleRight,
@@ -41,6 +42,9 @@ import {
   getCatalogue,
   getHeroSlides,
   getOnlineCategories,
+  getOnlineReviews,
+  updateOnlineReview,
+  deleteOnlineReview,
   getOnlineListings,
   getOnlineOrders,
   getOnlineSettings,
@@ -54,6 +58,7 @@ import {
   setOrderStatus,
   toggleOnlineListing,
   updateHeroSlide,
+  updateOnlineCategory,
   updateOnlineListing,
   uploadListingImages,
 } from "../features/onlineStoreSlice";
@@ -68,6 +73,7 @@ const TABS = [
   { id: "deals", label: "Deals", icon: FiPercent },
   { id: "promotions", label: "Vouchers", icon: FiTag },
   { id: "orders", label: "Orders", icon: FiShoppingCart },
+  { id: "reviews", label: "Reviews", icon: FiStar },
   { id: "settings", label: "Settings", icon: FiSettings },
 ];
 
@@ -100,6 +106,7 @@ export default function OnlineStorePage() {
     dispatch(getOnlineVouchers());
     dispatch(getOnlineSettings());
     dispatch(getOnlineOrders());
+    dispatch(getOnlineReviews());
   };
 
   useEffect(() => {
@@ -130,11 +137,11 @@ export default function OnlineStorePage() {
         </button>
       </header>
 
-      <div className="tabs tabs-boxed w-fit max-w-full overflow-x-auto">
+      <div className="tabs tabs-boxed w-fit max-w-full flex-nowrap overflow-x-auto">
         {TABS.map((item) => (
           <button
             key={item.id}
-            className={`tab gap-2 ${tab === item.id ? "tab-active" : ""}`}
+            className={`tab h-auto shrink-0 flex-nowrap gap-2 whitespace-nowrap py-2 ${tab === item.id ? "tab-active" : ""}`}
             onClick={() => setTab(item.id)}
           >
             <item.icon /> {item.label}
@@ -186,6 +193,9 @@ export default function OnlineStorePage() {
       )}
       {tab === "orders" && (
         <Orders orders={online.orders} isActing={online.isActing} />
+      )}
+      {tab === "reviews" && (
+        <Reviews reviews={online.reviews} isActing={online.isActing} />
       )}
       {tab === "settings" && (
         <StorefrontSettings
@@ -1563,14 +1573,30 @@ function Categories({ categories }) {
   const dispatch = useDispatch();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [parent, setParent] = useState("");
   const add = async (event) => {
     event.preventDefault();
-    const result = await dispatch(createOnlineCategory({ name, description }));
+    const result = await dispatch(
+      createOnlineCategory({ name, description, parent: parent || null }),
+    );
     if (result.error)
       return toast.error(result.payload || "Could not create category");
     setName("");
     setDescription("");
+    setParent("");
     toast.success("Category created");
+  };
+  // Change (or clear) a category's parent. The backend rejects any move that
+  // would form a cycle, so we just surface its message on failure.
+  const reparent = async (category, parentId) => {
+    const result = await dispatch(
+      updateOnlineCategory({ id: category._id, parent: parentId || null }),
+    );
+    if (result.error)
+      return toast.error(result.payload || "Could not move category");
+    toast.success("Category moved");
+    // Refresh so product counts (only computed by the list endpoint) stay right.
+    dispatch(getOnlineCategories());
   };
   const importAll = async () => {
     const result = await dispatch(importInventoryCategories());
@@ -1607,6 +1633,18 @@ function Categories({ categories }) {
           value={description}
           onChange={(event) => setDescription(event.target.value)}
         />
+        <select
+          className="select select-sm select-bordered w-full"
+          value={parent}
+          onChange={(event) => setParent(event.target.value)}
+        >
+          <option value="">Top-level category</option>
+          {categories.map((category) => (
+            <option key={category._id} value={category._id}>
+              Under: {category.name}
+            </option>
+          ))}
+        </select>
         <button className="btn btn-primary btn-sm w-full gap-2">
           <FiPlus /> Add category
         </button>
@@ -1623,6 +1661,7 @@ function Categories({ categories }) {
           <thead>
             <tr>
               <th>Category</th>
+              <th>Parent</th>
               <th>Products</th>
               <th>Status</th>
               <th />
@@ -1636,6 +1675,22 @@ function Categories({ categories }) {
                   <div className="text-xs text-base-content/50">
                     /{category.slug}
                   </div>
+                </td>
+                <td>
+                  <select
+                    className="select select-xs select-bordered"
+                    value={category.parent || ""}
+                    onChange={(event) => reparent(category, event.target.value)}
+                  >
+                    <option value="">Top level</option>
+                    {categories
+                      .filter((option) => option._id !== category._id)
+                      .map((option) => (
+                        <option key={option._id} value={option._id}>
+                          {option.name}
+                        </option>
+                      ))}
+                  </select>
                 </td>
                 <td>{category.listingCount || 0}</td>
                 <td>
@@ -2182,6 +2237,12 @@ function DealsControls({ listings, settings, isActing }) {
   const dispatch = useDispatch();
   const [section, setSection] = useState(DEFAULT_DEALS);
   const [deal, setDeal] = useState(BLANK_DEAL);
+  // Bulk deal: one % off applied to several products at once.
+  const [bulkPct, setBulkPct] = useState(20);
+  const [bulkStart, setBulkStart] = useState("");
+  const [bulkEnd, setBulkEnd] = useState("");
+  const [bulkIds, setBulkIds] = useState([]);
+  const [bulkSearch, setBulkSearch] = useState("");
 
   useEffect(() => {
     setSection({
@@ -2301,6 +2362,50 @@ function DealsControls({ listings, settings, isActing }) {
     }
     if (deal.id === listing._id) setDeal(BLANK_DEAL);
     toast.success("Online deal removed");
+  };
+
+  const toggleBulk = (id) =>
+    setBulkIds((current) =>
+      current.includes(id)
+        ? current.filter((x) => x !== id)
+        : [...current, id],
+    );
+
+  // Apply one percentage discount to every selected product — each product's
+  // deal price is worked out from its OWN regular price, so a mixed basket of
+  // prices all get the same % off rather than the same absolute price.
+  const applyBulk = async (event) => {
+    event.preventDefault();
+    const pct = Number(bulkPct);
+    if (!Number.isFinite(pct) || pct <= 0 || pct >= 100) {
+      return toast.error("Enter a discount between 1% and 99%");
+    }
+    if (!bulkIds.length) return toast.error("Select at least one product");
+    if (bulkStart && bulkEnd && new Date(bulkEnd) <= new Date(bulkStart)) {
+      return toast.error("Deal end must be after its start");
+    }
+    const targets = listings.filter((listing) => bulkIds.includes(listing._id));
+    const results = await Promise.all(
+      targets.map((listing) => {
+        const regular = Number(
+          listing.priceOverride ?? listing.product?.Price ?? 0,
+        );
+        const salePrice = money(regular * (1 - pct / 100));
+        return dispatch(
+          updateOnlineListing({
+            id: listing._id,
+            salePrice: salePrice > 0 ? salePrice : null,
+            saleStartsAt: bulkStart || null,
+            saleEndsAt: bulkEnd || null,
+          }),
+        );
+      }),
+    );
+    const failed = results.filter((result) => result.error).length;
+    failed
+      ? toast.error(`${failed} of ${targets.length} deals could not be saved`)
+      : toast.success(`Deal applied to ${targets.length} products`);
+    setBulkIds([]);
   };
 
   return (
@@ -2482,6 +2587,109 @@ function DealsControls({ listings, settings, isActing }) {
               <FiSave /> Save online deal
             </button>
           </div>
+        </form>
+
+        <form
+          onSubmit={applyBulk}
+          className="space-y-4 rounded-xl border bg-base-100 p-5"
+        >
+          <div>
+            <h3 className="font-display text-lg font-bold">
+              Deal on multiple products
+            </h3>
+            <p className="mt-1 text-xs text-base-content/55">
+              Pick several products and set one % off. Each product's deal price
+              is worked out from its own regular price. Online only — POS/stock
+              unchanged.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Discount (% off)">
+              <input
+                type="number"
+                min="1"
+                max="99"
+                className="input input-sm input-bordered"
+                value={bulkPct}
+                onChange={(event) => setBulkPct(event.target.value)}
+                required
+              />
+            </Field>
+            <Field label="Selected">
+              <input
+                className="input input-sm input-bordered"
+                value={`${bulkIds.length} product${bulkIds.length === 1 ? "" : "s"}`}
+                disabled
+              />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Starts (optional)">
+              <input
+                type="datetime-local"
+                className="input input-sm input-bordered"
+                value={bulkStart}
+                onChange={(event) => setBulkStart(event.target.value)}
+              />
+            </Field>
+            <Field label="Ends (optional)">
+              <input
+                type="datetime-local"
+                className="input input-sm input-bordered"
+                value={bulkEnd}
+                onChange={(event) => setBulkEnd(event.target.value)}
+              />
+            </Field>
+          </div>
+          <input
+            className="input input-sm input-bordered w-full"
+            placeholder="Search products…"
+            value={bulkSearch}
+            onChange={(event) => setBulkSearch(event.target.value)}
+          />
+          <div className="max-h-56 divide-y overflow-y-auto rounded-lg border">
+            {dealListings
+              .filter((listing) =>
+                String(listing.webName || listing.product?.name || "")
+                  .toLowerCase()
+                  .includes(bulkSearch.toLowerCase()),
+              )
+              .map((listing) => {
+                const regular = Number(
+                  listing.priceOverride ?? listing.product?.Price ?? 0,
+                );
+                const preview = money(
+                  regular * (1 - Number(bulkPct || 0) / 100),
+                );
+                return (
+                  <label
+                    key={listing._id}
+                    className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm hover:bg-base-200"
+                  >
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-xs"
+                      checked={bulkIds.includes(listing._id)}
+                      onChange={() => toggleBulk(listing._id)}
+                    />
+                    <span className="flex-1 truncate">
+                      {listing.webName || listing.product?.name}
+                    </span>
+                    <span className="whitespace-nowrap text-xs text-base-content/50">
+                      €{money(regular)} →{" "}
+                      <strong className="text-error">€{preview}</strong>
+                    </span>
+                  </label>
+                );
+              })}
+          </div>
+          <button
+            className="btn btn-primary btn-sm w-full gap-2"
+            disabled={isActing || !bulkIds.length}
+          >
+            <FiSave /> Apply to {bulkIds.length} product
+            {bulkIds.length === 1 ? "" : "s"}
+          </button>
         </form>
       </div>
 
@@ -2883,9 +3091,17 @@ function Promotions({ vouchers, listings, categories, isActing }) {
 }
 
 const BLANK_SETTINGS = {
+  logo: "",
   social: { instagram: "", facebook: "", twitter: "", tiktok: "" },
   footer: { description: "", supportEmail: "", supportPhone: "", address: "" },
   announcement: { primary: "", secondary: "" },
+  shipping: { flatRate: 4.99, freeThreshold: 50 },
+  promises: {
+    dispatch: "Fast dispatch",
+    returnsDays: 14,
+    authentic: true,
+    authenticLabel: "100% authentic",
+  },
   business: {
     legalName: "",
     tradingName: "",
@@ -2942,12 +3158,15 @@ function StorefrontSettings({ settings, isActing }) {
   useEffect(() => {
     if (settings) {
       setDraft({
+        logo: settings.logo || "",
         social: { ...BLANK_SETTINGS.social, ...(settings.social || {}) },
         footer: { ...BLANK_SETTINGS.footer, ...(settings.footer || {}) },
         announcement: {
           ...BLANK_SETTINGS.announcement,
           ...(settings.announcement || {}),
         },
+        shipping: { ...BLANK_SETTINGS.shipping, ...(settings.shipping || {}) },
+        promises: { ...BLANK_SETTINGS.promises, ...(settings.promises || {}) },
         business: { ...BLANK_SETTINGS.business, ...(settings.business || {}) },
         policies: { ...BLANK_SETTINGS.policies, ...(settings.policies || {}) },
       });
@@ -2967,6 +3186,36 @@ function StorefrontSettings({ settings, isActing }) {
   };
   return (
     <form onSubmit={save} className="space-y-5">
+      <section className="rounded-xl border bg-base-100 p-5">
+        <h3 className="font-display text-lg font-bold">Store logo</h3>
+        <p className="text-xs text-base-content/50">
+          Shown in the header of customer emails (order confirmation &amp;
+          review). Paste an image URL. Leave blank to show the store name as
+          text.
+        </p>
+        <div className="mt-3 flex items-center gap-4">
+          {draft.logo ? (
+            <img
+              src={draft.logo}
+              alt="Logo preview"
+              className="h-14 w-14 shrink-0 rounded-lg border object-contain bg-base-200"
+            />
+          ) : (
+            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg border bg-base-200 text-xs text-base-content/40">
+              None
+            </div>
+          )}
+          <input
+            type="url"
+            className="input input-sm input-bordered w-full"
+            placeholder="https://res.cloudinary.com/.../logo.png"
+            value={draft.logo}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, logo: event.target.value }))
+            }
+          />
+        </div>
+      </section>
       <div className="grid gap-5 lg:grid-cols-2">
         <section className="rounded-xl border bg-base-100 p-5">
           <h3 className="font-display text-lg font-bold">Social channels</h3>
@@ -3072,6 +3321,95 @@ function StorefrontSettings({ settings, isActing }) {
         </div>
       </section>
       <section className="rounded-xl border bg-base-100 p-5">
+        <h3 className="font-display text-lg font-bold">Shipping</h3>
+        <p className="text-xs text-base-content/50">
+          Charged at checkout. Orders at or above the free-shipping threshold
+          ship free. POS sales are unaffected.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <Field label="Flat shipping rate (€)">
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              className="input input-sm input-bordered w-full"
+              value={draft.shipping.flatRate}
+              onChange={(event) =>
+                set("shipping", "flatRate", Number(event.target.value))
+              }
+            />
+          </Field>
+          <Field label="Free shipping over (€)">
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              className="input input-sm input-bordered w-full"
+              value={draft.shipping.freeThreshold}
+              onChange={(event) =>
+                set("shipping", "freeThreshold", Number(event.target.value))
+              }
+            />
+          </Field>
+        </div>
+      </section>
+      <section className="rounded-xl border bg-base-100 p-5">
+        <h3 className="font-display text-lg font-bold">Store promises</h3>
+        <p className="text-xs text-base-content/50">
+          The trust badges shown on every product page. Change these once and
+          they update across the whole storefront.
+        </p>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <Field label="Dispatch">
+            <input
+              className="input input-sm input-bordered w-full"
+              placeholder="e.g. Fast dispatch / 2–3 day dispatch"
+              value={draft.promises.dispatch}
+              onChange={(event) =>
+                set("promises", "dispatch", event.target.value)
+              }
+            />
+          </Field>
+          <Field label="Returns window (days)">
+            <input
+              type="number"
+              min={0}
+              max={365}
+              className="input input-sm input-bordered w-full"
+              value={draft.promises.returnsDays}
+              onChange={(event) =>
+                set("promises", "returnsDays", Number(event.target.value))
+              }
+            />
+          </Field>
+          {/* NOT wrapped in <Field> (a <label>): a label around a checkbox
+              forwards the click back to it, double-toggling and cancelling the
+              change. A plain container keeps the toggle working. */}
+          <div className="form-control">
+            <span className="mb-1 text-xs capitalize">Authenticity badge</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                className="toggle toggle-sm"
+                checked={!!draft.promises.authentic}
+                onChange={(event) =>
+                  set("promises", "authentic", event.target.checked)
+                }
+              />
+              <input
+                className="input input-sm input-bordered w-full"
+                placeholder="100% authentic"
+                value={draft.promises.authenticLabel}
+                disabled={!draft.promises.authentic}
+                onChange={(event) =>
+                  set("promises", "authenticLabel", event.target.value)
+                }
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+      <section className="rounded-xl border bg-base-100 p-5">
         <h3 className="font-display text-lg font-bold">Business &amp; legal</h3>
         <p className="text-xs text-base-content/50">
           Shown in the online store footer for transparency. Leave any field
@@ -3149,10 +3487,13 @@ function StorefrontSettings({ settings, isActing }) {
   );
 }
 
+// One-click happy path. A COD shop fulfils in a single step, so a processing
+// order goes straight to "delivered" (which is also what triggers the customer's
+// review email). "shipped" remains a valid status for already-shipped orders.
 const NEXT_STATUS = {
   pending_payment: "paid",
   paid: "processing",
-  processing: "shipped",
+  processing: "delivered",
   shipped: "delivered",
 };
 
@@ -3251,6 +3592,109 @@ function Orders({ orders, isActing }) {
             <tr>
               <td colSpan={8} className="py-8 text-center text-base-content/50">
                 No online orders yet.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Reviews({ reviews, isActing }) {
+  const dispatch = useDispatch();
+  const toggle = async (review) => {
+    const status = review.status === "published" ? "hidden" : "published";
+    const result = await dispatch(
+      updateOnlineReview({ id: review._id, status }),
+    );
+    result.error
+      ? toast.error(result.payload)
+      : toast.success(status === "hidden" ? "Review hidden" : "Review published");
+  };
+  const remove = async (review) => {
+    if (!window.confirm("Delete this review permanently?")) return;
+    const result = await dispatch(deleteOnlineReview(review._id));
+    result.error
+      ? toast.error(result.payload)
+      : toast.success("Review deleted");
+  };
+  return (
+    <div className="overflow-x-auto rounded-xl border bg-base-100">
+      <table className="table table-sm">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Rating</th>
+            <th>Review</th>
+            <th>Customer</th>
+            <th>Status</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {reviews.map((review) => (
+            <tr key={review._id} className={review.status === "hidden" ? "opacity-50" : ""}>
+              <td>
+                <div className="font-medium">{review.product}</div>
+                <div className="text-xs text-base-content/50">
+                  {new Date(review.createdAt).toLocaleDateString()}
+                </div>
+              </td>
+              <td className="whitespace-nowrap text-amber-500">
+                {"★".repeat(review.rating)}
+                <span className="text-base-content/20">
+                  {"★".repeat(5 - review.rating)}
+                </span>
+              </td>
+              <td className="max-w-xs">
+                {review.title && (
+                  <div className="font-medium">{review.title}</div>
+                )}
+                {review.body && (
+                  <div className="text-xs text-base-content/60 line-clamp-2">
+                    {review.body}
+                  </div>
+                )}
+              </td>
+              <td>
+                <div>{review.customerName}</div>
+                {review.verified && (
+                  <div className="text-xs text-success">Verified purchase</div>
+                )}
+              </td>
+              <td>
+                <span
+                  className={`badge badge-sm ${
+                    review.status === "published" ? "badge-success" : "badge-ghost"
+                  }`}
+                >
+                  {review.status}
+                </span>
+              </td>
+              <td className="whitespace-nowrap text-right">
+                <button
+                  className="btn btn-ghost btn-xs"
+                  disabled={isActing}
+                  onClick={() => toggle(review)}
+                >
+                  {review.status === "published" ? "Hide" : "Show"}
+                </button>
+                <button
+                  className="btn btn-ghost btn-xs text-error"
+                  disabled={isActing}
+                  onClick={() => remove(review)}
+                >
+                  <FiTrash2 />
+                </button>
+              </td>
+            </tr>
+          ))}
+          {!reviews.length && (
+            <tr>
+              <td colSpan={6} className="py-8 text-center text-base-content/50">
+                No reviews yet. Customers are invited to review each product once
+                their order is marked delivered.
               </td>
             </tr>
           )}

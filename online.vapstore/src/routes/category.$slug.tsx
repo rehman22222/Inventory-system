@@ -4,8 +4,9 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
 import { FilterSidebar } from "@/components/FilterSidebar";
-import { brandsOf, type Category, type Product } from "@/lib/catalog";
+import { brandsOf, childCategories, type Category, type Product } from "@/lib/catalog";
 import { getCategoryPage } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 import { useProductFilters, type Sort } from "@/lib/useProductFilters";
 
 export const Route = createFileRoute("/category/$slug")({
@@ -55,6 +56,14 @@ function CategoryPage() {
     category: Category;
     products: Product[];
   };
+  const { categories } = useCatalog();
+  // Sub-categories to drill into, and the parent to climb back to. Both come
+  // from the full catalogue (the loader only knows this one category).
+  const kids = useMemo(() => childCategories(categories, category.slug), [categories, category.slug]);
+  const parent = useMemo(
+    () => (category.parentSlug ? categories.find((c) => c.slug === category.parentSlug) : null),
+    [categories, category.parentSlug],
+  );
   const brands = useMemo(() => brandsOf(products), [products]);
   const filters = useProductFilters(products, category.slug);
   const list = filters.filtered;
@@ -76,6 +85,18 @@ function CategoryPage() {
                 Shop
               </Link>
               {" / "}
+              {parent && (
+                <>
+                  <Link
+                    to="/category/$slug"
+                    params={{ slug: parent.slug }}
+                    className="hover:text-ink"
+                  >
+                    {parent.name}
+                  </Link>
+                  {" / "}
+                </>
+              )}
               <span className="text-ink">{category.name}</span>
             </nav>
             <h1 className="mt-6 font-display text-4xl sm:text-5xl md:text-8xl leading-[0.95] md:leading-[0.9] tracking-tight break-words">
@@ -104,6 +125,26 @@ function CategoryPage() {
           </div>
         </div>
       </section>
+
+      {kids.length > 0 && (
+        <section className="border-b hair">
+          <div className="container-x py-5 flex flex-wrap items-center gap-2">
+            <span className="mr-1 font-mono text-[11px] uppercase tracking-widest text-ink-muted">
+              Shop by
+            </span>
+            {kids.map((k) => (
+              <Link
+                key={k.slug}
+                to="/category/$slug"
+                params={{ slug: k.slug }}
+                className="border hair px-3 py-1.5 font-display text-xs uppercase tracking-widest hover:bg-accent hover:text-accent-foreground"
+              >
+                {k.name}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="container-x py-10 md:py-14 grid gap-8 lg:grid-cols-[240px_1fr]">
         <button

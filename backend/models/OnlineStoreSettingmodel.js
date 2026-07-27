@@ -124,6 +124,9 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
       unique: true,
       index: true,
     },
+    // Shop logo (Cloudinary URL). Shown in customer emails' header; blank falls
+    // back to the brand name as text.
+    logo: { type: String, default: "", trim: true },
     social: {
       instagram: { type: String, default: "", trim: true },
       facebook: { type: String, default: "", trim: true },
@@ -144,13 +147,34 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
     announcement: {
       primary: {
         type: String,
-        default: "Free shipping over €50 · Same-day dispatch",
+        default: "Free shipping over €50 · Fast dispatch",
         trim: true,
       },
       secondary: {
         type: String,
         default: "18+ only · Nicotine warning",
         trim: true,
+      },
+    },
+    // Checkout shipping, set by the owner. `flatRate` is charged per order under
+    // the free-shipping threshold; orders at or above `freeThreshold` ship free.
+    shipping: {
+      flatRate: { type: Number, default: 4.99, min: 0 },
+      freeThreshold: { type: Number, default: 50, min: 0 },
+    },
+    // The trust badges shown on every product page (and echoed in the shipping
+    // copy). Editable so the owner keeps them true to how they actually trade —
+    // change the dispatch wording or the returns window once and it updates
+    // across the whole storefront.
+    promises: {
+      dispatch: { type: String, default: "Fast dispatch", trim: true, maxlength: 40 },
+      returnsDays: { type: Number, default: 14, min: 0, max: 365 },
+      authentic: { type: Boolean, default: true },
+      authenticLabel: {
+        type: String,
+        default: "100% authentic",
+        trim: true,
+        maxlength: 40,
       },
     },
     newThisWeek: {
