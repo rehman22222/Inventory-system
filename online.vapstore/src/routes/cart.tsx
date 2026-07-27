@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Minus, Plus, Trash2, ShieldCheck, Truck, Lock } from "lucide-react";
+import { Minus, Plus, Trash2, ShieldCheck, Clock, Lock } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useCart } from "@/lib/cart";
@@ -188,7 +188,7 @@ function Cart() {
             {/* Reassurance */}
             <div className="mt-4 grid gap-3">
               {[
-                { icon: Truck, label: `${settings.promises.dispatch} on in-stock orders` },
+                { icon: Clock, label: `${settings.promises.dispatch} on in-stock orders` },
                 { icon: ShieldCheck, label: "100% authentic, sealed products" },
                 { icon: Lock, label: "Inventory checked before confirmation" },
               ].map((v, i) => (

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Minus, Plus, ShieldCheck, Truck, RotateCcw, Check } from "lucide-react";
+import { Minus, Plus, ShieldCheck, Clock, RotateCcw, Check } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
@@ -340,7 +340,7 @@ function ProductPage() {
 
           <div className="mt-8 grid grid-cols-3 gap-3 border-y hair py-6">
             {[
-              { icon: Truck, label: promises.dispatch },
+              { icon: Clock, label: promises.dispatch },
               ...(promises.authentic
                 ? [{ icon: ShieldCheck, label: promises.authenticLabel }]
                 : []),
