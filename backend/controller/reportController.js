@@ -93,6 +93,10 @@ async function buildSales(req, options = {}) {
   if (req.user.role === "staff") filter.cashier = req.user._id;
   const range = dateFilter(from, to, zoneOf(req));
   if (range) filter.createdAt = range;
+  // Channel scope: "online" = web orders only; "pos" = everything except online
+  // (counter sales + refunds); default = combined (no source filter).
+  if (options.source === "online") filter.source = "online";
+  else if (options.source === "pos") filter.source = { $ne: "online" };
 
   const sales = await Sale.find(filter)
     .populate("products.product", "name costPrice")
@@ -206,6 +210,14 @@ async function buildSales(req, options = {}) {
 
 async function buildCombinedSales(req) {
   return buildSales(req, { combined: true });
+}
+
+// Channel-scoped variants of the sales report.
+async function buildPosSales(req) {
+  return buildSales(req, { source: "pos" });
+}
+async function buildOnlineSales(req) {
+  return buildSales(req, { source: "online" });
 }
 
 // ── Inventory: stock valuation + potential profit ───────────────────────────
@@ -413,6 +425,16 @@ const REPORTS = {
     label: "POS + Online Combined Sales",
     roles: ["superadmin", "admin"],
     build: buildCombinedSales,
+  },
+  "pos-sales": {
+    label: "POS Sales",
+    roles: ["superadmin", "admin"],
+    build: buildPosSales,
+  },
+  "online-sales": {
+    label: "Online Sales",
+    roles: ["superadmin", "admin"],
+    build: buildOnlineSales,
   },
   inventory: {
     label: "Inventory & Valuation",

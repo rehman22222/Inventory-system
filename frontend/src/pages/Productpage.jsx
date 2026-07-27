@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import TopNavbar from "../Components/TopNavbar";
 import { IoMdAdd } from "react-icons/io";
+import { currency } from "../Components/pos/posUtils";
 import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
 import { FiImage } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
@@ -257,7 +258,7 @@ function Productpage() {
           </div>
           <div className="rounded-xl bg-slate-950 p-5 text-white shadow-sm">
             <h1 className="text-sm font-semibold text-slate-300">{t("products.totalStoreValue")}</h1>
-            <p className="mt-2 text-2xl font-bold">${totalValue.toFixed(2)}</p>
+            <p className="mt-2 text-2xl font-bold">{currency(totalValue)}</p>
           </div>
           <div className="rounded-xl bg-slate-950 p-5 text-white shadow-sm">
             <h1 className="text-sm font-semibold text-slate-300">{t("products.totalCategories")}</h1>
@@ -585,7 +586,7 @@ function Productpage() {
                       </td>
                       <td className="border px-3 py-2">{product.barcode || "—"}</td>
                       <td className="border px-3 py-2">{product.quantity}</td>
-                      <td className="border px-3 py-2">${product.Price}</td>
+                      <td className="border px-3 py-2">{currency(product.Price)}</td>
                       <td className="border px-3 py-2">
                         {product.expiryDate
                           ? new Date(product.expiryDate).toLocaleDateString()

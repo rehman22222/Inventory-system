@@ -13,6 +13,7 @@ import {
 import SalesChart from '../lib/Salesgraph';
 import ReportButton from "../Components/ReportButton";
 import DayClosingModal from "../Components/pos/DayClosingModal";
+import { currency } from "../Components/pos/posUtils";
 import toast from "react-hot-toast";
 
 
@@ -204,6 +205,16 @@ function Salespage() {
                   className="h-10 rounded-lg border-2 border-base-300 bg-base-100 px-3 text-sm text-base-content"
                 />
               </div>
+              <ReportButton
+                reportKey="pos-sales"
+                label="POS Report"
+                params={{ from: fromDate || undefined, to: toDate || undefined }}
+              />
+              <ReportButton
+                reportKey="online-sales"
+                label="Online Report"
+                params={{ from: fromDate || undefined, to: toDate || undefined }}
+              />
               <ReportButton
                 reportKey="combined-sales"
                 label="POS + Online Report"
@@ -408,7 +419,7 @@ function Salespage() {
                       {sales.products?.product?.name || t("sales.noProduct")}
                       </td>
                       <td className="px-3 py-2 border">
-                       $ {sales?.totalAmount}
+                       {currency(sales?.totalAmount)}
                       </td>
 
                       <td className="px-3 py-2 border">

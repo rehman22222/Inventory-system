@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import TopNavbar from "../Components/TopNavbar";
+import { currency } from "../Components/pos/posUtils";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { IoMdAdd } from "react-icons/io";
@@ -474,7 +475,7 @@ function Orderpage() {
                   ))}
                   <div className="flex justify-between border-t border-base-300 px-2 pt-2 text-sm font-bold">
                     <span>{t("orders.orderTotal")}</span>
-                    <span className="tabular-nums">${linesTotal.toFixed(2)}</span>
+                    <span className="tabular-nums">{currency(linesTotal)}</span>
                   </div>
                 </div>
               )}
