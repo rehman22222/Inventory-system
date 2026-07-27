@@ -3177,6 +3177,22 @@ function StorefrontSettings({ settings, isActing }) {
       ...current,
       [section]: { ...current[section], [key]: value },
     }));
+  // Toggle that persists immediately (no need to scroll to the form's Save
+  // button), so its on/off state can never be lost as an unsaved edit.
+  const setAuthentic = async (authentic) => {
+    setDraft((current) => ({
+      ...current,
+      promises: { ...current.promises, authentic },
+    }));
+    const result = await dispatch(
+      saveOnlineSettings({ promises: { ...draft.promises, authentic } }),
+    );
+    result.error
+      ? toast.error(result.payload || "Could not save")
+      : toast.success(
+          authentic ? "Authenticity badge shown" : "Authenticity badge hidden",
+        );
+  };
   const save = async (event) => {
     event.preventDefault();
     const result = await dispatch(saveOnlineSettings(draft));
@@ -3392,9 +3408,7 @@ function StorefrontSettings({ settings, isActing }) {
                 type="checkbox"
                 className="toggle toggle-sm"
                 checked={!!draft.promises.authentic}
-                onChange={(event) =>
-                  set("promises", "authentic", event.target.checked)
-                }
+                onChange={(event) => setAuthentic(event.target.checked)}
               />
               <input
                 className="input input-sm input-bordered w-full"
