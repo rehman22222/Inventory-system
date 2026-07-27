@@ -128,6 +128,16 @@ export interface StorefrontSettings {
   };
 }
 
+/* Announcement/marketing copy can use placeholders that always reflect the
+ * current settings, so changing the shipping threshold (or dispatch text) in
+ * admin updates every banner at once — no need to re-edit the wording:
+ *   {free}     → the free-shipping amount, e.g. "€100"
+ *   {dispatch} → the dispatch label, e.g. "Fast dispatch" */
+export const fillTokens = (text: string, settings: StorefrontSettings): string =>
+  String(text || "")
+    .replace(/\{free\}/gi, `€${settings.shipping.freeThreshold}`)
+    .replace(/\{dispatch\}/gi, settings.promises.dispatch);
+
 /* Availability shown to shoppers is deliberately coarse. Exposing an exact
  * "1 in stock" both looks broken on a shop that restocks constantly and invites
  * the frustration of a basket item selling out mid-checkout. Below the low-stock

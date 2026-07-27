@@ -3317,11 +3317,16 @@ function StorefrontSettings({ settings, isActing }) {
       </div>
       <section className="rounded-xl border bg-base-100 p-5">
         <h3 className="font-display text-lg font-bold">Header announcement</h3>
+        <p className="text-xs text-base-content/50">
+          Tip: use <code>{"{free}"}</code> for the free-shipping amount and{" "}
+          <code>{"{dispatch}"}</code> for the dispatch text — they update
+          automatically across the store when you change the Shipping settings.
+        </p>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <input
             className="input input-sm input-bordered"
             value={draft.announcement.primary}
-            placeholder="Free shipping over €50 · Same-day dispatch"
+            placeholder="Free shipping over {free} · {dispatch}"
             onChange={(event) =>
               set("announcement", "primary", event.target.value)
             }

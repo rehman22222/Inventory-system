@@ -146,8 +146,10 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
     },
     announcement: {
       primary: {
+        // {free} and {dispatch} are filled in live by the storefront from the
+        // Shipping threshold and dispatch label, so one banner stays in sync.
         type: String,
-        default: "Free shipping over €50 · Fast dispatch",
+        default: "Free shipping over {free} · {dispatch}",
         trim: true,
       },
       secondary: {

@@ -5,6 +5,7 @@ import {
   productsByCategory,
   topLevelCategories,
   childCategories,
+  fillTokens,
   type Category,
   type CategorySlug,
 } from "@/lib/catalog";
@@ -128,8 +129,10 @@ export function Header() {
       {/* Announcement */}
       <div className="bg-ink text-primary-foreground">
         <div className="container-x flex h-9 items-center justify-between text-[11px] font-mono uppercase tracking-widest">
-          <span>{settings.announcement.primary}</span>
-          <span className="hidden md:inline">{settings.announcement.secondary}</span>
+          <span>{fillTokens(settings.announcement.primary, settings)}</span>
+          <span className="hidden md:inline">
+            {fillTokens(settings.announcement.secondary, settings)}
+          </span>
         </div>
       </div>
 
