@@ -113,6 +113,19 @@ function ProductPage() {
   ].filter(
     (url, index, urls): url is string => Boolean(url) && urls.indexOf(url) === index,
   );
+  // Clicking a photo that belongs to a flavour/colour option should select that
+  // option too — so the picture and the option buttons stay in sync both ways
+  // (option → picture already worked; this makes picture → option work).
+  const selectImage = (image: string) => {
+    const variant = product.variants.find((v) => imageForVariant(v) === image);
+    if (variant) {
+      setSelectedProductId(variant.productId);
+      setImageOverride(null); // show the option's own photo
+      setQty(1);
+    } else {
+      setImageOverride(image);
+    }
+  };
   const onSale = !!product.compareAt;
   const outOfStock = activeStock <= 0;
   const availability = availabilityOf(activeStock);
@@ -188,7 +201,7 @@ function ProductPage() {
                 <button
                   type="button"
                   key={image}
-                  onClick={() => setImageOverride(image)}
+                  onClick={() => selectImage(image)}
                   aria-label="View this photo"
                   className={`border hair bg-surface aspect-square overflow-hidden p-1.5 transition-opacity hover:opacity-90 ${
                     image === heroImage ? "outline outline-2 outline-ink" : ""
