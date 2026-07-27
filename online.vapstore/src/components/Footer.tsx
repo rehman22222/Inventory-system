@@ -31,8 +31,9 @@ export function Footer() {
   ].filter((item) => item.href);
 
   const business = settings.business;
+  // Legal transparency row — company number / VAT only. The trading name is
+  // already shown in the copyright line, so it isn't repeated here.
   const businessBits = [
-    business.legalName || business.tradingName,
     business.companyNumber && `Company no. ${business.companyNumber}`,
     business.vatNumber && `VAT ${business.vatNumber}`,
   ].filter(Boolean);
