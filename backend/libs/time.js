@@ -89,6 +89,17 @@ function formatInZone(value, tz = "UTC", withTime = true) {
   return withTime ? `${day} ${parts.hour}:${parts.minute}:${parts.second}` : day;
 }
 
+// The next local midnight (00:00 of tomorrow in `tz`) as a UTC instant. Used to
+// end every staff session at the close of the business day: a login at any time
+// today expires when the shop's calendar rolls over to the next day, in the
+// shop's own timezone — not the server's.
+function nextMidnight(tz = "UTC", now = new Date()) {
+  const [y, m, d] = parseYmd(formatInZone(now, tz, false)); // today's Y-M-D in tz
+  // Day-of-month + 1 rolls over months/years correctly via Date.UTC inside
+  // zonedToUtc, and the offset re-check there keeps it right across a DST change.
+  return zonedToUtc(y, m, d + 1, 0, 0, 0, 0, tz);
+}
+
 // Does the platform recognise this timezone? Used to validate what the owner
 // picks, rather than hard-coding a list that goes stale.
 function isValidZone(tz) {
@@ -101,4 +112,4 @@ function isValidZone(tz) {
   }
 }
 
-module.exports = { startOfDay, endOfDay, formatInZone, isValidZone, tzOffset };
+module.exports = { startOfDay, endOfDay, nextMidnight, formatInZone, isValidZone, tzOffset };

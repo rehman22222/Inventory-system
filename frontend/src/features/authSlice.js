@@ -73,6 +73,11 @@ export const login = createAsyncThunk(
       const response = await axiosInstance.post("auth/login", credentials, { withCredentials: true });
       // The cookie the server just set is what authenticates us from here on.
       localStorage.setItem("user", JSON.stringify(withoutToken(response.data.user)));
+      // When this session auto-ends (shop's next local midnight). The session
+      // guard reads this to log the user out on the dot at end of day.
+      if (response.data.sessionExpiresAt) {
+        localStorage.setItem("sessionExpiresAt", response.data.sessionExpiresAt);
+      }
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Login failed");
@@ -92,6 +97,7 @@ export const logout = createAsyncThunk(
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       localStorage.removeItem("authUser");
+      localStorage.removeItem("sessionExpiresAt");
     }
     return null;
   }

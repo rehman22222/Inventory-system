@@ -143,7 +143,7 @@ module.exports.login=async(req,res)=>{
             return res.status(400).json({ message: "The password is incorrect", reason: "password" })
         }
 
-        await generateToken(duplicatedUser,res)
+        const { expiresAt } = await generateToken(duplicatedUser,res)
 
 
 
@@ -159,6 +159,9 @@ module.exports.login=async(req,res)=>{
     });
    return res.status(201).json({
     message:"login successfully",
+    // When this session will be logged out (the shop's next local midnight), so
+    // the client can schedule an end-of-day logout even on an idle screen.
+    sessionExpiresAt: expiresAt,
     user:{
         id:duplicatedUser.id,
         name:duplicatedUser.name,

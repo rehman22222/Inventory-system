@@ -48,6 +48,7 @@ axiosInstance.interceptors.response.use(
       try {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
+        localStorage.removeItem("sessionExpiresAt");
       } catch {
         /* private mode — the redirect below still ends the session */
       }
