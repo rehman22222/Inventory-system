@@ -605,6 +605,14 @@ module.exports.updateCategory = async (req, res) => {
       return res.status(404).json({ message: "Category not found" });
     return res.status(200).json({ message: "Category updated", category });
   } catch (error) {
+    // A rename whose slug already belongs to another category trips the unique
+    // {store, slug} index. Answer with a clear message instead of a bare 500.
+    if (error?.code === 11000) {
+      return res.status(400).json({
+        message:
+          "Another category already uses this name — pick a different name.",
+      });
+    }
     return res
       .status(500)
       .json({ message: "Could not update category", error: error.message });
