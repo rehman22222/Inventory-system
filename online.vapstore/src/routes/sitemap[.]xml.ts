@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 import { storefrontForSitemap } from "@/lib/catalog-api";
 
-const BASE_URL = "";
+// Sitemaps MUST use absolute URLs, or Google rejects them. Driven by SITE_URL
+// (set per deploy) with the live domain as a fallback.
+const BASE_URL = (process.env.SITE_URL || "https://cliffsofpuff.com").replace(/\/+$/, "");
 
 export const Route = createFileRoute("/sitemap.xml")({
   server: {

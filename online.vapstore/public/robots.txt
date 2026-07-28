@@ -1,2 +1,4 @@
 User-agent: *
 Allow: /
+
+Sitemap: https://cliffsofpuff.com/sitemap.xml
