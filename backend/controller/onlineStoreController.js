@@ -87,10 +87,30 @@ const regularItemPrice = (listing, product, variant = null) =>
     ? Number(variant.priceOverride)
     : Number(listingPrice(listing, product));
 
-// A scheduled sale is presentation/pricing owned by OnlineListing. Product.Price
-// remains the POS/inventory price and is never written by this controller.
-const effectiveItemPrice = (listing, product, variant = null) =>
-  saleIsActive(listing)
+// How many of the item unlock the deal. 1 (or null) = an ordinary always-on
+// sale; >= 2 = a "buy N+" quantity deal.
+const dealMinQty = (listing) => {
+  const n = Math.floor(Number(listing?.dealMinQty));
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+};
+
+// A base-price sale lowers the shown price for every unit. A quantity deal
+// (minQty >= 2) does NOT — it is surfaced separately as `qtyDeal`, so the price
+// only drops once the shopper reaches the threshold.
+const baseSaleActive = (listing) =>
+  saleIsActive(listing) && dealMinQty(listing) <= 1;
+
+// The price the storefront displays for a single unit. Owned entirely by
+// OnlineListing — Product.Price (the POS/inventory price) is never written here.
+const displayPrice = (listing, product, variant = null) =>
+  baseSaleActive(listing)
+    ? Number(listing.salePrice)
+    : regularItemPrice(listing, product, variant);
+
+// The price actually charged for a line, given its quantity: the sale price
+// applies once the quantity reaches the deal minimum (1 for an ordinary sale).
+const effectiveItemPrice = (listing, product, variant = null, qty = 1) =>
+  saleIsActive(listing) && qty >= dealMinQty(listing)
     ? Number(listing.salePrice)
     : regularItemPrice(listing, product, variant);
 
@@ -98,21 +118,21 @@ const effectiveItemPrice = (listing, product, variant = null) =>
 const publicListing = (l) => {
   const p = l.product;
   if (!p) return null;
-  const activeSale = saleIsActive(l);
+  const activeSale = baseSaleActive(l);
   const variants = (l.variants || [])
     .filter((variant) => variant.product && variant.product._id)
     .map((variant) => ({
       productId: String(variant.product._id),
       label: variant.label,
       kind: variant.kind || "option",
-      price: money(effectiveItemPrice(l, variant.product, variant)),
+      price: money(displayPrice(l, variant.product, variant)),
       regularPrice: money(regularItemPrice(l, variant.product, variant)),
       stock: Number(variant.product.quantity || 0),
       image: variant.image || "",
     }));
   const prices = variants.length
     ? variants.map((variant) => variant.price)
-    : [money(effectiveItemPrice(l, p))];
+    : [money(displayPrice(l, p))];
   const regularPrices = variants.length
     ? variants.map((variant) => variant.regularPrice)
     : [money(regularItemPrice(l, p))];
@@ -130,6 +150,18 @@ const publicListing = (l) => {
   const tags = Array.from(
     new Set([...(l.tags || []), ...(activeSale ? ["sale"] : [])]),
   );
+
+  // A live quantity deal ("buy N+, €X each") — surfaced alongside the regular
+  // price so the storefront can invite the shopper to reach the threshold.
+  const qtyDeal =
+    saleIsActive(l) && dealMinQty(l) >= 2
+      ? {
+          minQty: dealMinQty(l),
+          price: money(Number(l.salePrice)),
+          regularPrice,
+          image: l.dealImage?.url || "",
+        }
+      : null;
 
   return {
     id: String(l._id),
@@ -163,6 +195,10 @@ const publicListing = (l) => {
     compareAt: compareAt > price ? compareAt : null,
     sale: activeSale,
     saleEndsAt: activeSale && l.saleEndsAt ? l.saleEndsAt : null,
+    // A quantity deal (buy N+ for a lower unit price), or null when none is live.
+    qtyDeal,
+    // Promo image for whichever deal is live (base sale or quantity deal).
+    dealImage: saleIsActive(l) && l.dealImage?.url ? l.dealImage.url : "",
     publishedAt: l.createdAt,
     // Live from the shared ledger — the same number the till reads.
     stock,
@@ -277,7 +313,7 @@ const resolveOrderLines = async (store, items) => {
       );
     }
     const price = money(
-      effectiveItemPrice(listing, selectedProduct, selectedVariant),
+      effectiveItemPrice(listing, selectedProduct, selectedVariant, qty),
     );
     if (!Number.isFinite(price) || price <= 0) {
       throw requestError(
@@ -1150,6 +1186,36 @@ module.exports.updateListing = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Sale end time must be after its start time" });
+    }
+
+    // Quantity-triggered deal: the sale price only applies from this quantity up.
+    // Empty / null / 1 stores as null (an ordinary sale on every unit).
+    if (Object.prototype.hasOwnProperty.call(req.body, "dealMinQty")) {
+      const raw = req.body.dealMinQty;
+      if (raw === "" || raw == null) {
+        listing.dealMinQty = null;
+      } else {
+        const n = Math.floor(Number(raw));
+        if (!Number.isFinite(n) || n < 1) {
+          return res
+            .status(400)
+            .json({ message: "Minimum deal quantity must be a whole number of 1 or more" });
+        }
+        listing.dealMinQty = n <= 1 ? null : n;
+      }
+    }
+
+    // Optional promo image for the deal. An empty payload clears it.
+    if (Object.prototype.hasOwnProperty.call(req.body, "dealImage")) {
+      const img = req.body.dealImage;
+      listing.dealImage =
+        img && typeof img.url === "string" && img.url.trim()
+          ? {
+              url: img.url.trim(),
+              publicId:
+                typeof img.publicId === "string" ? img.publicId.trim() : "",
+            }
+          : { url: "", publicId: "" };
     }
 
     if (Object.prototype.hasOwnProperty.call(req.body, "tags")) {
@@ -2503,8 +2569,8 @@ module.exports.storefrontHero = async (req, res) => {
                 slug: productSlug,
                 name: s.listing.webName || s.listing.product.name,
                 brand: s.listing.brand,
-                price: money(effectiveItemPrice(s.listing, s.listing.product)),
-                was: saleIsActive(s.listing)
+                price: money(displayPrice(s.listing, s.listing.product)),
+                was: baseSaleActive(s.listing)
                   ? money(
                       Math.max(
                         Number(s.listing.compareAtPrice || 0),

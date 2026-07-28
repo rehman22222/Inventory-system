@@ -29,6 +29,18 @@ export interface CartLine {
   /** Stock at the time it was added — a soft cap in the UI. The real guarantee
    *  is the atomic decrement at checkout on the server (phase 1). */
   maxStock: number;
+  /** Quantity deal: once `qty >= dealMinQty`, each unit costs `dealPrice`
+   *  instead of `price`. The server re-derives this at checkout — these fields
+   *  only keep the on-screen totals honest before then. */
+  dealMinQty?: number;
+  dealPrice?: number;
+}
+
+/** Unit price for a line, applying its quantity deal when the threshold is met.
+ *  Kept in one place so the cart, cart page and checkout all agree. */
+export function lineUnitPrice(l: CartLine): number {
+  if (l.dealMinQty && l.dealPrice && l.qty >= l.dealMinQty) return l.dealPrice;
+  return l.price;
 }
 
 type Action =
@@ -124,7 +136,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const api = useMemo<CartApi>(() => {
     const count = lines.reduce((n, l) => n + l.qty, 0);
-    const subtotal = lines.reduce((n, l) => n + l.price * l.qty, 0);
+    const subtotal = lines.reduce((n, l) => n + lineUnitPrice(l) * l.qty, 0);
     return {
       lines,
       count,

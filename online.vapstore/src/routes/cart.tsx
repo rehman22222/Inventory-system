@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Minus, Plus, Trash2, ShieldCheck, Clock, Lock } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { useCart } from "@/lib/cart";
+import { useCart, lineUnitPrice } from "@/lib/cart";
 import { useCatalog } from "@/lib/catalog-context";
 import { formatPrice } from "@/lib/format";
 
@@ -92,7 +92,25 @@ function Cart() {
                   >
                     {l.name}
                   </Link>
-                  <div className="mt-2 font-display text-sm">{formatPrice(l.price)}</div>
+                  <div className="mt-2 flex items-baseline gap-2 font-display text-sm">
+                    <span
+                      className={
+                        lineUnitPrice(l) < l.price ? "text-[color:var(--sale)]" : ""
+                      }
+                    >
+                      {formatPrice(lineUnitPrice(l))}
+                    </span>
+                    {lineUnitPrice(l) < l.price && (
+                      <span className="font-mono text-[11px] text-ink-muted line-through">
+                        {formatPrice(l.price)}
+                      </span>
+                    )}
+                  </div>
+                  {l.dealMinQty && l.dealPrice && l.qty < l.dealMinQty && (
+                    <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-[color:var(--sale)]">
+                      Buy {l.dealMinQty}+ · {formatPrice(l.dealPrice)} each
+                    </div>
+                  )}
 
                   {/* Qty + remove */}
                   <div className="mt-3 flex items-center gap-3">
@@ -135,7 +153,7 @@ function Cart() {
                     Line total
                   </span>
                   <span className="font-display text-base tnum whitespace-nowrap">
-                    {formatPrice(l.price * l.qty)}
+                    {formatPrice(lineUnitPrice(l) * l.qty)}
                   </span>
                 </div>
               </div>

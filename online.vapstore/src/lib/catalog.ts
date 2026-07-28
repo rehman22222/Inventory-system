@@ -30,6 +30,15 @@ export interface Product {
   compareAt?: number;
   sale?: boolean;
   saleEndsAt?: string;
+  /** Quantity deal: pay `price` each once you buy `minQty` or more. */
+  qtyDeal?: {
+    minQty: number;
+    price: number;
+    regularPrice: number;
+    image?: string;
+  } | null;
+  /** Promo image for the live deal (base sale or quantity deal), if uploaded. */
+  dealImage?: string;
   publishedAt?: string;
   image: string;
   gallery: { url: string; alt?: string }[];

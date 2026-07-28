@@ -150,6 +150,13 @@ type ApiProduct = {
   compareAt: number | null;
   sale: boolean;
   saleEndsAt: string | null;
+  qtyDeal?: {
+    minQty: number;
+    price: number;
+    regularPrice: number;
+    image?: string;
+  } | null;
+  dealImage?: string;
   publishedAt: string | null;
   stock: number;
   featured: boolean;
@@ -169,6 +176,10 @@ const toProduct = (p: ApiProduct): Product => ({
   compareAt: p.compareAt ?? undefined,
   sale: p.sale,
   saleEndsAt: p.saleEndsAt ?? undefined,
+  qtyDeal: p.qtyDeal
+    ? { ...p.qtyDeal, image: p.qtyDeal.image ? cldAuto(p.qtyDeal.image) : "" }
+    : null,
+  dealImage: p.dealImage ? cldAuto(p.dealImage) : "",
   publishedAt: p.publishedAt ?? undefined,
   image: cldAuto(p.image),
   gallery: (p.gallery || []).map((image) => ({ ...image, url: cldAuto(image.url) })),

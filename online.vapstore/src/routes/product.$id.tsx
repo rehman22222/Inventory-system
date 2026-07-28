@@ -132,6 +132,15 @@ function ProductPage() {
   const priceUnavailable = activePrice <= 0;
   const unavailable = outOfStock || priceUnavailable;
 
+  // Quantity deal ("buy N+, €X each"). It applies once the chosen quantity meets
+  // the threshold; below that the shopper pays the normal price.
+  const qtyDeal = product.qtyDeal || null;
+  const qtyDealActive = !!qtyDeal && qty >= qtyDeal.minQty;
+  const effectiveUnit = qtyDealActive ? qtyDeal!.price : activePrice;
+  const qtyDealPct = qtyDeal
+    ? Math.round((1 - qtyDeal.price / (qtyDeal.regularPrice || activePrice || 1)) * 100)
+    : 0;
+
   // Options are grouped by kind so flavours and colours appear as separate
   // choice rows, each with its own heading.
   const variantGroups = (["flavour", "colour", "option"] as const)
@@ -153,6 +162,7 @@ function ProductPage() {
     price: activePrice,
     image: activeImage,
     maxStock: activeStock,
+    ...(qtyDeal ? { dealMinQty: qtyDeal.minQty, dealPrice: qtyDeal.price } : {}),
   });
 
   const addToCart = () => {
@@ -243,6 +253,43 @@ function ProductPage() {
             )}
           </div>
 
+          {qtyDeal && !priceUnavailable && (
+            <div className="mt-4 flex items-center gap-4 border hair bg-surface p-3">
+              {qtyDeal.image ? (
+                <img
+                  src={qtyDeal.image}
+                  alt="Deal"
+                  className="h-16 w-16 shrink-0 border hair object-cover"
+                />
+              ) : (
+                <div className="grid h-16 w-16 shrink-0 place-items-center border hair bg-[color:var(--sale)] font-display text-lg text-primary-foreground">
+                  {qtyDealPct > 0 ? `-${qtyDealPct}%` : "Deal"}
+                </div>
+              )}
+              <div className="min-w-0">
+                <div className="font-display text-sm">
+                  Buy {qtyDeal.minQty}+ · {formatPrice(qtyDeal.price)} each
+                  {qtyDealPct > 0 ? ` · save ${qtyDealPct}%` : ""}
+                </div>
+                <div className="mt-0.5 font-mono text-[11px] uppercase tracking-widest text-ink-muted">
+                  {qtyDealActive
+                    ? "Deal applied ✓"
+                    : `Add ${qtyDeal.minQty - qty} more to unlock`}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!qtyDeal && product.dealImage && onSale && (
+            <div className="mt-4 overflow-hidden border hair bg-surface">
+              <img
+                src={product.dealImage}
+                alt="Deal"
+                className="max-h-40 w-full object-contain p-2"
+              />
+            </div>
+          )}
+
           {variantGroups.length > 0 ? (
             <div className="mt-8 space-y-5">
               {variantGroups.map((group) => (
@@ -317,7 +364,7 @@ function ProductPage() {
                   "Out of stock"
                 )
               ) : (
-                <>Add to cart · {formatPrice(activePrice * qty)}</>
+                <>Add to cart · {formatPrice(effectiveUnit * qty)}</>
               )}
             </button>
           </div>

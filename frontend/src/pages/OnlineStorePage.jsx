@@ -2302,6 +2302,10 @@ const BLANK_DEAL = {
   salePrice: "",
   saleStartsAt: "",
   saleEndsAt: "",
+  // "" or 1 = the deal applies to every unit; >=2 = "buy N+ for the deal price".
+  minQty: "",
+  // { url, publicId } | null — optional promo image the shop uploads.
+  dealImage: null,
 };
 
 const dealState = (listing) => {
@@ -2318,6 +2322,7 @@ const dealState = (listing) => {
 
 function DealsControls({ listings, settings, isActing }) {
   const dispatch = useDispatch();
+  const isUploading = useSelector((state) => state.onlineStore.isUploading);
   const [section, setSection] = useState(DEFAULT_DEALS);
   const [deal, setDeal] = useState(BLANK_DEAL);
   // Bulk deal: one % off applied to several products at once.
@@ -2373,7 +2378,19 @@ function DealsControls({ listings, settings, isActing }) {
       salePrice: listing.salePrice ?? "",
       saleStartsAt: toLocalDateTime(listing.saleStartsAt),
       saleEndsAt: toLocalDateTime(listing.saleEndsAt),
+      minQty: listing.dealMinQty ?? "",
+      dealImage: listing.dealImage?.url ? listing.dealImage : null,
     });
+  };
+
+  // Upload a promo image for the current deal (same endpoint as gallery photos).
+  const uploadDealImage = async (files) => {
+    const selected = Array.from(files || []);
+    if (!selected.length) return;
+    const result = await dispatch(uploadListingImages([selected[0]]));
+    if (result.error) return toast.error(result.payload || "Upload failed");
+    const image = (result.payload || [])[0];
+    if (image?.url) setDealField("dealImage", image);
   };
 
   const saveSection = async (event) => {
@@ -2407,12 +2424,24 @@ function DealsControls({ listings, settings, isActing }) {
     ) {
       return toast.error("Deal end must be after its start");
     }
+    let minQty = null;
+    if (deal.minQty !== "" && deal.minQty != null) {
+      minQty = Math.floor(Number(deal.minQty));
+      if (!Number.isFinite(minQty) || minQty < 1) {
+        return toast.error("Minimum quantity must be a whole number of 1 or more");
+      }
+      if (minQty <= 1) minQty = null; // 1 = an ordinary sale on every unit
+    }
     const result = await dispatch(
       updateOnlineListing({
         id: selectedListing._id,
         salePrice,
         saleStartsAt: deal.saleStartsAt || null,
         saleEndsAt: deal.saleEndsAt || null,
+        dealMinQty: minQty,
+        dealImage: deal.dealImage?.url
+          ? { url: deal.dealImage.url, publicId: deal.dealImage.publicId || "" }
+          : null,
       }),
     );
     if (result.error) {
@@ -2438,6 +2467,8 @@ function DealsControls({ listings, settings, isActing }) {
         salePrice: null,
         saleStartsAt: null,
         saleEndsAt: null,
+        dealMinQty: null,
+        dealImage: null,
       }),
     );
     if (result.error) {
@@ -2653,6 +2684,50 @@ function DealsControls({ listings, settings, isActing }) {
               />
             </Field>
           </div>
+          <Field label="Minimum quantity for this price">
+            <input
+              type="number"
+              min="1"
+              step="1"
+              placeholder="1 — applies to every unit"
+              className="input input-sm input-bordered"
+              value={deal.minQty}
+              onChange={(event) => setDealField("minQty", event.target.value)}
+            />
+            <span className="mt-1 text-[11px] text-base-content/50">
+              Set 3 for a “buy 3 or more, deal price each” offer. Leave blank (or
+              1) to give the deal price on every unit.
+            </span>
+          </Field>
+          <Field label="Deal image (optional)">
+            {deal.dealImage?.url ? (
+              <div className="flex items-center gap-3">
+                <img
+                  src={deal.dealImage.url}
+                  alt="Deal"
+                  className="h-16 w-16 rounded-lg border object-cover"
+                />
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  onClick={() => setDealField("dealImage", null)}
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <label className="btn btn-outline btn-sm w-fit gap-2">
+                <FiUpload /> Upload deal image
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  disabled={isUploading}
+                  onChange={(event) => uploadDealImage(event.target.files)}
+                />
+              </label>
+            )}
+          </Field>
           <div className="flex gap-2">
             {deal.id && (
               <button
@@ -2801,7 +2876,15 @@ function DealsControls({ listings, settings, isActing }) {
                 key={listing._id}
                 className="flex flex-wrap items-center justify-between gap-4 p-4"
               >
-                <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-3">
+                  {listing.dealImage?.url && (
+                    <img
+                      src={listing.dealImage.url}
+                      alt="Deal"
+                      className="h-12 w-12 shrink-0 rounded-lg border object-cover"
+                    />
+                  )}
+                  <div className="min-w-0">
                   <div className="truncate font-medium">
                     {listing.webName || listing.product?.name}
                   </div>
@@ -2816,6 +2899,11 @@ function DealsControls({ listings, settings, isActing }) {
                     {discount > 0 && (
                       <span className="badge badge-error badge-sm">
                         -{discount}%
+                      </span>
+                    )}
+                    {listing.dealMinQty > 1 && (
+                      <span className="badge badge-warning badge-sm">
+                        Buy {listing.dealMinQty}+
                       </span>
                     )}
                     <span
@@ -2843,6 +2931,7 @@ function DealsControls({ listings, settings, isActing }) {
                         : "No end date"}
                     </div>
                   )}
+                  </div>
                 </div>
                 <div className="flex gap-1">
                   <button

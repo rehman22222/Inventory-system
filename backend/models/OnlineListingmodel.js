@@ -100,6 +100,17 @@ const OnlineListingSchema = new mongoose.Schema(
     salePrice: { type: Number, default: null, min: 0 },
     saleStartsAt: { type: Date, default: null },
     saleEndsAt: { type: Date, default: null },
+    // A quantity-triggered deal: the salePrice only applies once the shopper
+    // takes at least this many of the product ("buy 3+, €X each"). null or 1
+    // means the deal applies to every unit — an ordinary sale.
+    dealMinQty: { type: Number, default: null, min: 1 },
+    // Optional promotional image the shop uploads for the deal, shown on the
+    // product page beside the offer. Presentation only; publicId lets a replaced
+    // image clean up its old Cloudinary asset.
+    dealImage: {
+      url: { type: String, default: "" },
+      publicId: { type: String, default: "" },
+    },
 
     seo: {
       title: { type: String, default: "" },
