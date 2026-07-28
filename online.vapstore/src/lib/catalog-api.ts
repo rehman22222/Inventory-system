@@ -71,10 +71,19 @@ const defaultStorefrontSettings: StorefrontSettings = {
 const API = () => (process.env.E360_API_URL || "http://localhost:3003").replace(/\/+$/, "");
 const KEY = () => process.env.STOREFRONT_API_KEY || "";
 
+// Hard cap on how long SSR will wait for the backend. Without it, a cold or
+// slow backend makes the whole page hang until the platform kills it (which the
+// visitor sees as a connection timeout). With it, we fall back to a rendered
+// page in a few seconds instead of hanging.
+const BACKEND_TIMEOUT_MS = 8000;
+
 async function get<T>(path: string, fallback: T): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), BACKEND_TIMEOUT_MS);
   try {
     const res = await fetch(`${API()}/api/storefront${path}`, {
       headers: KEY() ? { "x-storefront-key": KEY() } : {},
+      signal: controller.signal,
     });
     if (!res.ok) {
       console.error(`[catalog] ${path} -> ${res.status}`);
@@ -82,10 +91,13 @@ async function get<T>(path: string, fallback: T): Promise<T> {
     }
     return (await res.json()) as T;
   } catch (error) {
-    // A shop that cannot reach its backend should still render a page rather
-    // than a 500 — an empty shelf is recoverable, a broken site is not.
+    // A shop that cannot reach its backend (down, cold, or too slow) should
+    // still render a page rather than a 500 — an empty shelf is recoverable, a
+    // hung/broken site is not.
     console.error(`[catalog] ${path} failed:`, (error as Error).message);
     return fallback;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
