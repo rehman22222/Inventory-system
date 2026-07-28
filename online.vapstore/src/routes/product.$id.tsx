@@ -68,7 +68,7 @@ function ProductPage() {
   };
   const { settings } = useCatalog();
   const { promises } = settings;
-  const { add } = useCart();
+  const { add, listingQty } = useCart();
   const navigate = useNavigate();
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
@@ -132,10 +132,13 @@ function ProductPage() {
   const priceUnavailable = activePrice <= 0;
   const unavailable = outOfStock || priceUnavailable;
 
-  // Quantity deal ("buy N+, €X each"). It applies once the chosen quantity meets
-  // the threshold; below that the shopper pays the normal price.
+  // Quantity deal ("buy N+ of any flavour, €X each"). It applies once the
+  // combined quantity of this product in the basket — every flavour together,
+  // plus the amount about to be added — reaches the threshold.
   const qtyDeal = product.qtyDeal || null;
-  const qtyDealActive = !!qtyDeal && qty >= qtyDeal.minQty;
+  const inCartForListing = listingQty(product.listingId);
+  const projectedQty = inCartForListing + qty;
+  const qtyDealActive = !!qtyDeal && projectedQty >= qtyDeal.minQty;
   const effectiveUnit = qtyDealActive ? qtyDeal!.price : activePrice;
   const qtyDealPct = qtyDeal
     ? Math.round((1 - qtyDeal.price / (qtyDeal.regularPrice || activePrice || 1)) * 100)
@@ -268,13 +271,13 @@ function ProductPage() {
               )}
               <div className="min-w-0">
                 <div className="font-display text-sm">
-                  Buy {qtyDeal.minQty}+ · {formatPrice(qtyDeal.price)} each
+                  Buy {qtyDeal.minQty}+ of any flavour · {formatPrice(qtyDeal.price)} each
                   {qtyDealPct > 0 ? ` · save ${qtyDealPct}%` : ""}
                 </div>
                 <div className="mt-0.5 font-mono text-[11px] uppercase tracking-widest text-ink-muted">
                   {qtyDealActive
                     ? "Deal applied ✓"
-                    : `Add ${qtyDeal.minQty - qty} more to unlock`}
+                    : `Add ${qtyDeal.minQty - projectedQty} more (any flavour) to unlock`}
                 </div>
               </div>
             </div>

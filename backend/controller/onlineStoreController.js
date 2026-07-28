@@ -241,7 +241,12 @@ const requestError = (statusCode, message, extra = {}) =>
 // preview and final checkout use this function, so a browser can never invent
 // a product, a price or an eligible discount line.
 const resolveOrderLines = async (store, items) => {
-  const lines = [];
+  // First pass: resolve each basket item against server-owned catalogue data and
+  // check stock. Pricing is deferred to a second pass because a quantity deal is
+  // judged on the COMBINED quantity of a listing across all its variants/flavours
+  // ("buy 3+ of any flavour"), not on a single line.
+  const resolved = [];
+  const qtyByListing = new Map();
   for (const item of items) {
     if (
       !mongoose.isValidObjectId(item.listing) &&
@@ -312,28 +317,38 @@ const resolveOrderLines = async (store, items) => {
         },
       );
     }
+    const key = String(listing._id);
+    qtyByListing.set(key, (qtyByListing.get(key) || 0) + qty);
+    resolved.push({ listing, selectedProduct, selectedVariant, qty, lineName });
+  }
+
+  // Second pass: price each line. The deal price applies to every unit of a
+  // listing once its combined quantity reaches the deal minimum.
+  const lines = [];
+  for (const r of resolved) {
+    const listingQty = qtyByListing.get(String(r.listing._id)) || r.qty;
     const price = money(
-      effectiveItemPrice(listing, selectedProduct, selectedVariant, qty),
+      effectiveItemPrice(r.listing, r.selectedProduct, r.selectedVariant, listingQty),
     );
     if (!Number.isFinite(price) || price <= 0) {
       throw requestError(
         409,
-        `${lineName} is visible but its price still needs to be confirmed`,
+        `${r.lineName} is visible but its price still needs to be confirmed`,
         {
-          product: lineName,
+          product: r.lineName,
         },
       );
     }
     lines.push({
-      listing,
-      product: selectedProduct,
-      name: lineName,
-      brand: listing.brand,
+      listing: r.listing,
+      product: r.selectedProduct,
+      name: r.lineName,
+      brand: r.listing.brand,
       price,
-      quantity: qty,
-      subtotal: money(price * qty),
+      quantity: r.qty,
+      subtotal: money(price * r.qty),
       discount: 0,
-      lineTotal: money(price * qty),
+      lineTotal: money(price * r.qty),
     });
   }
   return lines;

@@ -36,10 +36,12 @@ export interface CartLine {
   dealPrice?: number;
 }
 
-/** Unit price for a line, applying its quantity deal when the threshold is met.
- *  Kept in one place so the cart, cart page and checkout all agree. */
-export function lineUnitPrice(l: CartLine): number {
-  if (l.dealMinQty && l.dealPrice && l.qty >= l.dealMinQty) return l.dealPrice;
+/** Unit price for a line, applying its quantity deal once the listing's COMBINED
+ *  quantity (this line + every other variant/flavour of the same listing in the
+ *  basket) reaches the deal minimum. `listingQty` is that combined total. Kept in
+ *  one place so the cart, cart page and checkout all agree. */
+export function lineUnitPrice(l: CartLine, listingQty: number): number {
+  if (l.dealMinQty && l.dealPrice && listingQty >= l.dealMinQty) return l.dealPrice;
   return l.price;
 }
 
@@ -88,6 +90,11 @@ interface CartApi {
   setQty: (id: string, qty: number) => void;
   remove: (id: string) => void;
   clear: () => void;
+  /** Combined quantity of one listing across all its variants/flavours in the
+   *  basket — what a quantity deal is judged on. */
+  listingQty: (listingId: string) => number;
+  /** Effective unit price for a line, quantity deal applied via listingQty. */
+  unitPriceFor: (line: CartLine) => number;
   /** True once the cart has hydrated from storage — gate client-only UI on it
    *  to avoid a hydration mismatch on the count badge. */
   ready: boolean;
@@ -135,12 +142,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [lines, ready]);
 
   const api = useMemo<CartApi>(() => {
+    const qtyByListing = new Map<string, number>();
+    for (const l of lines) {
+      qtyByListing.set(l.listingId, (qtyByListing.get(l.listingId) || 0) + l.qty);
+    }
+    const listingQty = (id: string) => qtyByListing.get(id) || 0;
+    const unitPriceFor = (l: CartLine) => lineUnitPrice(l, listingQty(l.listingId));
+
     const count = lines.reduce((n, l) => n + l.qty, 0);
-    const subtotal = lines.reduce((n, l) => n + lineUnitPrice(l) * l.qty, 0);
+    const subtotal = lines.reduce((n, l) => n + unitPriceFor(l) * l.qty, 0);
     return {
       lines,
       count,
       subtotal,
+      listingQty,
+      unitPriceFor,
       ready,
       add: (line, qty = 1) => dispatch({ type: "add", line, qty }),
       setQty: (id, qty) => dispatch({ type: "setQty", id, qty }),

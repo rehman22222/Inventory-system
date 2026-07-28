@@ -2695,8 +2695,9 @@ function DealsControls({ listings, settings, isActing }) {
               onChange={(event) => setDealField("minQty", event.target.value)}
             />
             <span className="mt-1 text-[11px] text-base-content/50">
-              Set 3 for a “buy 3 or more, deal price each” offer. Leave blank (or
-              1) to give the deal price on every unit.
+              Set 3 for a “buy 3 or more, deal price each” offer — any mix of
+              flavours counts toward the total. Leave blank (or 1) to give the
+              deal price on every unit.
             </span>
           </Field>
           <Field label="Deal image (optional)">

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Minus, Plus, Trash2, ShieldCheck, Clock, Lock } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { useCart, lineUnitPrice } from "@/lib/cart";
+import { useCart } from "@/lib/cart";
 import { useCatalog } from "@/lib/catalog-context";
 import { formatPrice } from "@/lib/format";
 
@@ -17,7 +17,8 @@ export const Route = createFileRoute("/cart")({
 });
 
 function Cart() {
-  const { lines, subtotal, count, setQty, remove, ready } = useCart();
+  const { lines, subtotal, count, setQty, remove, ready, unitPriceFor, listingQty } =
+    useCart();
   const { settings } = useCatalog();
   const { flatRate, freeThreshold } = settings.shipping;
 
@@ -95,22 +96,25 @@ function Cart() {
                   <div className="mt-2 flex items-baseline gap-2 font-display text-sm">
                     <span
                       className={
-                        lineUnitPrice(l) < l.price ? "text-[color:var(--sale)]" : ""
+                        unitPriceFor(l) < l.price ? "text-[color:var(--sale)]" : ""
                       }
                     >
-                      {formatPrice(lineUnitPrice(l))}
+                      {formatPrice(unitPriceFor(l))}
                     </span>
-                    {lineUnitPrice(l) < l.price && (
+                    {unitPriceFor(l) < l.price && (
                       <span className="font-mono text-[11px] text-ink-muted line-through">
                         {formatPrice(l.price)}
                       </span>
                     )}
                   </div>
-                  {l.dealMinQty && l.dealPrice && l.qty < l.dealMinQty && (
-                    <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-[color:var(--sale)]">
-                      Buy {l.dealMinQty}+ · {formatPrice(l.dealPrice)} each
-                    </div>
-                  )}
+                  {l.dealMinQty &&
+                    l.dealPrice &&
+                    listingQty(l.listingId) < l.dealMinQty && (
+                      <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-[color:var(--sale)]">
+                        Buy {l.dealMinQty}+ (any flavour) · {formatPrice(l.dealPrice)} each ·
+                        add {l.dealMinQty - listingQty(l.listingId)} more
+                      </div>
+                    )}
 
                   {/* Qty + remove */}
                   <div className="mt-3 flex items-center gap-3">
@@ -153,7 +157,7 @@ function Cart() {
                     Line total
                   </span>
                   <span className="font-display text-base tnum whitespace-nowrap">
-                    {formatPrice(lineUnitPrice(l) * l.qty)}
+                    {formatPrice(unitPriceFor(l) * l.qty)}
                   </span>
                 </div>
               </div>

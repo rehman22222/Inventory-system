@@ -3,7 +3,7 @@ import { Banknote, CheckCircle2, Lock, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
-import { useCart, lineUnitPrice } from "@/lib/cart";
+import { useCart } from "@/lib/cart";
 import { useCatalog } from "@/lib/catalog-context";
 import { placeStorefrontOrder, validateStorefrontVoucher } from "@/lib/catalog-api";
 import { formatPrice } from "@/lib/format";
@@ -22,7 +22,7 @@ const freshClientRef = () =>
   globalThis.crypto?.randomUUID?.() || `web-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 function Checkout() {
-  const { lines, subtotal, clear, ready } = useCart();
+  const { lines, subtotal, clear, ready, unitPriceFor } = useCart();
   const { settings } = useCatalog();
   const { flatRate, freeThreshold } = settings.shipping;
   const clientRef = useRef("");
@@ -324,7 +324,7 @@ function Checkout() {
                         Qty {line.qty}
                       </div>
                     </div>
-                    <div className="font-display text-sm">{formatPrice(lineUnitPrice(line) * line.qty)}</div>
+                    <div className="font-display text-sm">{formatPrice(unitPriceFor(line) * line.qty)}</div>
                   </div>
                 ))}
               </div>
