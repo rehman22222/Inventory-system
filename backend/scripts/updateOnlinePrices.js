@@ -51,6 +51,8 @@ const RULES = [
   ["Killa Pouch", "killapouch", 7],
   ["Pablo", "pablo", 7],
   ["Lost Mary BM6000 Refillable Kit", "lostmarybm6000refillablekit", 13],
+  ["Lost Mary BM600 Prefilled Pod Kit", "lostmarybm600prefilledpodkit", 8],
+  ["Lost Mary BM600 Prefilled Pod", "lostmarybm600prefilledpod", 7],
   ["Lost Mary TAPPO 2ml Prefilled Pod", "lostmarytappo", 10],
   ["Lost Mary Nera 30K", "lostmarynera30k", 30],
   ["Aspire Gotek S Pod Kit", "aspiregoteks", 15],
@@ -63,7 +65,8 @@ const RULES = [
   ["Aztec CBD Gummies", "azteccbdgummies", 29],
   ["Haze CBD Sleep Gummies", "hazecbdsleepgummies", 39.99],
   ["47% THX Pre-Rolled Joints", "47thx", 12],
-  ["Rollz Pre-Rolled Joints", "rollz", 12],
+  // Specific to the pre-rolled joints so it never touches "Rollz THC-A vape".
+  ["Rollz Pre-Rolled Joints", "rollzprerolled", 12],
 ];
 // Longest key first so the most specific rule wins (e.g. "…refillpod" beats "ivg…").
 RULES.sort((a, b) => b[1].length - a[1].length);
@@ -90,7 +93,14 @@ const csvCell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const rows = [];
     let changed = 0;
     let unmatched = 0;
+    let skippedOffers = 0;
+    // Bundle / multi-buy listings must not get a single-unit price.
+    const isOffer = (name) => /\boffer\b|\bbuy\b|pcs for|for €?\d/i.test(name);
     for (const p of products.values()) {
+      if (isOffer(p.name)) {
+        skippedOffers += 1;
+        continue;
+      }
       const key = norm(p.name);
       const rule = RULES.find(([, k]) => key.startsWith(k));
       if (!rule) {
@@ -116,6 +126,7 @@ const csvCell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     console.log(`[prices] online-store products scanned : ${products.size}`);
     console.log(`[prices] products with a price change  : ${changed}`);
     console.log(`[prices] products matching no rule      : ${unmatched}`);
+    console.log(`[prices] offer/bundle products skipped  : ${skippedOffers}`);
     console.log(`[prices] preview written                : ${OUT}`);
     console.log("[prices] biggest changes:");
     [...rows]
