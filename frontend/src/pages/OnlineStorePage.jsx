@@ -1571,20 +1571,55 @@ function ProductPicker({ categories, onClose }) {
 
 function Categories({ categories }) {
   const dispatch = useDispatch();
+  const [editingId, setEditingId] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [image, setImage] = useState("");
+  const [active, setActive] = useState(true);
   const [parent, setParent] = useState("");
-  const add = async (event) => {
+  const reset = () => {
+    setEditingId("");
+    setName("");
+    setDescription("");
+    setImage("");
+    setActive(true);
+    setParent("");
+  };
+  const edit = (category) => {
+    setEditingId(category._id);
+    setName(category.name || "");
+    setDescription(category.description || "");
+    setImage(category.image || "");
+    setActive(category.active !== false);
+    setParent(category.parent || "");
+  };
+  const save = async (event) => {
     event.preventDefault();
+    if (editingId) {
+      const result = await dispatch(
+        updateOnlineCategory({
+          id: editingId,
+          name,
+          description,
+          image,
+          active,
+          parent: parent || null,
+        }),
+      );
+      if (result.error)
+        return toast.error(result.payload || "Could not update category");
+      toast.success("Category updated");
+      dispatch(getOnlineCategories());
+      reset();
+      return;
+    }
     const result = await dispatch(
-      createOnlineCategory({ name, description, parent: parent || null }),
+      createOnlineCategory({ name, description, image, parent: parent || null }),
     );
     if (result.error)
       return toast.error(result.payload || "Could not create category");
-    setName("");
-    setDescription("");
-    setParent("");
     toast.success("Category created");
+    reset();
   };
   // Change (or clear) a category's parent. The backend rejects any move that
   // would form a cycle, so we just surface its message on failure.
@@ -1616,10 +1651,12 @@ function Categories({ categories }) {
   return (
     <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
       <form
-        onSubmit={add}
+        onSubmit={save}
         className="h-fit space-y-3 rounded-xl border bg-base-100 p-4"
       >
-        <h3 className="font-bold">New online category</h3>
+        <h3 className="font-bold">
+          {editingId ? "Edit category" : "New online category"}
+        </h3>
         <input
           className="input input-sm input-bordered w-full"
           placeholder="Category name"
@@ -1633,28 +1670,68 @@ function Categories({ categories }) {
           value={description}
           onChange={(event) => setDescription(event.target.value)}
         />
+        <input
+          className="input input-sm input-bordered w-full"
+          placeholder="Image URL (optional)"
+          value={image}
+          onChange={(event) => setImage(event.target.value)}
+        />
+        {image && (
+          <img
+            src={image}
+            alt="Category preview"
+            className="h-20 w-full rounded-lg border object-cover"
+          />
+        )}
         <select
           className="select select-sm select-bordered w-full"
           value={parent}
           onChange={(event) => setParent(event.target.value)}
         >
           <option value="">Top-level category</option>
-          {categories.map((category) => (
-            <option key={category._id} value={category._id}>
-              Under: {category.name}
-            </option>
-          ))}
+          {categories
+            .filter((category) => category._id !== editingId)
+            .map((category) => (
+              <option key={category._id} value={category._id}>
+                Under: {category.name}
+              </option>
+            ))}
         </select>
+        {editingId && (
+          <Check
+            checked={active}
+            onChange={setActive}
+            label="Visible on storefront"
+          />
+        )}
         <button className="btn btn-primary btn-sm w-full gap-2">
-          <FiPlus /> Add category
+          {editingId ? (
+            <>
+              <FiSave /> Save changes
+            </>
+          ) : (
+            <>
+              <FiPlus /> Add category
+            </>
+          )}
         </button>
-        <button
-          type="button"
-          className="btn btn-sm w-full gap-2"
-          onClick={importAll}
-        >
-          <FiDownloadCloud /> Import inventory categories
-        </button>
+        {editingId ? (
+          <button
+            type="button"
+            className="btn btn-sm w-full"
+            onClick={reset}
+          >
+            Cancel
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-sm w-full gap-2"
+            onClick={importAll}
+          >
+            <FiDownloadCloud /> Import inventory categories
+          </button>
+        )}
       </form>
       <div className="overflow-x-auto rounded-xl border bg-base-100">
         <table className="table table-sm">
@@ -1698,7 +1775,13 @@ function Categories({ categories }) {
                     {category.active ? "Visible" : "Hidden"}
                   </span>
                 </td>
-                <td className="text-right">
+                <td className="whitespace-nowrap text-right">
+                  <button
+                    className="btn btn-ghost btn-xs"
+                    onClick={() => edit(category)}
+                  >
+                    <FiEdit2 />
+                  </button>
                   <button
                     className="btn btn-ghost btn-xs text-error"
                     onClick={() => remove(category)}
