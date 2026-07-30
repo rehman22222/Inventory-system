@@ -123,7 +123,7 @@ function Orderpage() {
 
   useEffect(() => {
     dispatch(gettingallOrder());
-    dispatch(gettingallproducts());
+    dispatch(gettingallproducts({ view: "supplier" }));
     dispatch(gettingallSupplier());
 
   }, [dispatch,Authuser]);
@@ -283,7 +283,7 @@ function Orderpage() {
       toast.success(t("orders.received"));
       dispatch(gettingallOrder());
       // Reflect the new stock levels straight away.
-      dispatch(gettingallproducts());
+      dispatch(gettingallproducts({ view: "supplier" }));
     } catch (error) {
       toast.error(error || t("orders.receiveFail"));
     }

@@ -1,4 +1,4 @@
-const bcrypt = require("bcryptjs");
+const { hashPassword } = require("../libs/password");
 const mongoose = require("mongoose");
 require("dotenv").config();
 
@@ -41,7 +41,7 @@ async function seed() {
   const keepEmails = users.map((u) => u.email);
 
   for (const user of users) {
-    const hashedPassword = await bcrypt.hash(user.password, 10);
+    const hashedPassword = await hashPassword(user.password);
     await User.findOneAndUpdate(
       { email: user.email },
       { name: user.name, email: user.email, password: hashedPassword, role: user.role, ProfilePic: "" },

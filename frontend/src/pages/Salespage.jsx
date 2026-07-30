@@ -51,7 +51,7 @@ function Salespage() {
 
   useEffect(() => {
    dispatch(gettingallSales())
-   dispatch(gettingallproducts())
+   dispatch(gettingallproducts({ view: "lookup" }))
   
   }, [dispatch]);
 

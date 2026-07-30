@@ -72,8 +72,8 @@ module.exports.createRequest = async (req, res) => {
       if (payload.role !== "manager" && payload.role !== "staff") {
         return res.status(400).json({ message: "You can only request manager or staff accounts" });
       }
-      if (String(payload.password).length < 6) {
-        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      if (String(payload.password).length < 10) {
+        return res.status(400).json({ message: "Password must be at least 10 characters" });
       }
     }
 

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const zlib = require("zlib");
 const Product=require('../models/Productmodel')
 const Category=require('../models/ Categorymodel')
 
@@ -7,6 +8,7 @@ const { uploadImage, deleteImage } = require('../libs/cloudinaryImage')
 const { ean13FromSequence } = require('../libs/barcode')
 const { nextSequence } = require('../models/Countermodel')
 const { fxContext, resolveCost } = require('../libs/cost')
+const { getProductCatalog } = require("../libs/productCatalogCache");
 
 const RANDOM_CATEGORY = "Random";
 const MISC_CATEGORY = "Miscellaneous";
@@ -146,6 +148,18 @@ module.exports.quickAddProduct = async (req, res) => {
 
     module.exports.getProduct = async (req, res) => {
         try {
+          const views = {
+            pos: "name Desciption Category Price quantity lowStockThreshold barcode image.url",
+            dashboard: "name Category Price quantity lowStockThreshold",
+            lookup: "name",
+            supplier: "name barcode supplier Price",
+          };
+          const view = Object.prototype.hasOwnProperty.call(views, req.query.view)
+            ? req.query.view
+            : "full";
+          const projection =
+            views[view] ||
+            "name Desciption shelfLabel Category Price costPrice costSource quantity lowStockThreshold barcode expiryDate image.url supplier";
           
           // .lean() returns plain objects instead of full Mongoose documents —
           // the wire JSON is identical, but the server skips hydrating every
@@ -157,15 +171,30 @@ module.exports.quickAddProduct = async (req, res) => {
           // consumer only ever reads Category._id and Category.name, so there
           // is no reason to ship the rest of each category document with every
           // product row.
-          const Products = await Product.find({})
+          const catalogue = await getProductCatalog(async () => {
+          const productsPromise = Product.find({})
+            .select(projection)
             .populate('Category', 'name')
             .lean();
 
           // estimatedDocumentCount() reads collection metadata (O(1)) instead of
           // scanning to count — accurate enough for a total, far cheaper.
-          const totalProduct = await Product.estimatedDocumentCount();
+          const [Products, totalProduct] = await Promise.all([
+            productsPromise,
+            Product.estimatedDocumentCount(),
+          ]);
 
-            res.status(200).json({Products,totalProduct});
+            const json = JSON.stringify({ Products, totalProduct });
+            return { json, gzip: zlib.gzipSync(json) };
+          }, view);
+
+            res.set("Cache-Control", "private, no-store");
+          res.vary("Accept-Encoding").type("application/json");
+          if (String(req.get("accept-encoding") || "").includes("gzip")) {
+            res.set("Content-Encoding", "gzip");
+            return res.status(200).send(catalogue.gzip);
+          }
+          return res.status(200).send(catalogue.json);
         } catch (error) {
             res.status(500).json({ message: "Error getting products", error: error.message });
         }

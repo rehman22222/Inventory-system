@@ -57,7 +57,7 @@ const[query,setquery]=useState("");
 
 
   useEffect(() => {
-    dispatch(gettingallproducts());
+    dispatch(gettingallproducts({ view: "lookup" }));
     dispatch(getAllStockTransactions());
     dispatch(gettingallSupplier());
 

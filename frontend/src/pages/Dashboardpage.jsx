@@ -48,7 +48,7 @@ function Dashboardpage() {
     dispatch(staffUser());
     dispatch(managerUser());
     dispatch(adminUser());
-    dispatch(gettingallproducts());
+    dispatch(gettingallproducts({ view: "dashboard" }));
     dispatch(gettingallCategory());
     dispatch(gettingallOrder());
     dispatch(gettingallSales());

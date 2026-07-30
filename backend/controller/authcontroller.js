@@ -1,5 +1,5 @@
 const User=require('../models/Usermodel')
-const bcrypt = require("bcryptjs");
+const { hashPassword, verifyPassword } = require("../libs/password");
 const generateToken=require('../libs/Tokengenerator')
 const Cloundinary=require('../libs/Cloundinary') 
 const logActivity = require('../libs/logger');
@@ -41,8 +41,8 @@ module.exports.createUserRecord = async ({ name, email, password, role }, allowe
     return { ok: false, status: 400, message: `Role must be one of: ${allowedRoles.join(", ")}` };
   }
 
-  if (String(password).length < 6) {
-    return { ok: false, status: 400, message: "Password must be at least 6 characters" };
+  if (String(password).length < 10) {
+    return { ok: false, status: 400, message: "Password must be at least 10 characters" };
   }
 
   const existing = await User.findOne({ email: email.trim().toLowerCase() });
@@ -54,7 +54,7 @@ module.exports.createUserRecord = async ({ name, email, password, role }, allowe
   const created = await User.create({
     name: name.trim(),
     email: email.trim().toLowerCase(),
-    password: await bcrypt.hash(password, 10),
+    password: await hashPassword(password),
     role,
     ProfilePic: "",
   });
@@ -130,17 +130,22 @@ module.exports.login=async(req,res)=>{
      // `error` key that nothing on the client read, so a wrong email surfaced as
      // a blank "Login failed".
      if(!duplicatedUser){
-   return res.status(400).json({ message: "No account found with this email", reason: "email" })
+   return res.status(400).json({ message: "Email or password is incorrect" })
      }
 
 
-     const hasedpassword=await bcrypt.compare(password,duplicatedUser.password)
+     const passwordCheck = await verifyPassword(password, duplicatedUser.password)
 
 
-      if(!hasedpassword){
+      if(!passwordCheck.valid){
             // Named plainly: this is a staff till, not a public sign-up, so the
             // cashier needs to know it is the password and not the email.
-            return res.status(400).json({ message: "The password is incorrect", reason: "password" })
+            return res.status(400).json({ message: "Email or password is incorrect" })
+        }
+
+        if (passwordCheck.needsUpgrade) {
+          duplicatedUser.password = await hashPassword(password);
+          await duplicatedUser.save();
         }
 
         const { expiresAt } = await generateToken(duplicatedUser,res)

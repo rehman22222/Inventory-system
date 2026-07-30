@@ -58,7 +58,7 @@ function Supplierpage() {
     dispatch(gettingallSupplier());
     // The product picker in the form needs the catalogue loaded, otherwise it
     // shows "No products match" for everything. This page never fetched it.
-    dispatch(gettingallproducts());
+    dispatch(gettingallproducts({ view: "supplier" }));
   }, [dispatch, editedsupplier]);
 
   useEffect(() => {

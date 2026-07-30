@@ -63,9 +63,12 @@ export const Addproduct=createAsyncThunk('product/addproduct',async(product,{rej
 
 
 
-  export const gettingallproducts=createAsyncThunk('product/getproduct',async(_,{rejectWithValue})=>{
+  export const gettingallproducts=createAsyncThunk('product/getproduct',async(options = {},{rejectWithValue})=>{
     try {
-       const response=await axiosInstance.get("product/getproduct",{ withCredentials: true,})
+       const response=await axiosInstance.get("product/getproduct",{
+         withCredentials: true,
+         params: options || {},
+       })
        return response.data;
   
       

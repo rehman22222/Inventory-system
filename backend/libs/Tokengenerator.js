@@ -35,7 +35,10 @@ const generateToken = async (user, res) => {
     const expiresAt = nextMidnight(tz);
     // Guard the corner case of a login in the last second before midnight: never
     // mint a token that's already expired — give it at least a minute.
-    const secondsToMidnight = Math.max(60, Math.round((expiresAt.getTime() - Date.now()) / 1000));
+    const secondsToMidnight = Math.max(
+      1,
+      Math.floor((expiresAt.getTime() - Date.now()) / 1000),
+    );
 
     const token = jwt.sign(
       { userId: user._id, role: user.role },

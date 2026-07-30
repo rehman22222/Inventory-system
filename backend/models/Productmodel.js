@@ -1,5 +1,6 @@
 
 const mongoose=require('mongoose')
+const { invalidateProductCatalog } = require("../libs/productCatalogCache");
 
 
 
@@ -113,6 +114,18 @@ ProductSchema.index(
     partialFilterExpression: { "onlineSource.provider": { $type: "string" } },
   }
 );
+
+ProductSchema.post("save", invalidateProductCatalog);
+for (const operation of [
+  "findOneAndUpdate",
+  "updateOne",
+  "updateMany",
+  "deleteOne",
+  "deleteMany",
+  "findOneAndDelete",
+]) {
+  ProductSchema.post(operation, invalidateProductCatalog);
+}
 
 const Product=mongoose.model("Product",ProductSchema)
 

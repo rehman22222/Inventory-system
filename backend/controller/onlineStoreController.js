@@ -115,7 +115,7 @@ const effectiveItemPrice = (listing, product, variant = null, qty = 1) =>
     : regularItemPrice(listing, product, variant);
 
 /* Shape a listing + its product into what the storefront renders. */
-const publicListing = (l) => {
+const publicListing = (l, { compact = false } = {}) => {
   const p = l.product;
   if (!p) return null;
   const activeSale = baseSaleActive(l);
@@ -163,7 +163,7 @@ const publicListing = (l) => {
         }
       : null;
 
-  return {
+  const shared = {
     id: String(l._id),
     productId: String(p._id),
     slug: l.slug,
@@ -181,13 +181,7 @@ const publicListing = (l) => {
       slug: category.slug,
       name: category.name,
     })),
-    short: l.shortDescription,
-    description: l.description,
     image: l.gallery?.[0]?.url || p.image?.url || "",
-    gallery: l.gallery || [],
-    specs: l.specs instanceof Map ? Object.fromEntries(l.specs) : l.specs || {},
-    flavour: l.flavour,
-    optionLabel: l.optionLabel || "",
     variants,
     tags,
     price,
@@ -205,6 +199,18 @@ const publicListing = (l) => {
     featured: l.featured,
     // Verified-purchase review summary, attached by the caller (0/0 if none).
     rating: l.rating || { average: 0, count: 0 },
+  };
+
+  if (compact) return shared;
+
+  return {
+    ...shared,
+    short: l.shortDescription,
+    description: l.description,
+    gallery: l.gallery || [],
+    specs: l.specs instanceof Map ? Object.fromEntries(l.specs) : l.specs || {},
+    flavour: l.flavour,
+    optionLabel: l.optionLabel || "",
   };
 };
 
@@ -2488,6 +2494,7 @@ module.exports.submitContactMessage = async (req, res) => {
 
 module.exports.storefrontProducts = async (req, res) => {
   try {
+    const compact = req.query.view === "card";
     const store = await storeId();
     const filter = { store, listed: true };
     if (req.query.category) {
@@ -2519,7 +2526,11 @@ module.exports.storefrontProducts = async (req, res) => {
     for (const l of listings) l.rating = ratings.get(String(l._id));
     return res
       .status(200)
-      .json({ products: listings.map(publicListing).filter(Boolean) });
+      .json({
+        products: listings
+          .map((listing) => publicListing(listing, { compact }))
+          .filter(Boolean),
+      });
   } catch (error) {
     return res
       .status(500)

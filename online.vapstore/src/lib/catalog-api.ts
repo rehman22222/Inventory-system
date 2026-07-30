@@ -76,8 +76,40 @@ const KEY = () => process.env.STOREFRONT_API_KEY || "";
 // visitor sees as a connection timeout). With it, we fall back to a rendered
 // page in a few seconds instead of hanging.
 const BACKEND_TIMEOUT_MS = 8000;
+const CATALOG_CACHE_MS = 15_000;
+const responseCache = new Map<
+  string,
+  { expiresAt: number; value?: unknown; pending?: Promise<unknown> }
+>();
 
 async function get<T>(path: string, fallback: T): Promise<T> {
+  const now = Date.now();
+  const cached = responseCache.get(path);
+  if (cached?.value !== undefined && cached.expiresAt > now) {
+    return cached.value as T;
+  }
+  if (cached?.pending) return cached.pending as Promise<T>;
+
+  const request = fetchBackend<T>(path, fallback);
+  responseCache.set(path, {
+    expiresAt: now + CATALOG_CACHE_MS,
+    value: cached?.value,
+    pending: request,
+  });
+  try {
+    const value = await request;
+    responseCache.set(path, {
+      expiresAt: Date.now() + CATALOG_CACHE_MS,
+      value,
+    });
+    return value;
+  } catch (error) {
+    responseCache.delete(path);
+    throw error;
+  }
+}
+
+async function fetchBackend<T>(path: string, fallback: T): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), BACKEND_TIMEOUT_MS);
   try {
@@ -222,7 +254,9 @@ const loadCategories = async (): Promise<Category[]> => {
 };
 
 const loadProducts = async (categorySlug?: string): Promise<Product[]> => {
-  const qs = categorySlug ? `?category=${encodeURIComponent(categorySlug)}` : "";
+  const qs = categorySlug
+    ? `?category=${encodeURIComponent(categorySlug)}&view=card`
+    : "?view=card";
   const data = await get<{ products: ApiProduct[] }>(`/products${qs}`, { products: [] });
   return data.products.map(toProduct);
 };

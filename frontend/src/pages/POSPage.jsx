@@ -140,7 +140,7 @@ function POSPage() {
   const [offlineCache, setOfflineCache] = useState(null);
 
   useEffect(() => {
-    dispatch(gettingallproducts());
+    dispatch(gettingallproducts({ view: "pos" }));
     dispatch(gettingallCategory());
     dispatch(gettingallDeals());
     dispatch(gettingStore());
@@ -639,7 +639,7 @@ function POSPage() {
       try {
         await axiosInstance.post(`pos/void/${receipt.receiptNo}`);
         toast.success(t("pos.void.done", { receiptNo: receipt.receiptNo }));
-        dispatch(gettingallproducts());
+        dispatch(gettingallproducts({ view: "pos" }));
         newSale();
       } catch (error) {
         toast.error(error.response?.data?.message || t("pos.void.failed"));
@@ -780,7 +780,7 @@ function POSPage() {
 
       finishSale(response.data.receipt);
       toast.success(t("pos.receiptCompleted"));
-      dispatch(gettingallproducts());
+      dispatch(gettingallproducts({ view: "pos" }));
       // A completed sale is a good moment to drain anything still queued.
       syncQueue();
     } catch (error) {
@@ -1480,7 +1480,7 @@ function POSPage() {
       {modal === "refund" && (
         <RefundModal
           initialReceiptNo={refundReceiptNo}
-          onDone={() => dispatch(gettingallproducts())}
+          onDone={() => dispatch(gettingallproducts({ view: "pos" }))}
           onClose={() => setModal(null)}
         />
       )}
@@ -1553,7 +1553,7 @@ function POSPage() {
           categories={categories}
           onResolved={(product) => {
             setUnknownBarcode(null);
-            dispatch(gettingallproducts());
+            dispatch(gettingallproducts({ view: "pos" }));
             addToCart(product, multiplier > 0 ? multiplier : 1);
             setMultiplier(0);
             setBuffer("");

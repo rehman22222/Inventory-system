@@ -93,7 +93,7 @@ export function CatalogProvider({ value, children }: { value: CatalogValue; chil
 
     // Admin merchandising changes become visible to already-open storefronts
     // without exposing the private inventory API or weakening socket auth.
-    const timer = window.setInterval(refresh, 15_000);
+    const timer = window.setInterval(refresh, 60_000);
     window.addEventListener("focus", refresh);
     return () => {
       cancelled = true;

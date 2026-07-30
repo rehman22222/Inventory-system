@@ -35,6 +35,10 @@ require("dotenv").config();
 const PORT = process.env.PORT || 3003;
 const useLocalStorage = process.env.USE_LOCAL_STORAGE === "true";
 
+if (useLocalStorage && process.env.NODE_ENV === "production") {
+  throw new Error("USE_LOCAL_STORAGE must never be enabled in production.");
+}
+
 const app = express();
 const server = http.createServer(app);
 
@@ -207,6 +211,23 @@ app.set("auditRoom", AUDIT_ROOM);
 app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ limit: "15mb", extended: true }));
 
+// Detailed failures belong in server logs, never in a production 5xx response.
+app.use((req, res, next) => {
+  const sendJson = res.json.bind(res);
+  res.json = (body) => {
+    if (
+      process.env.NODE_ENV === "production" &&
+      res.statusCode >= 500 &&
+      body &&
+      typeof body === "object"
+    ) {
+      return sendJson({ message: "Something went wrong. Please try again later." });
+    }
+    return sendJson(body);
+  };
+  next();
+});
+
 // NoSQL-injection guard: strip any key that starts with "$" or contains a "."
 // from user-supplied objects, recursively. Stops payloads like
 // {"email": {"$gt": ""}} from ever reaching a Mongo query. Values are left
@@ -232,6 +253,18 @@ app.use((req, _res, next) => {
 
 app.set("io", io);
 app.use(cookieParser());
+
+// A second CSRF boundary for cookie-authenticated writes. SameSite=Lax blocks
+// normal cross-site cookie use; this also covers unusual browser/proxy cases.
+app.use("/api", (req, res, next) => {
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
+  if (!req.cookies.Inventorymanagmentsystem) return next();
+
+  const origin = req.get("origin");
+  if (!origin || allowedOrigins.includes(origin)) return next();
+
+  return res.status(403).json({ message: "Request origin is not allowed." });
+});
 
 // Lightweight health check — used for uptime/warm-up pings (e.g. Render free tier).
 app.get(["/health", "/api/health"], (req, res) => {

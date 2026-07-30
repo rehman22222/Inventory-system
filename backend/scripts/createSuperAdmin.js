@@ -9,7 +9,7 @@
  */
 require("dotenv").config();
 const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
+const { hashPassword } = require("../libs/password");
 const User = require("../models/Usermodel");
 
 const [name, email, password] = process.argv.slice(2);
@@ -30,7 +30,7 @@ const [name, email, password] = process.argv.slice(2);
 
   const normalized = email.trim().toLowerCase();
   const existing = await User.findOne({ email: normalized });
-  const hashed = await bcrypt.hash(password, 10);
+  const hashed = await hashPassword(password);
 
   if (existing) {
     existing.name = name;
