@@ -39,9 +39,12 @@ function Home() {
   const news = newArrivals(products, settings.newThisWeek.limit);
   const sale = saleProducts(products).slice(0, settings.deals.limit);
   const maxDealPercent = sale.reduce((highest, product) => {
-    const regular = Number(product.regularPrice || product.compareAt || 0);
-    if (regular <= 0 || product.price >= regular) return highest;
-    return Math.max(highest, Math.round(((regular - product.price) / regular) * 100));
+    const dealPrice = Number(product.qtyDeal?.price ?? product.price);
+    const regular = Number(
+      product.qtyDeal?.regularPrice || product.regularPrice || product.compareAt || 0,
+    );
+    if (regular <= 0 || dealPrice >= regular) return highest;
+    return Math.max(highest, Math.round(((regular - dealPrice) / regular) * 100));
   }, 0);
 
   return (
@@ -200,10 +203,16 @@ function Home() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               {sale.map((product) => {
-                const regular = Number(product.regularPrice || product.compareAt || 0);
+                const dealPrice = Number(product.qtyDeal?.price ?? product.price);
+                const regular = Number(
+                  product.qtyDeal?.regularPrice ||
+                    product.regularPrice ||
+                    product.compareAt ||
+                    0,
+                );
                 const saving =
-                  regular > product.price
-                    ? Math.round(((regular - product.price) / regular) * 100)
+                  regular > dealPrice
+                    ? Math.round(((regular - dealPrice) / regular) * 100)
                     : 0;
                 return (
                   <Link
@@ -221,7 +230,9 @@ function Home() {
                       />
                       {saving > 0 && (
                         <span className="absolute left-2 top-2 bg-accent px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-accent-foreground">
-                          Save {saving}%
+                          {product.qtyDeal
+                            ? `Buy ${product.qtyDeal.minQty}+ · Save ${saving}%`
+                            : `Save ${saving}%`}
                         </span>
                       )}
                     </div>
@@ -233,8 +244,8 @@ function Home() {
                         {product.name}
                       </div>
                       <div className="mt-2 flex items-baseline gap-2">
-                        <span className="font-display text-lg">{formatPrice(product.price)}</span>
-                        {regular > product.price && (
+                        <span className="font-display text-lg">{formatPrice(dealPrice)}</span>
+                        {regular > dealPrice && (
                           <span className="font-mono text-[9px] text-ink-muted line-through">
                             {formatPrice(regular)}
                           </span>

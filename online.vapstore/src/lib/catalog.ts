@@ -202,7 +202,12 @@ export const topLevelCategories = (categories: Category[]) => {
 export const childCategories = (categories: Category[], parentSlug: CategorySlug) =>
   categories.filter((c) => c.parentSlug === parentSlug);
 
-export const saleProducts = (products: Product[]) => products.filter((p) => !!p.compareAt);
+// Deals configured in Admin -> Online Store are authoritative. Ordinary live
+// sales arrive as `sale`; Buy N+ offers arrive as `qtyDeal`. A manual
+// compare-at price alone is presentation metadata and must not displace an
+// active configured deal from the weekly-deals rail.
+export const saleProducts = (products: Product[]) =>
+  products.filter((product) => product.sale || Boolean(product.qtyDeal));
 
 export const newArrivals = (products: Product[], limit = 8) =>
   // Fully admin-curated: publishing a product does not put it in this rail.
