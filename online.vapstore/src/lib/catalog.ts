@@ -205,15 +205,9 @@ export const childCategories = (categories: Category[], parentSlug: CategorySlug
 export const saleProducts = (products: Product[]) => products.filter((p) => !!p.compareAt);
 
 export const newArrivals = (products: Product[], limit = 8) =>
-  (() => {
-    const selected = products.filter((p) => p.tags?.includes("new"));
-    const pool = selected.length
-      ? selected
-      : [...products].sort(
-          (a, b) => (Date.parse(b.publishedAt || "") || 0) - (Date.parse(a.publishedAt || "") || 0),
-        );
-    return pool.slice(0, limit);
-  })();
+  // Fully admin-curated: publishing a product does not put it in this rail.
+  // Only products explicitly added through Admin -> Online Store are shown.
+  products.filter((product) => product.tags?.includes("new")).slice(0, limit);
 
 export const bestSellers = (products: Product[], limit = 8) => {
   const flagged = products.filter((p) => p.tags?.includes("bestseller"));

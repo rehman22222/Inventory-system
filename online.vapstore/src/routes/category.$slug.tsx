@@ -41,11 +41,14 @@ export const Route = createFileRoute("/category/$slug")({
       </div>
     </div>
   ),
-  errorComponent: ({ error }) => (
+  errorComponent: () => (
     <div className="min-h-screen grid place-items-center p-8">
       <div className="text-center">
-        <div className="font-display text-2xl">Something went wrong</div>
-        <div className="mt-2 text-sm text-ink-muted">{error.message}</div>
+        <div className="font-display text-2xl">Something went wrong.</div>
+        <p className="mt-2 text-sm text-ink-muted">Please try again later.</p>
+        <Link to="/shop" className="mt-6 inline-block btn-primary">
+          Back to shop
+        </Link>
       </div>
     </div>
   ),

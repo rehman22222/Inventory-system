@@ -83,6 +83,10 @@ async function get<T>(path: string, fallback: T): Promise<T> {
   try {
     const res = await fetch(`${API()}/api/storefront${path}`, {
       headers: KEY() ? { "x-storefront-key": KEY() } : {},
+      // Homepage merchandising is controlled from E360. Never reuse an old
+      // catalogue/settings response after an admin adds, edits or removes a
+      // "New this week" product.
+      cache: "no-store",
       signal: controller.signal,
     });
     if (!res.ok) {

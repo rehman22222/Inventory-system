@@ -1,5 +1,6 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Category, Product, StorefrontSettings } from "./catalog";
+import { getStorefront } from "./catalog-api";
 
 /* The shell's copy of the catalogue.
  *
@@ -67,7 +68,41 @@ const CatalogContext = createContext<CatalogValue>({
 });
 
 export function CatalogProvider({ value, children }: { value: CatalogValue; children: ReactNode }) {
-  return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;
+  const [catalog, setCatalog] = useState(value);
+
+  useEffect(() => setCatalog(value), [value]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const refresh = async () => {
+      if (document.visibilityState === "hidden") return;
+      try {
+        const next = await getStorefront();
+        if (cancelled) return;
+        // The server helper deliberately falls back to an empty catalogue
+        // during a backend outage. Keep the last healthy screen in that case
+        // instead of making every product disappear for an open shopper.
+        setCatalog((current) =>
+          current.products.length > 0 && next.products.length === 0 ? current : next,
+        );
+      } catch {
+        // Keep the last healthy catalogue. The server records the real error.
+      }
+    };
+
+    // Admin merchandising changes become visible to already-open storefronts
+    // without exposing the private inventory API or weakening socket auth.
+    const timer = window.setInterval(refresh, 15_000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
+
+  return <CatalogContext.Provider value={catalog}>{children}</CatalogContext.Provider>;
 }
 
 export const useCatalog = () => useContext(CatalogContext);

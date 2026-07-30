@@ -96,7 +96,13 @@ export default function OnlineStorePage() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const [tab, setTab] = useState("overview");
+  const [listingToEdit, setListingToEdit] = useState("");
   const online = useSelector((state) => state.onlineStore);
+
+  const editListing = (listing) => {
+    setListingToEdit(listing._id);
+    setTab("products");
+  };
 
   const refresh = () => {
     dispatch(getOnlineSummary(30));
@@ -163,6 +169,8 @@ export default function OnlineStorePage() {
           categories={online.categories}
           counts={online.counts}
           isActing={online.isActing}
+          editListingId={listingToEdit}
+          onEditHandled={() => setListingToEdit("")}
         />
       )}
       {tab === "categories" && <Categories categories={online.categories} />}
@@ -174,6 +182,7 @@ export default function OnlineStorePage() {
           listings={online.listings}
           settings={online.settings}
           isActing={online.isActing}
+          onEditListing={editListing}
         />
       )}
       {tab === "deals" && (
@@ -314,11 +323,25 @@ function Overview({ summary, counts }) {
   );
 }
 
-function Products({ listings, categories, counts, isActing }) {
+function Products({
+  listings,
+  categories,
+  counts,
+  isActing,
+  editListingId,
+  onEditHandled,
+}) {
   const dispatch = useDispatch();
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState(null);
+
+  useEffect(() => {
+    if (!editListingId) return;
+    const listing = listings.find((item) => item._id === editListingId);
+    if (listing) setEditing(listing);
+    onEditHandled?.();
+  }, [editListingId, listings, onEditHandled]);
   const shown = useMemo(() => {
     const search = query.trim().toLowerCase();
     if (!search) return listings;
@@ -2092,7 +2115,12 @@ const DEFAULT_NEW_THIS_WEEK = {
   limit: 8,
 };
 
-function NewThisWeekControls({ listings, settings, isActing }) {
+function NewThisWeekControls({
+  listings,
+  settings,
+  isActing,
+  onEditListing,
+}) {
   const dispatch = useDispatch();
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState(DEFAULT_NEW_THIS_WEEK);
@@ -2136,7 +2164,7 @@ function NewThisWeekControls({ listings, settings, isActing }) {
   };
 
   const toggleProduct = async (listing) => {
-    const tags = (listing.tags || []).filter((tag) => tag !== "sale");
+    const tags = listing.tags || [];
     const selected = tags.includes("new");
     const result = await dispatch(
       updateOnlineListing({
@@ -2147,7 +2175,9 @@ function NewThisWeekControls({ listings, settings, isActing }) {
     result.error
       ? toast.error(result.payload || "Could not update the homepage product")
       : toast.success(
-          selected ? "Removed from New this week" : "Added to New this week",
+          selected
+            ? "Removed from New this week — storefront updated"
+            : "Added to New this week — storefront updated",
         );
   };
 
@@ -2222,7 +2252,7 @@ function NewThisWeekControls({ listings, settings, isActing }) {
             <p className="text-xs text-base-content/50">
               {selectedCount
                 ? `${selectedCount} manually selected · the first ${draft.limit} are shown`
-                : `No manual selection yet · the newest ${draft.limit} products are shown automatically`}
+                : "No products selected · this section stays hidden until you add one"}
             </p>
           </div>
           <input
@@ -2263,16 +2293,36 @@ function NewThisWeekControls({ listings, settings, isActing }) {
                     )}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className={`btn btn-sm shrink-0 ${
-                    selected ? "btn-primary" : "btn-outline"
-                  }`}
-                  disabled={isActing}
-                  onClick={() => toggleProduct(listing)}
-                >
-                  {selected ? "Selected" : "Add"}
-                </button>
+                <div className="flex shrink-0 items-center gap-2">
+                  {selected && (
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm gap-2"
+                      disabled={isActing}
+                      onClick={() => onEditListing(listing)}
+                    >
+                      <FiEdit2 /> Edit
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={`btn btn-sm gap-2 ${
+                      selected ? "btn-error btn-outline" : "btn-primary"
+                    }`}
+                    disabled={isActing}
+                    onClick={() => toggleProduct(listing)}
+                  >
+                    {selected ? (
+                      <>
+                        <FiTrash2 /> Remove
+                      </>
+                    ) : (
+                      <>
+                        <FiPlus /> Add
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             );
           })}
