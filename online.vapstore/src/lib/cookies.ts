@@ -27,6 +27,18 @@ export function setCookie(name: string, value: string, maxAgeSeconds: number): v
     `; Path=/; SameSite=Lax${secure}`;
 }
 
+/** Set a browser-session cookie: no Max-Age or Expires attribute is written. */
+export function setSessionCookie(name: string, value: string): void {
+  if (!isBrowser()) return;
+  const secure =
+    typeof location !== "undefined" && location.protocol === "https:"
+      ? "; Secure"
+      : "";
+  document.cookie =
+    `${encodeURIComponent(name)}=${encodeURIComponent(value)}` +
+    `; Path=/; SameSite=Lax${secure}`;
+}
+
 export function deleteCookie(name: string): void {
   setCookie(name, "", 0);
 }

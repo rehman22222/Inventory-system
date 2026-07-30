@@ -8,11 +8,12 @@ import {
 } from "react";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import logo from "@/assets/logo-cop.png";
-import { getCookie, setCookie } from "@/lib/cookies";
-import { getSessionId, SESSION_TTL_SECONDS } from "@/lib/session";
+import { getCookie, setSessionCookie } from "@/lib/cookies";
+import { getSessionId } from "@/lib/session";
 
 // Consent lives in a first-party cookie tied to the visitor's session id, and
-// both expire together after 24 hours — so age is confirmed once per 24h session.
+// both expire when the browser session closes, so age is confirmed once per
+// browser session.
 const CONSENT_COOKIE = "cop_age_ok";
 
 function hasValidConsent(sessionId: string) {
@@ -77,9 +78,9 @@ export function AgeGate({ children }: { children: ReactNode }) {
     event.preventDefault();
     if (!confirmed) return;
 
-    // Bind the consent to the session id and cache both for 24h.
+    // Bind the consent to the current browser session id.
     const sid = getSessionId();
-    setCookie(CONSENT_COOKIE, sid, SESSION_TTL_SECONDS);
+    setSessionCookie(CONSENT_COOKIE, sid);
     setAccepted(true);
   };
 
@@ -161,7 +162,7 @@ export function AgeGate({ children }: { children: ReactNode }) {
                   >
                     I am under 18 — leave this site
                   </a>
-                  <span>Remembered for 24 hours</span>
+                  <span>Remembered for this browser session</span>
                 </div>
               </div>
             </div>

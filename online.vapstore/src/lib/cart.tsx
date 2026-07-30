@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 
-/* Client-side cart. Lives in localStorage and is completely decoupled from the
+/* Client-side cart. Lives in sessionStorage and is completely decoupled from the
  * catalogue source, so when phase 0 swaps mock products for the E360 API the
  * cart does not change. SSR-safe: the tree renders with an empty cart on the
  * server and hydrates from storage after mount, so counts and totals are only
@@ -52,7 +52,8 @@ type Action =
   | { type: "clear" }
   | { type: "replace"; lines: CartLine[] };
 
-const STORAGE_KEY = "clipsofpuff-cart-v1";
+const STORAGE_KEY = "clipsofpuff-cart-session-v2";
+const LEGACY_STORAGE_KEY = "clipsofpuff-cart-v1";
 
 function reducer(state: CartLine[], action: Action): CartLine[] {
   switch (action.type) {
@@ -109,7 +110,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Hydrate once, on the client.
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      // The previous cart was persistent. Remove that legacy copy so product
+      // selections do not remain on the device after the browser session ends.
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+      const raw = sessionStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as CartLine[];
         if (Array.isArray(parsed)) {
@@ -135,7 +139,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!ready) return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(lines));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(lines));
     } catch {
       /* quota or private mode — the cart still works this session */
     }

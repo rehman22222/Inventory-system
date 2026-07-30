@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { Clock3, Facebook, Instagram, Mail, MapPin, Phone, ShieldCheck, Truck } from "lucide-react";
 import { useCatalog } from "@/lib/catalog-context";
+import { openCookiePreferences } from "@/components/CookieConsent";
 import logo from "@/assets/logo-cop.png";
 
 function XIcon({ className = "" }: { className?: string }) {
@@ -196,6 +197,13 @@ export function Footer() {
               {item.label}
             </Link>
           ))}
+          <button
+            type="button"
+            onClick={openCookiePreferences}
+            className="text-primary-foreground/60 transition-colors hover:text-accent"
+          >
+            Cookie settings
+          </button>
         </div>
       </div>
 
