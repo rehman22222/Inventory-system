@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import TopNavbar from "../Components/TopNavbar";
 import { IoMdAdd } from "react-icons/io";
 import { currency } from "../Components/pos/posUtils";
@@ -23,6 +23,7 @@ import toast from "react-hot-toast";
 // Currencies a supplier might invoice in. Mirrors the server's list in
 // libs/cost.js, which mirrors the shop's own currency options.
 const COST_CURRENCIES = ["EUR", "GBP", "USD", "AED", "PKR", "INR", "BDT"];
+const PRODUCT_PAGE_SIZE = 75;
 
 // Clean thumbnail with a placeholder fallback when a product has no image.
 function ProductThumb({ url, alt, className = "" }) {
@@ -49,9 +50,14 @@ const toDateInput = (value) =>
 
 function Productpage() {
   const { t } = useTranslation();
-  const { getallproduct, editedProduct, isproductadd, searchdata } = useSelector(
-    (state) => state.product
-  );
+  const {
+    getallproduct,
+    editedProduct,
+    isproductadd,
+    isallproductget,
+    issearchdata,
+    searchdata,
+  } = useSelector((state) => state.product);
   const { getallCategory } = useSelector((state) => state.category);
   const { Authuser } = useSelector((state) => state.auth);
   // What the shop trades in. Costs are stored in this, whatever the supplier bills.
@@ -87,6 +93,7 @@ function Productpage() {
   const [imagePreview, setImagePreview] = useState("");
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productPage, setProductPage] = useState(1);
 
   useEffect(() => {
     dispatch(gettingallproducts());
@@ -106,10 +113,12 @@ function Productpage() {
         dispatch(Searchproduct(query));
       }, 500);
       return () => clearTimeout(repeatTimeout);
-    } else {
-      dispatch(gettingallproducts());
     }
   }, [query, dispatch]);
+
+  useEffect(() => {
+    setProductPage(1);
+  }, [query, getallproduct, searchdata]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -240,10 +249,38 @@ function Productpage() {
     setIsFormVisible(true);
   };
 
-  const displayProducts = query.trim() !== "" ? searchdata : getallproduct;
+  const displayProducts = useMemo(() => {
+    const source = query.trim() !== "" ? searchdata : getallproduct;
+    return Array.isArray(source) ? source : [];
+  }, [getallproduct, query, searchdata]);
 
-  const totalValue =
-    getallproduct?.reduce((sum, p) => sum + Number(p.Price || 0) * Number(p.quantity || 0), 0) || 0;
+  const productPageCount = Math.max(
+    1,
+    Math.ceil(displayProducts.length / PRODUCT_PAGE_SIZE),
+  );
+  const safeProductPage = Math.min(productPage, productPageCount);
+  const visibleProducts = useMemo(() => {
+    const start = (safeProductPage - 1) * PRODUCT_PAGE_SIZE;
+    return displayProducts.slice(start, start + PRODUCT_PAGE_SIZE);
+  }, [displayProducts, safeProductPage]);
+  const productStart = displayProducts.length
+    ? (safeProductPage - 1) * PRODUCT_PAGE_SIZE + 1
+    : 0;
+  const productEnd = Math.min(
+    safeProductPage * PRODUCT_PAGE_SIZE,
+    displayProducts.length,
+  );
+  const productListLoading =
+    query.trim() !== "" ? issearchdata : isallproductget && !getallproduct?.length;
+
+  const totalValue = useMemo(
+    () =>
+      getallproduct?.reduce(
+        (sum, p) => sum + Number(p.Price || 0) * Number(p.quantity || 0),
+        0,
+      ) || 0,
+    [getallproduct],
+  );
 
   return (
     <div className="bg-base-200 min-h-screen">
@@ -550,8 +587,47 @@ function Productpage() {
 
         {/* Product list */}
         <div className="mt-10">
-          <h2 className="mb-4 text-xl font-semibold">{t("products.productList")}</h2>
-          <div className="overflow-x-auto">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold">{t("products.productList")}</h2>
+              <p className="mt-1 text-sm text-base-content/60">
+                {productListLoading
+                  ? t("common.loading", "Loading...")
+                  : `${productStart}-${productEnd} of ${displayProducts.length} products`}
+              </p>
+            </div>
+            {displayProducts.length > PRODUCT_PAGE_SIZE && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="rounded-md border border-base-300 px-3 py-1.5 text-sm font-medium disabled:opacity-40"
+                  disabled={safeProductPage <= 1}
+                  onClick={() => setProductPage((page) => Math.max(1, page - 1))}
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-base-content/60">
+                  Page {safeProductPage} / {productPageCount}
+                </span>
+                <button
+                  type="button"
+                  className="rounded-md border border-base-300 px-3 py-1.5 text-sm font-medium disabled:opacity-40"
+                  disabled={safeProductPage >= productPageCount}
+                  onClick={() =>
+                    setProductPage((page) => Math.min(productPageCount, page + 1))
+                  }
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="relative overflow-x-auto">
+            {productListLoading && (
+              <div className="absolute inset-x-0 top-0 z-10 border border-base-300 bg-base-100/95 px-4 py-3 text-sm font-medium shadow-sm">
+                {t("common.loading", "Loading...")}
+              </div>
+            )}
             <table className="min-w-full rounded-lg border border-base-300 bg-base-100 shadow-md">
               <thead className="bg-base-200">
                 <tr>
@@ -568,10 +644,12 @@ function Productpage() {
                 </tr>
               </thead>
               <tbody>
-                {Array.isArray(displayProducts) && displayProducts.length > 0 ? (
-                  displayProducts.map((product, index) => (
+                {visibleProducts.length > 0 ? (
+                  visibleProducts.map((product, index) => (
                     <tr key={product._id}>
-                      <td className="border px-3 py-2">{index + 1}</td>
+                      <td className="border px-3 py-2">
+                        {(safeProductPage - 1) * PRODUCT_PAGE_SIZE + index + 1}
+                      </td>
                       <td className="border px-3 py-2">
                         <ProductThumb
                           url={product.image?.url}
