@@ -3739,6 +3739,15 @@ const NEXT_STATUS = {
   shipped: "delivered",
 };
 
+const orderUnitCount = (order) =>
+  (order.items || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+
+const orderLineAmount = (item) => {
+  const explicit = Number(item.lineTotal);
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  return Number(item.unitPrice || 0) * Number(item.quantity || 0);
+};
+
 function Orders({ orders, isActing }) {
   const dispatch = useDispatch();
   const setStatus = async (order, status) => {
@@ -3755,6 +3764,7 @@ function Orders({ orders, isActing }) {
             <th>Order</th>
             <th>Customer</th>
             <th>Items</th>
+            <th>Description</th>
             <th>Voucher</th>
             <th className="text-right">Total</th>
             <th>Payment</th>
@@ -3777,9 +3787,34 @@ function Orders({ orders, isActing }) {
                   {order.customer?.email}
                 </div>
               </td>
-              <td>
-                {order.items?.reduce((sum, item) => sum + item.quantity, 0) ||
-                  0}
+              <td>{orderUnitCount(order)}</td>
+              <td className="min-w-[280px] max-w-[420px]">
+                {order.items?.length ? (
+                  <div className="space-y-1">
+                    {order.items.slice(0, 3).map((item, index) => (
+                      <div
+                        key={`${order._id}-${item.product || item.name || index}`}
+                        className="flex items-start justify-between gap-3 text-sm"
+                        title={`${item.name || "Product"} x ${item.quantity || 0}`}
+                      >
+                        <span className="min-w-0 truncate">
+                          {item.name || "Product"}
+                        </span>
+                        <span className="shrink-0 text-xs text-base-content/60">
+                          x{item.quantity || 0} · €{money(orderLineAmount(item))}
+                        </span>
+                      </div>
+                    ))}
+                    {order.items.length > 3 && (
+                      <div className="text-xs text-base-content/50">
+                        +{order.items.length - 3} more item
+                        {order.items.length - 3 === 1 ? "" : "s"}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-base-content/40">No item detail</span>
+                )}
               </td>
               <td>{order.voucher?.code || "—"}</td>
               <td className="text-right">€{money(order.total)}</td>
@@ -3832,7 +3867,7 @@ function Orders({ orders, isActing }) {
           ))}
           {!orders.length && (
             <tr>
-              <td colSpan={8} className="py-8 text-center text-base-content/50">
+              <td colSpan={9} className="py-8 text-center text-base-content/50">
                 No online orders yet.
               </td>
             </tr>
