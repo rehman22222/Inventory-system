@@ -43,6 +43,7 @@ On the E360Pro backend, keep:
 
 ```text
 STOREFRONT_API_KEY=THE-SAME-STRONG-RANDOM-VALUE
+STOREFRONT_PUBLIC_URL=https://cliffsofpuff.com
 ```
 
 The backend URL must be public HTTPS and reachable from Hostinger. Browser CORS

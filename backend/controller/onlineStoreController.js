@@ -23,11 +23,14 @@ const FREE_SHIPPING_THRESHOLD = 100; // fallback default when settings unset
 const SHIPPING_FLAT = 4.99; // fallback default when settings unset
 
 // Human-facing order number: a branded prefix plus a 1000-based sequence, so
-// even the first web orders read like an established store (the same #1001
-// convention Shopify uses) rather than exposing a raw "1".
-const ORDER_NO_PREFIX = "CP";
+// Branded, support-friendly reference: COP-2026-1001. The global atomic
+// sequence keeps it collision-safe under concurrent checkouts, while the year
+// makes an order immediately recognisable in email, admin, receipts and calls.
+// Existing WEB-* / CP-* references stay untouched and fully valid.
+const ORDER_NO_PREFIX = "COP";
 const ORDER_NO_BASE = 1000;
-const formatOrderNo = (seq) => `${ORDER_NO_PREFIX}-${ORDER_NO_BASE + Number(seq)}`;
+const formatOrderNo = (seq, at = new Date()) =>
+  `${ORDER_NO_PREFIX}-${at.getUTCFullYear()}-${ORDER_NO_BASE + Number(seq)}`;
 
 // Shipping charged for an order of `amount`, using the shop's configured rate
 // (Admin → Online store → Settings → Shipping) with the constants above as a
@@ -3013,6 +3016,26 @@ const shippingAddressBlock = (order) => {
     </div>`;
 };
 
+const DEFAULT_STOREFRONT_PUBLIC_URL = "https://cliffsofpuff.com";
+
+// APP_URL belongs to the E360 backend and must never be used for customer
+// links. Only the dedicated storefront URL is accepted; the real shop domain
+// is the safe fallback when that variable has not been configured.
+const storefrontBase = () => {
+  const configured = String(
+    process.env.STOREFRONT_PUBLIC_URL || DEFAULT_STOREFRONT_PUBLIC_URL,
+  ).trim();
+  try {
+    const url = new URL(configured);
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      return DEFAULT_STOREFRONT_PUBLIC_URL;
+    }
+    return url.href.replace(/\/+$/, "");
+  } catch {
+    return DEFAULT_STOREFRONT_PUBLIC_URL;
+  }
+};
+
 // A polished, self-contained order-confirmation email in the style real
 // e-commerce stores send: table-based layout with inline styles only (so it
 // renders in Gmail/Outlook/Apple Mail), branded header, order summary, delivery
@@ -3036,9 +3059,7 @@ const professionalOrderEmail = (order, settings) => {
   const logo = settings?.logo || "";
   const supportEmail = footer.supportEmail || "";
   const firstName = String(order.customer?.name || "there").trim().split(/\s+/)[0];
-  const shopUrl = String(
-    process.env.STOREFRONT_PUBLIC_URL || process.env.APP_URL || "",
-  ).replace(/\/+$/, "");
+  const shopUrl = storefrontBase();
   // Logo when set, otherwise the brand name as text.
   const brandMark = logo
     ? `<img src="${esc(logo)}" alt="${esc(brandName)}" height="52" style="height:52px;width:auto;display:block;border:0;">`
@@ -3278,12 +3299,6 @@ const sendOrderEmails = async (store, order) => {
  * received purchase.
  * ------------------------------------------------------------------------- */
 
-const storefrontBase = () =>
-  String(process.env.STOREFRONT_PUBLIC_URL || process.env.APP_URL || "").replace(
-    /\/+$/,
-    "",
-  );
-
 // Resolve the online-store brand (name/address/phone) the same way order
 // confirmations do, so review emails carry the website's identity.
 const onlineBrand = (settings) => ({
@@ -3308,9 +3323,7 @@ const reviewRequestEmail = (order, link, brand, settings) => {
   const footer = settings?.footer || {};
   const brandName = brand.name;
   const logo = settings?.logo || "";
-  const shopUrl = String(
-    process.env.STOREFRONT_PUBLIC_URL || process.env.APP_URL || "",
-  ).replace(/\/+$/, "");
+  const shopUrl = storefrontBase();
   const firstName = String(order.customer?.name || "there").trim().split(/\s+/)[0];
   const brandMark = logo
     ? `<img src="${esc(logo)}" alt="${esc(brandName)}" height="52" style="height:52px;width:auto;display:block;border:0;">`
@@ -3361,6 +3374,7 @@ const reviewRequestEmail = (order, link, brand, settings) => {
 // Exposed so scripts (resend / preview) build the identical branded emails.
 module.exports.reviewRequestEmail = reviewRequestEmail;
 module.exports.professionalOrderEmail = professionalOrderEmail;
+module.exports.formatOrderNo = formatOrderNo;
 
 // Best-effort "review your purchase" email. Claims the send atomically so a
 // retried/duplicate delivered-transition cannot email the customer twice.
@@ -3376,11 +3390,6 @@ async function sendReviewRequestEmail(order) {
   const settings = await getOrCreateSettings(order.store);
   const brand = onlineBrand(settings);
   const base = storefrontBase();
-  if (!base) {
-    console.warn(
-      "[reviews] STOREFRONT_PUBLIC_URL (or APP_URL) not set — the review link in the email will be relative and won't open. Set it in the backend .env.",
-    );
-  }
   const link = `${base}/review/${encodeURIComponent(claimed.orderNo)}/${token}`;
 
   const html = reviewRequestEmail(claimed, link, brand, settings);

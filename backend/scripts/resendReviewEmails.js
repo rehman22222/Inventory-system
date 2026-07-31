@@ -27,7 +27,7 @@ const ONLY = (process.env.ONLY || "")
   .filter(Boolean);
 
 const base = () =>
-  String(process.env.STOREFRONT_PUBLIC_URL || process.env.APP_URL || "").replace(
+  String(process.env.STOREFRONT_PUBLIC_URL || "https://cliffsofpuff.com").replace(
     /\/+$/,
     "",
   );
