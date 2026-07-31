@@ -64,7 +64,48 @@ const slugify = (s) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+const storefrontCacheMs = () => {
+  const configured = Number(
+    process.env.STOREFRONT_CATALOG_CACHE_MS ||
+      process.env.PRODUCT_CATALOG_CACHE_MS ||
+      2000,
+  );
+  return Number.isFinite(configured) && configured >= 0
+    ? Math.min(configured, 15_000)
+    : 2000;
+};
+
+const storefrontReadCache = new Map();
+const storefrontPendingReads = new Map();
+
+const invalidateStorefrontReadCache = () => {
+  storefrontReadCache.clear();
+};
+
+const cachedStorefrontRead = async (key, loader) => {
+  const hit = storefrontReadCache.get(key);
+  if (hit && hit.expiresAt > Date.now()) return hit.value;
+  if (storefrontPendingReads.has(key)) return storefrontPendingReads.get(key);
+
+  const request = Promise.resolve()
+    .then(loader)
+    .then((value) => {
+      storefrontReadCache.set(key, {
+        value,
+        expiresAt: Date.now() + storefrontCacheMs(),
+      });
+      return value;
+    })
+    .finally(() => {
+      storefrontPendingReads.delete(key);
+    });
+
+  storefrontPendingReads.set(key, request);
+  return request;
+};
+
 const emit = (req, event, payload) => {
+  invalidateStorefrontReadCache();
   try {
     req.app.get("io")?.emit(event, payload);
   } catch {
@@ -2033,6 +2074,9 @@ module.exports.listOrders = async (req, res) => {
     if (req.query.status) filter.status = req.query.status;
 
     const orders = await OnlineOrder.find(filter)
+      .select(
+        "orderNo createdAt customer.name customer.email items.product items.name items.price items.quantity items.lineTotal voucher.code total payment.method payment.provider payment.status status",
+      )
       .sort({ createdAt: -1 })
       .limit(500)
       .lean();
@@ -2380,26 +2424,36 @@ module.exports.salesSummary = async (req, res) => {
 
 /* ───────────────────────────────────────── STOREFRONT — reads ───────────── */
 
+const publicStorefrontCategories = (cats) => {
+  // Resolve each parent to its slug so the storefront (which is slug-centric)
+  // can build the tree without a second lookup. A parent that is itself hidden
+  // is treated as top-level so its children don't vanish from the nav.
+  const slugById = new Map(cats.map((c) => [String(c._id), c.slug]));
+  return cats.map((c) => ({
+    id: String(c._id),
+    slug: c.slug,
+    name: c.name,
+    description: c.description,
+    image: c.image,
+    sortWeight: c.sortWeight,
+    parent: (c.parent && slugById.get(String(c.parent))) || null,
+  }));
+};
+
+const loadStorefrontCategories = async (store) => {
+  const cats = await OnlineCategory.find({ store, active: true })
+    .sort({ sortWeight: 1, name: 1 })
+    .lean();
+  return publicStorefrontCategories(cats);
+};
+
 module.exports.storefrontCategories = async (req, res) => {
   try {
     const store = await storeId();
-    const cats = await OnlineCategory.find({ store, active: true })
-      .sort({ sortWeight: 1, name: 1 })
-      .lean();
-    // Resolve each parent to its slug so the storefront (which is slug-centric)
-    // can build the tree without a second lookup. A parent that is itself hidden
-    // is treated as top-level so its children don't vanish from the nav.
-    const slugById = new Map(cats.map((c) => [String(c._id), c.slug]));
     return res.status(200).json({
-      categories: cats.map((c) => ({
-        id: String(c._id),
-        slug: c.slug,
-        name: c.name,
-        description: c.description,
-        image: c.image,
-        sortWeight: c.sortWeight,
-        parent: (c.parent && slugById.get(String(c.parent))) || null,
-      })),
+      categories: await cachedStorefrontRead("categories", () =>
+        loadStorefrontCategories(store),
+      ),
     });
   } catch (error) {
     return res
@@ -2408,23 +2462,27 @@ module.exports.storefrontCategories = async (req, res) => {
   }
 };
 
+const publicStorefrontSettings = (settings) => ({
+  logo: settings.logo,
+  social: settings.social,
+  footer: settings.footer,
+  announcement: settings.announcement,
+  shipping: settings.shipping,
+  promises: settings.promises,
+  newThisWeek: settings.newThisWeek,
+  deals: settings.deals,
+  business: settings.business,
+  policies: settings.policies,
+});
+
 module.exports.storefrontSettings = async (req, res) => {
   try {
     const store = await storeId();
-    const settings = await getOrCreateSettings(store);
+    const settings = await cachedStorefrontRead("settings", async () =>
+      publicStorefrontSettings(await getOrCreateSettings(store)),
+    );
     return res.status(200).json({
-      settings: {
-        logo: settings.logo,
-        social: settings.social,
-        footer: settings.footer,
-        announcement: settings.announcement,
-        shipping: settings.shipping,
-        promises: settings.promises,
-        newThisWeek: settings.newThisWeek,
-        deals: settings.deals,
-        business: settings.business,
-        policies: settings.policies,
-      },
+      settings,
     });
   } catch (error) {
     return res
@@ -2495,45 +2553,78 @@ module.exports.submitContactMessage = async (req, res) => {
   }
 };
 
+const loadStorefrontProducts = async (
+  store,
+  { category = "", compact = true } = {},
+) => {
+  const filter = { store, listed: true };
+  if (category) {
+    const cat = await OnlineCategory.findOne({
+      store,
+      slug: String(category),
+    })
+      .select("_id")
+      .lean();
+    if (cat) {
+      // A parent category page gathers its own products plus everything filed
+      // under its sub-categories, so browsing the top level shows the full range.
+      const descendants = await collectDescendantIds(store, cat._id);
+      const ids = [cat._id, ...descendants];
+      filter.$or = [{ category: { $in: ids } }, { categories: { $in: ids } }];
+    }
+  }
+  const listings = await OnlineListing.find(filter)
+    .populate("product", "name Price quantity image")
+    .populate("variants.product", "name Price quantity image")
+    .populate("category", "name slug")
+    .populate("categories", "name slug")
+    .sort({ sortWeight: 1, createdAt: -1 })
+    .lean();
+  const ratings = await ratingByListing(
+    store,
+    listings.map((l) => l._id),
+  );
+  for (const l of listings) l.rating = ratings.get(String(l._id));
+  return listings
+    .map((listing) => publicListing(listing, { compact }))
+    .filter(Boolean);
+};
+
+module.exports.storefrontCatalog = async (req, res) => {
+  try {
+    const store = await storeId();
+    return res.status(200).json(
+      await cachedStorefrontRead("catalog:card", async () => {
+        const [categories, products, settings] = await Promise.all([
+          loadStorefrontCategories(store),
+          loadStorefrontProducts(store, { compact: true }),
+          getOrCreateSettings(store),
+        ]);
+        return {
+          categories,
+          products,
+          settings: publicStorefrontSettings(settings),
+        };
+      }),
+    );
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Could not load storefront catalog", error: error.message });
+  }
+};
+
 module.exports.storefrontProducts = async (req, res) => {
   try {
     const compact = req.query.view === "card";
     const store = await storeId();
-    const filter = { store, listed: true };
-    if (req.query.category) {
-      const cat = await OnlineCategory.findOne({
-        store,
-        slug: String(req.query.category),
-      })
-        .select("_id")
-        .lean();
-      if (cat) {
-        // A parent category page gathers its own products plus everything filed
-        // under its sub-categories, so browsing the top level shows the full range.
-        const descendants = await collectDescendantIds(store, cat._id);
-        const ids = [cat._id, ...descendants];
-        filter.$or = [{ category: { $in: ids } }, { categories: { $in: ids } }];
-      }
-    }
-    const listings = await OnlineListing.find(filter)
-      .populate("product", "name Price quantity image")
-      .populate("variants.product", "name Price quantity image")
-      .populate("category", "name slug")
-      .populate("categories", "name slug")
-      .sort({ sortWeight: 1, createdAt: -1 })
-      .lean();
-    const ratings = await ratingByListing(
-      store,
-      listings.map((l) => l._id),
-    );
-    for (const l of listings) l.rating = ratings.get(String(l._id));
-    return res
-      .status(200)
-      .json({
-        products: listings
-          .map((listing) => publicListing(listing, { compact }))
-          .filter(Boolean),
-      });
+    const category = String(req.query.category || "");
+    return res.status(200).json({
+      products: await cachedStorefrontRead(
+        `products:${compact ? "card" : "full"}:${category}`,
+        () => loadStorefrontProducts(store, { category, compact }),
+      ),
+    });
   } catch (error) {
     return res
       .status(500)

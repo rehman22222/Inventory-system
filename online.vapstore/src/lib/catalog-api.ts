@@ -199,6 +199,28 @@ type ApiProduct = {
   rating?: { average: number; count: number };
 };
 
+type ApiCategory = {
+  slug: string;
+  name: string;
+  description: string;
+  image: string;
+  parent?: string | null;
+};
+
+type StorefrontCatalogPayload = {
+  categories: ApiCategory[];
+  products: ApiProduct[];
+  settings: StorefrontSettings;
+};
+
+const toCategory = (c: ApiCategory): Category => ({
+  slug: c.slug,
+  name: c.name,
+  tagline: c.description || "",
+  image: cldAuto(c.image || ""),
+  parentSlug: c.parent || null,
+});
+
 const toProduct = (p: ApiProduct): Product => ({
   id: p.slug,
   listingId: p.id,
@@ -236,21 +258,9 @@ const toProduct = (p: ApiProduct): Product => ({
 
 const loadCategories = async (): Promise<Category[]> => {
   const data = await get<{
-    categories: {
-      slug: string;
-      name: string;
-      description: string;
-      image: string;
-      parent?: string | null;
-    }[];
+    categories: ApiCategory[];
   }>("/categories", { categories: [] });
-  return data.categories.map((c) => ({
-    slug: c.slug,
-    name: c.name,
-    tagline: c.description || "",
-    image: cldAuto(c.image || ""),
-    parentSlug: c.parent || null,
-  }));
+  return data.categories.map(toCategory);
 };
 
 const loadProducts = async (categorySlug?: string): Promise<Product[]> => {
@@ -261,42 +271,46 @@ const loadProducts = async (categorySlug?: string): Promise<Product[]> => {
   return data.products.map(toProduct);
 };
 
+const mergeSettings = (settings?: StorefrontSettings): StorefrontSettings => {
+  return {
+    social: { ...defaultStorefrontSettings.social, ...(settings?.social || {}) },
+    footer: { ...defaultStorefrontSettings.footer, ...(settings?.footer || {}) },
+    announcement: {
+      ...defaultStorefrontSettings.announcement,
+      ...(settings?.announcement || {}),
+    },
+    shipping: {
+      ...defaultStorefrontSettings.shipping,
+      ...(settings?.shipping || {}),
+    },
+    promises: {
+      ...defaultStorefrontSettings.promises,
+      ...(settings?.promises || {}),
+    },
+    newThisWeek: {
+      ...defaultStorefrontSettings.newThisWeek,
+      ...(settings?.newThisWeek || {}),
+    },
+    deals: {
+      ...defaultStorefrontSettings.deals,
+      ...(settings?.deals || {}),
+    },
+    business: {
+      ...defaultStorefrontSettings.business,
+      ...(settings?.business || {}),
+    },
+    policies: {
+      ...defaultStorefrontSettings.policies,
+      ...(settings?.policies || {}),
+    },
+  };
+};
+
 const loadSettings = async (): Promise<StorefrontSettings> => {
   const data = await get<{ settings: StorefrontSettings }>("/settings", {
     settings: defaultStorefrontSettings,
   });
-  return {
-    social: { ...defaultStorefrontSettings.social, ...(data.settings?.social || {}) },
-    footer: { ...defaultStorefrontSettings.footer, ...(data.settings?.footer || {}) },
-    announcement: {
-      ...defaultStorefrontSettings.announcement,
-      ...(data.settings?.announcement || {}),
-    },
-    shipping: {
-      ...defaultStorefrontSettings.shipping,
-      ...(data.settings?.shipping || {}),
-    },
-    promises: {
-      ...defaultStorefrontSettings.promises,
-      ...(data.settings?.promises || {}),
-    },
-    newThisWeek: {
-      ...defaultStorefrontSettings.newThisWeek,
-      ...(data.settings?.newThisWeek || {}),
-    },
-    deals: {
-      ...defaultStorefrontSettings.deals,
-      ...(data.settings?.deals || {}),
-    },
-    business: {
-      ...defaultStorefrontSettings.business,
-      ...(data.settings?.business || {}),
-    },
-    policies: {
-      ...defaultStorefrontSettings.policies,
-      ...(data.settings?.policies || {}),
-    },
-  };
+  return mergeSettings(data.settings);
 };
 
 /* ── Server functions the routes call ─────────────────────────────────────── */
@@ -308,6 +322,15 @@ export const getStorefront = createServerFn({ method: "GET" }).handler(
     products: Product[];
     settings: StorefrontSettings;
   }> => {
+    const catalog = await get<StorefrontCatalogPayload | null>("/catalog", null);
+    if (catalog) {
+      return {
+        categories: (catalog.categories || []).map(toCategory),
+        products: (catalog.products || []).map(toProduct),
+        settings: mergeSettings(catalog.settings),
+      };
+    }
+
     const [categories, products, settings] = await Promise.all([
       loadCategories(),
       loadProducts(),

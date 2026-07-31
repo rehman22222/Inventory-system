@@ -97,6 +97,7 @@ export default function OnlineStorePage() {
   const dispatch = useDispatch();
   const [tab, setTab] = useState("overview");
   const [listingToEdit, setListingToEdit] = useState("");
+  const [loadedTabs, setLoadedTabs] = useState({});
   const online = useSelector((state) => state.onlineStore);
 
   const editListing = (listing) => {
@@ -113,13 +114,55 @@ export default function OnlineStorePage() {
     dispatch(getOnlineSettings());
     dispatch(getOnlineOrders());
     dispatch(getOnlineReviews());
+    dispatch(gettingallCategory());
+    setLoadedTabs(
+      Object.fromEntries(TABS.map((item) => [item.id, true])),
+    );
   };
 
   useEffect(() => {
-    refresh();
-    dispatch(gettingallCategory());
+    dispatch(getOnlineSummary(30));
+    dispatch(getOnlineSettings());
+    dispatch(getOnlineOrders());
+    setLoadedTabs((current) => ({
+      ...current,
+      overview: true,
+      orders: true,
+      settings: true,
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch]);
+
+  useEffect(() => {
+    if (loadedTabs[tab]) return;
+
+    if (tab === "products") {
+      dispatch(getOnlineCategories());
+      dispatch(getOnlineListings());
+      dispatch(gettingallCategory());
+    } else if (tab === "categories") {
+      dispatch(getOnlineCategories());
+    } else if (tab === "hero") {
+      dispatch(getHeroSlides());
+      dispatch(getOnlineListings());
+    } else if (tab === "new-this-week" || tab === "deals") {
+      dispatch(getOnlineListings());
+      dispatch(getOnlineSettings());
+    } else if (tab === "promotions") {
+      dispatch(getOnlineVouchers());
+      dispatch(getOnlineListings());
+      dispatch(getOnlineCategories());
+    } else if (tab === "orders") {
+      dispatch(getOnlineOrders());
+    } else if (tab === "reviews") {
+      dispatch(getOnlineReviews());
+    } else if (tab === "settings") {
+      dispatch(getOnlineSettings());
+    }
+
+    setLoadedTabs((current) => ({ ...current, [tab]: true }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, dispatch]);
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">

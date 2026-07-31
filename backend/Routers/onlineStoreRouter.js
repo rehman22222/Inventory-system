@@ -25,6 +25,7 @@ const {
   listReviews,
   updateReview,
   deleteReview,
+  storefrontCatalog,
   storefrontCategories,
   storefrontSettings,
   storefrontProducts,
@@ -132,6 +133,7 @@ const storefrontAuth = (req, res, next) => {
 
 storefrontRouter.use(storefrontAuth);
 
+storefrontRouter.get("/catalog", storefrontCatalog);
 storefrontRouter.get("/categories", storefrontCategories);
 storefrontRouter.get("/settings", storefrontSettings);
 storefrontRouter.get("/products", storefrontProducts);

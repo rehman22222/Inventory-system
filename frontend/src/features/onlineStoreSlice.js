@@ -452,6 +452,12 @@ const onlineStoreSlice = createSlice({
       .addCase(getOnlineSummary.fulfilled, (s, a) => {
         s.isLoading = false;
         s.summary = a.payload;
+        if (a.payload?.catalogue) {
+          s.counts = {
+            total: a.payload.catalogue.total || 0,
+            listed: a.payload.catalogue.listed || 0,
+          };
+        }
       })
       .addCase(getOnlineSummary.rejected, (s, a) => {
         s.isLoading = false;
