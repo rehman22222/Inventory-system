@@ -494,12 +494,12 @@ function MegaMenu({
                 params={{ id: p.id }}
                 className="group block border hair bg-surface"
               >
-                <div className="aspect-square overflow-hidden bg-background">
+                <div className="aspect-square overflow-hidden bg-white p-2">
                   <img
                     src={p.image}
                     alt={p.name}
                     loading="lazy"
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
                   />
                 </div>
                 <div className="p-2.5">

@@ -221,12 +221,12 @@ function Home() {
                     params={{ id: product.id }}
                     className="group block border border-primary-foreground/20 bg-surface text-ink"
                   >
-                    <div className="relative overflow-hidden">
+                    <div className="relative aspect-square overflow-hidden bg-white p-3">
                       <img
                         src={product.image}
                         alt={product.name}
                         loading="lazy"
-                        className="aspect-square w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                        className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.03]"
                       />
                       {saving > 0 && (
                         <span className="absolute left-2 top-2 bg-accent px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-accent-foreground">

@@ -206,8 +206,12 @@ function ProductPage() {
       <section className="container-x pb-12 grid gap-8 lg:grid-cols-[1fr_1fr]">
         {/* Gallery */}
         <div className="grid gap-3 lg:sticky lg:top-28 lg:self-start">
-          <div className="border hair bg-surface h-[320px] sm:h-[400px] lg:h-[460px] overflow-hidden relative p-4 sm:p-6">
-            <img src={heroImage} alt={product.name} className="h-full w-full object-contain" />
+          <div className="border hair bg-white aspect-square max-h-[560px] overflow-hidden relative p-5 sm:p-8">
+            <img
+              src={heroImage}
+              alt={product.name}
+              className="mx-auto h-full w-full max-w-[92%] object-contain"
+            />
             {onSale && (
               <span className="absolute left-0 top-0 bg-[color:var(--sale)] text-primary-foreground font-mono text-[10px] uppercase tracking-widest px-2 py-1">
                 -{Math.round((1 - activePrice / (product.compareAt || 1)) * 100)}%
@@ -222,7 +226,7 @@ function ProductPage() {
                   key={image}
                   onClick={() => selectImage(image)}
                   aria-label="View this photo"
-                  className={`border hair bg-surface aspect-square overflow-hidden p-1.5 transition-opacity hover:opacity-90 ${
+                  className={`border hair bg-white aspect-square overflow-hidden p-1.5 transition-opacity hover:opacity-90 ${
                     image === heroImage ? "outline outline-2 outline-ink" : ""
                   }`}
                 >
@@ -268,7 +272,7 @@ function ProductPage() {
                 <img
                   src={qtyDeal.image}
                   alt="Deal"
-                  className="h-16 w-16 shrink-0 border hair object-cover"
+                  className="h-16 w-16 shrink-0 border hair bg-white object-contain p-1"
                 />
               ) : (
                 <div className="grid h-16 w-16 shrink-0 place-items-center border hair bg-[color:var(--sale)] font-display text-lg text-primary-foreground">
@@ -386,13 +390,13 @@ function ProductPage() {
             Buy now
           </button>
 
-          <div className="mt-3 font-mono text-[11px] uppercase tracking-widest text-ink-muted">
-            {priceUnavailable
-              ? "Visible in catalogue · contact the shop for price"
-              : outOfStock
+          {!priceUnavailable && (
+            <div className="mt-3 font-mono text-[11px] uppercase tracking-widest text-ink-muted">
+              {outOfStock
                 ? "Currently unavailable"
                 : `${availability.label} · ${promises.dispatch}`}
-          </div>
+            </div>
+          )}
 
           <div className="mt-8 grid grid-cols-3 gap-3 border-y hair py-6">
             {[

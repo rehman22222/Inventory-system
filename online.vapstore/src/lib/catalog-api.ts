@@ -8,7 +8,7 @@ import type {
   ReviewSummary,
   StorefrontSettings,
 } from "./catalog";
-import { cldAuto } from "./img";
+import { cldAuto, cldProductImage } from "./img";
 
 const defaultStorefrontSettings: StorefrontSettings = {
   social: { instagram: "", facebook: "", twitter: "", tiktok: "" },
@@ -235,12 +235,12 @@ const toProduct = (p: ApiProduct): Product => ({
   sale: p.sale,
   saleEndsAt: p.saleEndsAt ?? undefined,
   qtyDeal: p.qtyDeal
-    ? { ...p.qtyDeal, image: p.qtyDeal.image ? cldAuto(p.qtyDeal.image) : "" }
+    ? { ...p.qtyDeal, image: p.qtyDeal.image ? cldProductImage(p.qtyDeal.image) : "" }
     : null,
-  dealImage: p.dealImage ? cldAuto(p.dealImage) : "",
+  dealImage: p.dealImage ? cldProductImage(p.dealImage) : "",
   publishedAt: p.publishedAt ?? undefined,
-  image: cldAuto(p.image),
-  gallery: (p.gallery || []).map((image) => ({ ...image, url: cldAuto(image.url) })),
+  image: cldProductImage(p.image),
+  gallery: (p.gallery || []).map((image) => ({ ...image, url: cldProductImage(image.url) })),
   tags: p.tags || [],
   short: p.short || "",
   description: p.description || "",
@@ -249,7 +249,7 @@ const toProduct = (p: ApiProduct): Product => ({
   optionLabel: p.optionLabel || undefined,
   variants: (p.variants || []).map((variant) => ({
     ...variant,
-    image: variant.image ? cldAuto(variant.image) : variant.image,
+    image: variant.image ? cldProductImage(variant.image) : variant.image,
   })),
   stock: p.stock,
   featured: p.featured,

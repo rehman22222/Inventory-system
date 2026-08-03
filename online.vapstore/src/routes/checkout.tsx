@@ -317,7 +317,11 @@ function Checkout() {
               <div className="mt-5 space-y-4">
                 {lines.map((line) => (
                   <div key={line.id} className="flex gap-3">
-                    <img src={line.image} alt="" className="h-14 w-14 border hair object-cover" />
+                    <img
+                      src={line.image}
+                      alt=""
+                      className="h-14 w-14 border hair bg-white object-contain p-1"
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="font-display text-sm leading-tight">{line.name}</div>
                       <div className="mt-1 font-mono text-[10px] text-ink-muted">

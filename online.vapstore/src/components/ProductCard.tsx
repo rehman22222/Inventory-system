@@ -43,13 +43,13 @@ export function ProductCard({ product }: { product: Product }) {
       <Link
         to="/product/$id"
         params={{ id: product.id }}
-        className="relative block aspect-square overflow-hidden bg-background"
+        className="relative block aspect-square overflow-hidden bg-white p-4"
       >
         <img
           src={product.image}
           alt={product.name}
           loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
+          className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.05]"
         />
         <div className="absolute left-0 top-0 flex flex-col gap-0">
           {product.tags?.includes("new") && (

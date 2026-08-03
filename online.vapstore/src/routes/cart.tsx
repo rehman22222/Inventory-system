@@ -77,9 +77,9 @@ function Cart() {
                 <Link
                   to="/product/$id"
                   params={{ id: l.slug }}
-                  className="border hair bg-surface aspect-square overflow-hidden"
+                  className="border hair bg-white aspect-square overflow-hidden p-1.5"
                 >
-                  <img src={l.image} alt={l.name} className="h-full w-full object-cover" />
+                  <img src={l.image} alt={l.name} className="h-full w-full object-contain" />
                 </Link>
 
                 <div className="min-w-0">
