@@ -6,7 +6,7 @@ import type { HeroSlide } from "@/lib/catalog";
 
 const AUTOPLAY_MS = 6500;
 const HERO_CTA_CLASS =
-  "group inline-flex max-w-[82vw] items-center justify-center gap-2 rounded-full border border-white/35 bg-black/58 px-4 py-2.5 font-display text-[10px] font-bold uppercase tracking-[0.13em] text-white shadow-[0_14px_34px_rgba(0,0,0,0.42)] ring-1 ring-black/15 backdrop-blur-xl transition-all hover:border-white/70 hover:bg-white hover:text-ink hover:shadow-[0_22px_55px_rgba(0,0,0,0.5)] active:scale-[0.98] md:px-6 md:py-3 md:text-xs";
+  "group inline-flex max-w-[74vw] items-center justify-center gap-1.5 rounded-full border border-white/35 bg-black/58 px-3 py-2 font-display text-[9px] font-bold uppercase tracking-[0.12em] text-white shadow-[0_12px_28px_rgba(0,0,0,0.42)] ring-1 ring-black/15 backdrop-blur-xl transition-all hover:border-white/70 hover:bg-white hover:text-ink hover:shadow-[0_22px_55px_rgba(0,0,0,0.5)] active:scale-[0.98] md:max-w-[82vw] md:gap-2 md:px-6 md:py-3 md:text-xs";
 
 function HeroButton({ slide, active }: { slide: HeroSlide; active: boolean }) {
   const { t } = useTranslation();
@@ -151,7 +151,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                 />
                 {slide.linked && (
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent p-4 md:p-8">
-                    <div className="container-x flex justify-center md:justify-start">
+                    <div className="container-x flex justify-start">
                       <div className="pointer-events-auto">
                         <HeroButton slide={slide} active={slideIndex === index} />
                       </div>
