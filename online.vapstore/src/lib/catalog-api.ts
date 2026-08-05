@@ -10,6 +10,31 @@ import type {
 } from "./catalog";
 import { cldAuto, cldProductImage } from "./img";
 
+const FIRST_HERO_BANNER = "/hero/loom-ghost-blaze-banner.webp";
+const LOOM_HERO_SLIDE: HeroSlide = {
+  id: "loom-campaign",
+  linkType: "products",
+  linked: true,
+  eyebrow: "",
+  titleTop: "",
+  titleItalic: "",
+  titleBadge: "",
+  titleBottom: "",
+  copy: "",
+  ctaPrimary: {
+    label: "Shop Loom products",
+    to: "/shop",
+    params: {},
+    search: { q: "loom" },
+  },
+  ctaSecondary: { label: "", to: "/shop", params: {} },
+  image: FIRST_HERO_BANNER,
+  imageAlt: "Loom and Ghost Blaze product campaign banner",
+  burst: { top: "", big: "", bottom: "" },
+  tone: "ink",
+  product: null,
+};
+
 const defaultStorefrontSettings: StorefrontSettings = {
   social: { instagram: "", facebook: "", twitter: "", tiktok: "" },
   footer: {
@@ -39,7 +64,7 @@ const defaultStorefrontSettings: StorefrontSettings = {
   deals: {
     enabled: true,
     eyebrow: "Live sale",
-    title: "Weekly deals.",
+    title: "Don’t miss out.",
     subtitle:
       "Limited-time online prices selected by the CliffsOfPuff team. Stock updates from the same inventory used at the till.",
     ctaLabel: "See the deals",
@@ -342,7 +367,11 @@ export const getStorefront = createServerFn({ method: "GET" }).handler(
 
 export const getHero = createServerFn({ method: "GET" }).handler(async (): Promise<HeroSlide[]> => {
   const data = await get<{ slides: HeroSlide[] }>("/hero", { slides: [] });
-  return data.slides.map((slide) => ({ ...slide, image: cldAuto(slide.image) }));
+  if (!data.slides.length) return [LOOM_HERO_SLIDE];
+  return data.slides.map((slide) => ({
+    ...slide,
+    image: cldAuto(slide.image),
+  }));
 });
 
 export const getCategoryPage = createServerFn({ method: "GET" })

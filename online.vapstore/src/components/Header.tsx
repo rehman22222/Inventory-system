@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { Search, ShoppingBag, Menu, X, ArrowRight, ChevronDown } from "lucide-react";
 import {
   productsByCategory,
   topLevelCategories,
   childCategories,
-  fillTokens,
   type Category,
   type CategorySlug,
 } from "@/lib/catalog";
@@ -13,8 +13,10 @@ import { useCatalog } from "@/lib/catalog-context";
 import logo from "@/assets/logo-cop.png";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/lib/cart";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export function Header() {
+  const { t } = useTranslation();
   const { categories, products, settings } = useCatalog();
   // The top nav lists parents only; each parent's children live in its mega
   // menu, so a two-deep catalogue doesn't flatten out into one long row.
@@ -128,18 +130,24 @@ export function Header() {
     >
       {/* Announcement */}
       <div className="bg-ink text-primary-foreground">
-        <div className="container-x flex h-9 items-center justify-between text-[11px] font-mono uppercase tracking-widest">
-          <span>{fillTokens(settings.announcement.primary, settings)}</span>
-          <span className="hidden md:inline">
-            {fillTokens(settings.announcement.secondary, settings)}
+        <div className="container-x flex h-9 items-center justify-between gap-3 text-[11px] font-mono uppercase tracking-widest">
+          <span>
+            {t("announcement.primary", {
+              free: `€${settings.shipping.freeThreshold}`,
+              dispatch: t("announcement.dispatch"),
+            })}
           </span>
+          <div className="flex items-center gap-3">
+            <span className="hidden md:inline">{t("announcement.secondary")}</span>
+            <LanguageSwitcher />
+          </div>
         </div>
       </div>
 
       {/* Main bar */}
       {/* Tighter vertical padding than the logo would otherwise force — the
           mark carries the height now. */}
-      <div className="container-x grid h-[68px] grid-cols-[auto_1fr_auto] items-center gap-6 sm:h-[76px] lg:h-[78px]">
+      <div className="container-x grid h-[68px] grid-cols-[auto_1fr_auto] items-center gap-3 sm:h-[76px] sm:gap-6 lg:h-[78px]">
         <div className="flex items-center gap-2">
           <button
             className="lg:hidden -ml-2 p-2"
@@ -160,27 +168,27 @@ export function Header() {
           </Link>
         </div>
 
-        <form onSubmit={submitSearch} className="hidden lg:flex items-center border hair">
+        <form onSubmit={submitSearch} className="hidden items-center border hair lg:flex">
           <Search className="ml-3 h-4 w-4 text-ink-muted shrink-0" />
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search devices, flavours, brands…"
-            aria-label="Search products"
+            placeholder={t("nav.searchPlaceholder")}
+            aria-label={t("nav.searchProducts")}
             className="w-full bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-ink-muted"
           />
           <button
             type="submit"
             className="bg-ink px-4 py-2.5 text-primary-foreground font-mono text-[11px] uppercase tracking-widest"
           >
-            Search
+            {t("nav.search")}
           </button>
         </form>
 
-        <nav className="flex items-center gap-1">
+        <nav className="col-start-3 flex items-center justify-end gap-2 justify-self-end">
           <button
-            aria-label="Search"
+            aria-label={t("nav.search")}
             className="lg:hidden p-2"
             onClick={() => navigate({ to: "/search", search: { q: "" } })}
           >
@@ -189,7 +197,7 @@ export function Header() {
           <Link
             to="/cart"
             className="relative p-2 inline-flex items-center gap-2"
-            aria-label={`Cart, ${ready ? count : 0} items`}
+            aria-label={t("nav.cartLabel", { count: ready ? count : 0 })}
           >
             <ShoppingBag className="h-5 w-5" />
             {ready && count > 0 && (
@@ -212,7 +220,7 @@ export function Header() {
               to="/"
               className="shrink-0 font-display text-[13px] uppercase tracking-widest whitespace-nowrap hover:text-accent-foreground hover:bg-accent px-1"
             >
-              Home
+              {t("nav.home")}
             </Link>
             {visibleCategories.map((c) => (
               <Link
@@ -241,7 +249,7 @@ export function Header() {
                   moreOpen ? "bg-accent px-1 text-accent-foreground" : "text-ink-muted hover:text-ink"
                 }`}
               >
-                More
+                {t("nav.more")}
                 <ChevronDown
                   className={`h-3.5 w-3.5 transition-transform ${moreOpen ? "rotate-180" : ""}`}
                 />
@@ -254,7 +262,9 @@ export function Header() {
             aria-hidden
             className="pointer-events-none invisible absolute left-0 top-0 flex items-center gap-5 whitespace-nowrap"
           >
-            <span className="font-display text-[13px] uppercase tracking-widest px-1">Home</span>
+            <span className="font-display text-[13px] uppercase tracking-widest px-1">
+              {t("nav.home")}
+            </span>
             {topLevel.map((c) => (
               <span
                 key={c.slug}
@@ -264,7 +274,7 @@ export function Header() {
               </span>
             ))}
             <span className="inline-flex items-center gap-1 font-display text-[13px] uppercase tracking-widest px-1">
-              More
+              {t("nav.more")}
               <span className="inline-block h-3.5 w-3.5" />
             </span>
           </div>
@@ -287,14 +297,14 @@ export function Header() {
               onClick={() => setMobileOpen(false)}
               className="py-2.5 font-display text-sm uppercase tracking-widest border-b hair"
             >
-              Home
+              {t("nav.home")}
             </Link>
             <Link
               to="/shop"
               onClick={() => setMobileOpen(false)}
               className="py-2.5 font-display text-sm uppercase tracking-widest border-b hair"
             >
-              Shop All
+              {t("nav.shopAll")}
             </Link>
             {topLevel.map((c) => {
               const kids = childCategories(categories, c.slug);
@@ -335,7 +345,7 @@ export function Header() {
               onClick={() => setMobileOpen(false)}
               className="py-2.5 font-display text-sm uppercase tracking-widest text-[color:var(--sale)]"
             >
-              Sale
+              {t("nav.sale")}
             </Link>
           </div>
         </div>
@@ -353,6 +363,7 @@ function MoreMenu({
   onEnter: () => void;
   onLeave: () => void;
 }) {
+  const { t } = useTranslation();
   const { products } = useCatalog();
   return (
     <div
@@ -361,7 +372,7 @@ function MoreMenu({
       className="absolute left-0 right-0 top-full border-t hair bg-background shadow-[0_24px_48px_-24px_rgba(0,0,0,0.35)]"
     >
       <div className="container-x py-7">
-        <div className="eyebrow mb-4">More categories</div>
+        <div className="eyebrow mb-4">{t("nav.moreCategories")}</div>
         <div className="grid max-w-3xl gap-2 sm:grid-cols-2">
           {categories.map((category) => (
             <Link
@@ -372,7 +383,7 @@ function MoreMenu({
             >
               <span>{category.name}</span>
               <span className="font-mono text-[10px] font-normal tracking-widest">
-                {productsByCategory(products, category.slug).length} products
+                {t("nav.products", { count: productsByCategory(products, category.slug).length })}
               </span>
             </Link>
           ))}
@@ -393,6 +404,7 @@ function MegaMenu({
   onEnter: () => void;
   onLeave: () => void;
 }) {
+  const { t } = useTranslation();
   const { categories, products } = useCatalog();
   const { category, brands, featured, total, kids } = useMemo(() => {
     const items = productsByCategory(products, slug);
@@ -415,7 +427,7 @@ function MegaMenu({
       <div className="container-x grid grid-cols-[1.1fr_1fr_1.4fr] gap-10 py-8">
         {/* Brands */}
         <div>
-          <div className="eyebrow mb-4">Brands in {category.name}</div>
+          <div className="eyebrow mb-4">{t("nav.brandsIn", { category: category.name })}</div>
           <ul className="grid grid-cols-2 gap-x-6 gap-y-2">
             {brands.map((b) => (
               <li key={b}>
@@ -433,7 +445,9 @@ function MegaMenu({
 
         {/* Quick links */}
         <div>
-          <div className="eyebrow mb-4">{kids.length > 0 ? "Sub-categories" : "Quick links"}</div>
+          <div className="eyebrow mb-4">
+            {kids.length > 0 ? t("nav.subCategories") : t("nav.quickLinks")}
+          </div>
           <ul className="space-y-2">
             {kids.map((k) => (
               <li key={k.slug}>
@@ -452,7 +466,7 @@ function MegaMenu({
                 params={{ slug }}
                 className="text-sm hover:text-accent-foreground hover:bg-accent px-1"
               >
-                All {category.name} ({total})
+                {t("nav.allCategory", { category: category.name })} ({total})
               </Link>
             </li>
             <li>
@@ -460,7 +474,7 @@ function MegaMenu({
                 to="/sale"
                 className="text-sm text-[color:var(--sale)] hover:underline underline-offset-4"
               >
-                On sale now
+                {t("nav.onSaleNow")}
               </Link>
             </li>
             <li>
@@ -468,7 +482,7 @@ function MegaMenu({
                 to="/shop"
                 className="text-sm text-ink-muted hover:text-ink hover:underline underline-offset-4"
               >
-                New arrivals
+                {t("nav.newArrivals")}
               </Link>
             </li>
             <li>
@@ -476,7 +490,7 @@ function MegaMenu({
                 to="/shop"
                 className="text-sm text-ink-muted hover:text-ink hover:underline underline-offset-4"
               >
-                Shop everything
+                {t("nav.shopEverything")}
               </Link>
             </li>
           </ul>
@@ -485,7 +499,7 @@ function MegaMenu({
 
         {/* Featured products */}
         <div>
-          <div className="eyebrow mb-4">Popular right now</div>
+          <div className="eyebrow mb-4">{t("nav.popularNow")}</div>
           <div className="grid grid-cols-3 gap-3">
             {featured.map((p) => (
               <Link
@@ -519,7 +533,7 @@ function MegaMenu({
             params={{ slug }}
             className="group mt-4 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest hover:bg-accent hover:text-accent-foreground px-1"
           >
-            Shop all {category.name}
+            {t("nav.shopAllCategory", { category: category.name })}
             <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
           </Link>
         </div>

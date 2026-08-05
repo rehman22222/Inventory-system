@@ -8,10 +8,10 @@ function withCloudinaryTransform(url: string, transform: string): string {
   const [prefix, rest] = url.split(CLOUDINARY_UPLOAD);
   if (!prefix || !rest) return url;
 
-  if (transform === "f_auto,q_auto" && rest.includes("f_auto") && rest.includes("q_auto")) {
-    return url;
-  }
-
+  // Cloudinary transforms live between `/upload/` and `/v123/...`.
+  // If an image has already passed through this helper, replace the old
+  // transform instead of chaining another one. That keeps URLs short and avoids
+  // asking Cloudinary for oversized intermediate images.
   const segments = rest.split("/");
   const versionIndex = segments.findIndex((segment) => /^v\d+$/.test(segment));
   const publicPath = versionIndex >= 0 ? segments.slice(versionIndex).join("/") : rest;
@@ -29,6 +29,10 @@ export function cldAuto(url: string): string {
   return withCloudinaryTransform(url, "f_auto,q_auto");
 }
 
+export function cldImage(url: string, transform: string): string {
+  return withCloudinaryTransform(url, transform);
+}
+
 /* Product images are displayed on a standard white 1:1 catalogue canvas.
  *
  * Portrait, landscape, and oddly cropped uploads are padded instead of stretched
@@ -36,4 +40,20 @@ export function cldAuto(url: string): string {
  * product-card/detail-page shape across the shop. */
 export function cldProductImage(url: string): string {
   return withCloudinaryTransform(url, "f_auto,q_auto,c_pad,b_white,w_900,h_900");
+}
+
+export function cldProductCardImage(url: string): string {
+  return withCloudinaryTransform(url, "f_auto,q_auto,c_pad,b_white,w_420,h_420,dpr_auto");
+}
+
+export function cldProductHeroImage(url: string): string {
+  return withCloudinaryTransform(url, "f_auto,q_auto,c_pad,b_white,w_1000,h_1000,dpr_auto");
+}
+
+export function cldProductThumbImage(url: string): string {
+  return withCloudinaryTransform(url, "f_auto,q_auto,c_pad,b_white,w_180,h_180,dpr_auto");
+}
+
+export function cldCategoryImage(url: string): string {
+  return withCloudinaryTransform(url, "f_auto,q_auto,c_fill,w_640,h_480,dpr_auto");
 }

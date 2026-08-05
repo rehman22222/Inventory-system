@@ -212,7 +212,7 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
       },
       title: {
         type: String,
-        default: "Weekly deals.",
+        default: "Don’t miss out.",
         trim: true,
         maxlength: 120,
       },

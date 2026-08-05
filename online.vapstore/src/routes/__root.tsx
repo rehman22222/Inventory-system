@@ -10,11 +10,13 @@ import {
 import { type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import "../lib/i18n";
 import { CartProvider } from "../lib/cart";
 import { CatalogProvider } from "../lib/catalog-context";
 import { getStorefront } from "../lib/catalog-api";
 import { AgeGate } from "../components/AgeGate";
 import { CookieConsent } from "../components/CookieConsent";
+import { FloatingHomeArrow } from "../components/FloatingHomeArrow";
 
 function NotFoundComponent() {
   return (
@@ -143,6 +145,7 @@ function RootComponent() {
           <AgeGate>
             {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
             <Outlet />
+            <FloatingHomeArrow />
             <CookieConsent />
           </AgeGate>
         </CartProvider>

@@ -1,0 +1,268 @@
+import i18n from "i18next";
+import { initReactI18next } from "react-i18next";
+import LanguageDetector from "i18next-browser-languagedetector";
+
+export const languages = [
+  { code: "en", label: "English", native: "English", short: "EN", dir: "ltr" },
+  { code: "ga", label: "Irish", native: "Gaeilge", short: "GA", dir: "ltr" },
+] as const;
+
+export type StoreLanguage = (typeof languages)[number]["code"];
+
+const resources = {
+  en: {
+    translation: {
+      announcement: {
+        primary: "Free shipping over {{free}} · {{dispatch}}",
+        secondary: "18+ only · Nicotine warning",
+        dispatch: "Fast dispatch",
+      },
+      nav: {
+        home: "Home",
+        shopAll: "Shop All",
+        more: "More",
+        sale: "Sale",
+        search: "Search",
+        searchProducts: "Search products",
+        searchPlaceholder: "Search devices, flavours, brands...",
+        cartLabel: "Cart, {{count}} items",
+        moreCategories: "More categories",
+        products: "{{count}} products",
+        brandsIn: "Brands in {{category}}",
+        subCategories: "Sub-categories",
+        quickLinks: "Quick links",
+        allCategory: "All {{category}}",
+        onSaleNow: "On sale now",
+        newArrivals: "New arrivals",
+        shopEverything: "Shop everything",
+        popularNow: "Popular right now",
+        shopAllCategory: "Shop all {{category}}",
+      },
+      hero: {
+        shopNow: "Shop now",
+        promoAlt: "CliffsOfPuff promotion",
+      },
+      home: {
+        bestEyebrow: "§ 01 — Best seller",
+        bestTitle: "Best seller",
+        bestHighlight: "products.",
+        allProducts: "All products",
+        dealsEyebrow: "§ 02 — Deals",
+        upTo: "UP TO",
+        off: "-{{percent}}% OFF",
+        categoriesEyebrow: "§ 03 — Categories",
+        shopBy: "Shop by",
+        category: "category",
+        viewAll: "View all →",
+        everything: "Everything",
+        shopAllProducts: "Shop all\nproducts",
+        browseCatalogue: "Browse catalogue",
+      },
+      footer: {
+        newsletter: "Sign up for newsletter",
+        emailLabel: "Email address",
+        emailPlaceholder: "enter your email address",
+        submit: "Submit",
+        description: "Get product drops, offers and store updates from CliffsOfPuff.",
+        followUs: "Follow us",
+        information: "Information",
+        currentOffers: "Current offers",
+        contact: "Our Contact",
+        terms: "Terms",
+        privacy: "Privacy",
+        shippingReturns: "Shipping & Returns",
+        copyright: "All Rights Reserved | Copyright © {{year}} CliffsOfPuff",
+      },
+      floatingHome: {
+        label: "Go to home",
+      },
+      shop: {
+        selectedProducts: "Selected products.",
+        shopEverything: "Shop everything.",
+      },
+      productCard: {
+        new: "New",
+        bestseller: "Bestseller",
+        outOfStock: "Out of stock",
+        priceTbc: "Price to be confirmed",
+        chooseOptions: "Choose options",
+        addToCart: "Add to cart",
+        added: "Added",
+        unavailable: "Unavailable",
+        addLabel: "Add {{product}} to cart",
+      },
+      cart: {
+        title: "Cart",
+        emptyTitle: "Empty for now.",
+        emptyCopy:
+          "Your cart is waiting. Add a device, a bottle of juice, or a couple of disposables to get started.",
+        startShopping: "Start shopping",
+        yourCart: "Your cart",
+        item: "item",
+        items: "items",
+        buyDeal: "Buy {{min}}+ (any flavour) · {{price}} each · add {{count}} more",
+        decreaseQty: "Decrease quantity",
+        increaseQty: "Increase quantity",
+        remove: "Remove",
+        maxStock: "Max stock",
+        lineTotal: "Line total",
+        orderSummary: "Order summary",
+        subtotal: "Subtotal",
+        shipping: "Shipping",
+        free: "Free",
+        total: "Total",
+        addForFreeShipping: "Add {{amount}} for free shipping",
+        checkout: "Continue to checkout",
+        stockReserved: "Stock is reserved when your order is placed",
+        continueShopping: "← Continue shopping",
+        dispatchPromise: "{{dispatch}} on in-stock orders",
+        authenticPromise: "100% authentic, sealed products",
+        inventoryPromise: "Inventory checked before confirmation",
+      },
+    },
+  },
+  ga: {
+    translation: {
+      announcement: {
+        primary: "Loingseoireacht saor in aisce os cionn {{free}} · {{dispatch}}",
+        secondary: "18+ amháin · Rabhadh nicitín",
+        dispatch: "Seoladh tapa",
+      },
+      nav: {
+        home: "Baile",
+        shopAll: "Siopa uile",
+        more: "Tuilleadh",
+        sale: "Díolachán",
+        search: "Cuardaigh",
+        searchProducts: "Cuardaigh táirgí",
+        searchPlaceholder: "Cuardaigh gléasanna, blasanna, brandaí...",
+        cartLabel: "Ciseán, {{count}} mír",
+        moreCategories: "Tuilleadh catagóirí",
+        products: "{{count}} táirge",
+        brandsIn: "Brandaí i {{category}}",
+        subCategories: "Fo-chatagóirí",
+        quickLinks: "Naisc thapa",
+        allCategory: "Gach {{category}}",
+        onSaleNow: "Ar díol anois",
+        newArrivals: "Táirgí nua",
+        shopEverything: "Siopa gach rud",
+        popularNow: "Coitianta anois",
+        shopAllCategory: "Siopa gach {{category}}",
+      },
+      hero: {
+        shopNow: "Siopa anois",
+        promoAlt: "Cur chun cinn CliffsOfPuff",
+      },
+      home: {
+        bestEyebrow: "§ 01 — Is fearr díol",
+        bestTitle: "Is fearr díol",
+        bestHighlight: "táirgí.",
+        allProducts: "Gach táirge",
+        dealsEyebrow: "§ 02 — Margaí",
+        upTo: "SUAS LE",
+        off: "-{{percent}}% AS",
+        categoriesEyebrow: "§ 03 — Catagóirí",
+        shopBy: "Siopa de réir",
+        category: "catagóire",
+        viewAll: "Féach ar fad →",
+        everything: "Gach rud",
+        shopAllProducts: "Siopa gach\ntáirge",
+        browseCatalogue: "Brabhsáil catalóg",
+      },
+      footer: {
+        newsletter: "Cláraigh don nuachtlitir",
+        emailLabel: "Seoladh ríomhphoist",
+        emailPlaceholder: "cuir isteach do sheoladh ríomhphoist",
+        submit: "Seol",
+        description: "Faigh táirgí nua, tairiscintí agus nuashonruithe ó CliffsOfPuff.",
+        followUs: "Lean muid",
+        information: "Eolas",
+        currentOffers: "Tairiscintí reatha",
+        contact: "Ár dteagmháil",
+        terms: "Téarmaí",
+        privacy: "Príobháideachas",
+        shippingReturns: "Loingseoireacht & Tuairisceáin",
+        copyright: "Gach ceart ar cosaint | Cóipcheart © {{year}} CliffsOfPuff",
+      },
+      floatingHome: {
+        label: "Téigh go dtí an baile",
+      },
+      shop: {
+        selectedProducts: "Táirgí roghnaithe.",
+        shopEverything: "Siopa gach rud.",
+      },
+      productCard: {
+        new: "Nua",
+        bestseller: "Is fearr díol",
+        outOfStock: "As stoc",
+        priceTbc: "Praghas le deimhniú",
+        chooseOptions: "Roghnaigh roghanna",
+        addToCart: "Cuir sa chiseán",
+        added: "Curtha leis",
+        unavailable: "Níl ar fáil",
+        addLabel: "Cuir {{product}} sa chiseán",
+      },
+      cart: {
+        title: "Ciseán",
+        emptyTitle: "Folamh faoi láthair.",
+        emptyCopy:
+          "Tá do chiseán ag fanacht. Cuir gléas, buidéal sú, nó cúpla táirge indiúscartha leis chun tosú.",
+        startShopping: "Tosaigh ag siopadóireacht",
+        yourCart: "Do chiseán",
+        item: "mír",
+        items: "mír",
+        buyDeal:
+          "Ceannaigh {{min}}+ (blas ar bith) · {{price}} an ceann · cuir {{count}} eile leis",
+        decreaseQty: "Laghdaigh cainníocht",
+        increaseQty: "Méadaigh cainníocht",
+        remove: "Bain",
+        maxStock: "Stoc uasta",
+        lineTotal: "Iomlán líne",
+        orderSummary: "Achoimre ordaithe",
+        subtotal: "Fo-iomlán",
+        shipping: "Loingseoireacht",
+        free: "Saor in aisce",
+        total: "Iomlán",
+        addForFreeShipping: "Cuir {{amount}} leis le haghaidh loingseoireacht saor in aisce",
+        checkout: "Lean ar aghaidh chuig an tseiceáil amach",
+        stockReserved: "Cuirtear stoc in áirithe nuair a chuirtear d’ordú isteach",
+        continueShopping: "← Lean ar aghaidh ag siopadóireacht",
+        dispatchPromise: "{{dispatch}} ar orduithe atá i stoc",
+        authenticPromise: "100% barántúil, táirgí séalaithe",
+        inventoryPromise: "Seiceáiltear fardal roimh dheimhniú",
+      },
+    },
+  },
+} as const;
+
+export function applyLanguageAttributes(lng: string) {
+  if (typeof document === "undefined") return;
+  const base = (lng || "en").split("-")[0] as StoreLanguage;
+  const language = languages.find((item) => item.code === base) || languages[0];
+  document.documentElement.setAttribute("lang", language.code);
+  document.documentElement.setAttribute("dir", language.dir);
+}
+
+if (!i18n.isInitialized) {
+  void i18n
+    .use(LanguageDetector)
+    .use(initReactI18next)
+    .init({
+    resources,
+    fallbackLng: "en",
+    supportedLngs: languages.map((language) => language.code),
+    load: "languageOnly",
+    nonExplicitSupportedLngs: true,
+    detection: {
+      order: ["localStorage", "navigator"],
+      caches: ["localStorage"],
+      lookupLocalStorage: "lang",
+    },
+    interpolation: { escapeValue: false },
+    react: { useSuspense: false },
+  });
+  applyLanguageAttributes(i18n.language);
+  i18n.on("languageChanged", applyLanguageAttributes);
+}
+
+export default i18n;

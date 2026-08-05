@@ -7,6 +7,7 @@ import { useCart } from "@/lib/cart";
 import { useCatalog } from "@/lib/catalog-context";
 import { placeStorefrontOrder, validateStorefrontVoucher } from "@/lib/catalog-api";
 import { formatPrice } from "@/lib/format";
+import { cldProductThumbImage } from "@/lib/img";
 
 export const Route = createFileRoute("/checkout")({
   component: Checkout,
@@ -318,8 +319,10 @@ function Checkout() {
                 {lines.map((line) => (
                   <div key={line.id} className="flex gap-3">
                     <img
-                      src={line.image}
+                      src={cldProductThumbImage(line.image)}
                       alt=""
+                      loading="lazy"
+                      decoding="async"
                       className="h-14 w-14 border hair bg-white object-contain p-1"
                     />
                     <div className="min-w-0 flex-1">

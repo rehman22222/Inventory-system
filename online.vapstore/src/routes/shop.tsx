@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
@@ -10,6 +11,10 @@ import { useProductFilters, type Sort } from "@/lib/useProductFilters";
 
 export const Route = createFileRoute("/shop")({
   component: Shop,
+  validateSearch: (search: Record<string, unknown>) => ({
+    products: typeof search.products === "string" ? search.products : "",
+    q: typeof search.q === "string" ? search.q : "",
+  }),
   head: () => ({
     meta: [
       { title: "Shop All — CliffsOfPuff" },
@@ -25,10 +30,31 @@ export const Route = createFileRoute("/shop")({
 });
 
 function Shop() {
+  const { t } = useTranslation();
+  const search = Route.useSearch();
   const { categories, products } = useCatalog();
   const brands = useMemo(() => brandsOf(products), [products]);
   const filters = useProductFilters(products);
-  const list = filters.filtered;
+  const campaignProductIds = useMemo(
+    () =>
+      new Set(
+        String(search.products || "")
+          .split(",")
+          .map((slug) => slug.trim())
+          .filter(Boolean),
+      ),
+    [search.products],
+  );
+  const list = campaignProductIds.size
+    ? filters.filtered.filter((product) => campaignProductIds.has(product.id))
+    : search.q
+      ? filters.filtered.filter((product) => {
+          const query = search.q.toLowerCase();
+          return [product.name, product.brand, product.short, product.description]
+            .filter(Boolean)
+            .some((value) => value.toLowerCase().includes(query));
+        })
+      : filters.filtered;
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   return (
@@ -39,7 +65,7 @@ function Shop() {
         <div className="container-x py-10 md:py-14">
           <div className="eyebrow">Catalogue · {products.length} products</div>
           <h1 className="mt-3 font-display text-4xl sm:text-5xl md:text-7xl leading-[0.95] md:leading-none tracking-tight break-words">
-            Shop everything.
+            {campaignProductIds.size || search.q ? t("shop.selectedProducts") : t("shop.shopEverything")}
           </h1>
         </div>
       </section>

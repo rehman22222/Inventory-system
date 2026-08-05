@@ -12,7 +12,7 @@ const OnlineHeroSlideSchema = new mongoose.Schema(
     // Headline is built from four parts so it can stay typographic:
     //   titleTop / titleItalic / titleBadge / titleBottom
     eyebrow: { type: String, default: "" },
-    titleTop: { type: String, required: true, trim: true },
+    titleTop: { type: String, default: "", trim: true },
     titleItalic: { type: String, default: "" },
     titleBadge: { type: String, default: "" },
     titleBottom: { type: String, default: "" },
@@ -31,7 +31,14 @@ const OnlineHeroSlideSchema = new mongoose.Schema(
 
     // The product shown in the showcase card. Optional — a slide can be pure
     // promotion. When set, price and stock are read live from the Product.
+    linkType: {
+      type: String,
+      enum: ["none", "product", "products", "category"],
+      default: "none",
+    },
     listing: { type: mongoose.Schema.Types.ObjectId, ref: "OnlineListing", default: null },
+    listings: [{ type: mongoose.Schema.Types.ObjectId, ref: "OnlineListing" }],
+    category: { type: mongoose.Schema.Types.ObjectId, ref: "OnlineCategory", default: null },
 
     image: { type: String, default: "" },
     imageAlt: { type: String, default: "" },

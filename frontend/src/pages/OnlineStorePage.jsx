@@ -68,7 +68,7 @@ const TABS = [
   { id: "overview", label: "Overview", icon: FiBarChart2 },
   { id: "products", label: "Products", icon: FiGrid },
   { id: "categories", label: "Categories", icon: FiGlobe },
-  { id: "hero", label: "Hero slides", icon: FiImage },
+  { id: "hero", label: "Hero banner", icon: FiImage },
   { id: "new-this-week", label: "New this week", icon: FiZap },
   { id: "deals", label: "Deals", icon: FiPercent },
   { id: "promotions", label: "Vouchers", icon: FiTag },
@@ -145,6 +145,7 @@ export default function OnlineStorePage() {
     } else if (tab === "hero") {
       dispatch(getHeroSlides());
       dispatch(getOnlineListings());
+      dispatch(getOnlineCategories());
     } else if (tab === "new-this-week" || tab === "deals") {
       dispatch(getOnlineListings());
       dispatch(getOnlineSettings());
@@ -218,7 +219,11 @@ export default function OnlineStorePage() {
       )}
       {tab === "categories" && <Categories categories={online.categories} />}
       {tab === "hero" && (
-        <HeroSlides slides={online.slides} listings={online.listings} />
+        <HeroSlides
+          slides={online.slides}
+          listings={online.listings}
+          categories={online.categories}
+        />
       )}
       {tab === "new-this-week" && (
         <NewThisWeekControls
@@ -856,7 +861,7 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
             required
           >
             <option value="">Choose category</option>
-            {categories.map((category) => (
+            {(categories || []).map((category) => (
               <option key={category._id} value={category._id}>
                 {category.name}
               </option>
@@ -1874,7 +1879,10 @@ const BLANK_SLIDE = {
   tone: "ink",
   image: "",
   imageAlt: "",
+  linkType: "none",
   listing: "",
+  listings: [],
+  category: "",
   burst: { top: "", big: "", bottom: "" },
   ctaPrimary: { label: "Shop now", to: "/shop" },
   ctaSecondary: { label: "View all products", to: "/shop" },
@@ -1882,7 +1890,7 @@ const BLANK_SLIDE = {
   sortWeight: 0,
 };
 
-function HeroSlides({ slides, listings }) {
+function HeroSlides({ slides, listings, categories }) {
   const dispatch = useDispatch();
   const [draft, setDraft] = useState(BLANK_SLIDE);
   const [editingId, setEditingId] = useState("");
@@ -1903,6 +1911,8 @@ function HeroSlides({ slides, listings }) {
       ...BLANK_SLIDE,
       ...slide,
       listing: slide.listing?._id || slide.listing || "",
+      listings: (slide.listings || []).map((item) => item._id || item),
+      category: slide.category?._id || slide.category || "",
       burst: { ...BLANK_SLIDE.burst, ...(slide.burst || {}) },
       ctaPrimary: { ...BLANK_SLIDE.ctaPrimary, ...(slide.ctaPrimary || {}) },
       ctaSecondary: {
@@ -1913,22 +1923,25 @@ function HeroSlides({ slides, listings }) {
   };
   const save = async (event) => {
     event.preventDefault();
-    if (!draft.titleTop.trim()) return toast.error("Headline is required");
-    if (!draft.listing)
-      return toast.error("Choose the product this slide should open");
-    const selectedListing = listings.find(
-      (listing) => listing._id === draft.listing,
-    );
+    if (!draft.image.trim()) return toast.error("Hero banner image is required");
+    if (draft.linkType === "product" && !draft.listing)
+      return toast.error("Choose one product for the button");
+    if (draft.linkType === "products" && !draft.listings.length)
+      return toast.error("Choose at least one product for the button");
+    if (draft.linkType === "category" && !draft.category)
+      return toast.error("Choose one category for the button");
     const payload = {
       ...draft,
-      listing: draft.listing,
+      listing: draft.linkType === "product" ? draft.listing : "",
+      listings: draft.linkType === "products" ? draft.listings : [],
+      category: draft.linkType === "category" ? draft.category : "",
       ctaPrimary: {
-        label: draft.ctaPrimary.label || "Shop this product",
-        to: "/product/$id",
-        params: selectedListing?.slug ? { id: selectedListing.slug } : {},
+        label: draft.ctaPrimary.label || "Shop now",
+        to: "",
+        params: {},
       },
       ctaSecondary: {
-        label: draft.ctaSecondary.label || "Browse all",
+        label: "",
         to: "/shop",
         params: {},
       },
@@ -1976,94 +1989,88 @@ function HeroSlides({ slides, listings }) {
             </button>
           )}
         </div>
-        <input
-          className="input input-sm input-bordered w-full"
-          placeholder="Eyebrow"
-          value={draft.eyebrow}
-          onChange={(event) => set("eyebrow", event.target.value)}
-        />
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            ["titleTop", "Headline *"],
-            ["titleItalic", "Italic word"],
-            ["titleBadge", "Boxed word"],
-            ["titleBottom", "Final line"],
-          ].map(([key, placeholder]) => (
-            <input
-              key={key}
-              className="input input-sm input-bordered"
-              placeholder={placeholder}
-              value={draft[key]}
-              onChange={(event) => set(key, event.target.value)}
-            />
-          ))}
-        </div>
-        <textarea
-          className="textarea textarea-sm textarea-bordered w-full"
-          rows={2}
-          placeholder="Supporting copy"
-          value={draft.copy}
-          onChange={(event) => set("copy", event.target.value)}
-        />
-        <select
-          className="select select-sm select-bordered w-full"
-          value={draft.listing}
-          required
-          onChange={(event) => set("listing", event.target.value)}
-        >
-          <option value="">Choose showcase product *</option>
-          {listings
-            .filter((listing) => listing.listed)
-            .map((listing) => (
-              <option key={listing._id} value={listing._id}>
-                {listing.webName || listing.product?.name}
-              </option>
-            ))}
-        </select>
+        <p className="rounded-lg bg-base-200 p-3 text-xs leading-relaxed text-base-content/60">
+          Storefront hero now shows only the banner image and an optional button.
+          The button appears only when you choose a link target below.
+        </p>
         <input
           type="url"
           className="input input-sm input-bordered w-full"
-          placeholder="Image URL (auto from product when empty)"
+          placeholder="Hero banner image URL *"
           value={draft.image}
           onChange={(event) => set("image", event.target.value)}
         />
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            ["top", "Badge top"],
-            ["big", "20%"],
-            ["bottom", "off"],
-          ].map(([key, placeholder]) => (
-            <input
-              key={key}
-              className="input input-sm input-bordered"
-              placeholder={placeholder}
-              value={draft.burst[key]}
-              onChange={(event) => setNested("burst", key, event.target.value)}
-            />
-          ))}
-        </div>
         <div className="grid grid-cols-2 gap-2">
           <input
             className="input input-sm input-bordered"
-            placeholder="Shop this product"
+            placeholder="Button label"
             value={draft.ctaPrimary.label}
             onChange={(event) =>
               setNested("ctaPrimary", "label", event.target.value)
             }
           />
-          <input
-            className="input input-sm input-bordered"
-            placeholder="Browse all"
-            value={draft.ctaSecondary.label}
-            onChange={(event) =>
-              setNested("ctaSecondary", "label", event.target.value)
-            }
-          />
+          <select
+            className="select select-sm select-bordered"
+            value={draft.linkType}
+            onChange={(event) => set("linkType", event.target.value)}
+          >
+            <option value="none">No button</option>
+            <option value="product">Single product</option>
+            <option value="products">Multiple products</option>
+            <option value="category">Category</option>
+          </select>
         </div>
-        <p className="text-[11px] leading-relaxed text-base-content/50">
-          The first button automatically opens the selected product. The second
-          always opens the complete online catalogue.
-        </p>
+        {draft.linkType === "product" && (
+          <select
+            className="select select-sm select-bordered w-full"
+            value={draft.listing}
+            onChange={(event) => set("listing", event.target.value)}
+          >
+            <option value="">Choose product *</option>
+            {listings
+              .filter((listing) => listing.listed)
+              .map((listing) => (
+                <option key={listing._id} value={listing._id}>
+                  {listing.webName || listing.product?.name}
+                </option>
+              ))}
+          </select>
+        )}
+        {draft.linkType === "products" && (
+          <select
+            className="select select-sm select-bordered h-32 w-full"
+            multiple
+            value={draft.listings}
+            onChange={(event) =>
+              set(
+                "listings",
+                Array.from(event.target.selectedOptions).map((option) => option.value),
+              )
+            }
+          >
+            {listings
+              .filter((listing) => listing.listed)
+              .map((listing) => (
+                <option key={listing._id} value={listing._id}>
+                  {listing.webName || listing.product?.name}
+                </option>
+              ))}
+          </select>
+        )}
+        {draft.linkType === "category" && (
+          <select
+            className="select select-sm select-bordered w-full"
+            value={draft.category}
+            onChange={(event) => set("category", event.target.value)}
+          >
+            <option value="">Choose category *</option>
+            {categories.map((category) => (
+              <option key={category._id} value={category._id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        )}
         <div className="grid grid-cols-2 gap-2">
           <select
             className="select select-sm select-bordered"
@@ -2094,20 +2101,19 @@ function HeroSlides({ slides, listings }) {
           >
             <div className="min-w-0">
               <div className="text-xs uppercase text-base-content/50">
-                {slide.eyebrow || "Hero promotion"}
+                {slide.linkType === "none" ? "Banner only" : `Button: ${slide.linkType}`}
               </div>
               <div className="truncate font-display text-lg font-bold">
-                {slide.titleTop} {slide.titleItalic} {slide.titleBadge}{" "}
-                {slide.titleBottom}
+                {slide.ctaPrimary?.label || "Hero banner"}
               </div>
               <p className="line-clamp-2 text-xs text-base-content/60">
-                {slide.copy}
+                {slide.image || "No image URL"}
               </p>
               <div className="mt-2 flex gap-2">
                 <span className="badge badge-sm">{slide.tone}</span>
-                {slide.listing && (
-                  <span className="badge badge-info badge-sm">product</span>
-                )}
+                <span className="badge badge-info badge-sm">
+                  {slide.linkType || "none"}
+                </span>
                 <span className="badge badge-ghost badge-sm">
                   order {slide.sortWeight || 0}
                 </span>
@@ -2383,7 +2389,7 @@ function NewThisWeekControls({
 const DEFAULT_DEALS = {
   enabled: true,
   eyebrow: "Live sale",
-  title: "Weekly deals.",
+  title: "Don’t miss out.",
   subtitle:
     "Limited-time online prices selected by the CliffsOfPuff team. Stock updates from the same inventory used at the till.",
   ctaLabel: "See the deals",

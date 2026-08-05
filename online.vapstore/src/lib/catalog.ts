@@ -163,13 +163,20 @@ export const availabilityOf = (stock: number): Availability => {
 
 export interface HeroSlide {
   id: string;
+  linkType?: "none" | "product" | "products" | "category";
+  linked?: boolean;
   eyebrow: string;
   titleTop: string;
   titleItalic: string;
   titleBadge: string;
   titleBottom: string;
   copy: string;
-  ctaPrimary: { label: string; to: string; params?: Record<string, string> };
+  ctaPrimary: {
+    label: string;
+    to: string;
+    params?: Record<string, string>;
+    search?: Record<string, string>;
+  } | null;
   ctaSecondary: { label: string; to: string; params?: Record<string, string> };
   image: string;
   imageAlt: string;

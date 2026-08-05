@@ -15,6 +15,9 @@ dist-ssr
 .tanstack/**
 .nitro
 *.local
+tmp-edge-profile/
+tmp-edge-cdp-profile/
+tmp-mobile-hero*.png
 
 # Wrangler / Cloudflare
 .wrangler/

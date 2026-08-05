@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Minus, Plus, ShieldCheck, Clock, RotateCcw, Check } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -10,6 +10,7 @@ import { useCatalog } from "@/lib/catalog-context";
 import { Stars } from "@/components/Stars";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/lib/cart";
+import { cldProductHeroImage, cldProductThumbImage } from "@/lib/img";
 
 export const Route = createFileRoute("/product/$id")({
   component: ProductPage,
@@ -119,6 +120,31 @@ function ProductPage() {
   ].filter(
     (url, index, urls): url is string => Boolean(url) && urls.indexOf(url) === index,
   );
+
+  // Preload the option/gallery photos after the product page opens. The user
+  // can then switch flavours/colours without the “wait for image download”
+  // feeling, especially on mobile data.
+  useEffect(() => {
+    const urls = [
+      product.image,
+      ...product.variants.map((variant) => imageForVariant(variant)),
+      ...product.gallery.map((image) => image.url),
+      product.qtyDeal?.image || "",
+      product.dealImage || "",
+    ].filter((url, index, urls): url is string => Boolean(url) && urls.indexOf(url) === index);
+
+    const timer = window.setTimeout(() => {
+      urls.slice(0, 16).forEach((url) => {
+        const img = new Image();
+        img.decoding = "async";
+        img.src = cldProductHeroImage(url);
+      });
+    }, 80);
+
+    return () => window.clearTimeout(timer);
+    // `product` only changes when this route loads another slug.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id]);
   // Clicking a photo that belongs to a flavour/colour option should select that
   // option too — so the picture and the option buttons stay in sync both ways
   // (option → picture already worked; this makes picture → option work).
@@ -208,8 +234,11 @@ function ProductPage() {
         <div className="grid gap-3 lg:sticky lg:top-28 lg:self-start">
           <div className="border hair bg-white aspect-square max-h-[560px] overflow-hidden relative p-5 sm:p-8">
             <img
-              src={heroImage}
+              src={cldProductHeroImage(heroImage)}
               alt={product.name}
+              loading="eager"
+              decoding="async"
+              sizes="(min-width: 1024px) 50vw, 100vw"
               className="mx-auto h-full w-full max-w-[92%] object-contain"
             />
             {onSale && (
@@ -230,7 +259,13 @@ function ProductPage() {
                     image === heroImage ? "outline outline-2 outline-ink" : ""
                   }`}
                 >
-                  <img src={image} alt="" className="h-full w-full object-contain" />
+                  <img
+                    src={cldProductThumbImage(image)}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-contain"
+                  />
                 </button>
               ))}
             </div>
@@ -270,8 +305,10 @@ function ProductPage() {
             <div className="mt-4 flex items-center gap-4 border hair bg-surface p-3">
               {qtyDeal.image ? (
                 <img
-                  src={qtyDeal.image}
+                  src={cldProductThumbImage(qtyDeal.image)}
                   alt="Deal"
+                  loading="lazy"
+                  decoding="async"
                   className="h-16 w-16 shrink-0 border hair bg-white object-contain p-1"
                 />
               ) : (
@@ -296,8 +333,10 @@ function ProductPage() {
           {!qtyDeal && product.dealImage && onSale && (
             <div className="mt-4 overflow-hidden border hair bg-surface">
               <img
-                src={product.dealImage}
+                src={cldProductHeroImage(product.dealImage)}
                 alt="Deal"
+                loading="lazy"
+                decoding="async"
                 className="max-h-40 w-full object-contain p-2"
               />
             </div>

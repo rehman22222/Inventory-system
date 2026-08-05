@@ -1945,6 +1945,8 @@ module.exports.listHeroSlides = async (req, res) => {
         select: "webName slug brand gallery product",
         populate: { path: "product", select: "name Price quantity image" },
       })
+      .populate("listings", "webName slug brand gallery product")
+      .populate("category", "name slug")
       .sort({ sortWeight: 1, createdAt: 1 })
       .lean();
     return res.status(200).json({ slides });
@@ -1955,46 +1957,102 @@ module.exports.listHeroSlides = async (req, res) => {
   }
 };
 
+const heroFields = async (body, store, current = {}) => {
+  const valueOf = (key, fallback) =>
+    Object.prototype.hasOwnProperty.call(body, key) ? body[key] : fallback;
+  const linkType = valueOf("linkType", current.linkType || "none");
+  if (!["none", "product", "products", "category"].includes(linkType)) {
+    throw requestError(400, "Choose a valid hero button link type");
+  }
+
+  const listing = valueOf("listing", current.listing || "");
+  const listings = Array.from(
+    new Set(
+      (valueOf("listings", current.listings || []) || [])
+        .map((id) => String(id?._id || id || ""))
+        .filter(Boolean),
+    ),
+  );
+  const category = valueOf("category", current.category || "");
+
+  const payload = {
+    eyebrow: String(valueOf("eyebrow", current.eyebrow || "")).trim(),
+    titleTop: String(valueOf("titleTop", current.titleTop || "")).trim(),
+    titleItalic: String(valueOf("titleItalic", current.titleItalic || "")).trim(),
+    titleBadge: String(valueOf("titleBadge", current.titleBadge || "")).trim(),
+    titleBottom: String(valueOf("titleBottom", current.titleBottom || "")).trim(),
+    copy: String(valueOf("copy", current.copy || "")).trim(),
+    ctaPrimary: {
+      label:
+        String(valueOf("ctaPrimary", current.ctaPrimary || {})?.label || "").trim() ||
+        "Shop now",
+      to: "",
+      params: {},
+    },
+    ctaSecondary: valueOf("ctaSecondary", current.ctaSecondary || {}),
+    linkType,
+    listing: null,
+    listings: [],
+    category: null,
+    image: String(valueOf("image", current.image || "")).trim(),
+    imageAlt: String(valueOf("imageAlt", current.imageAlt || "")).trim(),
+    burst: valueOf("burst", current.burst || {}),
+    tone: valueOf("tone", current.tone || "ink"),
+    active: Boolean(valueOf("active", current.active ?? true)),
+    sortWeight: Number(valueOf("sortWeight", current.sortWeight || 0)) || 0,
+  };
+
+  if (!payload.image) throw requestError(400, "Upload or paste a hero banner image");
+
+  if (linkType === "product") {
+    if (!listing || !mongoose.isValidObjectId(listing)) {
+      throw requestError(400, "Choose the product this banner button should open");
+    }
+    const found = await OnlineListing.findOne({ _id: listing, store }).lean();
+    if (!found) throw requestError(400, "That product is not in this store");
+    payload.listing = listing;
+  }
+
+  if (linkType === "products") {
+    if (!listings.length) {
+      throw requestError(400, "Choose at least one product for this banner button");
+    }
+    if (listings.some((id) => !mongoose.isValidObjectId(id))) {
+      throw requestError(400, "One of the selected products is invalid");
+    }
+    const count = await OnlineListing.countDocuments({ store, _id: { $in: listings } });
+    if (count !== listings.length) {
+      throw requestError(400, "A selected product is not in this store");
+    }
+    payload.listings = listings;
+  }
+
+  if (linkType === "category") {
+    if (!category || !mongoose.isValidObjectId(category)) {
+      throw requestError(400, "Choose the category this banner button should open");
+    }
+    const found = await OnlineCategory.findOne({ _id: category, store }).lean();
+    if (!found) throw requestError(400, "That category is not in this store");
+    payload.category = category;
+  }
+
+  return payload;
+};
+
 module.exports.createHeroSlide = async (req, res) => {
   try {
     const store = await storeId();
-    if (!req.body.titleTop?.trim())
-      return res.status(400).json({ message: "The slide needs a headline" });
-    const payload = { ...req.body, store };
-    if (!payload.listing) {
-      return res
-        .status(400)
-        .json({ message: "Choose the product this hero slide should open" });
-    }
-    if (payload.listing) {
-      if (!mongoose.isValidObjectId(payload.listing)) {
-        return res
-          .status(400)
-          .json({ message: "Choose a valid online product" });
-      }
-      const listing = await OnlineListing.findOne({
-        _id: payload.listing,
-        store,
-      }).populate("product", "name image");
-      if (!listing)
-        return res
-          .status(400)
-          .json({ message: "That product is not in this store" });
-      if (!payload.image)
-        payload.image =
-          listing.gallery?.[0]?.url || listing.product?.image?.url || "";
-      if (!payload.imageAlt)
-        payload.imageAlt = listing.webName || listing.product?.name || "";
-    } else {
-      payload.listing = null;
-    }
-    const slide = await OnlineHeroSlide.create(payload);
+    const fields = await heroFields(req.body, store);
+    const slide = await OnlineHeroSlide.create({ ...fields, store });
     emit(req, "onlineHeroChanged", {});
     return res.status(201).json({ message: "Slide created", slide });
   } catch (error) {
     return res
-      .status(500)
-      .json({ message: "Could not create slide", error: error.message });
+      .status(error.statusCode || 500)
+      .json({
+        message: error.statusCode ? error.message : "Could not create slide",
+        error: error.message,
+      });
   }
 };
 
@@ -2003,34 +2061,9 @@ module.exports.updateHeroSlide = async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id))
       return res.status(400).json({ message: "Invalid slide id" });
     const store = await storeId();
-    const updates = { ...req.body };
-    delete updates.store;
-    if (Object.prototype.hasOwnProperty.call(updates, "listing")) {
-      if (updates.listing) {
-        if (!mongoose.isValidObjectId(updates.listing)) {
-          return res
-            .status(400)
-            .json({ message: "Choose a valid online product" });
-        }
-        const listing = await OnlineListing.findOne({
-          _id: updates.listing,
-          store,
-        }).populate("product", "name image");
-        if (!listing)
-          return res
-            .status(400)
-            .json({ message: "That product is not in this store" });
-        if (!updates.image)
-          updates.image =
-            listing.gallery?.[0]?.url || listing.product?.image?.url || "";
-        if (!updates.imageAlt)
-          updates.imageAlt = listing.webName || listing.product?.name || "";
-      } else {
-        return res
-          .status(400)
-          .json({ message: "Choose the product this hero slide should open" });
-      }
-    }
+    const current = await OnlineHeroSlide.findOne({ _id: req.params.id, store }).lean();
+    if (!current) return res.status(404).json({ message: "Slide not found" });
+    const updates = await heroFields(req.body, store, current);
     const slide = await OnlineHeroSlide.findOneAndUpdate(
       { _id: req.params.id, store },
       updates,
@@ -2041,8 +2074,11 @@ module.exports.updateHeroSlide = async (req, res) => {
     return res.status(200).json({ message: "Slide updated", slide });
   } catch (error) {
     return res
-      .status(500)
-      .json({ message: "Could not update slide", error: error.message });
+      .status(error.statusCode || 500)
+      .json({
+        message: error.statusCode ? error.message : "Could not update slide",
+        error: error.message,
+      });
   }
 };
 
@@ -2664,12 +2700,42 @@ module.exports.storefrontHero = async (req, res) => {
         path: "listing",
         populate: { path: "product", select: "name Price quantity image" },
       })
+      .populate("listings", "webName slug")
+      .populate("category", "name slug")
       .sort({ sortWeight: 1, createdAt: 1 })
       .lean();
 
     return res.status(200).json({
       slides: slides.map((s) => {
         const productSlug = String(s.listing?.slug || "");
+        const productSlugs = (s.listings || []).map((item) => item.slug).filter(Boolean);
+        const categorySlug = String(s.category?.slug || "");
+        const linkType = s.linkType || (productSlug ? "product" : "none");
+        const linked =
+          (linkType === "product" && productSlug) ||
+          (linkType === "products" && productSlugs.length) ||
+          (linkType === "category" && categorySlug);
+        const ctaPrimary =
+          linkType === "product" && productSlug
+            ? {
+                label: String(s.ctaPrimary?.label || "").trim() || "Shop now",
+                to: "/product/$id",
+                params: { id: productSlug },
+              }
+            : linkType === "products" && productSlugs.length
+              ? {
+                  label: String(s.ctaPrimary?.label || "").trim() || "Shop now",
+                  to: "/shop",
+                  params: {},
+                  search: { products: productSlugs.join(",") },
+                }
+              : linkType === "category" && categorySlug
+                ? {
+                    label: String(s.ctaPrimary?.label || "").trim() || "Shop now",
+                    to: "/category/$slug",
+                    params: { slug: categorySlug },
+                  }
+                : null;
         return {
           id: String(s._id),
           eyebrow: s.eyebrow,
@@ -2678,11 +2744,9 @@ module.exports.storefrontHero = async (req, res) => {
           titleBadge: s.titleBadge,
           titleBottom: s.titleBottom,
           copy: s.copy,
-          ctaPrimary: {
-            label: String(s.ctaPrimary?.label || "").trim() || "Shop this product",
-            to: productSlug ? "/product/$id" : "/shop",
-            params: productSlug ? { id: productSlug } : {},
-          },
+          linkType,
+          linked: Boolean(linked),
+          ctaPrimary,
           ctaSecondary: {
             label: String(s.ctaSecondary?.label || "").trim() || "Browse all",
             to: "/shop",

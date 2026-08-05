@@ -4,6 +4,7 @@ import { ArrowUpRight } from "lucide-react";
 import type { Category } from "@/lib/catalog";
 import { productsByCategory } from "@/lib/catalog";
 import { useCatalog } from "@/lib/catalog-context";
+import { cldCategoryImage } from "@/lib/img";
 
 /* Every tile is the same size — the grid reads as one system rather than one
  * hero item and a set of leftovers. Hierarchy comes from the hover state and
@@ -24,9 +25,11 @@ export function CategoryTile({ category, index }: { category: Category; index: n
       <div className="relative aspect-[4/3] overflow-hidden bg-background">
         {imgOk ? (
           <img
-            src={category.image}
+            src={cldCategoryImage(category.image)}
             alt={category.name}
             loading="lazy"
+            decoding="async"
+            sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
             onError={() => setImgOk(false)}
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.06]"
           />

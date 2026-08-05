@@ -1,11 +1,14 @@
 import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { ShoppingBag, Check } from "lucide-react";
 import { useState } from "react";
 import type { Product } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/lib/cart";
+import { cldProductCardImage } from "@/lib/img";
 
 export function ProductCard({ product }: { product: Product }) {
+  const { t } = useTranslation();
   const { add } = useCart();
   const [added, setAdded] = useState(false);
   const onSale = !!product.compareAt;
@@ -43,18 +46,21 @@ export function ProductCard({ product }: { product: Product }) {
       <Link
         to="/product/$id"
         params={{ id: product.id }}
-        className="relative block aspect-square overflow-hidden bg-white p-4"
+        preload="intent"
+        className="relative block aspect-square overflow-hidden bg-white p-1.5 sm:p-4"
       >
         <img
-          src={product.image}
+          src={cldProductCardImage(product.image)}
           alt={product.name}
           loading="lazy"
+          decoding="async"
+          sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
           className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.05]"
         />
         <div className="absolute left-0 top-0 flex flex-col gap-0">
           {product.tags?.includes("new") && (
             <span className="bg-accent text-accent-foreground font-mono text-[10px] uppercase tracking-widest px-2 py-1">
-              New
+              {t("productCard.new")}
             </span>
           )}
           {onSale && (
@@ -64,14 +70,14 @@ export function ProductCard({ product }: { product: Product }) {
           )}
           {product.tags?.includes("bestseller") && (
             <span className="bg-ink text-primary-foreground font-mono text-[10px] uppercase tracking-widest px-2 py-1">
-              Bestseller
+              {t("productCard.bestseller")}
             </span>
           )}
         </div>
         {outOfStock && (
           <div className="absolute inset-0 grid place-items-center bg-background/70">
             <span className="bg-ink text-primary-foreground font-mono text-[11px] uppercase tracking-widest px-3 py-1.5">
-              Out of stock
+              {t("productCard.outOfStock")}
             </span>
           </div>
         )}
@@ -84,6 +90,7 @@ export function ProductCard({ product }: { product: Product }) {
         <Link
           to="/product/$id"
           params={{ id: product.id }}
+          preload="intent"
           className="mt-1 font-display text-sm leading-tight tracking-tight line-clamp-2 min-h-[2.5rem] hover:text-accent-foreground hover:bg-accent"
         >
           {product.name}
@@ -92,7 +99,7 @@ export function ProductCard({ product }: { product: Product }) {
         {/* Price */}
         <div className="mt-3 flex items-baseline gap-2">
           <span className="font-display text-base">
-            {priceUnavailable ? "Price to be confirmed" : formatPrice(product.price)}
+            {priceUnavailable ? t("productCard.priceTbc") : formatPrice(product.price)}
           </span>
           {onSale && (
             <span className="font-mono text-xs text-ink-muted line-through">
@@ -106,25 +113,26 @@ export function ProductCard({ product }: { product: Product }) {
           <Link
             to="/product/$id"
             params={{ id: product.id }}
+            preload="intent"
             className="mt-4 inline-flex items-center justify-center gap-2 bg-ink text-primary-foreground font-mono text-[11px] uppercase tracking-widest py-2.5 border border-ink transition-colors hover:bg-accent hover:text-accent-foreground hover:border-accent"
           >
-            <ShoppingBag className="h-3.5 w-3.5" /> Choose options
+            <ShoppingBag className="h-3.5 w-3.5" /> {t("productCard.chooseOptions")}
           </Link>
         ) : (
           <button
             onClick={handleAdd}
             disabled={unavailable}
             className="mt-4 inline-flex items-center justify-center gap-2 bg-ink text-primary-foreground font-mono text-[11px] uppercase tracking-widest py-2.5 border border-ink transition-colors hover:bg-accent hover:text-accent-foreground hover:border-accent disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-ink disabled:hover:text-primary-foreground"
-            aria-label={`Add ${product.name} to cart`}
+            aria-label={t("productCard.addLabel", { product: product.name })}
           >
             {added ? (
               <>
-                <Check className="h-3.5 w-3.5" /> Added
+                <Check className="h-3.5 w-3.5" /> {t("productCard.added")}
               </>
             ) : (
               <>
                 <ShoppingBag className="h-3.5 w-3.5" />{" "}
-                {unavailable ? "Unavailable" : "Add to cart"}
+                {unavailable ? t("productCard.unavailable") : t("productCard.addToCart")}
               </>
             )}
           </button>
