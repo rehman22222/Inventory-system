@@ -5,6 +5,8 @@ import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import type { HeroSlide } from "@/lib/catalog";
 
 const AUTOPLAY_MS = 6500;
+const HERO_CTA_CLASS =
+  "group inline-flex max-w-[82vw] items-center justify-center gap-2 rounded-full border border-white/35 bg-black/58 px-4 py-2.5 font-display text-[10px] font-bold uppercase tracking-[0.13em] text-white shadow-[0_14px_34px_rgba(0,0,0,0.42)] ring-1 ring-black/15 backdrop-blur-xl transition-all hover:border-white/70 hover:bg-white hover:text-ink hover:shadow-[0_22px_55px_rgba(0,0,0,0.5)] active:scale-[0.98] md:px-6 md:py-3 md:text-xs";
 
 function HeroButton({ slide, active }: { slide: HeroSlide; active: boolean }) {
   const { t } = useTranslation();
@@ -21,10 +23,12 @@ function HeroButton({ slide, active }: { slide: HeroSlide; active: boolean }) {
         params={{ id: slide.ctaPrimary.params.id }}
         tabIndex={active ? 0 : -1}
         onPointerDown={stopCarouselDrag}
-        className="group inline-flex items-center gap-1 rounded-full border border-white/55 bg-white/88 px-2.5 py-1.5 font-display text-[7px] uppercase tracking-[0.14em] text-ink shadow-[0_12px_28px_rgba(0,0,0,0.32)] backdrop-blur-md transition-all hover:border-white hover:bg-white hover:shadow-[0_22px_55px_rgba(0,0,0,0.45)] md:gap-2 md:px-6 md:py-3 md:text-xs"
+        className={HERO_CTA_CLASS}
       >
         {label}
-        <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1 md:h-4 md:w-4" />
+        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-white text-ink transition-transform group-hover:translate-x-1 group-hover:bg-ink group-hover:text-white md:h-6 md:w-6">
+          <ArrowRight className="h-3 w-3 md:h-3.5 md:w-3.5" />
+        </span>
       </Link>
     );
   }
@@ -36,10 +40,12 @@ function HeroButton({ slide, active }: { slide: HeroSlide; active: boolean }) {
         params={{ slug: slide.ctaPrimary.params.slug }}
         tabIndex={active ? 0 : -1}
         onPointerDown={stopCarouselDrag}
-        className="group inline-flex items-center gap-1 rounded-full border border-white/55 bg-white/88 px-2.5 py-1.5 font-display text-[7px] uppercase tracking-[0.14em] text-ink shadow-[0_12px_28px_rgba(0,0,0,0.32)] backdrop-blur-md transition-all hover:border-white hover:bg-white hover:shadow-[0_22px_55px_rgba(0,0,0,0.45)] md:gap-2 md:px-6 md:py-3 md:text-xs"
+        className={HERO_CTA_CLASS}
       >
         {label}
-        <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1 md:h-4 md:w-4" />
+        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-white text-ink transition-transform group-hover:translate-x-1 group-hover:bg-ink group-hover:text-white md:h-6 md:w-6">
+          <ArrowRight className="h-3 w-3 md:h-3.5 md:w-3.5" />
+        </span>
       </Link>
     );
   }
@@ -50,10 +56,12 @@ function HeroButton({ slide, active }: { slide: HeroSlide; active: boolean }) {
       search={slide.ctaPrimary.search || {}}
       tabIndex={active ? 0 : -1}
       onPointerDown={stopCarouselDrag}
-      className="group inline-flex items-center gap-1 rounded-full border border-white/55 bg-white/88 px-2.5 py-1.5 font-display text-[7px] uppercase tracking-[0.14em] text-ink shadow-[0_12px_28px_rgba(0,0,0,0.32)] backdrop-blur-md transition-all hover:border-white hover:bg-white hover:shadow-[0_22px_55px_rgba(0,0,0,0.45)] md:gap-2 md:px-6 md:py-3 md:text-xs"
+      className={HERO_CTA_CLASS}
     >
       {label}
-      <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1 md:h-4 md:w-4" />
+      <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-white text-ink transition-transform group-hover:translate-x-1 group-hover:bg-ink group-hover:text-white md:h-6 md:w-6">
+        <ArrowRight className="h-3 w-3 md:h-3.5 md:w-3.5" />
+      </span>
     </Link>
   );
 }
