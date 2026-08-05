@@ -36,7 +36,7 @@ function Home() {
   const { t } = useTranslation();
   const { hero } = Route.useLoaderData();
   const { categories, products, settings } = useCatalog();
-  const best = bestSellers(products, 8);
+  const best = bestSellers(products, settings.bestSellers?.limit || 8);
   const sale = saleProducts(products).slice(0, settings.deals.limit);
   const maxDealPercent = sale.reduce((highest, product) => {
     const dealPrice = Number(product.qtyDeal?.price ?? product.price);
@@ -53,30 +53,32 @@ function Home() {
 
       {hero.length > 0 && <HeroCarousel slides={hero} />}
 
-      <section className="border-b hair py-16 md:py-24">
-        <div className="container-x">
-          <div className="mb-10 flex items-end justify-between gap-6">
-            <div>
-              <div className="eyebrow">{t("home.bestEyebrow")}</div>
-              <h2 className="mt-3 font-display text-4xl leading-none tracking-tight md:text-6xl">
-                {t("home.bestTitle")}
-                <br />
-                <span className="inline-block -mx-2 bg-ink px-2 text-primary-foreground">
-                  {t("home.bestHighlight")}
-                </span>
-              </h2>
+      {settings.bestSellers?.enabled !== false && best.length > 0 && (
+        <section className="border-b hair py-16 md:py-24">
+          <div className="container-x">
+            <div className="mb-10 flex items-end justify-between gap-6">
+              <div>
+                <div className="eyebrow">{t("home.bestEyebrow")}</div>
+                <h2 className="mt-3 font-display text-4xl leading-none tracking-tight md:text-6xl">
+                  {t("home.bestTitle")}
+                  <br />
+                  <span className="inline-block -mx-2 bg-ink px-2 text-primary-foreground">
+                    {t("home.bestHighlight")}
+                  </span>
+                </h2>
+              </div>
+              <Link to="/shop" className="btn-outline hidden md:inline-flex">
+                {t("home.allProducts")}
+              </Link>
             </div>
-            <Link to="/shop" className="btn-outline hidden md:inline-flex">
-              {t("home.allProducts")}
-            </Link>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+              {best.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-            {best.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {settings.deals.enabled && sale.length > 0 && (
         <section className="border-b hair bg-ink text-primary-foreground">

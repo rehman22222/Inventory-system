@@ -42,7 +42,7 @@ export interface Product {
   publishedAt?: string;
   image: string;
   gallery: { url: string; alt?: string }[];
-  tags?: ("new" | "bestseller" | "sale" | "limited")[];
+  tags?: ("new" | "bestseller" | "sale" | "limited" | "hot")[];
   short: string;
   description: string;
   specs: Record<string, string>;
@@ -112,6 +112,10 @@ export interface StorefrontSettings {
     eyebrow: string;
     title: string;
     subtitle: string;
+    limit: number;
+  };
+  bestSellers?: {
+    enabled: boolean;
     limit: number;
   };
   deals: {
@@ -223,10 +227,7 @@ export const newArrivals = (products: Product[], limit = 8) =>
 
 export const bestSellers = (products: Product[], limit = 8) => {
   const flagged = products.filter((p) => p.tags?.includes("bestseller"));
-  // Fall back to featured, then simply the first of the catalogue, so these
-  // rails are never empty on a shop that hasn't tagged anything yet.
-  const pool = flagged.length ? flagged : products.filter((p) => p.featured);
-  return (pool.length ? pool : products).slice(0, limit);
+  return flagged.slice(0, limit);
 };
 
 export const brandsOf = (products: Product[]) =>

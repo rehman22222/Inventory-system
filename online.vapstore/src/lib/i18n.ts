@@ -83,6 +83,7 @@ const resources = {
       productCard: {
         new: "New",
         bestseller: "Bestseller",
+        hotItem: "Hot item",
         outOfStock: "Out of stock",
         priceTbc: "Price to be confirmed",
         chooseOptions: "Choose options",
@@ -242,6 +243,7 @@ const resources = {
       },
       productCard: {
         new: "Nua",
+        hotItem: "Hot item",
         bestseller: "Is fearr díol",
         outOfStock: "As stoc",
         priceTbc: "Praghas le deimhniú",

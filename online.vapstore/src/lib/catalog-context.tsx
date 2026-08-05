@@ -42,6 +42,10 @@ export const defaultStorefrontSettings: StorefrontSettings = {
     subtitle: "The latest products to land in store, selected by the CliffsOfPuff team.",
     limit: 8,
   },
+  bestSellers: {
+    enabled: true,
+    limit: 8,
+  },
   deals: {
     enabled: true,
     eyebrow: "Live sale",

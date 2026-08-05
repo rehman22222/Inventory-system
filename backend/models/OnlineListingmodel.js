@@ -88,7 +88,7 @@ const OnlineListingSchema = new mongoose.Schema(
     specs: { type: Map, of: String, default: {} },
     flavour: { type: String, default: "" },
     optionLabel: { type: String, trim: true, default: "" },
-    tags: [{ type: String, enum: ["new", "bestseller", "sale", "limited"] }],
+    tags: [{ type: String, enum: ["new", "bestseller", "sale", "limited", "hot"] }],
 
     // Online pricing is allowed to differ from the shelf price; stock is not.
     // null means "use the product's price".

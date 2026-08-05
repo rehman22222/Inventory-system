@@ -61,6 +61,10 @@ const defaultStorefrontSettings: StorefrontSettings = {
     subtitle: "The latest products to land in store, selected by the CliffsOfPuff team.",
     limit: 8,
   },
+  bestSellers: {
+    enabled: true,
+    limit: 8,
+  },
   deals: {
     enabled: true,
     eyebrow: "Live sale",
@@ -315,6 +319,10 @@ const mergeSettings = (settings?: StorefrontSettings): StorefrontSettings => {
     newThisWeek: {
       ...defaultStorefrontSettings.newThisWeek,
       ...(settings?.newThisWeek || {}),
+    },
+    bestSellers: {
+      ...defaultStorefrontSettings.bestSellers,
+      ...(settings?.bestSellers || {}),
     },
     deals: {
       ...defaultStorefrontSettings.deals,

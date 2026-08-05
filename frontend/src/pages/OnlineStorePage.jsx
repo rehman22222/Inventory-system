@@ -23,7 +23,6 @@ import {
   FiTrash2,
   FiUpload,
   FiX,
-  FiZap,
 } from "react-icons/fi";
 import {
   FaFacebookF,
@@ -69,7 +68,7 @@ const TABS = [
   { id: "products", label: "Products", icon: FiGrid },
   { id: "categories", label: "Categories", icon: FiGlobe },
   { id: "hero", label: "Hero banner", icon: FiImage },
-  { id: "new-this-week", label: "New this week", icon: FiZap },
+  { id: "best-sellers", label: "Best sellers", icon: FiStar },
   { id: "deals", label: "Deals", icon: FiPercent },
   { id: "promotions", label: "Vouchers", icon: FiTag },
   { id: "orders", label: "Orders", icon: FiShoppingCart },
@@ -146,7 +145,11 @@ export default function OnlineStorePage() {
       dispatch(getHeroSlides());
       dispatch(getOnlineListings());
       dispatch(getOnlineCategories());
-    } else if (tab === "new-this-week" || tab === "deals") {
+    } else if (tab === "best-sellers") {
+      dispatch(getOnlineListings());
+      dispatch(getOnlineSettings());
+      dispatch(getOnlineCategories());
+    } else if (tab === "deals") {
       dispatch(getOnlineListings());
       dispatch(getOnlineSettings());
     } else if (tab === "promotions") {
@@ -225,9 +228,10 @@ export default function OnlineStorePage() {
           categories={online.categories}
         />
       )}
-      {tab === "new-this-week" && (
-        <NewThisWeekControls
+      {tab === "best-sellers" && (
+        <BestSellerControls
           listings={online.listings}
+          categories={online.categories}
           settings={online.settings}
           isActing={online.isActing}
           onEditListing={editListing}
@@ -381,6 +385,7 @@ function Products({
 }) {
   const dispatch = useDispatch();
   const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState(null);
 
@@ -392,13 +397,24 @@ function Products({
   }, [editListingId, listings, onEditHandled]);
   const shown = useMemo(() => {
     const search = query.trim().toLowerCase();
-    if (!search) return listings;
-    return listings.filter((listing) =>
-      `${listing.webName || listing.product?.name || ""} ${listing.brand || ""}`
+    return listings.filter((listing) => {
+      if (
+        categoryFilter &&
+        (listing.category?._id || listing.category) !== categoryFilter &&
+        !(listing.categories || []).some(
+          (category) => (category?._id || category) === categoryFilter,
+        )
+      ) {
+        return false;
+      }
+      if (!search) return true;
+      return `${listing.webName || listing.product?.name || ""} ${
+        listing.brand || ""
+      }`
         .toLowerCase()
-        .includes(search),
-    );
-  }, [listings, query]);
+        .includes(search);
+    });
+  }, [listings, query, categoryFilter]);
 
   const toggle = async (listing) => {
     const result = await dispatch(
@@ -426,6 +442,18 @@ function Products({
           <strong>{counts.listed}</strong> live · {counts.total} configured
         </span>
         <div className="flex gap-2">
+          <select
+            className="select select-sm select-bordered"
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+          >
+            <option value="">All categories</option>
+            {(categories || []).map((category) => (
+              <option key={category._id} value={category._id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
           <input
             className="input input-sm input-bordered"
             placeholder="Search listings…"
@@ -1394,7 +1422,6 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
 
       <div className="mt-3 flex flex-wrap items-center gap-4 text-xs">
         {[
-          ["new", "New this week"],
           ["bestseller", "Bestseller"],
           ["limited", "Limited"],
         ].map(([tag, label]) => (
@@ -2155,39 +2182,49 @@ function HeroSlides({ slides, listings, categories }) {
   );
 }
 
-const DEFAULT_NEW_THIS_WEEK = {
+const DEFAULT_BEST_SELLERS = {
   enabled: true,
-  eyebrow: "Fresh drops",
-  title: "New this week.",
-  subtitle:
-    "The latest products to land in store, selected by the CliffsOfPuff team.",
   limit: 8,
 };
 
-function NewThisWeekControls({
+function BestSellerControls({
   listings,
+  categories,
   settings,
   isActing,
   onEditListing,
 }) {
   const dispatch = useDispatch();
   const [query, setQuery] = useState("");
-  const [draft, setDraft] = useState(DEFAULT_NEW_THIS_WEEK);
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [draft, setDraft] = useState(DEFAULT_BEST_SELLERS);
 
   useEffect(() => {
     setDraft({
-      ...DEFAULT_NEW_THIS_WEEK,
-      ...(settings?.newThisWeek || {}),
+      ...DEFAULT_BEST_SELLERS,
+      ...(settings?.bestSellers || {}),
     });
   }, [settings]);
 
   const selectedCount = listings.filter((listing) =>
-    listing.tags?.includes("new"),
+    listing.tags?.includes("bestseller"),
+  ).length;
+  const hotCount = listings.filter((listing) =>
+    listing.tags?.includes("hot"),
   ).length;
   const shown = useMemo(() => {
     const search = query.trim().toLowerCase();
     return listings.filter((listing) => {
       if (!listing.listed) return false;
+      if (
+        categoryFilter &&
+        (listing.category?._id || listing.category) !== categoryFilter &&
+        !(listing.categories || []).some(
+          (category) => (category?._id || category) === categoryFilter,
+        )
+      ) {
+        return false;
+      }
       if (!search) return true;
       return `${listing.webName || listing.product?.name || ""} ${
         listing.brand || ""
@@ -2195,39 +2232,54 @@ function NewThisWeekControls({
         .toLowerCase()
         .includes(search);
     });
-  }, [listings, query]);
-
-  const set = (key, value) =>
-    setDraft((current) => ({ ...current, [key]: value }));
+  }, [listings, query, categoryFilter]);
 
   const saveSection = async (event) => {
     event.preventDefault();
     const result = await dispatch(
       saveOnlineSettings({
-        newThisWeek: { ...draft, limit: Number(draft.limit) },
+        bestSellers: { ...draft, limit: Number(draft.limit) },
       }),
     );
     result.error
-      ? toast.error(result.payload || "Could not save the homepage section")
-      : toast.success("New this week section saved");
+      ? toast.error(result.payload || "Could not save the best sellers section")
+      : toast.success("Best sellers section saved");
   };
 
   const toggleProduct = async (listing) => {
     const tags = listing.tags || [];
-    const selected = tags.includes("new");
+    const selected = tags.includes("bestseller");
     const result = await dispatch(
       updateOnlineListing({
         id: listing._id,
-        tags: selected ? tags.filter((tag) => tag !== "new") : [...tags, "new"],
+        tags: selected
+          ? tags.filter((tag) => tag !== "bestseller")
+          : Array.from(new Set([...tags, "bestseller"])),
       }),
     );
     result.error
-      ? toast.error(result.payload || "Could not update the homepage product")
+      ? toast.error(result.payload || "Could not update this product")
       : toast.success(
           selected
-            ? "Removed from New this week — storefront updated"
-            : "Added to New this week — storefront updated",
+            ? "Removed from Best sellers — storefront updated"
+            : "Added to Best sellers — storefront updated",
         );
+  };
+
+  const toggleHot = async (listing) => {
+    const tags = listing.tags || [];
+    const selected = tags.includes("hot");
+    const result = await dispatch(
+      updateOnlineListing({
+        id: listing._id,
+        tags: selected
+          ? tags.filter((tag) => tag !== "hot")
+          : Array.from(new Set([...tags, "hot"])),
+      }),
+    );
+    result.error
+      ? toast.error(result.payload || "Could not update this product")
+      : toast.success(selected ? "Hot item tag removed" : "Hot item tag added");
   };
 
   return (
@@ -2238,48 +2290,25 @@ function NewThisWeekControls({
       >
         <div>
           <h3 className="flex items-center gap-2 font-display text-lg font-bold">
-            <FiZap /> Homepage section
+            <FiStar /> Best sellers section
           </h3>
           <p className="mt-1 text-xs leading-relaxed text-base-content/55">
-            This block appears directly below the hero. Product prices and stock
-            still come from the shared inventory.
+            Pick products for the storefront Best seller rail. Existing bestsellers stay selected;
+            the owner can remove them whenever they want.
           </p>
         </div>
         <Check
           checked={draft.enabled}
-          onChange={(value) => set("enabled", value)}
-          label="Show New this week on the storefront"
+          onChange={(value) => setDraft((current) => ({ ...current, enabled: value }))}
+          label="Show Best sellers on the storefront"
         />
-        <Field label="Small heading">
-          <input
-            className="input input-sm input-bordered"
-            maxLength={80}
-            value={draft.eyebrow}
-            onChange={(event) => set("eyebrow", event.target.value)}
-          />
-        </Field>
-        <Field label="Main heading">
-          <input
-            className="input input-sm input-bordered"
-            maxLength={120}
-            value={draft.title}
-            onChange={(event) => set("title", event.target.value)}
-          />
-        </Field>
-        <Field label="Supporting text">
-          <textarea
-            className="textarea textarea-sm textarea-bordered"
-            rows={3}
-            maxLength={300}
-            value={draft.subtitle}
-            onChange={(event) => set("subtitle", event.target.value)}
-          />
-        </Field>
         <Field label="Maximum products">
           <select
             className="select select-sm select-bordered"
             value={draft.limit}
-            onChange={(event) => set("limit", Number(event.target.value))}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, limit: Number(event.target.value) }))
+            }
           >
             <option value={4}>4 products</option>
             <option value={8}>8 products</option>
@@ -2292,6 +2321,20 @@ function NewThisWeekControls({
         >
           <FiSave /> Save section
         </button>
+        <div className="grid grid-cols-2 gap-2 rounded-lg bg-base-200 p-3 text-center">
+          <div>
+            <div className="font-display text-2xl font-bold">{selectedCount}</div>
+            <div className="text-[10px] uppercase tracking-widest text-base-content/50">
+              Best sellers
+            </div>
+          </div>
+          <div>
+            <div className="font-display text-2xl font-bold text-error">{hotCount}</div>
+            <div className="text-[10px] uppercase tracking-widest text-base-content/50">
+              Hot tags
+            </div>
+          </div>
+        </div>
       </form>
 
       <section className="overflow-hidden rounded-xl border bg-base-100">
@@ -2304,16 +2347,31 @@ function NewThisWeekControls({
                 : "No products selected · this section stays hidden until you add one"}
             </p>
           </div>
-          <input
-            className="input input-sm input-bordered"
-            placeholder="Search live products…"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              className="select select-sm select-bordered"
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value)}
+            >
+              <option value="">All categories</option>
+              {(categories || []).map((category) => (
+                <option key={category._id} value={category._id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            <input
+              className="input input-sm input-bordered"
+              placeholder="Search live products..."
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </div>
         </div>
         <div className="max-h-[620px] divide-y overflow-y-auto">
           {shown.map((listing) => {
-            const selected = listing.tags?.includes("new");
+            const selected = listing.tags?.includes("bestseller");
+            const hot = listing.tags?.includes("hot");
             const stock = listing.variants?.length
               ? listing.variants.reduce(
                   (sum, option) => sum + Number(option.product?.quantity || 0),
@@ -2337,12 +2395,27 @@ function NewThisWeekControls({
                     <span>{stock} in shared stock</span>
                     {selected && (
                       <span className="badge badge-primary badge-xs">
-                        New this week
+                        Best seller
+                      </span>
+                    )}
+                    {hot && (
+                      <span className="badge badge-error badge-xs text-white">
+                        Hot item
                       </span>
                     )}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs">
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-error checkbox-xs"
+                      checked={hot}
+                      disabled={isActing}
+                      onChange={() => toggleHot(listing)}
+                    />
+                    Hot item
+                  </label>
                   {selected && (
                     <button
                       type="button"

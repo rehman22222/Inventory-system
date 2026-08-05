@@ -202,6 +202,10 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
       },
       limit: { type: Number, default: 8, min: 4, max: 12 },
     },
+    bestSellers: {
+      enabled: { type: Boolean, default: true },
+      limit: { type: Number, default: 8, min: 4, max: 12 },
+    },
     deals: {
       enabled: { type: Boolean, default: true },
       eyebrow: {

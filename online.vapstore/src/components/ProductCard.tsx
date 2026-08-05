@@ -73,6 +73,11 @@ export function ProductCard({ product }: { product: Product }) {
               {t("productCard.bestseller")}
             </span>
           )}
+          {product.tags?.includes("hot") && (
+            <span className="bg-red-600 text-white font-mono text-[10px] uppercase tracking-widest px-2 py-1 shadow-[0_0_18px_rgba(220,38,38,0.45)]">
+              {t("productCard.hotItem")}
+            </span>
+          )}
         </div>
         {outOfStock && (
           <div className="absolute inset-0 grid place-items-center bg-background/70">

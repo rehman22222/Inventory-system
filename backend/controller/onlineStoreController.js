@@ -1292,7 +1292,7 @@ module.exports.updateListing = async (req, res) => {
     }
 
     if (Object.prototype.hasOwnProperty.call(req.body, "tags")) {
-      const allowedTags = new Set(["new", "bestseller", "sale", "limited"]);
+      const allowedTags = new Set(["new", "bestseller", "sale", "limited", "hot"]);
       listing.tags = Array.from(
         new Set(
           (Array.isArray(req.body.tags) ? req.body.tags : []).filter((tag) =>
@@ -1872,6 +1872,20 @@ module.exports.updateStoreSettings = async (req, res) => {
         });
       }
       settings.newThisWeek.limit = limit;
+    }
+    settings.bestSellers = settings.bestSellers || {};
+    const bestSellers = req.body.bestSellers || {};
+    if (Object.prototype.hasOwnProperty.call(bestSellers, "enabled")) {
+      settings.bestSellers.enabled = Boolean(bestSellers.enabled);
+    }
+    if (Object.prototype.hasOwnProperty.call(bestSellers, "limit")) {
+      const limit = Number(bestSellers.limit);
+      if (!Number.isInteger(limit) || limit < 4 || limit > 12) {
+        return res.status(400).json({
+          message: "Best seller product limit must be between 4 and 12",
+        });
+      }
+      settings.bestSellers.limit = limit;
     }
     const deals = req.body.deals || {};
     if (Object.prototype.hasOwnProperty.call(deals, "enabled")) {
@@ -2506,6 +2520,7 @@ const publicStorefrontSettings = (settings) => ({
   shipping: settings.shipping,
   promises: settings.promises,
   newThisWeek: settings.newThisWeek,
+  bestSellers: settings.bestSellers,
   deals: settings.deals,
   business: settings.business,
   policies: settings.policies,
