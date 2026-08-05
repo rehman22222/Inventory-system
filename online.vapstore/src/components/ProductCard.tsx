@@ -13,6 +13,7 @@ export function ProductCard({ product }: { product: Product }) {
   const [added, setAdded] = useState(false);
   const onSale = !!product.compareAt;
   const off = onSale ? Math.round((1 - product.price / (product.compareAt || 1)) * 100) : 0;
+  const isHot = product.tags?.includes("hot");
   const outOfStock = product.stock <= 0;
   const priceUnavailable = product.price <= 0;
   const unavailable = outOfStock || priceUnavailable;
@@ -57,28 +58,21 @@ export function ProductCard({ product }: { product: Product }) {
           sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
           className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.05]"
         />
-        <div className="absolute left-0 top-0 flex flex-col gap-0">
-          {product.tags?.includes("new") && (
-            <span className="bg-accent text-accent-foreground font-mono text-[10px] uppercase tracking-widest px-2 py-1">
-              {t("productCard.new")}
-            </span>
-          )}
-          {onSale && (
-            <span className="bg-[color:var(--sale)] text-primary-foreground font-mono text-[10px] uppercase tracking-widest px-2 py-1">
-              -{off}%
-            </span>
-          )}
-          {product.tags?.includes("bestseller") && (
-            <span className="bg-ink text-primary-foreground font-mono text-[10px] uppercase tracking-widest px-2 py-1">
-              {t("productCard.bestseller")}
-            </span>
-          )}
-          {product.tags?.includes("hot") && (
-            <span className="bg-red-600 text-white font-mono text-[10px] uppercase tracking-widest px-2 py-1 shadow-[0_0_18px_rgba(220,38,38,0.45)]">
-              {t("productCard.hotItem")}
-            </span>
-          )}
-        </div>
+        {onSale && (
+          <span
+            className={`absolute top-2 rounded-full bg-[color:var(--sale)] px-2.5 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-primary-foreground shadow-sm sm:top-3 ${
+              isHot ? "right-2 sm:right-3" : "left-2 sm:left-3"
+            }`}
+          >
+            -{off}%
+          </span>
+        )}
+        {isHot && (
+          <span className="absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-gradient-to-r from-[#260000] via-[#b00000] to-[#ff3b1f] px-3 py-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-[0_10px_28px_rgba(180,0,0,0.32)] ring-1 ring-black/10 backdrop-blur sm:left-3 sm:top-3 sm:px-3.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.9)]" />
+            {t("productCard.hotItem")}
+          </span>
+        )}
         {outOfStock && (
           <div className="absolute inset-0 grid place-items-center bg-background/70">
             <span className="bg-ink text-primary-foreground font-mono text-[11px] uppercase tracking-widest px-3 py-1.5">
