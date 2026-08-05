@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { Banknote, CheckCircle2, Lock, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Footer } from "@/components/Footer";
@@ -23,6 +24,7 @@ const freshClientRef = () =>
   globalThis.crypto?.randomUUID?.() || `web-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 function Checkout() {
+  const { t, i18n } = useTranslation();
   const { lines, subtotal, clear, ready, unitPriceFor } = useCart();
   const { settings } = useCatalog();
   const { flatRate, freeThreshold } = settings.shipping;
@@ -67,6 +69,13 @@ function Checkout() {
     setAppliedVoucher(null);
   }, [cartSignature, form.email]);
 
+  useEffect(() => {
+    setForm((current) => {
+      if (!["Ireland", "Éire"].includes(current.country)) return current;
+      return { ...current, country: t("checkout.defaultCountry") };
+    });
+  }, [i18n.language, t]);
+
   const set = (key: keyof typeof form, value: string) =>
     setForm((current) => ({ ...current, [key]: value }));
 
@@ -78,8 +87,8 @@ function Checkout() {
     }));
 
   const applyVoucher = async () => {
-    if (!voucherCode.trim()) return setError("Enter a voucher code");
-    if (missingReferences) return setError("Refresh the products in your basket first.");
+    if (!voucherCode.trim()) return setError(t("checkout.errors.enterVoucher"));
+    if (missingReferences) return setError(t("checkout.errors.refreshBasket"));
     setVoucherBusy(true);
     setError("");
     try {
@@ -95,7 +104,7 @@ function Checkout() {
     } catch (voucherError) {
       setAppliedVoucher(null);
       setError(
-        voucherError instanceof Error ? voucherError.message : "This voucher could not be applied.",
+        voucherError instanceof Error ? voucherError.message : t("checkout.errors.voucherFailed"),
       );
     } finally {
       setVoucherBusy(false);
@@ -106,7 +115,7 @@ function Checkout() {
     event.preventDefault();
     if (busy || lines.length === 0) return;
     if (missingReferences) {
-      setError("Your cart contains an older item. Remove it and add it again before checkout.");
+      setError(t("checkout.errors.oldCartItem"));
       return;
     }
 
@@ -146,7 +155,7 @@ function Checkout() {
       setError(
         checkoutError instanceof Error
           ? checkoutError.message
-          : "The order could not be placed. Please try again.",
+          : t("checkout.errors.orderFailed"),
       );
     } finally {
       setBusy(false);
@@ -159,24 +168,26 @@ function Checkout() {
         <Header />
         <main className="container-x py-16 md:py-24 max-w-2xl">
           <CheckCircle2 className="h-12 w-12" />
-          <div className="eyebrow mt-6">Order received</div>
-          <h1 className="mt-3 font-display text-4xl sm:text-6xl leading-none">Thank you.</h1>
+          <div className="eyebrow mt-6">{t("checkout.confirmedEyebrow")}</div>
+          <h1 className="mt-3 font-display text-4xl sm:text-6xl leading-none">
+            {t("checkout.thankYou")}
+          </h1>
           <p className="mt-6 text-ink-muted">
-            Your order <strong className="text-ink">{confirmed.orderNo}</strong> has been received
-            and its stock has been reserved for you.
+            {t("checkout.confirmedCopyBefore")}{" "}
+            <strong className="text-ink">{confirmed.orderNo}</strong>{" "}
+            {t("checkout.confirmedCopyAfter")}
           </p>
           <div className="mt-6 border hair bg-surface p-5">
             <div className="font-mono text-[11px] uppercase tracking-widest text-ink-muted">
-              Order total
+              {t("checkout.orderTotal")}
             </div>
             <div className="mt-1 font-display text-3xl">{formatPrice(confirmed.total)}</div>
             <p className="mt-3 text-sm text-ink-muted">
-              Cash on delivery selected. Please pay {formatPrice(confirmed.total)} when your order
-              arrives.
+              {t("checkout.codSelected", { total: formatPrice(confirmed.total) })}
             </p>
           </div>
           <Link to="/shop" className="mt-8 inline-flex btn-primary">
-            Continue shopping
+            {t("checkout.continueShopping")}
           </Link>
         </main>
         <Footer />
@@ -189,10 +200,12 @@ function Checkout() {
       <div className="min-h-screen bg-background">
         <Header />
         <main className="container-x py-16 md:py-24 max-w-2xl">
-          <div className="eyebrow">Checkout</div>
-          <h1 className="mt-3 font-display text-5xl leading-none">Your cart is empty.</h1>
+          <div className="eyebrow">{t("checkout.title")}</div>
+          <h1 className="mt-3 font-display text-5xl leading-none">
+            {t("checkout.emptyTitle")}
+          </h1>
           <Link to="/shop" className="mt-8 inline-flex btn-primary">
-            Browse products
+            {t("checkout.browseProducts")}
           </Link>
         </main>
         <Footer />
@@ -204,29 +217,31 @@ function Checkout() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container-x py-10 md:py-16">
-        <div className="eyebrow">Checkout</div>
-        <h1 className="mt-3 font-display text-4xl md:text-6xl leading-none">Delivery details.</h1>
+        <div className="eyebrow">{t("checkout.title")}</div>
+        <h1 className="mt-3 font-display text-4xl md:text-6xl leading-none">
+          {t("checkout.deliveryDetails")}
+        </h1>
 
         <form onSubmit={submit} className="mt-10 grid gap-10 lg:grid-cols-[1.4fr_0.8fr] lg:gap-14">
           <div className="space-y-8">
             <section className="border hair p-5 md:p-7">
-              <h2 className="font-display text-2xl">Contact</h2>
+              <h2 className="font-display text-2xl">{t("checkout.contact")}</h2>
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 <Field
-                  label="Full name"
+                  label={t("checkout.fullName")}
                   value={form.name}
                   onChange={(value) => set("name", value)}
                   required
                 />
                 <Field
-                  label="Email"
+                  label={t("checkout.email")}
                   type="email"
                   value={form.email}
                   onChange={(value) => set("email", value)}
                   required
                 />
                 <Field
-                  label="Phone"
+                  label={t("checkout.phone")}
                   type="tel"
                   value={form.phone}
                   onChange={(value) => set("phone", value)}
@@ -235,11 +250,11 @@ function Checkout() {
             </section>
 
             <section className="border hair p-5 md:p-7">
-              <h2 className="font-display text-2xl">Shipping address</h2>
+              <h2 className="font-display text-2xl">{t("checkout.shippingAddress")}</h2>
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <Field
-                    label="Address line 1"
+                    label={t("checkout.addressLine1")}
                     value={form.line1}
                     onChange={(value) => set("line1", value)}
                     required
@@ -247,30 +262,30 @@ function Checkout() {
                 </div>
                 <div className="sm:col-span-2">
                   <Field
-                    label="Address line 2"
+                    label={t("checkout.addressLine2")}
                     value={form.line2}
                     onChange={(value) => set("line2", value)}
                   />
                 </div>
                 <Field
-                  label="Town / city"
+                  label={t("checkout.townCity")}
                   value={form.city}
                   onChange={(value) => set("city", value)}
                   required
                 />
                 <Field
-                  label="County"
+                  label={t("checkout.county")}
                   value={form.region}
                   onChange={(value) => set("region", value)}
                 />
                 <Field
-                  label="Eircode / postcode"
+                  label={t("checkout.postcode")}
                   value={form.postcode}
                   onChange={(value) => set("postcode", value)}
                   required
                 />
                 <Field
-                  label="Country"
+                  label={t("checkout.country")}
                   value={form.country}
                   onChange={(value) => set("country", value)}
                   required
@@ -278,7 +293,7 @@ function Checkout() {
               </div>
               <label className="mt-4 block">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                  Order note
+                  {t("checkout.orderNote")}
                 </span>
                 <textarea
                   value={form.note}
@@ -291,7 +306,7 @@ function Checkout() {
             </section>
 
             <section className="border hair p-5 md:p-7">
-              <h2 className="font-display text-2xl">Payment</h2>
+              <h2 className="font-display text-2xl">{t("checkout.payment")}</h2>
               <label className="mt-5 flex cursor-pointer items-start gap-4 border-2 border-ink bg-surface p-4">
                 <input
                   type="radio"
@@ -303,9 +318,9 @@ function Checkout() {
                 />
                 <Banknote className="h-6 w-6 shrink-0" aria-hidden="true" />
                 <span>
-                  <span className="block font-display text-lg">Cash on delivery</span>
+                  <span className="block font-display text-lg">{t("checkout.cashOnDelivery")}</span>
                   <span className="mt-1 block text-sm text-ink-muted">
-                    Pay the full order total in cash when your delivery arrives.
+                    {t("checkout.cashOnDeliveryCopy")}
                   </span>
                 </span>
               </label>
@@ -314,7 +329,7 @@ function Checkout() {
 
           <aside className="self-start lg:sticky lg:top-32">
             <div className="border hair p-6">
-              <div className="eyebrow">Order summary</div>
+              <div className="eyebrow">{t("checkout.orderSummary")}</div>
               <div className="mt-5 space-y-4">
                 {lines.map((line) => (
                   <div key={line.id} className="flex gap-3">
@@ -328,7 +343,7 @@ function Checkout() {
                     <div className="min-w-0 flex-1">
                       <div className="font-display text-sm leading-tight">{line.name}</div>
                       <div className="mt-1 font-mono text-[10px] text-ink-muted">
-                        Qty {line.qty}
+                        {t("checkout.qty", { count: line.qty })}
                       </div>
                     </div>
                     <div className="font-display text-sm">{formatPrice(unitPriceFor(line) * line.qty)}</div>
@@ -338,7 +353,7 @@ function Checkout() {
 
               <div className="mt-6 border-t hair pt-5">
                 <label className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                  Voucher code
+                  {t("checkout.voucherCode")}
                 </label>
                 <div className="mt-2 flex border hair focus-within:ring-2 focus-within:ring-ink">
                   <input
@@ -357,7 +372,7 @@ function Checkout() {
                     onClick={applyVoucher}
                     className="border-l hair bg-ink px-4 font-mono text-[10px] uppercase tracking-widest text-primary-foreground disabled:opacity-50"
                   >
-                    {voucherBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                    {voucherBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("checkout.apply")}
                   </button>
                 </div>
                 {appliedVoucher && (
@@ -370,21 +385,23 @@ function Checkout() {
 
               <dl className="mt-6 space-y-3 border-t hair pt-5 text-sm">
                 <div className="flex justify-between">
-                  <dt className="text-ink-muted">Subtotal</dt>
+                  <dt className="text-ink-muted">{t("checkout.subtotal")}</dt>
                   <dd className="font-display">{formatPrice(subtotal)}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-ink-muted">Shipping</dt>
-                  <dd className="font-display">{shipping ? formatPrice(shipping) : "Free"}</dd>
+                  <dt className="text-ink-muted">{t("checkout.shipping")}</dt>
+                  <dd className="font-display">
+                    {shipping ? formatPrice(shipping) : t("checkout.free")}
+                  </dd>
                 </div>
                 {discount > 0 && (
                   <div className="flex justify-between text-[color:var(--sale)]">
-                    <dt>Voucher ({appliedVoucher?.voucher.code})</dt>
+                    <dt>{t("checkout.voucher")} ({appliedVoucher?.voucher.code})</dt>
                     <dd className="font-display">−{formatPrice(discount)}</dd>
                   </div>
                 )}
                 <div className="flex justify-between border-t hair pt-3 text-lg">
-                  <dt className="font-display">Total</dt>
+                  <dt className="font-display">{t("checkout.total")}</dt>
                   <dd className="font-display">{formatPrice(total)}</dd>
                 </div>
               </dl>
@@ -405,16 +422,16 @@ function Checkout() {
               >
                 {busy ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Placing order
+                    <Loader2 className="h-4 w-4 animate-spin" /> {t("checkout.placingOrder")}
                   </>
                 ) : (
                   <>
-                    <Lock className="h-4 w-4" /> Place COD order
+                    <Lock className="h-4 w-4" /> {t("checkout.placeCodOrder")}
                   </>
                 )}
               </button>
               <p className="mt-3 text-center font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                EUR only · secure cash on delivery
+                {t("checkout.secureCod")}
               </p>
             </div>
           </aside>
