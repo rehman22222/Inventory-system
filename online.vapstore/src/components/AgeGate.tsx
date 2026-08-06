@@ -147,7 +147,7 @@ export function AgeGate({ children }: { children: ReactNode }) {
                 </h1>
                 <p id="age-gate-description" className="mt-4 text-sm leading-6 text-ink-muted">
                   You must be at least 18 years old to enter CliffsOfPuff and purchase
-                  age-restricted products.
+                  products.
                 </p>
 
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -168,7 +168,6 @@ export function AgeGate({ children }: { children: ReactNode }) {
                 </div>
 
                 <div className="mt-4 flex flex-col gap-2 text-xs text-ink-muted sm:flex-row sm:items-center sm:justify-between">
-                  <span>Background remains visible and scrollable.</span>
                   <span>Remembered for this browser session</span>
                 </div>
               </div>
