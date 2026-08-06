@@ -2720,11 +2720,11 @@ function DealsControls({ listings, settings, isActing }) {
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[410px_1fr]">
-      <div className="space-y-5">
+    <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,410px)_minmax(0,1fr)]">
+      <div className="min-w-0 space-y-5">
         <form
           onSubmit={saveSection}
-          className="space-y-4 rounded-xl border bg-base-100 p-5"
+          className="min-w-0 space-y-4 rounded-xl border bg-base-100 p-4 sm:p-5"
         >
           <div>
             <h3 className="flex items-center gap-2 font-display text-lg font-bold">
@@ -2743,7 +2743,7 @@ function DealsControls({ listings, settings, isActing }) {
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Small heading">
               <input
-                className="input input-sm input-bordered"
+                className="input input-sm input-bordered w-full"
                 maxLength={80}
                 value={section.eyebrow}
                 onChange={(event) =>
@@ -2753,7 +2753,7 @@ function DealsControls({ listings, settings, isActing }) {
             </Field>
             <Field label="Button label">
               <input
-                className="input input-sm input-bordered"
+                className="input input-sm input-bordered w-full"
                 maxLength={40}
                 value={section.ctaLabel}
                 onChange={(event) =>
@@ -2764,7 +2764,7 @@ function DealsControls({ listings, settings, isActing }) {
           </div>
           <Field label="Main heading">
             <input
-              className="input input-sm input-bordered"
+              className="input input-sm input-bordered w-full"
               maxLength={120}
               value={section.title}
               onChange={(event) => setSectionField("title", event.target.value)}
@@ -2772,7 +2772,7 @@ function DealsControls({ listings, settings, isActing }) {
           </Field>
           <Field label="Supporting text">
             <textarea
-              className="textarea textarea-sm textarea-bordered"
+              className="textarea textarea-sm textarea-bordered w-full"
               rows={3}
               maxLength={300}
               value={section.subtitle}
@@ -2783,7 +2783,7 @@ function DealsControls({ listings, settings, isActing }) {
           </Field>
           <Field label="Maximum deal products">
             <select
-              className="select select-sm select-bordered"
+              className="select select-sm select-bordered w-full"
               value={section.limit}
               onChange={(event) =>
                 setSectionField("limit", Number(event.target.value))
@@ -2806,7 +2806,7 @@ function DealsControls({ listings, settings, isActing }) {
 
         <form
           onSubmit={saveDeal}
-          className="space-y-4 rounded-xl border bg-base-100 p-5"
+          className="min-w-0 space-y-4 rounded-xl border bg-base-100 p-4 sm:p-5"
         >
           <div>
             <h3 className="font-display text-lg font-bold">
@@ -2818,7 +2818,7 @@ function DealsControls({ listings, settings, isActing }) {
           </div>
           <Field label="Live website product">
             <select
-              className="select select-sm select-bordered"
+              className="select select-sm select-bordered w-full"
               value={deal.id}
               onChange={(event) => {
                 const listing = listings.find(
@@ -2837,10 +2837,10 @@ function DealsControls({ listings, settings, isActing }) {
               ))}
             </select>
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Regular online price">
               <input
-                className="input input-sm input-bordered"
+                className="input input-sm input-bordered w-full"
                 value={regularPrice ? `€${money(regularPrice)}` : "—"}
                 disabled
               />
@@ -2850,7 +2850,7 @@ function DealsControls({ listings, settings, isActing }) {
                 type="number"
                 min="0.01"
                 step="0.01"
-                className="input input-sm input-bordered"
+                className="input input-sm input-bordered w-full"
                 value={deal.salePrice}
                 onChange={(event) =>
                   setDealField("salePrice", event.target.value)
@@ -2859,11 +2859,11 @@ function DealsControls({ listings, settings, isActing }) {
               />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Starts (optional)">
               <input
                 type="datetime-local"
-                className="input input-sm input-bordered"
+                className="input input-sm input-bordered w-full"
                 value={deal.saleStartsAt}
                 onChange={(event) =>
                   setDealField("saleStartsAt", event.target.value)
@@ -2873,7 +2873,7 @@ function DealsControls({ listings, settings, isActing }) {
             <Field label="Ends (optional)">
               <input
                 type="datetime-local"
-                className="input input-sm input-bordered"
+                className="input input-sm input-bordered w-full"
                 value={deal.saleEndsAt}
                 onChange={(event) =>
                   setDealField("saleEndsAt", event.target.value)
@@ -2887,7 +2887,7 @@ function DealsControls({ listings, settings, isActing }) {
               min="1"
               step="1"
               placeholder="1 — applies to every unit"
-              className="input input-sm input-bordered"
+              className="input input-sm input-bordered w-full"
               value={deal.minQty}
               onChange={(event) => setDealField("minQty", event.target.value)}
             />
@@ -2899,7 +2899,7 @@ function DealsControls({ listings, settings, isActing }) {
           </Field>
           <Field label="Deal image (optional)">
             {deal.dealImage?.url ? (
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <img
                   src={deal.dealImage.url}
                   alt="Deal"
@@ -2926,7 +2926,7 @@ function DealsControls({ listings, settings, isActing }) {
               </label>
             )}
           </Field>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             {deal.id && (
               <button
                 type="button"
@@ -2947,7 +2947,7 @@ function DealsControls({ listings, settings, isActing }) {
 
         <form
           onSubmit={applyBulk}
-          className="space-y-4 rounded-xl border bg-base-100 p-5"
+          className="min-w-0 space-y-4 rounded-xl border bg-base-100 p-4 sm:p-5"
         >
           <div>
             <h3 className="font-display text-lg font-bold">
@@ -2959,13 +2959,13 @@ function DealsControls({ listings, settings, isActing }) {
               unchanged.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Discount (% off)">
               <input
                 type="number"
                 min="1"
                 max="99"
-                className="input input-sm input-bordered"
+                className="input input-sm input-bordered w-full"
                 value={bulkPct}
                 onChange={(event) => setBulkPct(event.target.value)}
                 required
@@ -2973,17 +2973,17 @@ function DealsControls({ listings, settings, isActing }) {
             </Field>
             <Field label="Selected">
               <input
-                className="input input-sm input-bordered"
+                className="input input-sm input-bordered w-full"
                 value={`${bulkIds.length} product${bulkIds.length === 1 ? "" : "s"}`}
                 disabled
               />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Starts (optional)">
               <input
                 type="datetime-local"
-                className="input input-sm input-bordered"
+                className="input input-sm input-bordered w-full"
                 value={bulkStart}
                 onChange={(event) => setBulkStart(event.target.value)}
               />
@@ -2991,7 +2991,7 @@ function DealsControls({ listings, settings, isActing }) {
             <Field label="Ends (optional)">
               <input
                 type="datetime-local"
-                className="input input-sm input-bordered"
+                className="input input-sm input-bordered w-full"
                 value={bulkEnd}
                 onChange={(event) => setBulkEnd(event.target.value)}
               />
@@ -3003,7 +3003,7 @@ function DealsControls({ listings, settings, isActing }) {
             value={bulkSearch}
             onChange={(event) => setBulkSearch(event.target.value)}
           />
-          <div className="max-h-56 divide-y overflow-y-auto rounded-lg border">
+          <div className="max-h-56 min-w-0 divide-y overflow-y-auto rounded-lg border">
             {dealListings
               .filter((listing) =>
                 String(listing.webName || listing.product?.name || "")
@@ -3020,7 +3020,7 @@ function DealsControls({ listings, settings, isActing }) {
                 return (
                   <label
                     key={listing._id}
-                    className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm hover:bg-base-200"
+                    className="flex cursor-pointer items-start gap-2 px-3 py-2 text-sm hover:bg-base-200 sm:items-center"
                   >
                     <input
                       type="checkbox"
@@ -3028,10 +3028,10 @@ function DealsControls({ listings, settings, isActing }) {
                       checked={bulkIds.includes(listing._id)}
                       onChange={() => toggleBulk(listing._id)}
                     />
-                    <span className="flex-1 truncate">
+                    <span className="min-w-0 flex-1 break-words sm:truncate">
                       {listing.webName || listing.product?.name}
                     </span>
-                    <span className="whitespace-nowrap text-xs text-base-content/50">
+                    <span className="shrink-0 whitespace-nowrap text-xs text-base-content/50">
                       €{money(regular)} →{" "}
                       <strong className="text-error">€{preview}</strong>
                     </span>
@@ -3049,7 +3049,7 @@ function DealsControls({ listings, settings, isActing }) {
         </form>
       </div>
 
-      <section className="overflow-hidden rounded-xl border bg-base-100">
+      <section className="min-w-0 overflow-hidden rounded-xl border bg-base-100">
         <div className="border-b p-4">
           <h3 className="font-display font-bold">Configured product deals</h3>
           <p className="text-xs text-base-content/50">
@@ -3072,7 +3072,7 @@ function DealsControls({ listings, settings, isActing }) {
             return (
               <article
                 key={listing._id}
-                className="flex flex-wrap items-center justify-between gap-4 p-4"
+                className="grid min-w-0 gap-4 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
               >
                 <div className="flex min-w-0 items-center gap-3">
                   {listing.dealImage?.url && (
@@ -3083,7 +3083,7 @@ function DealsControls({ listings, settings, isActing }) {
                     />
                   )}
                   <div className="min-w-0">
-                  <div className="truncate font-medium">
+                  <div className="break-words font-medium sm:truncate">
                     {listing.webName || listing.product?.name}
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
@@ -3117,7 +3117,7 @@ function DealsControls({ listings, settings, isActing }) {
                     </span>
                   </div>
                   {(listing.saleStartsAt || listing.saleEndsAt) && (
-                    <div className="mt-1 text-[11px] text-base-content/45">
+                    <div className="mt-1 break-words text-[11px] text-base-content/45">
                       {listing.saleStartsAt
                         ? `Starts ${new Date(
                             listing.saleStartsAt,
@@ -3131,7 +3131,7 @@ function DealsControls({ listings, settings, isActing }) {
                   )}
                   </div>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex flex-wrap gap-1 sm:justify-end">
                   <button
                     type="button"
                     className="btn btn-ghost btn-xs"
@@ -3470,7 +3470,7 @@ const BLANK_SETTINGS = {
     supportPhone: "",
     address: "",
   },
-  announcement: { primary: "", secondary: "" },
+  announcement: { enabled: true, primary: "", secondary: "" },
   emergencyAlert: {
     active: false,
     title: "Website under maintenance",
@@ -3683,7 +3683,16 @@ function StorefrontSettings({ settings, isActing }) {
         </section>
       </div>
       <section className="rounded-xl border bg-base-100 p-5">
-        <h3 className="font-display text-lg font-bold">Header announcement</h3>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h3 className="font-display text-lg font-bold">
+            Header announcement
+          </h3>
+          <Check
+            checked={Boolean(draft.announcement.enabled)}
+            onChange={(value) => set("announcement", "enabled", value)}
+            label="Show announcement bar"
+          />
+        </div>
         <p className="text-xs text-base-content/50">
           Tip: use <code>{"{free}"}</code> for the free-shipping amount and{" "}
           <code>{"{dispatch}"}</code> for the dispatch text — they update

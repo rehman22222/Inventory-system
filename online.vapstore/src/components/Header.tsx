@@ -128,6 +128,9 @@ export function Header() {
     .filter(Boolean)
     .join("   •   ");
 
+  const announcementEnabled =
+    settings.announcement.enabled !== false && Boolean(ticker);
+
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     navigate({ to: "/search", search: { q: query.trim() } });
@@ -146,6 +149,7 @@ export function Header() {
       }}
     >
       {/* Announcement */}
+      {announcementEnabled && (
       <div className="bg-ink text-primary-foreground">
         <div className="h-9 overflow-hidden border-b border-white/10 text-[11px] font-mono uppercase tracking-widest">
           <div className="marquee-track flex h-full items-center whitespace-nowrap">
@@ -166,11 +170,12 @@ export function Header() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Main bar */}
       {/* Tighter vertical padding than the logo would otherwise force — the
           mark carries the height now. */}
-      <div className="container-x grid h-[68px] grid-cols-[auto_1fr_auto] items-center gap-3 sm:h-[76px] sm:gap-6 lg:h-[78px]">
+      <div className="container-x grid h-[72px] grid-cols-[auto_1fr_auto] items-center gap-3 sm:h-[86px] sm:gap-6 lg:h-[96px]">
         <div className="flex items-center gap-2">
           <button
             className="lg:hidden -ml-2 p-2"
@@ -186,7 +191,7 @@ export function Header() {
               alt="CliffsOfPuff"
               width={2430}
               height={2430}
-              className="h-16 w-auto sm:h-20 lg:-my-3 lg:h-24"
+              className="h-[61px] w-auto object-contain sm:h-[76px] lg:h-[91px]"
             />
           </Link>
         </div>

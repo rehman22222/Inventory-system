@@ -151,6 +151,7 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
       address: { type: String, default: "", trim: true },
     },
     announcement: {
+      enabled: { type: Boolean, default: true },
       primary: {
         // {free} and {dispatch} are filled in live by the storefront from the
         // Shipping threshold and dispatch label, so one banner stays in sync.

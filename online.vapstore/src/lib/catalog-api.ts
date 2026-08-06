@@ -20,6 +20,7 @@ const defaultStorefrontSettings: StorefrontSettings = {
     address: "",
   },
   announcement: {
+    enabled: true,
     primary: "Free shipping over {free} · {dispatch}",
     secondary: "18+ only · Nicotine warning",
   },

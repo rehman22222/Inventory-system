@@ -1826,6 +1826,10 @@ module.exports.updateStoreSettings = async (req, res) => {
       }
     }
     const announcement = req.body.announcement || {};
+    if (!settings.announcement) settings.announcement = {};
+    if (Object.prototype.hasOwnProperty.call(announcement, "enabled")) {
+      settings.announcement.enabled = Boolean(announcement.enabled);
+    }
     for (const key of ["primary", "secondary"]) {
       if (Object.prototype.hasOwnProperty.call(announcement, key)) {
         settings.announcement[key] = String(announcement[key] || "").trim();

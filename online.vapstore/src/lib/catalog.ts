@@ -93,6 +93,7 @@ export interface StorefrontSettings {
     address: string;
   };
   announcement: {
+    enabled: boolean;
     primary: string;
     secondary: string;
   };
