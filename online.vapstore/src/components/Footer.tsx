@@ -37,6 +37,24 @@ export function Footer() {
     { to: "/privacy" as const, label: t("footer.privacy") },
     { to: "/shipping-returns" as const, label: t("footer.shippingReturns") },
   ];
+  const business = [
+    settings.business.tradingName && {
+      label: t("footer.tradingName", { defaultValue: "Trading name" }),
+      value: settings.business.tradingName,
+    },
+    settings.business.legalName && {
+      label: t("footer.legalName", { defaultValue: "Legal name" }),
+      value: settings.business.legalName,
+    },
+    settings.business.companyNumber && {
+      label: t("footer.companyNumber", { defaultValue: "Company no." }),
+      value: settings.business.companyNumber,
+    },
+    settings.business.vatNumber && {
+      label: t("footer.vatNumber", { defaultValue: "VAT no." }),
+      value: settings.business.vatNumber,
+    },
+  ].filter(Boolean) as { label: string; value: string }[];
 
   return (
     <footer className="mt-16 overflow-hidden bg-black text-white">
@@ -68,9 +86,11 @@ export function Footer() {
               {t("footer.submit")}
             </button>
           </form>
-          <p className="mt-6 max-w-lg text-sm leading-7 text-white/55">
-            {t("footer.description")}
-          </p>
+          {(settings.footer.description || t("footer.description")) && (
+            <p className="mt-6 max-w-lg text-sm leading-7 text-white/55">
+              {settings.footer.description || t("footer.description")}
+            </p>
+          )}
 
           {social.length > 0 && (
             <div className="mt-10">
@@ -144,6 +164,23 @@ export function Footer() {
               </a>
             )}
           </div>
+          {business.length > 0 && (
+            <div className="mt-10 border-t border-white/15 pt-8">
+              <FooterHeading>
+                {t("footer.businessLegal", { defaultValue: "Business & legal" })}
+              </FooterHeading>
+              <dl className="mt-6 space-y-3 text-sm">
+                {business.map((item) => (
+                  <div key={item.label} className="grid gap-1">
+                    <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
+                      {item.label}
+                    </dt>
+                    <dd className="text-white/80">{item.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
         </div>
       </div>
 
