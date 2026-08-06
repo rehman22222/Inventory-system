@@ -2,18 +2,18 @@ import {
   useEffect,
   useRef,
   useState,
-  type FormEvent,
   type KeyboardEvent,
   type ReactNode,
+  type TouchEvent,
+  type WheelEvent,
 } from "react";
-import { ArrowRight, ShieldCheck } from "lucide-react";
+import { ShieldCheck, X } from "lucide-react";
 import logo from "@/assets/logo-cop.png";
 import { getCookie, setSessionCookie } from "@/lib/cookies";
 import { getSessionId } from "@/lib/session";
 
-// Consent lives in a first-party cookie tied to the visitor's session id, and
-// both expire when the browser session closes, so age is confirmed once per
-// browser session.
+// Consent lives in a first-party cookie tied to the visitor's session id. It
+// expires with the browser session, so age is confirmed once per visit.
 const CONSENT_COOKIE = "cop_age_ok";
 
 function hasValidConsent(sessionId: string) {
@@ -22,13 +22,10 @@ function hasValidConsent(sessionId: string) {
 
 export function AgeGate({ children }: { children: ReactNode }) {
   const [accepted, setAccepted] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const checkboxRef = useRef<HTMLInputElement>(null);
+  const touchY = useRef<number | null>(null);
 
   useEffect(() => {
-    // Ensure a session id exists (creates the cookie on first visit), then skip
-    // the gate if this session already confirmed 18+ within the last 24h.
     const sid = getSessionId();
     if (hasValidConsent(sid)) setAccepted(true);
   }, []);
@@ -36,15 +33,14 @@ export function AgeGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (accepted) return;
 
-    const previousOverflow = document.body.style.overflow;
     const previousFocus =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    document.body.style.overflow = "hidden";
-    const focusFrame = window.requestAnimationFrame(() => checkboxRef.current?.focus());
+    const focusFrame = window.requestAnimationFrame(() =>
+      dialogRef.current?.querySelector<HTMLButtonElement>("button")?.focus(),
+    );
 
     return () => {
       window.cancelAnimationFrame(focusFrame);
-      document.body.style.overflow = previousOverflow;
       previousFocus?.focus();
     };
   }, [accepted]);
@@ -58,7 +54,7 @@ export function AgeGate({ children }: { children: ReactNode }) {
 
     const focusable = Array.from(
       dialogRef.current.querySelectorAll<HTMLElement>(
-        'input:not([disabled]), button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+        'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
       ),
     );
     if (focusable.length === 0) return;
@@ -74,14 +70,34 @@ export function AgeGate({ children }: { children: ReactNode }) {
     }
   };
 
-  const acceptAge = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!confirmed) return;
-
-    // Bind the consent to the current browser session id.
+  const acceptAge = () => {
     const sid = getSessionId();
     setSessionCookie(CONSENT_COOKIE, sid);
     setAccepted(true);
+  };
+
+  const scrollBackground = (deltaY: number) => {
+    window.scrollBy({ top: deltaY, behavior: "auto" });
+  };
+
+  const handleBackdropWheel = (event: WheelEvent<HTMLDivElement>) => {
+    if (dialogRef.current?.contains(event.target as Node)) return;
+    event.preventDefault();
+    scrollBackground(event.deltaY);
+  };
+
+  const handleBackdropTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    if (dialogRef.current?.contains(event.target as Node)) return;
+    touchY.current = event.touches[0]?.clientY ?? null;
+  };
+
+  const handleBackdropTouchMove = (event: TouchEvent<HTMLDivElement>) => {
+    if (dialogRef.current?.contains(event.target as Node)) return;
+    const currentY = event.touches[0]?.clientY ?? null;
+    if (currentY == null || touchY.current == null) return;
+    event.preventDefault();
+    scrollBackground(touchY.current - currentY);
+    touchY.current = currentY;
   };
 
   return (
@@ -90,8 +106,11 @@ export function AgeGate({ children }: { children: ReactNode }) {
 
       {!accepted && (
         <div
-          className="fixed inset-0 z-[100] grid min-h-[100dvh] place-items-center overflow-y-auto bg-ink px-4 py-6 text-primary-foreground sm:px-6"
+          className="fixed inset-0 z-[100] grid min-h-[100dvh] place-items-center overflow-y-auto bg-ink/55 px-4 py-6 text-primary-foreground backdrop-blur-[2px] sm:px-6"
           role="presentation"
+          onWheel={handleBackdropWheel}
+          onTouchStart={handleBackdropTouchStart}
+          onTouchMove={handleBackdropTouchMove}
         >
           <div
             ref={dialogRef}
@@ -100,7 +119,7 @@ export function AgeGate({ children }: { children: ReactNode }) {
             aria-labelledby="age-gate-title"
             aria-describedby="age-gate-description"
             onKeyDown={keepFocusInside}
-            className="relative w-full max-w-xl overflow-hidden border border-primary-foreground/20 bg-background text-foreground shadow-[0_28px_100px_rgba(0,0,0,0.45)]"
+            className="pointer-events-auto relative w-full max-w-xl overflow-hidden border border-primary-foreground/20 bg-background text-foreground shadow-[0_28px_100px_rgba(0,0,0,0.45)]"
           >
             <div className="grid gap-0 sm:grid-cols-[9rem_1fr]">
               <div className="flex items-center justify-center border-b hair bg-accent p-5 sm:border-b-0 sm:border-r">
@@ -131,37 +150,25 @@ export function AgeGate({ children }: { children: ReactNode }) {
                   age-restricted products.
                 </p>
 
-                <form onSubmit={acceptAge} className="mt-6">
-                  <label className="flex cursor-pointer items-start gap-3 border hair bg-surface p-4">
-                    <input
-                      ref={checkboxRef}
-                      type="checkbox"
-                      checked={confirmed}
-                      onChange={(event) => setConfirmed(event.target.checked)}
-                      className="mt-0.5 h-4 w-4 shrink-0 accent-black"
-                      required
-                    />
-                    <span className="text-sm font-medium leading-5">
-                      I confirm that I am 18 years of age or older.
-                    </span>
-                  </label>
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
                   <button
-                    type="submit"
-                    disabled={!confirmed}
-                    className="mt-3 inline-flex w-full items-center justify-center gap-2 border border-ink bg-ink px-5 py-3.5 font-display text-xs uppercase tracking-[0.1em] text-primary-foreground transition-colors enabled:hover:border-accent enabled:hover:bg-accent enabled:hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                    type="button"
+                    onClick={acceptAge}
+                    className="inline-flex items-center justify-center border border-ink bg-ink px-5 py-3.5 font-display text-xs uppercase tracking-[0.1em] text-primary-foreground transition-colors hover:border-accent hover:bg-accent hover:text-accent-foreground"
                   >
-                    Enter store
-                    <ArrowRight className="h-4 w-4" />
+                    Yes, I am 18+
                   </button>
-                </form>
-
-                <div className="mt-4 flex flex-col gap-2 text-xs text-ink-muted sm:flex-row sm:items-center sm:justify-between">
                   <a
                     href="https://www.google.com/"
-                    className="underline underline-offset-4 transition-colors hover:text-foreground"
+                    className="inline-flex items-center justify-center gap-2 border border-line bg-surface px-5 py-3.5 font-display text-xs uppercase tracking-[0.1em] text-ink transition-colors hover:bg-ink hover:text-primary-foreground"
                   >
-                    I am under 18 — leave this site
+                    <X className="h-4 w-4" />
+                    No, leave site
                   </a>
+                </div>
+
+                <div className="mt-4 flex flex-col gap-2 text-xs text-ink-muted sm:flex-row sm:items-center sm:justify-between">
+                  <span>Background remains visible and scrollable.</span>
                   <span>Remembered for this browser session</span>
                 </div>
               </div>

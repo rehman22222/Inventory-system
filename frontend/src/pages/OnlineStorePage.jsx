@@ -6,6 +6,7 @@ import {
   FiBarChart2,
   FiDownloadCloud,
   FiEdit2,
+  FiAlertTriangle,
   FiExternalLink,
   FiGlobe,
   FiGrid,
@@ -76,6 +77,7 @@ const TABS = [
   { id: "promotions", label: "Vouchers", icon: FiTag },
   { id: "orders", label: "Orders", icon: FiShoppingCart },
   { id: "newsletter", label: "Emails for newsletter", icon: FiMail },
+  { id: "emergency-alert", label: "Emergency alert", icon: FiAlertTriangle },
   { id: "reviews", label: "Reviews", icon: FiStar },
   { id: "settings", label: "Settings", icon: FiSettings },
 ];
@@ -165,6 +167,8 @@ export default function OnlineStorePage() {
       dispatch(getOnlineOrders());
     } else if (tab === "newsletter") {
       dispatch(getNewsletterSubscribers());
+      dispatch(getOnlineSettings());
+    } else if (tab === "emergency-alert") {
       dispatch(getOnlineSettings());
     } else if (tab === "reviews") {
       dispatch(getOnlineReviews());
@@ -266,6 +270,12 @@ export default function OnlineStorePage() {
       {tab === "newsletter" && (
         <NewsletterEmails
           subscribers={online.newsletterSubscribers}
+          settings={online.settings}
+          isActing={online.isActing}
+        />
+      )}
+      {tab === "emergency-alert" && (
+        <EmergencyAlertSettings
           settings={online.settings}
           isActing={online.isActing}
         />
@@ -2012,7 +2022,7 @@ function HeroSlides({ slides, listings, categories }) {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[390px_1fr]">
+    <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,390px)_minmax(0,1fr)]">
       <form
         onSubmit={save}
         className="h-fit space-y-3 rounded-xl border bg-base-100 p-4"
@@ -2042,7 +2052,7 @@ function HeroSlides({ slides, listings, categories }) {
           value={draft.image}
           onChange={(event) => set("image", event.target.value)}
         />
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2 sm:grid-cols-2">
           <input
             className="input input-sm input-bordered"
             placeholder="Button label"
@@ -2113,7 +2123,7 @@ function HeroSlides({ slides, listings, categories }) {
             ))}
           </select>
         )}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-2 sm:grid-cols-2">
           <select
             className="select select-sm select-bordered"
             value={draft.tone}
@@ -2139,7 +2149,7 @@ function HeroSlides({ slides, listings, categories }) {
         {slides.map((slide) => (
           <article
             key={slide._id}
-            className="flex items-start justify-between gap-4 rounded-xl border bg-base-100 p-4"
+            className="grid min-w-0 gap-4 rounded-xl border bg-base-100 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
           >
             <div className="min-w-0">
               <div className="text-xs uppercase text-base-content/50">
@@ -2161,7 +2171,7 @@ function HeroSlides({ slides, listings, categories }) {
                 </span>
               </div>
             </div>
-            <div className="whitespace-nowrap">
+            <div className="flex flex-wrap justify-end gap-1 sm:whitespace-nowrap">
               <button
                 className="btn btn-ghost btn-xs"
                 onClick={() => edit(slide)}
@@ -3461,6 +3471,12 @@ const BLANK_SETTINGS = {
     address: "",
   },
   announcement: { primary: "", secondary: "" },
+  emergencyAlert: {
+    active: false,
+    title: "Website under maintenance",
+    message: "We are making a few improvements. Please check back shortly.",
+    tone: "maintenance",
+  },
   shipping: { flatRate: 4.99, freeThreshold: 100 },
   promises: {
     dispatch: "Fast dispatch",
@@ -4136,6 +4152,120 @@ function NewsletterEmails({ subscribers, settings, isActing }) {
         </table>
       </div>
     </div>
+  );
+}
+
+function EmergencyAlertSettings({ settings, isActing }) {
+  const dispatch = useDispatch();
+  const [draft, setDraft] = useState(BLANK_SETTINGS.emergencyAlert);
+
+  useEffect(() => {
+    setDraft({
+      ...BLANK_SETTINGS.emergencyAlert,
+      ...(settings?.emergencyAlert || {}),
+    });
+  }, [settings]);
+
+  const set = (key, value) =>
+    setDraft((current) => ({ ...current, [key]: value }));
+
+  const save = async (event) => {
+    event.preventDefault();
+    const result = await dispatch(saveOnlineSettings({ emergencyAlert: draft }));
+    result.error
+      ? toast.error(result.payload || "Could not save emergency alert")
+      : toast.success("Emergency alert saved");
+  };
+
+  return (
+    <form onSubmit={save} className="space-y-4">
+      <section className="rounded-xl border bg-base-100 p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h3 className="font-display text-lg font-bold">Emergency alert</h3>
+            <p className="max-w-2xl text-xs leading-relaxed text-base-content/50">
+              Use this for maintenance, urgent notices, delivery delays or any
+              temporary message that must show across the storefront.
+            </p>
+          </div>
+          <label className="flex items-center gap-3 rounded-full bg-base-200 px-4 py-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              className="toggle toggle-sm"
+              checked={!!draft.active}
+              onChange={(event) => set("active", event.target.checked)}
+            />
+            {draft.active ? "Active" : "Inactive"}
+          </label>
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-3">
+            <Field label="Alert title">
+              <input
+                className="input input-sm input-bordered w-full"
+                maxLength={120}
+                value={draft.title}
+                placeholder="Website under maintenance"
+                onChange={(event) => set("title", event.target.value)}
+              />
+            </Field>
+            <Field label="Alert message">
+              <textarea
+                className="textarea textarea-bordered min-h-28 w-full"
+                maxLength={500}
+                value={draft.message}
+                placeholder="We are updating the website. Please check back shortly."
+                onChange={(event) => set("message", event.target.value)}
+              />
+            </Field>
+            <Field label="Alert style">
+              <select
+                className="select select-sm select-bordered w-full"
+                value={draft.tone}
+                onChange={(event) => set("tone", event.target.value)}
+              >
+                <option value="maintenance">Maintenance yellow</option>
+                <option value="warning">Red warning</option>
+                <option value="info">Clean info</option>
+              </select>
+            </Field>
+          </div>
+
+          <div className="rounded-2xl border bg-base-200 p-4">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-base-content/50">
+              Storefront preview
+            </div>
+            <div
+              className={`rounded-2xl border p-4 shadow-lg ${
+                draft.tone === "warning"
+                  ? "border-red-300 bg-red-50 text-red-950"
+                  : draft.tone === "info"
+                    ? "border-sky-200 bg-sky-50 text-sky-950"
+                    : "border-yellow-300 bg-yellow-100 text-yellow-950"
+              }`}
+            >
+              <div className="text-[10px] font-bold uppercase tracking-[0.22em] opacity-70">
+                {draft.active ? "Live alert" : "Hidden until activated"}
+              </div>
+              <div className="mt-2 font-display text-2xl leading-none">
+                {draft.title || "Website under maintenance"}
+              </div>
+              <p className="mt-3 text-sm leading-6 opacity-80">
+                {draft.message ||
+                  "We are making a few improvements. Please check back shortly."}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="flex justify-end">
+        <button className="btn btn-primary gap-2" disabled={isActing}>
+          <FiSave /> Save emergency alert
+        </button>
+      </div>
+    </form>
   );
 }
 

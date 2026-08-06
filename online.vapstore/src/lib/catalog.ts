@@ -96,6 +96,12 @@ export interface StorefrontSettings {
     primary: string;
     secondary: string;
   };
+  emergencyAlert: {
+    active: boolean;
+    title: string;
+    message: string;
+    tone: "maintenance" | "warning" | "info";
+  };
   /** Checkout shipping, set by the shop owner in admin. */
   shipping: {
     flatRate: number;

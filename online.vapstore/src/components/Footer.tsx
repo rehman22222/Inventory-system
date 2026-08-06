@@ -67,12 +67,19 @@ export function Footer() {
     try {
       const result = await subscribeNewsletter({ data: { email } });
       setNewsletterState("done");
-      setNewsletterMessage(result.message || t("footer.newsletterSuccess"));
+      setNewsletterMessage(
+        result.message ||
+          t("footer.newsletterSuccess", { defaultValue: "Thanks — you're subscribed." }),
+      );
       setEmail("");
     } catch (error) {
       setNewsletterState("error");
       setNewsletterMessage(
-        error instanceof Error ? error.message : t("footer.newsletterError"),
+        error instanceof Error
+          ? error.message
+          : t("footer.newsletterError", {
+              defaultValue: "Could not subscribe. Please try again.",
+            }),
       );
     }
   };
@@ -110,7 +117,9 @@ export function Footer() {
               disabled={newsletterState === "saving"}
               className="px-5 font-mono text-[11px] uppercase tracking-[0.16em] text-white/65 transition-colors hover:text-accent"
             >
-              {newsletterState === "saving" ? t("footer.submitting") : t("footer.submit")}
+              {newsletterState === "saving"
+                ? t("footer.submitting", { defaultValue: "Submitting" })
+                : t("footer.submit")}
             </button>
           </form>
           {newsletterMessage && (

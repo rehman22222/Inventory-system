@@ -10,31 +10,6 @@ import type {
 } from "./catalog";
 import { cldAuto, cldProductImage } from "./img";
 
-const FIRST_HERO_BANNER = "/hero/loom-ghost-blaze-banner.webp";
-const LOOM_HERO_SLIDE: HeroSlide = {
-  id: "loom-campaign",
-  linkType: "products",
-  linked: true,
-  eyebrow: "",
-  titleTop: "",
-  titleItalic: "",
-  titleBadge: "",
-  titleBottom: "",
-  copy: "",
-  ctaPrimary: {
-    label: "Shop Loom products",
-    to: "/shop",
-    params: {},
-    search: { q: "loom" },
-  },
-  ctaSecondary: { label: "", to: "/shop", params: {} },
-  image: FIRST_HERO_BANNER,
-  imageAlt: "Loom and Ghost Blaze product campaign banner",
-  burst: { top: "", big: "", bottom: "" },
-  tone: "ink",
-  product: null,
-};
-
 const defaultStorefrontSettings: StorefrontSettings = {
   social: { instagram: "", facebook: "", twitter: "", tiktok: "" },
   footer: {
@@ -47,6 +22,12 @@ const defaultStorefrontSettings: StorefrontSettings = {
   announcement: {
     primary: "Free shipping over {free} · {dispatch}",
     secondary: "18+ only · Nicotine warning",
+  },
+  emergencyAlert: {
+    active: false,
+    title: "Website under maintenance",
+    message: "We are making a few improvements. Please check back shortly.",
+    tone: "maintenance",
   },
   shipping: { flatRate: 4.99, freeThreshold: 100 },
   promises: {
@@ -309,6 +290,10 @@ const mergeSettings = (settings?: StorefrontSettings): StorefrontSettings => {
       ...defaultStorefrontSettings.announcement,
       ...(settings?.announcement || {}),
     },
+    emergencyAlert: {
+      ...defaultStorefrontSettings.emergencyAlert,
+      ...(settings?.emergencyAlert || {}),
+    },
     shipping: {
       ...defaultStorefrontSettings.shipping,
       ...(settings?.shipping || {}),
@@ -376,7 +361,6 @@ export const getStorefront = createServerFn({ method: "GET" }).handler(
 
 export const getHero = createServerFn({ method: "GET" }).handler(async (): Promise<HeroSlide[]> => {
   const data = await get<{ slides: HeroSlide[] }>("/hero", { slides: [] });
-  if (!data.slides.length) return [LOOM_HERO_SLIDE];
   return data.slides.map((slide) => ({
     ...slide,
     image: cldAuto(slide.image),

@@ -1831,6 +1831,23 @@ module.exports.updateStoreSettings = async (req, res) => {
         settings.announcement[key] = String(announcement[key] || "").trim();
       }
     }
+    const emergencyAlert = req.body.emergencyAlert || {};
+    if (!settings.emergencyAlert) settings.emergencyAlert = {};
+    if (Object.prototype.hasOwnProperty.call(emergencyAlert, "active")) {
+      settings.emergencyAlert.active = Boolean(emergencyAlert.active);
+    }
+    for (const key of ["title", "message"]) {
+      if (Object.prototype.hasOwnProperty.call(emergencyAlert, key)) {
+        settings.emergencyAlert[key] = String(emergencyAlert[key] || "").trim();
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(emergencyAlert, "tone")) {
+      const tone = String(emergencyAlert.tone || "maintenance");
+      settings.emergencyAlert.tone = ["maintenance", "warning", "info"].includes(tone)
+        ? tone
+        : "maintenance";
+    }
+    settings.markModified("emergencyAlert");
     const shipping = req.body.shipping || {};
     if (!settings.shipping) settings.shipping = {};
     for (const key of ["flatRate", "freeThreshold"]) {
@@ -2588,6 +2605,7 @@ const publicStorefrontSettings = (settings) => ({
   social: settings.social,
   footer: settings.footer,
   announcement: settings.announcement,
+  emergencyAlert: settings.emergencyAlert,
   shipping: settings.shipping,
   promises: settings.promises,
   newThisWeek: settings.newThisWeek,

@@ -164,6 +164,26 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
         trim: true,
       },
     },
+    emergencyAlert: {
+      active: { type: Boolean, default: false },
+      title: {
+        type: String,
+        default: "Website under maintenance",
+        trim: true,
+        maxlength: 120,
+      },
+      message: {
+        type: String,
+        default: "We are making a few improvements. Please check back shortly.",
+        trim: true,
+        maxlength: 500,
+      },
+      tone: {
+        type: String,
+        enum: ["maintenance", "warning", "info"],
+        default: "maintenance",
+      },
+    },
     // Checkout shipping, set by the owner. `flatRate` is charged per order under
     // the free-shipping threshold; orders at or above `freeThreshold` ship free.
     shipping: {

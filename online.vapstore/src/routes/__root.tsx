@@ -17,6 +17,7 @@ import { getStorefront } from "../lib/catalog-api";
 import { AgeGate } from "../components/AgeGate";
 import { CookieConsent } from "../components/CookieConsent";
 import { FloatingHomeArrow } from "../components/FloatingHomeArrow";
+import { FloatingSearchButton } from "../components/FloatingSearchButton";
 
 function NotFoundComponent() {
   return (
@@ -145,6 +146,7 @@ function RootComponent() {
           <AgeGate>
             {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
             <Outlet />
+            <FloatingSearchButton />
             <FloatingHomeArrow />
             <CookieConsent />
           </AgeGate>

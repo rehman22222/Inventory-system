@@ -29,6 +29,12 @@ export const defaultStorefrontSettings: StorefrontSettings = {
     primary: "Free shipping over {free} · {dispatch}",
     secondary: "18+ only · Nicotine warning",
   },
+  emergencyAlert: {
+    active: false,
+    title: "Website under maintenance",
+    message: "We are making a few improvements. Please check back shortly.",
+    tone: "maintenance",
+  },
   shipping: { flatRate: 4.99, freeThreshold: 100 },
   promises: {
     dispatch: "Fast dispatch",
