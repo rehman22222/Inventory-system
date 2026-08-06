@@ -33,6 +33,7 @@ export const defaultStorefrontSettings: StorefrontSettings = {
     active: false,
     title: "Website under maintenance",
     message: "We are making a few improvements. Please check back shortly.",
+    buttonLabel: "Come back soon",
     tone: "maintenance",
   },
   shipping: { flatRate: 4.99, freeThreshold: 100 },

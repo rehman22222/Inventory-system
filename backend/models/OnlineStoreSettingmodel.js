@@ -178,6 +178,12 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
         trim: true,
         maxlength: 500,
       },
+      buttonLabel: {
+        type: String,
+        default: "Come back soon",
+        trim: true,
+        maxlength: 80,
+      },
       tone: {
         type: String,
         enum: ["maintenance", "warning", "info"],

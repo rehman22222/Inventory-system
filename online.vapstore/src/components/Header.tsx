@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import {
-  AlertTriangle,
   Search,
   ShoppingBag,
   Menu,
@@ -377,46 +376,7 @@ export function Header() {
           </div>
         </div>
       )}
-      <EmergencyAlertBar />
     </header>
-  );
-}
-
-function EmergencyAlertBar() {
-  const { settings } = useCatalog();
-  const alert = settings.emergencyAlert;
-  if (!alert?.active) return null;
-
-  const tone =
-    alert.tone === "warning"
-      ? "border-red-300 bg-red-50 text-red-950"
-      : alert.tone === "info"
-        ? "border-sky-200 bg-sky-50 text-sky-950"
-        : "border-yellow-300 bg-yellow-100 text-yellow-950";
-
-  return (
-    <div className={`border-t px-4 py-3 shadow-sm ${tone}`}>
-      <div className="container-x flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-black/10">
-            <AlertTriangle className="h-4 w-4" />
-          </span>
-          <div>
-            <div className="font-display text-sm uppercase tracking-wide">
-              {alert.title || "Website under maintenance"}
-            </div>
-            {alert.message && (
-              <p className="mt-1 max-w-4xl text-sm leading-5 opacity-80">
-                {alert.message}
-              </p>
-            )}
-          </div>
-        </div>
-        <span className="w-fit rounded-full bg-black/10 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em]">
-          Notice
-        </span>
-      </div>
-    </div>
   );
 }
 

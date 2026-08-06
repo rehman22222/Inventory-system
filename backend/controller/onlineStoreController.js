@@ -1836,7 +1836,7 @@ module.exports.updateStoreSettings = async (req, res) => {
     if (Object.prototype.hasOwnProperty.call(emergencyAlert, "active")) {
       settings.emergencyAlert.active = Boolean(emergencyAlert.active);
     }
-    for (const key of ["title", "message"]) {
+    for (const key of ["title", "message", "buttonLabel"]) {
       if (Object.prototype.hasOwnProperty.call(emergencyAlert, key)) {
         settings.emergencyAlert[key] = String(emergencyAlert[key] || "").trim();
       }

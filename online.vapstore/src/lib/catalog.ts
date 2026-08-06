@@ -100,6 +100,7 @@ export interface StorefrontSettings {
     active: boolean;
     title: string;
     message: string;
+    buttonLabel: string;
     tone: "maintenance" | "warning" | "info";
   };
   /** Checkout shipping, set by the shop owner in admin. */

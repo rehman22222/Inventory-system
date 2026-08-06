@@ -18,6 +18,7 @@ import { AgeGate } from "../components/AgeGate";
 import { CookieConsent } from "../components/CookieConsent";
 import { FloatingHomeArrow } from "../components/FloatingHomeArrow";
 import { FloatingSearchButton } from "../components/FloatingSearchButton";
+import { MaintenanceMode } from "../components/MaintenanceMode";
 
 function NotFoundComponent() {
   return (
@@ -138,18 +139,23 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const catalog = Route.useLoaderData();
+  const emergencyAlert = catalog.settings.emergencyAlert;
 
   return (
     <QueryClientProvider client={queryClient}>
       <CatalogProvider value={catalog}>
         <CartProvider>
-          <AgeGate>
-            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-            <Outlet />
-            <FloatingSearchButton />
-            <FloatingHomeArrow />
-            <CookieConsent />
-          </AgeGate>
+          {emergencyAlert?.active ? (
+            <MaintenanceMode alert={emergencyAlert} />
+          ) : (
+            <AgeGate>
+              {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+              <Outlet />
+              <FloatingSearchButton />
+              <FloatingHomeArrow />
+              <CookieConsent />
+            </AgeGate>
+          )}
         </CartProvider>
       </CatalogProvider>
     </QueryClientProvider>

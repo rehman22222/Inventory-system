@@ -3475,6 +3475,7 @@ const BLANK_SETTINGS = {
     active: false,
     title: "Website under maintenance",
     message: "We are making a few improvements. Please check back shortly.",
+    buttonLabel: "Come back soon",
     tone: "maintenance",
   },
   shipping: { flatRate: 4.99, freeThreshold: 100 },
@@ -4184,8 +4185,8 @@ function EmergencyAlertSettings({ settings, isActing }) {
           <div>
             <h3 className="font-display text-lg font-bold">Emergency alert</h3>
             <p className="max-w-2xl text-xs leading-relaxed text-base-content/50">
-              Use this for maintenance, urgent notices, delivery delays or any
-              temporary message that must show across the storefront.
+              When active, visitors see only the maintenance page across the
+              storefront. Turn it off to restore the normal shop.
             </p>
           </div>
           <label className="flex items-center gap-3 rounded-full bg-base-200 px-4 py-2 text-sm font-medium">
@@ -4217,6 +4218,15 @@ function EmergencyAlertSettings({ settings, isActing }) {
                 value={draft.message}
                 placeholder="We are updating the website. Please check back shortly."
                 onChange={(event) => set("message", event.target.value)}
+              />
+            </Field>
+            <Field label="Button label">
+              <input
+                className="input input-sm input-bordered w-full"
+                maxLength={80}
+                value={draft.buttonLabel}
+                placeholder="Come back soon"
+                onChange={(event) => set("buttonLabel", event.target.value)}
               />
             </Field>
             <Field label="Alert style">
@@ -4255,6 +4265,9 @@ function EmergencyAlertSettings({ settings, isActing }) {
                 {draft.message ||
                   "We are making a few improvements. Please check back shortly."}
               </p>
+              <div className="mt-4 inline-flex rounded-md bg-black/70 px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-white">
+                {draft.buttonLabel || "Come back soon"}
+              </div>
             </div>
           </div>
         </div>
