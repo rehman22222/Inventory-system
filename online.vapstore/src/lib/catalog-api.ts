@@ -38,6 +38,7 @@ const LOOM_HERO_SLIDE: HeroSlide = {
 const defaultStorefrontSettings: StorefrontSettings = {
   social: { instagram: "", facebook: "", twitter: "", tiktok: "" },
   footer: {
+    newsletterHeading: "Subscribe to our newsletters",
     description: "Premium vape products, trusted flavours and reliable service from CliffsOfPuff.",
     supportEmail: "",
     supportPhone: "",
@@ -481,6 +482,16 @@ export type ContactInput = z.infer<typeof contactSchema>;
 export const submitContactMessage = createServerFn({ method: "POST" })
   .validator((input: ContactInput) => contactSchema.parse(input))
   .handler(async ({ data }): Promise<{ message: string }> => post("/contact", data));
+
+const newsletterSchema = z.object({
+  email: z.string().trim().email().max(200),
+});
+
+export type NewsletterInput = z.infer<typeof newsletterSchema>;
+
+export const subscribeNewsletter = createServerFn({ method: "POST" })
+  .validator((input: NewsletterInput) => newsletterSchema.parse(input))
+  .handler(async ({ data }): Promise<{ message: string }> => post("/newsletter", data));
 
 /* ── Reviews ───────────────────────────────────────────────────────────────*/
 

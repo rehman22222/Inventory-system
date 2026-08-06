@@ -30,7 +30,7 @@ export function LanguageSwitcher() {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-label="Change language"
-        className="inline-flex items-center gap-1.5 text-primary-foreground/80 transition-colors hover:text-primary-foreground"
+        className="inline-flex items-center gap-1.5 text-current/80 transition-colors hover:text-current"
       >
         <Globe2 className="h-3.5 w-3.5" />
         <span className="font-mono text-[10px] uppercase tracking-widest">{current.short}</span>

@@ -19,6 +19,7 @@ interface CatalogValue {
 export const defaultStorefrontSettings: StorefrontSettings = {
   social: { instagram: "", facebook: "", twitter: "", tiktok: "" },
   footer: {
+    newsletterHeading: "Subscribe to our newsletters",
     description: "Premium vape products, trusted flavours and reliable service from CliffsOfPuff.",
     supportEmail: "",
     supportPhone: "",

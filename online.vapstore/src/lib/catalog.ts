@@ -86,6 +86,7 @@ export interface StorefrontSettings {
     tiktok: string;
   };
   footer: {
+    newsletterHeading: string;
     description: string;
     supportEmail: string;
     supportPhone: string;

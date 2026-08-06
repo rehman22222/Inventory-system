@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Facebook, Instagram, Mail, MapPin, Phone } from "lucide-react";
 import { useCatalog } from "@/lib/catalog-context";
+import { subscribeNewsletter } from "@/lib/catalog-api";
 import logo from "@/assets/logo-cop.png";
 
 function XIcon({ className = "" }: { className?: string }) {
@@ -24,6 +25,9 @@ function TikTokIcon({ className = "" }: { className?: string }) {
 export function Footer() {
   const { t } = useTranslation();
   const { categories, settings } = useCatalog();
+  const [email, setEmail] = useState("");
+  const [newsletterState, setNewsletterState] = useState<"idle" | "saving" | "done" | "error">("idle");
+  const [newsletterMessage, setNewsletterMessage] = useState("");
   const year = new Date().getFullYear();
   const social = [
     { key: "instagram", label: "Instagram", href: settings.social.instagram, Icon: Instagram },
@@ -56,6 +60,23 @@ export function Footer() {
     },
   ].filter(Boolean) as { label: string; value: string }[];
 
+  const submitNewsletter = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setNewsletterState("saving");
+    setNewsletterMessage("");
+    try {
+      const result = await subscribeNewsletter({ data: { email } });
+      setNewsletterState("done");
+      setNewsletterMessage(result.message || t("footer.newsletterSuccess"));
+      setEmail("");
+    } catch (error) {
+      setNewsletterState("error");
+      setNewsletterMessage(
+        error instanceof Error ? error.message : t("footer.newsletterError"),
+      );
+    }
+  };
+
   return (
     <footer className="mt-16 overflow-hidden bg-black text-white">
       <div className="container-x grid gap-12 py-14 md:grid-cols-[1.4fr_1fr_1fr] lg:gap-16 lg:py-20">
@@ -68,24 +89,39 @@ export function Footer() {
               loading="lazy"
             />
           </Link>
-          <FooterHeading>{t("footer.newsletter")}</FooterHeading>
-          <form className="mt-8 flex border border-white/55">
+          <FooterHeading>
+            {settings.footer.newsletterHeading || t("footer.newsletter")}
+          </FooterHeading>
+          <form className="mt-8 flex border border-white/55" onSubmit={submitNewsletter}>
             <label className="sr-only" htmlFor="footer-email">
               {t("footer.emailLabel")}
             </label>
             <input
               id="footer-email"
               type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
               placeholder={t("footer.emailPlaceholder")}
+              required
               className="min-w-0 flex-1 bg-white/12 px-5 py-4 text-sm text-white outline-none placeholder:text-white/45"
             />
             <button
-              type="button"
+              type="submit"
+              disabled={newsletterState === "saving"}
               className="px-5 font-mono text-[11px] uppercase tracking-[0.16em] text-white/65 transition-colors hover:text-accent"
             >
-              {t("footer.submit")}
+              {newsletterState === "saving" ? t("footer.submitting") : t("footer.submit")}
             </button>
           </form>
+          {newsletterMessage && (
+            <p
+              className={`mt-3 text-xs ${
+                newsletterState === "error" ? "text-red-300" : "text-accent"
+              }`}
+            >
+              {newsletterMessage}
+            </p>
+          )}
           {(settings.footer.description || t("footer.description")) && (
             <p className="mt-6 max-w-lg text-sm leading-7 text-white/55">
               {settings.footer.description || t("footer.description")}

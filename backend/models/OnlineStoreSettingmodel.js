@@ -134,6 +134,12 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
       tiktok: { type: String, default: "", trim: true },
     },
     footer: {
+      newsletterHeading: {
+        type: String,
+        default: "Subscribe to our newsletters",
+        trim: true,
+        maxlength: 120,
+      },
       description: {
         type: String,
         default:

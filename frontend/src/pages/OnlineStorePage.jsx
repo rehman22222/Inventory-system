@@ -10,6 +10,7 @@ import {
   FiGlobe,
   FiGrid,
   FiImage,
+  FiMail,
   FiPlus,
   FiPercent,
   FiRefreshCw,
@@ -49,12 +50,14 @@ import {
   getOnlineSettings,
   getOnlineSummary,
   getOnlineVouchers,
+  getNewsletterSubscribers,
   importInventoryCategories,
   saveOnlineListing,
   saveOnlineSettings,
   saveOnlineVoucher,
   searchInventoryProducts,
   setOrderStatus,
+  downloadOnlineReport,
   toggleOnlineListing,
   updateHeroSlide,
   updateOnlineCategory,
@@ -72,6 +75,7 @@ const TABS = [
   { id: "deals", label: "Deals", icon: FiPercent },
   { id: "promotions", label: "Vouchers", icon: FiTag },
   { id: "orders", label: "Orders", icon: FiShoppingCart },
+  { id: "newsletter", label: "Emails for newsletter", icon: FiMail },
   { id: "reviews", label: "Reviews", icon: FiStar },
   { id: "settings", label: "Settings", icon: FiSettings },
 ];
@@ -112,6 +116,7 @@ export default function OnlineStorePage() {
     dispatch(getOnlineVouchers());
     dispatch(getOnlineSettings());
     dispatch(getOnlineOrders());
+    dispatch(getNewsletterSubscribers());
     dispatch(getOnlineReviews());
     dispatch(gettingallCategory());
     setLoadedTabs(
@@ -158,6 +163,9 @@ export default function OnlineStorePage() {
       dispatch(getOnlineCategories());
     } else if (tab === "orders") {
       dispatch(getOnlineOrders());
+    } else if (tab === "newsletter") {
+      dispatch(getNewsletterSubscribers());
+      dispatch(getOnlineSettings());
     } else if (tab === "reviews") {
       dispatch(getOnlineReviews());
     } else if (tab === "settings") {
@@ -254,6 +262,13 @@ export default function OnlineStorePage() {
       )}
       {tab === "orders" && (
         <Orders orders={online.orders} isActing={online.isActing} />
+      )}
+      {tab === "newsletter" && (
+        <NewsletterEmails
+          subscribers={online.newsletterSubscribers}
+          settings={online.settings}
+          isActing={online.isActing}
+        />
       )}
       {tab === "reviews" && (
         <Reviews reviews={online.reviews} isActing={online.isActing} />
@@ -3438,7 +3453,13 @@ function Promotions({ vouchers, listings, categories, isActing }) {
 const BLANK_SETTINGS = {
   logo: "",
   social: { instagram: "", facebook: "", twitter: "", tiktok: "" },
-  footer: { description: "", supportEmail: "", supportPhone: "", address: "" },
+  footer: {
+    newsletterHeading: "Subscribe to our newsletters",
+    description: "",
+    supportEmail: "",
+    supportPhone: "",
+    address: "",
+  },
   announcement: { primary: "", secondary: "" },
   shipping: { flatRate: 4.99, freeThreshold: 100 },
   promises: {
@@ -3858,6 +3879,17 @@ const orderLineAmount = (item) => {
 
 function Orders({ orders, isActing }) {
   const dispatch = useDispatch();
+  const downloadReport = async () => {
+    const result = await dispatch(
+      downloadOnlineReport({
+        type: "orders",
+        filename: `online-orders-${new Date().toISOString().slice(0, 10)}.csv`,
+      }),
+    );
+    result.error
+      ? toast.error(result.payload || "Could not download orders report")
+      : toast.success("Orders report downloaded");
+  };
   const setStatus = async (order, status) => {
     const result = await dispatch(setOrderStatus({ id: order._id, status }));
     result.error
@@ -3865,8 +3897,18 @@ function Orders({ orders, isActing }) {
       : toast.success(`Order marked ${status}`);
   };
   return (
-    <div className="overflow-x-auto rounded-xl border bg-base-100">
-      <table className="table table-sm">
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          className="btn btn-sm btn-outline gap-2"
+          onClick={downloadReport}
+        >
+          <FiDownloadCloud /> Generate orders report
+        </button>
+      </div>
+      <div className="overflow-x-auto rounded-xl border bg-base-100">
+        <table className="table table-sm">
         <thead>
           <tr>
             <th>Order</th>
@@ -3981,7 +4023,118 @@ function Orders({ orders, isActing }) {
             </tr>
           )}
         </tbody>
-      </table>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function NewsletterEmails({ subscribers, settings, isActing }) {
+  const dispatch = useDispatch();
+  const [heading, setHeading] = useState("Subscribe to our newsletters");
+
+  useEffect(() => {
+    setHeading(
+      settings?.footer?.newsletterHeading || "Subscribe to our newsletters",
+    );
+  }, [settings]);
+
+  const saveHeading = async (event) => {
+    event.preventDefault();
+    const result = await dispatch(
+      saveOnlineSettings({
+        footer: {
+          ...(settings?.footer || {}),
+          newsletterHeading: heading,
+        },
+      }),
+    );
+    result.error
+      ? toast.error(result.payload || "Could not save newsletter heading")
+      : toast.success("Newsletter heading saved");
+  };
+
+  const downloadReport = async () => {
+    const result = await dispatch(
+      downloadOnlineReport({
+        type: "newsletter",
+        filename: `newsletter-emails-${new Date().toISOString().slice(0, 10)}.csv`,
+      }),
+    );
+    result.error
+      ? toast.error(result.payload || "Could not download newsletter report")
+      : toast.success("Newsletter report downloaded");
+  };
+
+  return (
+    <div className="space-y-4">
+      <form
+        onSubmit={saveHeading}
+        className="rounded-xl border bg-base-100 p-5"
+      >
+        <h3 className="font-display text-lg font-bold">
+          Newsletter footer text
+        </h3>
+        <p className="text-xs text-base-content/50">
+          This controls the heading above the email box in the storefront footer.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <input
+            className="input input-sm input-bordered min-w-[260px] flex-1"
+            value={heading}
+            maxLength={120}
+            onChange={(event) => setHeading(event.target.value)}
+          />
+          <button className="btn btn-sm btn-primary gap-2" disabled={isActing}>
+            <FiSave /> Save
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline gap-2"
+            onClick={downloadReport}
+          >
+            <FiDownloadCloud /> Generate report
+          </button>
+        </div>
+      </form>
+
+      <div className="overflow-x-auto rounded-xl border bg-base-100">
+        <table className="table table-sm">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Source</th>
+              <th>Status</th>
+              <th>Subscribed at</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(subscribers || []).map((subscriber) => (
+              <tr key={subscriber._id || subscriber.email}>
+                <td className="font-medium">{subscriber.email}</td>
+                <td>{subscriber.source || "footer"}</td>
+                <td>
+                  <span className="badge badge-sm">
+                    {subscriber.active === false ? "inactive" : "active"}
+                  </span>
+                </td>
+                <td>
+                  {subscriber.createdAt
+                    ? new Date(subscriber.createdAt).toLocaleString()
+                    : "—"}
+                </td>
+              </tr>
+            ))}
+            {!subscribers?.length && (
+              <tr>
+                <td colSpan={4} className="py-8 text-center text-base-content/50">
+                  No newsletter emails yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

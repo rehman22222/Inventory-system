@@ -20,8 +20,11 @@ const {
   updateHeroSlide,
   deleteHeroSlide,
   listOrders,
+  ordersReport,
   updateOrderStatus,
   salesSummary,
+  listNewsletterSubscribers,
+  newsletterReport,
   listReviews,
   updateReview,
   deleteReview,
@@ -36,6 +39,7 @@ const {
   storefrontHero,
   validateStorefrontVoucher,
   placeOrder,
+  subscribeNewsletter,
   submitContactMessage,
 } = require("../controller/onlineStoreController");
 const {
@@ -94,7 +98,11 @@ adminRouter.put("/hero/:id", updateHeroSlide);
 adminRouter.delete("/hero/:id", deleteHeroSlide);
 
 adminRouter.get("/orders", listOrders);
+adminRouter.get("/orders/report", ordersReport);
 adminRouter.patch("/orders/:id/status", updateOrderStatus);
+
+adminRouter.get("/newsletter", listNewsletterSubscribers);
+adminRouter.get("/newsletter/report", newsletterReport);
 
 adminRouter.get("/reviews", listReviews);
 adminRouter.patch("/reviews/:id", updateReview);
@@ -144,6 +152,7 @@ storefrontRouter.post("/reviews", submitStorefrontReview);
 storefrontRouter.get("/hero", storefrontHero);
 storefrontRouter.post("/vouchers/validate", validateStorefrontVoucher);
 storefrontRouter.post("/orders", placeOrder);
+storefrontRouter.post("/newsletter", subscribeNewsletter);
 storefrontRouter.post("/contact", submitContactMessage);
 
 module.exports = { adminRouter, storefrontRouter };

@@ -335,6 +335,45 @@ export const saveOnlineSettings = createAsyncThunk(
 );
 
 // ── Hero slides ─────────────────────────────────────────────────────────────
+export const getNewsletterSubscribers = createAsyncThunk(
+  "online/newsletter/get",
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await axiosInstance.get("online/newsletter");
+      return data.subscribers || [];
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not load newsletter emails"));
+    }
+  },
+);
+
+export const downloadOnlineReport = createAsyncThunk(
+  "online/report/download",
+  async ({ type, filename }, { rejectWithValue }) => {
+    try {
+      const endpoint =
+        type === "newsletter" ? "online/newsletter/report" : "online/orders/report";
+      const { data, headers } = await axiosInstance.get(endpoint, {
+        responseType: "blob",
+      });
+      const blob = new Blob([data], {
+        type: headers["content-type"] || "text/csv;charset=utf-8",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename || `${type || "online"}-report.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      return type;
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not download report"));
+    }
+  },
+);
+
 export const getHeroSlides = createAsyncThunk(
   "online/hero/get",
   async (_, { rejectWithValue }) => {
@@ -420,6 +459,7 @@ const initialState = {
   slides: [],
   vouchers: [],
   settings: null,
+  newsletterSubscribers: [],
   orders: [],
   pendingOrders: 0,
   reviews: [],
@@ -592,6 +632,9 @@ const onlineStoreSlice = createSlice({
       })
       .addCase(saveOnlineSettings.rejected, (s) => {
         s.isActing = false;
+      })
+      .addCase(getNewsletterSubscribers.fulfilled, (s, a) => {
+        s.newsletterSubscribers = a.payload;
       })
 
       // Hero

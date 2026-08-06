@@ -4,6 +4,7 @@ const OnlineCategory = require("../models/OnlineCategorymodel");
 const OnlineListing = require("../models/OnlineListingmodel");
 const OnlineHeroSlide = require("../models/OnlineHeroSlidemodel");
 const OnlineOrder = require("../models/OnlineOrdermodel");
+const OnlineNewsletterSubscriber = require("../models/OnlineNewsletterSubscribermodel");
 const OnlineVoucher = require("../models/OnlineVouchermodel");
 const OnlineStoreSetting = require("../models/OnlineStoreSettingmodel");
 const OnlineReview = require("../models/OnlineReviewmodel");
@@ -21,6 +22,20 @@ const { sendMail, brandedHtml, esc } = require("../libs/mailer");
 const money = (value) => Math.round(Number(value || 0) * 100) / 100;
 const FREE_SHIPPING_THRESHOLD = 100; // fallback default when settings unset
 const SHIPPING_FLAT = 4.99; // fallback default when settings unset
+
+const csvCell = (value) => {
+  const text = String(value ?? "");
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
+const sendCsv = (res, filename, headers, rows) => {
+  const csv = [
+    headers.map(csvCell).join(","),
+    ...rows.map((row) => row.map(csvCell).join(",")),
+  ].join("\r\n");
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  return res.status(200).send(`\uFEFF${csv}`);
+};
 
 // Human-facing order number: a branded prefix plus a 1000-based sequence, so
 // Branded, support-friendly reference: COP-2026-1001. The global atomic
@@ -1800,6 +1815,7 @@ module.exports.updateStoreSettings = async (req, res) => {
     }
     const footer = req.body.footer || {};
     for (const key of [
+      "newsletterHeading",
       "description",
       "supportEmail",
       "supportPhone",
@@ -2141,6 +2157,61 @@ module.exports.listOrders = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Could not load orders", error: error.message });
+  }
+};
+
+module.exports.ordersReport = async (req, res) => {
+  try {
+    const store = await storeId();
+    const filter = { store };
+    if (req.query.status) filter.status = req.query.status;
+    const orders = await OnlineOrder.find(filter)
+      .select(
+        "orderNo createdAt customer.name customer.email customer.phone items.name items.quantity items.lineTotal voucher.code subtotal shipping total payment.method payment.status status",
+      )
+      .sort({ createdAt: -1 })
+      .limit(5000)
+      .lean();
+    return sendCsv(
+      res,
+      `online-orders-${new Date().toISOString().slice(0, 10)}.csv`,
+      [
+        "Order no",
+        "Date",
+        "Customer",
+        "Email",
+        "Phone",
+        "Items",
+        "Subtotal",
+        "Shipping",
+        "Total",
+        "Voucher",
+        "Payment method",
+        "Payment status",
+        "Order status",
+      ],
+      orders.map((order) => [
+        order.orderNo,
+        order.createdAt ? new Date(order.createdAt).toISOString() : "",
+        order.customer?.name || "",
+        order.customer?.email || "",
+        order.customer?.phone || "",
+        (order.items || [])
+          .map((item) => `${item.name || "Product"} x${item.quantity || 0}`)
+          .join("; "),
+        money(order.subtotal),
+        money(order.shipping),
+        money(order.total),
+        order.voucher?.code || "",
+        order.payment?.method || "",
+        order.payment?.status || "",
+        order.status || "",
+      ]),
+    );
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Could not generate orders report", error: error.message });
   }
 };
 
@@ -2539,6 +2610,72 @@ module.exports.storefrontSettings = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Could not load store settings", error: error.message });
+  }
+};
+
+module.exports.subscribeNewsletter = async (req, res) => {
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: "Please enter a valid email address" });
+    }
+    const store = await storeId();
+    const subscriber = await OnlineNewsletterSubscriber.findOneAndUpdate(
+      { store, email },
+      { $set: { active: true, source: "footer" }, $setOnInsert: { store, email } },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    ).lean();
+    return res.status(201).json({
+      message: "Thanks — you're subscribed.",
+      subscriber: { email: subscriber.email, createdAt: subscriber.createdAt },
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(200).json({ message: "This email is already subscribed." });
+    }
+    return res
+      .status(500)
+      .json({ message: "Could not save newsletter email", error: error.message });
+  }
+};
+
+module.exports.listNewsletterSubscribers = async (_req, res) => {
+  try {
+    const store = await storeId();
+    const subscribers = await OnlineNewsletterSubscriber.find({ store })
+      .sort({ createdAt: -1 })
+      .limit(5000)
+      .lean();
+    return res.status(200).json({ subscribers });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Could not load newsletter emails", error: error.message });
+  }
+};
+
+module.exports.newsletterReport = async (_req, res) => {
+  try {
+    const store = await storeId();
+    const subscribers = await OnlineNewsletterSubscriber.find({ store })
+      .sort({ createdAt: -1 })
+      .limit(5000)
+      .lean();
+    return sendCsv(
+      res,
+      `newsletter-emails-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Email", "Source", "Status", "Subscribed at"],
+      subscribers.map((subscriber) => [
+        subscriber.email,
+        subscriber.source || "footer",
+        subscriber.active ? "active" : "inactive",
+        subscriber.createdAt ? new Date(subscriber.createdAt).toISOString() : "",
+      ]),
+    );
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Could not generate newsletter report", error: error.message });
   }
 };
 

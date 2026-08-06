@@ -6,6 +6,7 @@ import {
   productsByCategory,
   topLevelCategories,
   childCategories,
+  fillTokens,
   type Category,
   type CategorySlug,
 } from "@/lib/catalog";
@@ -110,6 +111,15 @@ export function Header() {
 
   const visibleCategories = topLevel.slice(0, visibleCount);
   const overflowCategories = topLevel.slice(visibleCount);
+  const announcementPrimary = fillTokens(
+    settings.announcement.primary || t("announcement.primary"),
+    settings,
+  );
+  const announcementSecondary =
+    settings.announcement.secondary || t("announcement.secondary");
+  const ticker = [announcementPrimary, announcementSecondary]
+    .filter(Boolean)
+    .join("   •   ");
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -130,16 +140,22 @@ export function Header() {
     >
       {/* Announcement */}
       <div className="bg-ink text-primary-foreground">
-        <div className="container-x flex h-9 items-center justify-between gap-3 text-[11px] font-mono uppercase tracking-widest">
-          <span>
+        <div className="h-9 overflow-hidden border-b border-white/10 text-[11px] font-mono uppercase tracking-widest">
+          <div className="marquee-track flex h-full items-center whitespace-nowrap">
+            {[0, 1, 2, 3].map((item) => (
+              <span key={item} className="mx-10 inline-flex shrink-0">
+                {ticker}
+              </span>
+            ))}
+          </div>
+          <span className="hidden">
             {t("announcement.primary", {
               free: `€${settings.shipping.freeThreshold}`,
               dispatch: t("announcement.dispatch"),
             })}
           </span>
-          <div className="flex items-center gap-3">
+          <div className="hidden">
             <span className="hidden md:inline">{t("announcement.secondary")}</span>
-            <LanguageSwitcher />
           </div>
         </div>
       </div>
@@ -187,6 +203,9 @@ export function Header() {
         </form>
 
         <nav className="col-start-3 flex items-center justify-end gap-2 justify-self-end">
+          <div className="hidden text-ink sm:block">
+            <LanguageSwitcher />
+          </div>
           <button
             aria-label={t("nav.search")}
             className="lg:hidden p-2"
