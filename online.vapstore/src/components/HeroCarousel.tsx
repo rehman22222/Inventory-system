@@ -139,7 +139,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
               style={{ width: `${100 / n}%` }}
               aria-hidden={slideIndex !== index}
             >
-              <div className="relative aspect-[16/9] w-full overflow-hidden bg-black md:aspect-[14/5]">
+              <div className="relative aspect-[16/9] w-full overflow-hidden bg-black md:aspect-[8/3]">
                 <img
                   src={slide.image}
                   alt={slide.imageAlt || t("hero.promoAlt")}
@@ -147,7 +147,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                   loading={slideIndex === 0 ? "eager" : "lazy"}
                   decoding="async"
                   sizes="100vw"
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain"
                 />
                 {slide.linked && (
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent p-4 md:p-8">
