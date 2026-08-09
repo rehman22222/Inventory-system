@@ -366,6 +366,7 @@ export const getHero = createServerFn({ method: "GET" }).handler(async (): Promi
   return data.slides.map((slide) => ({
     ...slide,
     image: cldAuto(slide.image),
+    mobileImage: slide.mobileImage ? cldAuto(slide.mobileImage) : "",
   }));
 });
 

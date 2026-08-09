@@ -192,6 +192,7 @@ export interface HeroSlide {
   } | null;
   ctaSecondary: { label: string; to: string; params?: Record<string, string> };
   image: string;
+  mobileImage?: string;
   imageAlt: string;
   burst: { top: string; big: string; bottom: string };
   tone: "cream" | "ink" | "accent";

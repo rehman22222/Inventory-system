@@ -1930,6 +1930,7 @@ const BLANK_SLIDE = {
   copy: "",
   tone: "ink",
   image: "",
+  mobileImage: "",
   imageAlt: "",
   linkType: "none",
   listing: "",
@@ -2009,6 +2010,16 @@ function HeroSlides({ slides, listings, categories }) {
     reset();
     dispatch(getHeroSlides());
   };
+  const uploadHeroImage = async (field, files) => {
+    const selected = Array.from(files || []);
+    if (!selected.length) return;
+    const result = await dispatch(uploadListingImages([selected[0]]));
+    if (result.error) return toast.error(result.payload || "Upload failed");
+    const image = result.payload?.[0];
+    if (!image?.url) return toast.error("Upload finished but no image URL was returned");
+    set(field, image.url);
+    toast.success(field === "mobileImage" ? "Mobile banner uploaded" : "Desktop banner uploaded");
+  };
   const toggle = async (slide) => {
     const result = await dispatch(
       updateHeroSlide({ id: slide._id, active: !slide.active }),
@@ -2043,15 +2054,63 @@ function HeroSlides({ slides, listings, categories }) {
         </div>
         <p className="rounded-lg bg-base-200 p-3 text-xs leading-relaxed text-base-content/60">
           Storefront hero now shows only the banner image and an optional button.
-          The button appears only when you choose a link target below.
+          Use a 14:5 image for desktop and a 16:8 image for mobile. The button
+          appears only when you choose a link target below.
         </p>
-        <input
-          type="url"
-          className="input input-sm input-bordered w-full"
-          placeholder="Hero banner image URL *"
-          value={draft.image}
-          onChange={(event) => set("image", event.target.value)}
-        />
+        <div className="space-y-2">
+          <div className="rounded-lg border border-base-300 p-2">
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-base-content/60">
+              Desktop banner — 14:5
+            </label>
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <input
+                type="url"
+                className="input input-sm input-bordered w-full"
+                placeholder="Desktop hero image URL *"
+                value={draft.image}
+                onChange={(event) => set("image", event.target.value)}
+              />
+              <label className="btn btn-outline btn-sm">
+                Upload
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => uploadHeroImage("image", event.target.files)}
+                />
+              </label>
+            </div>
+          </div>
+          <div className="rounded-lg border border-base-300 p-2">
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-base-content/60">
+              Mobile banner — 16:8 optional
+            </label>
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <input
+                type="url"
+                className="input input-sm input-bordered w-full"
+                placeholder="Mobile hero image URL"
+                value={draft.mobileImage || ""}
+                onChange={(event) => set("mobileImage", event.target.value)}
+              />
+              <label className="btn btn-outline btn-sm">
+                Upload
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) =>
+                    uploadHeroImage("mobileImage", event.target.files)
+                  }
+                />
+              </label>
+            </div>
+          </div>
+          <p className="text-[11px] leading-relaxed text-base-content/50">
+            Mobile image is optional. If blank, the desktop banner will be used
+            on mobile too.
+          </p>
+        </div>
         <div className="grid gap-2 sm:grid-cols-2">
           <input
             className="input input-sm input-bordered"
@@ -2161,6 +2220,11 @@ function HeroSlides({ slides, listings, categories }) {
               <p className="line-clamp-2 text-xs text-base-content/60">
                 {slide.image || "No image URL"}
               </p>
+              {slide.mobileImage && (
+                <p className="line-clamp-1 text-xs text-base-content/50">
+                  Mobile: {slide.mobileImage}
+                </p>
+              )}
               <div className="mt-2 flex gap-2">
                 <span className="badge badge-sm">{slide.tone}</span>
                 <span className="badge badge-info badge-sm">

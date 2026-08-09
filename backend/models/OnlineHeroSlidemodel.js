@@ -41,6 +41,7 @@ const OnlineHeroSlideSchema = new mongoose.Schema(
     category: { type: mongoose.Schema.Types.ObjectId, ref: "OnlineCategory", default: null },
 
     image: { type: String, default: "" },
+    mobileImage: { type: String, default: "" },
     imageAlt: { type: String, default: "" },
 
     // The rotated corner badge: { top: "Save", big: "40%", bottom: "this week" }
