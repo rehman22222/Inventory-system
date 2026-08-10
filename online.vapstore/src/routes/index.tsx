@@ -39,7 +39,11 @@ function EventsHeading({
 }) {
   const alignment =
     align === "left" ? "items-start text-left" : align === "right" ? "items-end text-right" : "items-center text-center";
-  const rotations = ["sm:-rotate-2", "rotate-0", "sm:rotate-2"];
+  const fanClasses = [
+    "z-10 -rotate-6",
+    "z-20 -ml-10 -translate-y-2 -rotate-1 sm:-ml-4 sm:translate-y-4 sm:rotate-0",
+    "z-10 -ml-10 rotate-6 sm:-ml-4",
+  ];
 
   return (
     <section className="relative overflow-hidden border-b hair bg-background py-12 md:py-16">
@@ -53,15 +57,15 @@ function EventsHeading({
           <span className="inline-block">{heading}</span>
         </h2>
         {items.length > 0 && (
-          <div className="mt-10 grid w-full max-w-5xl grid-cols-1 justify-items-center gap-6 sm:grid-cols-3 sm:gap-3 lg:gap-0">
+          <div className="mt-10 flex w-full max-w-5xl items-end justify-center overflow-visible px-1 sm:px-0">
             {items.slice(0, 3).map((item, index) => (
               <Link
                 key={`${item.kind}-${item.title}-${index}`}
                 {...item.href}
                 preload="intent"
-                className={`event-pick-card group relative w-full max-w-[18rem] overflow-hidden border hair bg-surface p-4 text-left shadow-[0_18px_45px_rgba(0,0,0,0.14)] transition-transform duration-300 hover:z-10 hover:-translate-y-5 hover:rotate-0 sm:max-w-[14rem] md:max-w-[16rem] lg:max-w-[17rem] ${
-                  rotations[index] || "rotate-0"
-                } ${index === 1 ? "lg:-mx-3 lg:translate-y-4" : ""}`}
+                className={`event-pick-card group relative w-[8.25rem] shrink-0 origin-bottom overflow-hidden border hair bg-surface p-2.5 text-left shadow-[0_18px_45px_rgba(0,0,0,0.14)] transition-transform duration-300 hover:z-30 hover:-translate-y-5 hover:rotate-0 sm:w-[14rem] sm:p-4 md:w-[16rem] lg:w-[17rem] ${
+                  fanClasses[index] || "rotate-0"
+                }`}
               >
                 {item.tag && (
                   <div className="absolute left-3 top-3 z-10 rounded-full bg-sale px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-white shadow-lg">
@@ -75,8 +79,8 @@ function EventsHeading({
                       alt={item.title}
                       loading="lazy"
                       decoding="async"
-                      sizes="(min-width: 768px) 224px, 192px"
-                      className="h-full w-full object-contain p-3 transition-transform duration-500 group-hover:scale-105"
+                      sizes="(min-width: 768px) 224px, 30vw"
+                      className="h-full w-full object-contain p-2 transition-transform duration-500 group-hover:scale-105 sm:p-3"
                     />
                   ) : (
                     <div className="p-4 text-center font-display text-2xl leading-none text-ink">
@@ -84,20 +88,20 @@ function EventsHeading({
                     </div>
                   )}
                 </div>
-                <div className="pt-4">
-                  <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted">
+                <div className="pt-3 sm:pt-4">
+                  <div className="font-mono text-[7px] uppercase tracking-widest text-ink-muted sm:text-[9px]">
                     {item.kind}
                   </div>
-                  <div className="mt-1 line-clamp-2 font-display text-lg leading-none">
+                  <div className="mt-1 line-clamp-2 font-display text-sm leading-none sm:text-lg">
                     {item.title}
                   </div>
                   {item.kind === "product" && typeof item.price === "number" && (
-                    <div className="mt-3 flex items-center gap-2">
-                      <span className="font-display text-xl">
+                    <div className="mt-2 flex items-center gap-1.5 sm:mt-3 sm:gap-2">
+                      <span className="font-display text-base sm:text-xl">
                         {formatPrice(item.eventPrice && item.eventPrice > 0 ? item.eventPrice : item.price)}
                       </span>
                       {item.eventPrice && item.eventPrice > 0 && item.eventPrice < item.price && (
-                        <span className="font-mono text-xs text-ink-muted line-through">
+                        <span className="font-mono text-[9px] text-ink-muted line-through sm:text-xs">
                           {formatPrice(item.price)}
                         </span>
                       )}
