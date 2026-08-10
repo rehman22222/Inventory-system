@@ -57,3 +57,7 @@ export function cldProductThumbImage(url: string): string {
 export function cldCategoryImage(url: string): string {
   return withCloudinaryTransform(url, "f_auto,q_auto,c_fill,w_640,h_480,dpr_auto");
 }
+
+export function cldCategoryPageImage(url: string): string {
+  return withCloudinaryTransform(url, "f_auto,q_auto,c_limit,w_1100,dpr_auto");
+}

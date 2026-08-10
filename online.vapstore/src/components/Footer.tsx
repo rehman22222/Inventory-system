@@ -24,16 +24,13 @@ function TikTokIcon({ className = "" }: { className?: string }) {
 
 export function Footer() {
   const { t } = useTranslation();
-  const { categories, products, settings } = useCatalog();
+  const { categories, settings } = useCatalog();
   const [email, setEmail] = useState("");
   const [newsletterState, setNewsletterState] = useState<"idle" | "saving" | "done" | "error">("idle");
   const [newsletterMessage, setNewsletterMessage] = useState("");
   const year = new Date().getFullYear();
 
   const categoryLinks = [...categories].sort((a, b) => a.name.localeCompare(b.name));
-  const newProduct = [...products].sort(
-    (a, b) => new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime(),
-  )[0];
   const social = [
     { key: "facebook", label: "Facebook", href: settings.social.facebook, Icon: Facebook },
     { key: "instagram", label: "Instagram", href: settings.social.instagram, Icon: Instagram },
@@ -108,33 +105,25 @@ export function Footer() {
             <Link to="/contact">Contact us</Link>
           </FooterLink>
           <FooterLink>
-            <Link to="/terms">Terms and Conditions</Link>
+            <span>Terms and Conditions</span>
           </FooterLink>
           <FooterLink>
-            <Link to="/privacy">Privacy Policy</Link>
+            <span>Privacy Policy</span>
           </FooterLink>
           <FooterLink>
-            <Link to="/about">About Us</Link>
+            <span>Return &amp; Refund</span>
+          </FooterLink>
+          <FooterLink>
+            <span>About Us</span>
           </FooterLink>
         </FooterColumn>
 
         <FooterColumn>
           <FooterLink>
-            {newProduct ? (
-              <Link to="/product/$id" params={{ id: newProduct.id }}>
-                New Products
-              </Link>
-            ) : (
-              <Link to="/shop">New Products</Link>
-            )}
-          </FooterLink>
-          <FooterLink>
             <a href="/#best-sellers">Best Sellers</a>
           </FooterLink>
           <FooterLink>
-            <Link to="/why-e-cigarettes">
-              {settings.footer.whyECigarettesTitle || "Why e-cigarettes?"}
-            </Link>
+            <span>{settings.footer.whyECigarettesTitle || "Why e-cigarettes?"}</span>
           </FooterLink>
           <FooterLink>
             <Link to="/sale">Deals</Link>
@@ -246,7 +235,7 @@ function FooterColumn({ children }: { children: ReactNode }) {
 
 function FooterLink({ children }: { children: ReactNode }) {
   return (
-    <li className="[&_a]:text-white [&_a]:transition-colors [&_a:hover]:text-accent">
+    <li className="[&_a]:text-white [&_a]:transition-colors [&_a:hover]:text-accent [&_span]:text-white">
       {children}
     </li>
   );

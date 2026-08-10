@@ -7,7 +7,7 @@ import { FilterSidebar } from "@/components/FilterSidebar";
 import { brandsOf, childCategories, type Category, type Product } from "@/lib/catalog";
 import { getCategoryPage } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
-import { cldCategoryImage } from "@/lib/img";
+import { cldCategoryPageImage } from "@/lib/img";
 import { useProductFilters, type Sort } from "@/lib/useProductFilters";
 
 export const Route = createFileRoute("/category/$slug")({
@@ -124,14 +124,14 @@ function CategoryPage() {
               {category.tagline}. {products.length} products in stock.
             </p>
           </div>
-          <div className="border hair overflow-hidden bg-background aspect-[4/5] md:aspect-square">
+          <div className="inline-block max-w-full overflow-hidden border hair bg-white leading-none md:justify-self-end">
             <img
-              src={cldCategoryImage(category.image)}
+              src={cldCategoryPageImage(category.image)}
               alt={category.name}
               loading="eager"
               decoding="async"
               sizes="(min-width: 768px) 40vw, 100vw"
-              className="h-full w-full object-cover"
+              className="block h-auto max-h-[68vh] max-w-full object-contain md:max-h-[520px]"
             />
           </div>
         </div>

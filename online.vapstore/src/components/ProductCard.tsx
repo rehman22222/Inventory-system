@@ -90,7 +90,7 @@ export function ProductCard({ product }: { product: Product }) {
           to="/product/$id"
           params={{ id: product.id }}
           preload="intent"
-          className="mt-1 font-display text-sm leading-tight tracking-tight line-clamp-3 min-h-[3.75rem] break-words hover:text-accent-foreground hover:bg-accent"
+          className="mt-1 font-display text-sm leading-tight tracking-tight break-words hover:text-accent-foreground hover:bg-accent"
         >
           {product.name}
         </Link>
