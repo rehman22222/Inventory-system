@@ -172,10 +172,6 @@ function Contact() {
               </ul>
             </div>
           )}
-          <div className="border hair bg-surface p-6 text-sm text-ink-muted">
-            <div className="eyebrow mb-3">Age-restricted store</div>
-            You must be 18 or over to purchase from this store. Nicotine is an addictive substance.
-          </div>
         </aside>
       </section>
 
