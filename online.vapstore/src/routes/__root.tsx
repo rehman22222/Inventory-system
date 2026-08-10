@@ -84,14 +84,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CliffsOfPuff — Premium Vape Store" },
+      { title: "Cliffs of Puff — Premium Vape Store" },
       {
         name: "description",
         content:
-          "CliffsOfPuff is an independent vape shop. Pod kits, mods, disposables, nic salts and premium e-liquid. Fast dispatch nationwide.",
+          "Cliffs of Puff is an independent vape shop. Pod kits, mods, disposables, nic salts and premium e-liquid. Fast dispatch nationwide.",
       },
-      { name: "author", content: "CliffsOfPuff" },
-      { property: "og:title", content: "CliffsOfPuff — Premium Vape Store" },
+      { name: "author", content: "Cliffs of Puff" },
+      { property: "og:title", content: "Cliffs of Puff — Premium Vape Store" },
       {
         property: "og:description",
         content: "Pod kits, mods, disposables and premium e-liquid. Same-day dispatch nationwide.",
@@ -104,9 +104,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       // Transparent PNGs cut from the COP badge. The supplied artwork was a
       // JPEG, which cannot hold transparency — its white square was flood-
       // filled out, so the mark now sits cleanly on light or dark tab chrome.
-      { rel: "icon", href: "/icon-32.png", type: "image/png", sizes: "32x32" },
-      { rel: "icon", href: "/icon-64.png", type: "image/png", sizes: "64x64" },
-      { rel: "apple-touch-icon", href: "/icon-180.png", sizes: "180x180" },
+      { rel: "icon", href: "/logo-cop.png", type: "image/png" },
+      { rel: "apple-touch-icon", href: "/logo-cop.png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },

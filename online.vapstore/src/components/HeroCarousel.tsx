@@ -50,10 +50,27 @@ function HeroButton({ slide, active }: { slide: HeroSlide; active: boolean }) {
     );
   }
 
+  if (slide.ctaPrimary.search?.products) {
+    return (
+      <Link
+        to="/shop"
+        search={{ products: slide.ctaPrimary.search.products, q: "" }}
+        tabIndex={active ? 0 : -1}
+        onPointerDown={stopCarouselDrag}
+        className={HERO_CTA_CLASS}
+      >
+        {label}
+        <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-white text-ink transition-transform group-hover:translate-x-1 group-hover:bg-ink group-hover:text-white md:h-6 md:w-6">
+          <ArrowRight className="h-2.5 w-2.5 md:h-3.5 md:w-3.5" />
+        </span>
+      </Link>
+    );
+  }
+
   return (
     <Link
       to="/shop"
-      search={slide.ctaPrimary.search || {}}
+      search={{ products: "", q: slide.ctaPrimary.search?.q || "" }}
       tabIndex={active ? 0 : -1}
       onPointerDown={stopCarouselDrag}
       className={HERO_CTA_CLASS}
@@ -107,6 +124,11 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   };
 
   if (!n) return null;
+  const positionClass = (position?: HeroSlide["ctaPosition"]) => {
+    if (position === "bottom-center") return "justify-center";
+    if (position === "bottom-right") return "justify-end";
+    return "justify-start";
+  };
 
   return (
     <section
@@ -155,12 +177,14 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                     loading={slideIndex === 0 ? "eager" : "lazy"}
                     decoding="async"
                     sizes="100vw"
-                    className="h-full w-full object-cover"
+                    className={`h-full w-full object-cover ${
+                      slideIndex === index ? "hero-slow-zoom" : ""
+                    }`}
                   />
                 </picture>
                 {slide.linked && (
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent p-4 md:p-8">
-                    <div className="container-x flex justify-start">
+                    <div className={`container-x flex ${positionClass(slide.ctaPosition)}`}>
                       <div className="pointer-events-auto">
                         <HeroButton slide={slide} active={slideIndex === index} />
                       </div>

@@ -6,10 +6,10 @@ export const Route = createFileRoute("/shipping-returns")({
   component: ShippingReturns,
   head: () => ({
     meta: [
-      { title: "Shipping & Returns — CliffsOfPuff" },
+      { title: "Shipping & Returns — Cliffs of Puff" },
       {
         name: "description",
-        content: "Delivery, shipping and returns information for CliffsOfPuff orders.",
+        content: "Delivery, shipping and returns information for Cliffs of Puff orders.",
       },
     ],
   }),

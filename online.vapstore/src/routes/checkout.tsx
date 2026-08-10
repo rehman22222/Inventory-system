@@ -14,8 +14,8 @@ export const Route = createFileRoute("/checkout")({
   component: Checkout,
   head: () => ({
     meta: [
-      { title: "Checkout — CliffsOfPuff" },
-      { name: "description", content: "Place your CliffsOfPuff order." },
+      { title: "Checkout — Cliffs of Puff" },
+      { name: "description", content: "Place your Cliffs of Puff order." },
     ],
   }),
 });
@@ -62,7 +62,7 @@ function Checkout() {
   const total = merchandiseTotal + shipping;
   const missingReferences = lines.some((line) => !line.listingId || !line.productId);
   const cartSignature = lines
-    .map((line) => `${line.listingId}:${line.productId}:${line.qty}`)
+    .map((line) => `${line.listingId}:${line.productId}:${line.qty}:${line.eventId || ""}`)
     .join("|");
 
   useEffect(() => {
@@ -84,6 +84,7 @@ function Checkout() {
       listing: line.listingId,
       product: line.productId,
       quantity: line.qty,
+      eventId: line.eventId || "",
     }));
 
   const applyVoucher = async () => {

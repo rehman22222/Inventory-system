@@ -34,6 +34,9 @@ export interface CartLine {
    *  only keep the on-screen totals honest before then. */
   dealMinQty?: number;
   dealPrice?: number;
+  eventId?: string;
+  eventPrice?: number;
+  eventLabel?: string;
 }
 
 /** Unit price for a line, applying its quantity deal once the listing's COMBINED
@@ -41,6 +44,7 @@ export interface CartLine {
  *  basket) reaches the deal minimum. `listingQty` is that combined total. Kept in
  *  one place so the cart, cart page and checkout all agree. */
 export function lineUnitPrice(l: CartLine, listingQty: number): number {
+  if (l.eventId && l.eventPrice && l.eventPrice > 0) return l.eventPrice;
   if (l.dealMinQty && l.dealPrice && listingQty >= l.dealMinQty) return l.dealPrice;
   return l.price;
 }

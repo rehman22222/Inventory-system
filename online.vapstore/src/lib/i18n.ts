@@ -40,7 +40,7 @@ const resources = {
       },
       hero: {
         shopNow: "Shop now",
-        promoAlt: "CliffsOfPuff promotion",
+        promoAlt: "Cliffs of Puff promotion",
       },
       home: {
         bestEyebrow: "§ 01 — Best seller",
@@ -66,7 +66,7 @@ const resources = {
         submitting: "Submitting",
         newsletterSuccess: "Thanks — you're subscribed.",
         newsletterError: "Could not subscribe. Please try again.",
-        description: "Get product drops, offers and store updates from CliffsOfPuff.",
+        description: "Get product drops, offers and store updates from Cliffs of Puff.",
         followUs: "Follow us",
         information: "Information",
         currentOffers: "Current offers",
@@ -79,7 +79,7 @@ const resources = {
         terms: "Terms",
         privacy: "Privacy",
         shippingReturns: "Shipping & Returns",
-        copyright: "All Rights Reserved | Copyright © {{year}} CliffsOfPuff",
+        copyright: "All Rights Reserved | Copyright © {{year}} Cliffs of Puff",
       },
       floatingHome: {
         label: "Go to home",
@@ -209,7 +209,7 @@ const resources = {
       },
       hero: {
         shopNow: "Siopa anois",
-        promoAlt: "Cur chun cinn CliffsOfPuff",
+        promoAlt: "Cur chun cinn Cliffs of Puff",
       },
       home: {
         bestEyebrow: "§ 01 — Is fearr díol",
@@ -232,7 +232,7 @@ const resources = {
         emailLabel: "Seoladh ríomhphoist",
         emailPlaceholder: "cuir isteach do sheoladh ríomhphoist",
         submit: "Seol",
-        description: "Faigh táirgí nua, tairiscintí agus nuashonruithe ó CliffsOfPuff.",
+        description: "Faigh táirgí nua, tairiscintí agus nuashonruithe ó Cliffs of Puff.",
         followUs: "Lean muid",
         information: "Eolas",
         currentOffers: "Tairiscintí reatha",
@@ -240,7 +240,7 @@ const resources = {
         terms: "Téarmaí",
         privacy: "Príobháideachas",
         shippingReturns: "Loingseoireacht & Tuairisceáin",
-        copyright: "Gach ceart ar cosaint | Cóipcheart © {{year}} CliffsOfPuff",
+        copyright: "Gach ceart ar cosaint | Cóipcheart © {{year}} Cliffs of Puff",
       },
       floatingHome: {
         label: "Téigh go dtí an baile",

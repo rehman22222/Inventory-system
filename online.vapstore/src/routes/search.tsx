@@ -15,7 +15,7 @@ export const Route = createFileRoute("/search")({
   component: SearchPage,
   head: () => ({
     meta: [
-      { title: "Search — CliffsOfPuff" },
+      { title: "Search — Cliffs of Puff" },
       // A search results page should never be indexed.
       { name: "robots", content: "noindex" },
     ],

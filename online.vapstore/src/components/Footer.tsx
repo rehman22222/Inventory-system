@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Facebook, Instagram, Mail, MapPin, Phone } from "lucide-react";
+import { Facebook, Instagram } from "lucide-react";
 import { useCatalog } from "@/lib/catalog-context";
 import { subscribeNewsletter } from "@/lib/catalog-api";
 import logo from "@/assets/logo-cop.png";
@@ -24,41 +24,22 @@ function TikTokIcon({ className = "" }: { className?: string }) {
 
 export function Footer() {
   const { t } = useTranslation();
-  const { categories, settings } = useCatalog();
+  const { categories, products, settings } = useCatalog();
   const [email, setEmail] = useState("");
   const [newsletterState, setNewsletterState] = useState<"idle" | "saving" | "done" | "error">("idle");
   const [newsletterMessage, setNewsletterMessage] = useState("");
   const year = new Date().getFullYear();
-  const social = [
-    { key: "instagram", label: "Instagram", href: settings.social.instagram, Icon: Instagram },
-    { key: "facebook", label: "Facebook", href: settings.social.facebook, Icon: Facebook },
-    { key: "twitter", label: "X / Twitter", href: settings.social.twitter, Icon: XIcon },
-    { key: "tiktok", label: "TikTok", href: settings.social.tiktok, Icon: TikTokIcon },
-  ].filter((item) => item.href);
 
-  const legal = [
-    { to: "/terms" as const, label: t("footer.terms") },
-    { to: "/privacy" as const, label: t("footer.privacy") },
-    { to: "/shipping-returns" as const, label: t("footer.shippingReturns") },
-  ];
-  const business = [
-    settings.business.tradingName && {
-      label: t("footer.tradingName", { defaultValue: "Trading name" }),
-      value: settings.business.tradingName,
-    },
-    settings.business.legalName && {
-      label: t("footer.legalName", { defaultValue: "Legal name" }),
-      value: settings.business.legalName,
-    },
-    settings.business.companyNumber && {
-      label: t("footer.companyNumber", { defaultValue: "Company no." }),
-      value: settings.business.companyNumber,
-    },
-    settings.business.vatNumber && {
-      label: t("footer.vatNumber", { defaultValue: "VAT no." }),
-      value: settings.business.vatNumber,
-    },
-  ].filter(Boolean) as { label: string; value: string }[];
+  const categoryLinks = [...categories].sort((a, b) => a.name.localeCompare(b.name));
+  const newProduct = [...products].sort(
+    (a, b) => new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime(),
+  )[0];
+  const social = [
+    { key: "facebook", label: "Facebook", href: settings.social.facebook, Icon: Facebook },
+    { key: "instagram", label: "Instagram", href: settings.social.instagram, Icon: Instagram },
+    { key: "tiktok", label: "TikTok", href: settings.social.tiktok, Icon: TikTokIcon },
+    { key: "twitter", label: "Twitter", href: settings.social.twitter, Icon: XIcon },
+  ].filter((item) => item.href);
 
   const submitNewsletter = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -86,20 +67,82 @@ export function Footer() {
 
   return (
     <footer className="mt-16 overflow-hidden bg-black text-white">
-      <div className="container-x grid gap-12 py-14 md:grid-cols-[1.4fr_1fr_1fr] lg:gap-16 lg:py-20">
-        <div className="md:border-r md:border-white/15 md:pr-10">
-          <Link to="/" className="mb-8 flex justify-center md:justify-start" aria-label="CliffsOfPuff home">
+      <div className="container-x grid gap-9 py-12 text-center md:grid-cols-[1.05fr_1.35fr_0.9fr_0.9fr_1.25fr] md:text-left lg:gap-10">
+        <div className="flex flex-col items-center md:items-start">
+          <Link to="/" className="mb-6 flex justify-center md:justify-start" aria-label="Cliffs of Puff home">
             <img
               src={logo}
-              alt="CliffsOfPuff"
-              className="h-24 w-auto object-contain drop-shadow-[0_10px_30px_rgba(255,255,255,0.14)]"
+              alt="Cliffs of Puff"
+              className="h-28 w-auto object-contain drop-shadow-[0_10px_30px_rgba(198,255,46,0.18)]"
               loading="lazy"
             />
           </Link>
-          <FooterHeading>
-            {settings.footer.newsletterHeading || t("footer.newsletter")}
-          </FooterHeading>
-          <form className="mt-8 flex border border-white/55" onSubmit={submitNewsletter}>
+          {settings.footer.supportEmail && (
+            <p className="text-sm">
+              Email:{" "}
+              <a
+                href={`mailto:${settings.footer.supportEmail}`}
+                className="underline underline-offset-4 transition-colors hover:text-accent"
+              >
+                {settings.footer.supportEmail}
+              </a>
+            </p>
+          )}
+          {settings.footer.openingHours && (
+            <p className="mt-3 text-sm text-white/85">{settings.footer.openingHours}</p>
+          )}
+        </div>
+
+        <ul className="grid grid-cols-2 gap-x-7 gap-y-3.5 text-sm">
+          {categoryLinks.map((category) => (
+            <FooterLink key={category.slug}>
+              <Link to="/category/$slug" params={{ slug: category.slug }}>
+                {category.name}
+              </Link>
+            </FooterLink>
+          ))}
+        </ul>
+
+        <FooterColumn>
+          <FooterLink>
+            <Link to="/contact">Contact us</Link>
+          </FooterLink>
+          <FooterLink>
+            <Link to="/terms">Terms and Conditions</Link>
+          </FooterLink>
+          <FooterLink>
+            <Link to="/privacy">Privacy Policy</Link>
+          </FooterLink>
+          <FooterLink>
+            <Link to="/about">About Us</Link>
+          </FooterLink>
+        </FooterColumn>
+
+        <FooterColumn>
+          <FooterLink>
+            {newProduct ? (
+              <Link to="/product/$id" params={{ id: newProduct.id }}>
+                New Products
+              </Link>
+            ) : (
+              <Link to="/shop">New Products</Link>
+            )}
+          </FooterLink>
+          <FooterLink>
+            <a href="/#best-sellers">Best Sellers</a>
+          </FooterLink>
+          <FooterLink>
+            <Link to="/why-e-cigarettes">
+              {settings.footer.whyECigarettesTitle || "Why e-cigarettes?"}
+            </Link>
+          </FooterLink>
+          <FooterLink>
+            <Link to="/sale">Deals</Link>
+          </FooterLink>
+        </FooterColumn>
+
+        <div>
+          <form className="mx-auto flex max-w-xs border border-white/60 md:mx-0" onSubmit={submitNewsletter}>
             <label className="sr-only" htmlFor="footer-email">
               {t("footer.emailLabel")}
             </label>
@@ -108,18 +151,16 @@ export function Footer() {
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder={t("footer.emailPlaceholder")}
+              placeholder={settings.footer.newsletterHeading || "Subscribe to our news letter"}
               required
-              className="min-w-0 flex-1 bg-white/12 px-5 py-4 text-sm text-white outline-none placeholder:text-white/45"
+              className="min-w-0 flex-1 bg-white px-3 py-2 text-sm text-black outline-none placeholder:text-black/75"
             />
             <button
               type="submit"
               disabled={newsletterState === "saving"}
-              className="px-5 font-mono text-[11px] uppercase tracking-[0.16em] text-white/65 transition-colors hover:text-accent"
+              className="border-l border-red-600 px-2.5 font-display text-[10px] uppercase tracking-widest text-white transition-colors hover:bg-red-600 disabled:opacity-60"
             >
-              {newsletterState === "saving"
-                ? t("footer.submitting", { defaultValue: "Submitting" })
-                : t("footer.submit")}
+              {newsletterState === "saving" ? "Saving" : "Subscribe"}
             </button>
           </form>
           {newsletterMessage && (
@@ -131,131 +172,82 @@ export function Footer() {
               {newsletterMessage}
             </p>
           )}
-          {(settings.footer.description || t("footer.description")) && (
-            <p className="mt-6 max-w-lg text-sm leading-7 text-white/55">
-              {settings.footer.description || t("footer.description")}
-            </p>
-          )}
-
           {social.length > 0 && (
-            <div className="mt-10">
-              <FooterHeading>{t("footer.followUs")}</FooterHeading>
-              <div className="mt-6 flex flex-wrap gap-5">
-                {social.map(({ key, label, href, Icon }) => (
-                  <a
-                    key={key}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`Open ${label}`}
-                    title={label}
-                    className="grid h-9 w-9 place-items-center text-white transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                  >
-                    <Icon className="h-4 w-4" />
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div>
-          <FooterHeading>{t("footer.information")}</FooterHeading>
-          <ul className="mt-8 space-y-6 text-sm">
-            {categories.slice(0, 8).map((category) => (
-              <li key={category.slug}>
-                <Link
-                  to="/category/$slug"
-                  params={{ slug: category.slug }}
-                  className="line-clamp-1 text-white transition-colors hover:text-accent"
+            <div className="mt-6 space-y-3">
+              {social.map(({ key, label, href, Icon }) => (
+                <a
+                  key={key}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-3 text-sm transition-colors hover:text-accent md:justify-start"
                 >
-                  {category.name}
-                </Link>
-              </li>
-            ))}
-            <li>
-              <Link to="/sale" className="text-white transition-colors hover:text-accent">
-                {t("footer.currentOffers")}
-              </Link>
-            </li>
-          </ul>
-        </div>
-
-        <div>
-          <FooterHeading>{t("footer.contact")}</FooterHeading>
-          <div className="mt-8 space-y-6 text-sm text-white">
-            {settings.footer.address && (
-              <div className="flex items-start gap-3 uppercase">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-                <span>{settings.footer.address}</span>
-              </div>
-            )}
-            {settings.footer.supportEmail && (
-              <a
-                className="flex items-start gap-3 transition-colors hover:text-accent"
-                href={`mailto:${settings.footer.supportEmail}`}
-              >
-                <Mail className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-                <span>{settings.footer.supportEmail}</span>
-              </a>
-            )}
-            {settings.footer.supportPhone && (
-              <a
-                className="flex items-start gap-3 transition-colors hover:text-accent"
-                href={`tel:${settings.footer.supportPhone.replace(/[^\d+]/g, "")}`}
-              >
-                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-                <span>{settings.footer.supportPhone}</span>
-              </a>
-            )}
-          </div>
-          {business.length > 0 && (
-            <div className="mt-10 border-t border-white/15 pt-8">
-              <FooterHeading>
-                {t("footer.businessLegal", { defaultValue: "Business & legal" })}
-              </FooterHeading>
-              <dl className="mt-6 space-y-3 text-sm">
-                {business.map((item) => (
-                  <div key={item.label} className="grid gap-1">
-                    <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
-                      {item.label}
-                    </dt>
-                    <dd className="text-white/80">{item.value}</dd>
-                  </div>
-                ))}
-              </dl>
+                  <span className="grid h-6 w-6 place-items-center">
+                    <Icon className="h-6 w-6" />
+                  </span>
+                  <span>Follow us on {label}</span>
+                </a>
+              ))}
             </div>
           )}
         </div>
       </div>
 
-      <div className="border-t border-white/15">
-        <div className="container-x flex flex-wrap justify-center gap-x-6 gap-y-2 py-6 text-sm">
-          {legal.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              className="text-white/65 transition-colors hover:text-accent"
-            >
-              {item.label}
-            </Link>
-          ))}
+      <div className="container-x grid items-center gap-5 pb-10 text-center text-sm md:grid-cols-[1fr_auto_1fr]">
+        <div className="flex justify-center gap-5 md:justify-start">
+          {settings.footer.paymentImage && (
+            <img
+              src={settings.footer.paymentImage}
+              alt="Accepted payment methods"
+              className="h-9 w-auto object-contain"
+              loading="lazy"
+            />
+          )}
+        </div>
+        <p>&copy; {year} Copyright Cliffsofpuff.com&nbsp; | &nbsp;Created by Eiretech360</p>
+        <div className="flex justify-center md:justify-end">
+          {settings.footer.restrictionImage && (
+            <img
+              src={settings.footer.restrictionImage}
+              alt="Age restricted product warnings"
+              className="h-9 w-auto object-contain"
+              loading="lazy"
+            />
+          )}
         </div>
       </div>
 
-      <div className="border-t border-white/10">
-        <div className="container-x py-7 text-center text-xs text-white/30">
-          {t("footer.copyright", { year })}
+      {(settings.business.tradingName ||
+        settings.business.legalName ||
+        settings.business.companyNumber ||
+        settings.business.vatNumber) && (
+        <div className="border-t border-white/10">
+          <div className="container-x flex flex-wrap justify-center gap-x-6 gap-y-2 py-4 text-xs text-white/40">
+            {[
+              settings.business.tradingName,
+              settings.business.legalName,
+              settings.business.companyNumber,
+              settings.business.vatNumber,
+            ]
+              .filter(Boolean)
+              .map((item) => (
+                <span key={item}>{item}</span>
+              ))}
+          </div>
         </div>
-      </div>
+      )}
     </footer>
   );
 }
 
-function FooterHeading({ children }: { children: ReactNode }) {
+function FooterColumn({ children }: { children: ReactNode }) {
+  return <ul className="space-y-5 text-sm">{children}</ul>;
+}
+
+function FooterLink({ children }: { children: ReactNode }) {
   return (
-    <div className="text-center text-base font-medium uppercase tracking-[0.08em] text-white md:text-left">
+    <li className="[&_a]:text-white [&_a]:transition-colors [&_a:hover]:text-accent">
       {children}
-    </div>
+    </li>
   );
 }

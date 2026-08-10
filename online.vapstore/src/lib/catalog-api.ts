@@ -14,15 +14,27 @@ const defaultStorefrontSettings: StorefrontSettings = {
   social: { instagram: "", facebook: "", twitter: "", tiktok: "" },
   footer: {
     newsletterHeading: "Subscribe to our newsletters",
-    description: "Premium vape products, trusted flavours and reliable service from CliffsOfPuff.",
+    description: "Premium vape products, trusted flavours and reliable service from Cliffs of Puff.",
     supportEmail: "",
     supportPhone: "",
     address: "",
+    openingHours: "Mon-Sat 9am - 4pm",
+    paymentImage: "/payment-logo2.webp",
+    restrictionImage: "/not.webp",
+    whyECigarettesTitle: "Why e-cigarettes?",
+    whyECigarettesContent:
+      "E-cigarettes give adult smokers an alternative to combustible cigarettes. Cliffs of Puff stocks age-restricted, authentic products only.",
   },
   announcement: {
     enabled: true,
     primary: "Free shipping over {free} · {dispatch}",
     secondary: "18+ only · Nicotine warning",
+  },
+  events: {
+    enabled: false,
+    heading: "",
+    align: "center",
+    items: [],
   },
   emergencyAlert: {
     active: false,
@@ -42,7 +54,7 @@ const defaultStorefrontSettings: StorefrontSettings = {
     enabled: true,
     eyebrow: "Fresh drops",
     title: "New this week.",
-    subtitle: "The latest products to land in store, selected by the CliffsOfPuff team.",
+    subtitle: "The latest products to land in store, selected by the Cliffs of Puff team.",
     limit: 8,
   },
   bestSellers: {
@@ -54,7 +66,7 @@ const defaultStorefrontSettings: StorefrontSettings = {
     eyebrow: "Live sale",
     title: "Don’t miss out.",
     subtitle:
-      "Limited-time online prices selected by the CliffsOfPuff team. Stock updates from the same inventory used at the till.",
+      "Limited-time online prices selected by the Cliffs of Puff team. Stock updates from the same inventory used at the till.",
     ctaLabel: "See the deals",
     limit: 4,
   },
@@ -292,6 +304,10 @@ const mergeSettings = (settings?: StorefrontSettings): StorefrontSettings => {
       ...defaultStorefrontSettings.announcement,
       ...(settings?.announcement || {}),
     },
+    events: {
+      ...defaultStorefrontSettings.events,
+      ...(settings?.events || {}),
+    },
     emergencyAlert: {
       ...defaultStorefrontSettings.emergencyAlert,
       ...(settings?.emergencyAlert || {}),
@@ -397,6 +413,7 @@ const checkoutSchema = z.object({
         listing: z.string().min(1).max(100),
         product: z.string().min(1).max(100),
         quantity: z.number().int().min(1).max(100),
+        eventId: z.string().trim().max(100).optional().default(""),
       }),
     )
     .min(1)

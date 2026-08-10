@@ -10,8 +10,8 @@ export const Route = createFileRoute("/contact")({
   component: Contact,
   head: () => ({
     meta: [
-      { title: "Contact — CliffsOfPuff" },
-      { name: "description", content: "Get in touch with the CliffsOfPuff team." },
+      { title: "Contact — Cliffs of Puff" },
+      { name: "description", content: "Get in touch with the Cliffs of Puff team." },
     ],
   }),
 });

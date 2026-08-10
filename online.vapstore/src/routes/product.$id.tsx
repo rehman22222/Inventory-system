@@ -14,6 +14,9 @@ import { cldProductHeroImage, cldProductThumbImage } from "@/lib/img";
 
 export const Route = createFileRoute("/product/$id")({
   component: ProductPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    event: typeof search.event === "string" ? search.event : "",
+  }),
   // `params.id` is the listing slug. Price and stock come back live, so the
   // page always shows what the shop currently holds.
   loader: async ({
@@ -34,7 +37,7 @@ export const Route = createFileRoute("/product/$id")({
   head: ({ loaderData }) => ({
     meta: loaderData
       ? [
-          { title: `${loaderData.product.name} — CliffsOfPuff` },
+          { title: `${loaderData.product.name} — Cliffs of Puff` },
           { name: "description", content: loaderData.product.short },
           { property: "og:title", content: loaderData.product.name },
           { property: "og:description", content: loaderData.product.short },
@@ -74,6 +77,7 @@ function ProductPage() {
     summary: ReviewSummary;
   };
   const { settings } = useCatalog();
+  const search = Route.useSearch();
   const { promises } = settings;
   const { add, listingQty } = useCart();
   const navigate = useNavigate();
@@ -89,6 +93,15 @@ function ProductPage() {
   );
   const activeProductId = selectedVariant?.productId || product.productId;
   const activePrice = selectedVariant?.price ?? product.price;
+  const eventOffer = (settings.events?.items || []).find(
+    (item) =>
+      item.enabled &&
+      item.kind === "product" &&
+      item.targetId === product.listingId &&
+      item.targetId === search.event &&
+      Number(item.eventPrice) > 0,
+  );
+  const eventUnitPrice = eventOffer ? Math.min(Number(eventOffer.eventPrice), activePrice) : null;
   const activeStock = selectedVariant?.stock ?? product.stock;
   // Options imported without their own image can often still be matched to one
   // of the product's gallery photos by name (e.g. the "Cola" flavour ↔ a
@@ -171,7 +184,7 @@ function ProductPage() {
   const inCartForListing = listingQty(product.listingId);
   const projectedQty = inCartForListing + qty;
   const qtyDealActive = !!qtyDeal && projectedQty >= qtyDeal.minQty;
-  const effectiveUnit = qtyDealActive ? qtyDeal!.price : activePrice;
+  const effectiveUnit = eventUnitPrice ?? (qtyDealActive ? qtyDeal!.price : activePrice);
   const qtyDealPct = qtyDeal
     ? Math.round((1 - qtyDeal.price / (qtyDeal.regularPrice || activePrice || 1)) * 100)
     : 0;
@@ -187,7 +200,7 @@ function ProductPage() {
     .filter((group) => group.items.length > 0);
 
   const lineFor = () => ({
-    id: `${product.id}::${activeProductId}`,
+    id: `${product.id}::${activeProductId}${eventUnitPrice ? "::event" : ""}`,
     slug: product.id,
     listingId: product.listingId,
     productId: activeProductId,
@@ -197,6 +210,13 @@ function ProductPage() {
     price: activePrice,
     image: activeImage,
     maxStock: activeStock,
+    ...(eventUnitPrice
+      ? {
+          eventId: product.listingId,
+          eventPrice: eventUnitPrice,
+          eventLabel: settings.events?.heading || "Event offer",
+        }
+      : {}),
     ...(qtyDeal ? { dealMinQty: qtyDeal.minQty, dealPrice: qtyDeal.price } : {}),
   });
 
@@ -292,16 +312,22 @@ function ProductPage() {
 
           <div className="mt-8 flex items-baseline gap-4">
             <span className="font-display text-4xl">
-              {priceUnavailable ? "Price to be confirmed" : formatPrice(activePrice)}
+              {priceUnavailable ? "Price to be confirmed" : formatPrice(effectiveUnit)}
             </span>
-            {onSale && (
+            {(eventUnitPrice || onSale) && (
               <span className="font-mono text-sm text-ink-muted line-through">
-                {formatPrice(product.compareAt!)}
+                {formatPrice(eventUnitPrice ? activePrice : product.compareAt!)}
               </span>
             )}
           </div>
 
-          {qtyDeal && !priceUnavailable && (
+          {eventUnitPrice && (
+            <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-[color:var(--sale)] px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-white">
+              {settings.events?.heading || "Event offer"} price applied
+            </div>
+          )}
+
+          {qtyDeal && !priceUnavailable && !eventUnitPrice && (
             <div className="mt-4 flex items-center gap-4 border hair bg-surface p-3">
               {qtyDeal.image ? (
                 <img

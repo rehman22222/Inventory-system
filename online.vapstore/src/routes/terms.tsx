@@ -6,8 +6,8 @@ export const Route = createFileRoute("/terms")({
   component: Terms,
   head: () => ({
     meta: [
-      { title: "Terms & Conditions — CliffsOfPuff" },
-      { name: "description", content: "The terms and conditions for shopping at CliffsOfPuff." },
+      { title: "Terms & Conditions — Cliffs of Puff" },
+      { name: "description", content: "The terms and conditions for shopping at Cliffs of Puff." },
     ],
   }),
 });

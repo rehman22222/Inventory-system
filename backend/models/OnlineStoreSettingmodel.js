@@ -143,12 +143,28 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
       description: {
         type: String,
         default:
-          "Premium vape products, trusted flavours and reliable service from CliffsOfPuff.",
+          "Premium vape products, trusted flavours and reliable service from Cliffs of Puff.",
         trim: true,
       },
       supportEmail: { type: String, default: "", trim: true, lowercase: true },
       supportPhone: { type: String, default: "", trim: true },
       address: { type: String, default: "", trim: true },
+      openingHours: { type: String, default: "Mon-Sat 9am - 4pm", trim: true },
+      paymentImage: { type: String, default: "/payment-logo2.webp", trim: true },
+      restrictionImage: { type: String, default: "/not.webp", trim: true },
+      whyECigarettesTitle: {
+        type: String,
+        default: "Why e-cigarettes?",
+        trim: true,
+        maxlength: 120,
+      },
+      whyECigarettesContent: {
+        type: String,
+        default:
+          "E-cigarettes give adult smokers an alternative to combustible cigarettes. Cliffs of Puff stocks age-restricted, authentic products only.",
+        trim: true,
+        maxlength: 4000,
+      },
     },
     announcement: {
       enabled: { type: Boolean, default: true },
@@ -164,6 +180,33 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
         default: "18+ only · Nicotine warning",
         trim: true,
       },
+    },
+    events: {
+      enabled: { type: Boolean, default: false },
+      heading: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: 140,
+      },
+      align: {
+        type: String,
+        enum: ["left", "center", "right"],
+        default: "center",
+      },
+      items: [
+        {
+          enabled: { type: Boolean, default: false },
+          kind: {
+            type: String,
+            enum: ["product", "category"],
+            default: "product",
+          },
+          targetId: { type: String, default: "", trim: true, maxlength: 160 },
+          tag: { type: String, default: "", trim: true, maxlength: 40 },
+          eventPrice: { type: Number, default: null, min: 0 },
+        },
+      ],
     },
     emergencyAlert: {
       active: { type: Boolean, default: false },
@@ -229,7 +272,7 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
       subtitle: {
         type: String,
         default:
-          "The latest products to land in store, selected by the CliffsOfPuff team.",
+          "The latest products to land in store, selected by the Cliffs of Puff team.",
         trim: true,
         maxlength: 300,
       },
@@ -256,7 +299,7 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
       subtitle: {
         type: String,
         default:
-          "Limited-time online prices selected by the CliffsOfPuff team. Stock updates from the same inventory used at the till.",
+          "Limited-time online prices selected by the Cliffs of Puff team. Stock updates from the same inventory used at the till.",
         trim: true,
         maxlength: 300,
       },

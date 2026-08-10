@@ -125,8 +125,9 @@ export function Header() {
   const announcementSecondary =
     settings.announcement.secondary || t("announcement.secondary");
   const ticker = [announcementPrimary, announcementSecondary]
+    .map((item) => item.replace(/[•·]/g, " ").replace(/\s+/g, " ").trim())
     .filter(Boolean)
-    .join("   •   ");
+    .join(" ");
 
   const announcementEnabled =
     settings.announcement.enabled !== false && Boolean(ticker);
@@ -154,8 +155,14 @@ export function Header() {
         <div className="h-9 overflow-hidden border-b border-white/10 text-[11px] font-mono uppercase tracking-widest">
           <div className="marquee-track flex h-full items-center whitespace-nowrap">
             {[0, 1, 2, 3].map((item) => (
-              <span key={item} className="mx-10 inline-flex shrink-0">
-                {ticker}
+              <span key={item} className="mx-8 inline-flex shrink-0 items-center gap-4">
+                <img
+                  src={logo}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-5 w-auto object-contain"
+                />
+                <span>{ticker}</span>
               </span>
             ))}
           </div>
@@ -185,10 +192,10 @@ export function Header() {
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
-          <Link to="/" className="flex items-center" aria-label="CliffsOfPuff — home">
+          <Link to="/" className="flex items-center" aria-label="Cliffs of Puff — home">
             <img
               src={logo}
-              alt="CliffsOfPuff"
+              alt="Cliffs of Puff"
               width={2430}
               height={2430}
               className="h-[61px] w-auto object-contain sm:h-[76px] lg:h-[91px]"
@@ -208,9 +215,11 @@ export function Header() {
           />
           <button
             type="submit"
-            className="bg-ink px-4 py-2.5 text-primary-foreground font-mono text-[11px] uppercase tracking-widest"
+            className="grid h-10 w-10 shrink-0 place-items-center bg-ink text-primary-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            aria-label={t("nav.search")}
+            title={t("nav.search")}
           >
-            {t("nav.search")}
+            <Search className="h-4 w-4" />
           </button>
         </form>
 

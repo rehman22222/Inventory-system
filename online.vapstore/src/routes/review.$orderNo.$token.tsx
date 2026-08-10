@@ -10,7 +10,7 @@ export const Route = createFileRoute("/review/$orderNo/$token")({
   component: ReviewPage,
   loader: async ({ params }): Promise<ReviewContext> =>
     getReviewContext({ data: { order: params.orderNo, token: params.token } }),
-  head: () => ({ meta: [{ title: "Write a review — CliffsOfPuff" }] }),
+  head: () => ({ meta: [{ title: "Write a review — Cliffs of Puff" }] }),
 });
 
 const MESSAGES: Record<string, { title: string; body: string }> = {

@@ -9,14 +9,14 @@ export const Route = createFileRoute("/sale")({
   component: SalePage,
   head: () => ({
     meta: [
-      { title: "Sale — CliffsOfPuff" },
+      { title: "Sale — Cliffs of Puff" },
       {
         name: "description",
         content:
           "Weekly rotating deals on disposables, nic salts, pod kits and more. Limited stock.",
       },
-      { property: "og:title", content: "Sale — CliffsOfPuff" },
-      { property: "og:description", content: "Up to -40% off across CliffsOfPuff." },
+      { property: "og:title", content: "Sale — Cliffs of Puff" },
+      { property: "og:description", content: "Up to -40% off across Cliffs of Puff." },
     ],
   }),
 });

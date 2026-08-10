@@ -7,10 +7,9 @@ import {
   type TouchEvent,
   type WheelEvent,
 } from "react";
-import { ShieldCheck, X } from "lucide-react";
-import logo from "@/assets/logo-cop.png";
 import { getCookie, setSessionCookie } from "@/lib/cookies";
 import { getSessionId } from "@/lib/session";
+import logo from "@/assets/logo-cop.png";
 
 // Consent lives in a first-party cookie tied to the visitor's session id. It
 // expires with the browser session, so age is confirmed once per visit.
@@ -106,7 +105,7 @@ export function AgeGate({ children }: { children: ReactNode }) {
 
       {!accepted && (
         <div
-          className="fixed inset-0 z-[100] grid min-h-[100dvh] place-items-center overflow-y-auto bg-ink/55 px-4 py-6 text-primary-foreground backdrop-blur-[2px] sm:px-6"
+          className="fixed inset-0 z-[100] grid min-h-[100dvh] place-items-center overflow-y-auto bg-black/62 px-4 py-6 text-ink backdrop-blur-[1.5px] sm:px-6"
           role="presentation"
           onWheel={handleBackdropWheel}
           onTouchStart={handleBackdropTouchStart}
@@ -119,56 +118,54 @@ export function AgeGate({ children }: { children: ReactNode }) {
             aria-labelledby="age-gate-title"
             aria-describedby="age-gate-description"
             onKeyDown={keepFocusInside}
-            className="pointer-events-auto relative w-full max-w-xl overflow-hidden border border-primary-foreground/20 bg-background text-foreground shadow-[0_28px_100px_rgba(0,0,0,0.45)]"
+            className="pointer-events-auto w-full max-w-3xl overflow-hidden border border-primary-foreground/20 bg-background text-foreground shadow-[0_28px_100px_rgba(0,0,0,0.45)]"
           >
-            <div className="grid gap-0 sm:grid-cols-[9rem_1fr]">
-              <div className="flex items-center justify-center border-b hair bg-accent p-5 sm:border-b-0 sm:border-r">
+            <div className="grid sm:grid-cols-[12rem_1fr]">
+              <div className="flex items-center justify-center border-b hair bg-accent p-6 sm:border-b-0 sm:border-r">
                 <div className="text-center">
                   <img
                     src={logo}
-                    alt="CliffsOfPuff"
+                    alt="Cliffs of Puff"
                     width={640}
                     height={640}
-                    className="mx-auto h-24 w-auto sm:h-28"
+                    className="mx-auto h-28 w-auto"
                   />
-                  <div className="mx-auto mt-3 grid h-14 w-14 place-items-center rounded-full bg-ink font-display text-xl text-primary-foreground">
+                  <div className="mx-auto mt-4 grid h-16 w-16 place-items-center rounded-full bg-ink font-display text-2xl text-primary-foreground">
                     18+
                   </div>
                 </div>
               </div>
 
-              <div className="p-6 sm:p-8">
-                <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
-                  <ShieldCheck className="h-4 w-4 text-foreground" />
+              <div className="p-7 sm:p-10">
+                <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-muted">
                   Age-restricted store
                 </div>
-                <h1 id="age-gate-title" className="mt-4 font-display text-4xl leading-none">
-                  Are you 18 or older?
+                <h1
+                  id="age-gate-title"
+                  className="mt-4 font-display text-4xl leading-[1.05] tracking-tight sm:text-5xl"
+                >
+                  Are you over
+                  <br />
+                  18?
                 </h1>
-                <p id="age-gate-description" className="mt-4 text-sm leading-6 text-ink-muted">
-                  You must be at least 18 years old to enter CliffsOfPuff and purchase
-                  products.
+                <p id="age-gate-description" className="mt-5 max-w-md text-sm leading-6 text-ink-muted">
+                  You must be at least 18 years old to enter Cliffs of Puff and purchase products.
                 </p>
 
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <div className="mt-7 grid gap-3 sm:grid-cols-2">
                   <button
                     type="button"
                     onClick={acceptAge}
-                    className="inline-flex items-center justify-center border border-ink bg-ink px-5 py-3.5 font-display text-xs uppercase tracking-[0.1em] text-primary-foreground transition-colors hover:border-accent hover:bg-accent hover:text-accent-foreground"
+                    className="inline-flex items-center justify-center bg-ink px-5 py-3.5 font-display text-xs uppercase tracking-wider text-white transition-colors hover:bg-accent hover:text-accent-foreground"
                   >
-                    Yes, I am 18+
+                    I am 18 or older
                   </button>
                   <a
                     href="https://www.google.com/"
-                    className="inline-flex items-center justify-center gap-2 border border-line bg-surface px-5 py-3.5 font-display text-xs uppercase tracking-[0.1em] text-ink transition-colors hover:bg-ink hover:text-primary-foreground"
+                    className="inline-flex items-center justify-center border border-line bg-surface px-5 py-3.5 font-display text-xs uppercase tracking-wider text-ink transition-colors hover:border-ink hover:bg-ink hover:text-white"
                   >
-                    <X className="h-4 w-4" />
-                    No, leave site
+                    I am under 18
                   </a>
-                </div>
-
-                <div className="mt-4 flex flex-col gap-2 text-xs text-ink-muted sm:flex-row sm:items-center sm:justify-between">
-                  <span>Remembered for this browser session</span>
                 </div>
               </div>
             </div>

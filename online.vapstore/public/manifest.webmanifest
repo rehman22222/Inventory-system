@@ -1,19 +1,19 @@
 {
-  "name": "CliffsOfPuff",
-  "short_name": "CliffsOfPuff",
+  "name": "Cliffs of Puff",
+  "short_name": "Cliffs of Puff",
   "icons": [
     {
-      "src": "/icon-64.png",
+      "src": "/logo-cop.png",
       "sizes": "64x64",
       "type": "image/png"
     },
     {
-      "src": "/icon-180.png",
+      "src": "/logo-cop.png",
       "sizes": "180x180",
       "type": "image/png"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/logo-cop.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

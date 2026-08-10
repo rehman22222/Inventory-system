@@ -6,8 +6,8 @@ export const Route = createFileRoute("/privacy")({
   component: Privacy,
   head: () => ({
     meta: [
-      { title: "Privacy Policy — CliffsOfPuff" },
-      { name: "description", content: "How CliffsOfPuff collects and uses your personal data." },
+      { title: "Privacy Policy — Cliffs of Puff" },
+      { name: "description", content: "How Cliffs of Puff collects and uses your personal data." },
     ],
   }),
 });

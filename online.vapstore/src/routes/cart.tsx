@@ -12,8 +12,8 @@ export const Route = createFileRoute("/cart")({
   component: Cart,
   head: () => ({
     meta: [
-      { title: "Cart — CliffsOfPuff" },
-      { name: "description", content: "Your CliffsOfPuff cart." },
+      { title: "Cart — Cliffs of Puff" },
+      { name: "description", content: "Your Cliffs of Puff cart." },
     ],
   }),
 });
@@ -91,6 +91,7 @@ function Cart() {
                   <Link
                     to="/product/$id"
                     params={{ id: line.slug }}
+                    search={line.eventId ? { event: line.eventId } : undefined}
                     className="line-clamp-2 font-display text-sm leading-tight tracking-tight hover:bg-accent hover:text-accent-foreground"
                   >
                     {line.name}

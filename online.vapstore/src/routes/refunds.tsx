@@ -6,8 +6,8 @@ export const Route = createFileRoute("/refunds")({
   component: Refunds,
   head: () => ({
     meta: [
-      { title: "Refund Policy — CliffsOfPuff" },
-      { name: "description", content: "When and how CliffsOfPuff issues refunds." },
+      { title: "Refund Policy — Cliffs of Puff" },
+      { name: "description", content: "When and how Cliffs of Puff issues refunds." },
     ],
   }),
 });

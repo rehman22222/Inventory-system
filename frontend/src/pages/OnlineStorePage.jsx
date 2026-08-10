@@ -134,7 +134,6 @@ export default function OnlineStorePage() {
       ...current,
       overview: true,
       orders: true,
-      settings: true,
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch]);
@@ -174,11 +173,19 @@ export default function OnlineStorePage() {
       dispatch(getOnlineReviews());
     } else if (tab === "settings") {
       dispatch(getOnlineSettings());
+      dispatch(getOnlineListings());
+      dispatch(getOnlineCategories());
     }
 
     setLoadedTabs((current) => ({ ...current, [tab]: true }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, dispatch]);
+
+  useEffect(() => {
+    if (tab !== "settings") return;
+    if (!online.listings.length) dispatch(getOnlineListings());
+    if (!online.categories.length) dispatch(getOnlineCategories());
+  }, [tab, dispatch, online.listings.length, online.categories.length]);
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
@@ -286,6 +293,8 @@ export default function OnlineStorePage() {
       {tab === "settings" && (
         <StorefrontSettings
           settings={online.settings}
+          listings={online.listings}
+          categories={online.categories}
           isActing={online.isActing}
         />
       )}
@@ -1932,6 +1941,7 @@ const BLANK_SLIDE = {
   image: "",
   mobileImage: "",
   imageAlt: "",
+  ctaPosition: "bottom-left",
   linkType: "none",
   listing: "",
   listings: [],
@@ -2131,6 +2141,15 @@ function HeroSlides({ slides, listings, categories }) {
             <option value="category">Category</option>
           </select>
         </div>
+        <select
+          className="select select-sm select-bordered w-full"
+          value={draft.ctaPosition || "bottom-left"}
+          onChange={(event) => set("ctaPosition", event.target.value)}
+        >
+          <option value="bottom-left">Button bottom left</option>
+          <option value="bottom-center">Button bottom center</option>
+          <option value="bottom-right">Button bottom right</option>
+        </select>
         {draft.linkType === "product" && (
           <select
             className="select select-sm select-bordered w-full"
@@ -2232,6 +2251,9 @@ function HeroSlides({ slides, listings, categories }) {
                 </span>
                 <span className="badge badge-ghost badge-sm">
                   order {slide.sortWeight || 0}
+                </span>
+                <span className="badge badge-ghost badge-sm">
+                  {slide.ctaPosition || "bottom-left"}
                 </span>
               </div>
             </div>
@@ -2553,7 +2575,7 @@ const DEFAULT_DEALS = {
   eyebrow: "Live sale",
   title: "Don’t miss out.",
   subtitle:
-    "Limited-time online prices selected by the CliffsOfPuff team. Stock updates from the same inventory used at the till.",
+    "Limited-time online prices selected by the Cliffs of Puff team. Stock updates from the same inventory used at the till.",
   ctaLabel: "See the deals",
   limit: 4,
 };
@@ -3533,8 +3555,15 @@ const BLANK_SETTINGS = {
     supportEmail: "",
     supportPhone: "",
     address: "",
+    openingHours: "Mon-Sat 9am - 4pm",
+    paymentImage: "/payment-logo2.webp",
+    restrictionImage: "/not.webp",
+    whyECigarettesTitle: "Why e-cigarettes?",
+    whyECigarettesContent:
+      "E-cigarettes give adult smokers an alternative to combustible cigarettes. Cliffs of Puff stocks age-restricted, authentic products only.",
   },
   announcement: { enabled: true, primary: "", secondary: "" },
+  events: { enabled: false, heading: "", align: "center", items: [] },
   emergencyAlert: {
     active: false,
     title: "Website under maintenance",
@@ -3563,6 +3592,29 @@ const BLANK_SETTINGS = {
     cookies: "",
   },
 };
+
+const blankEventItem = () => ({
+  kind: "product",
+  targetId: "",
+  enabled: false,
+  eventPrice: "",
+  tag: "",
+});
+
+const normalizeEventItems = (items = []) =>
+  Array.from({ length: 3 }, (_, index) => {
+    const item = items[index] || {};
+    return {
+      kind: item.kind === "category" ? "category" : "product",
+      targetId: item.targetId || "",
+      enabled: Boolean(item.enabled),
+      tag: item.tag || "",
+      eventPrice:
+        item.eventPrice === null || item.eventPrice === undefined
+          ? ""
+          : String(item.eventPrice),
+    };
+  });
 
 const POLICY_FIELDS = [
   ["terms", "Terms & Conditions", "/terms"],
@@ -3599,9 +3651,37 @@ const SOCIAL_CHANNELS = [
   },
 ];
 
-function StorefrontSettings({ settings, isActing }) {
+function StorefrontSettings({ settings, listings = [], categories = [], isActing }) {
   const dispatch = useDispatch();
   const [draft, setDraft] = useState(BLANK_SETTINGS);
+  const productOptions = useMemo(
+    () =>
+      (Array.isArray(listings) ? listings : [])
+        .filter((listing) => listing?._id)
+        .map((listing) => ({
+          value: listing._id,
+          label:
+            listing.webName ||
+            listing.product?.name ||
+            listing.slug ||
+            "Product",
+          hidden: listing.listed === false,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [listings],
+  );
+  const categoryOptions = useMemo(
+    () =>
+      (Array.isArray(categories) ? categories : [])
+        .filter((category) => category?.slug)
+        .map((category) => ({
+          value: category.slug,
+          label: category.name || category.slug,
+          hidden: category.active === false,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [categories],
+  );
   useEffect(() => {
     if (settings) {
       setDraft({
@@ -3611,6 +3691,11 @@ function StorefrontSettings({ settings, isActing }) {
         announcement: {
           ...BLANK_SETTINGS.announcement,
           ...(settings.announcement || {}),
+        },
+        events: {
+          ...BLANK_SETTINGS.events,
+          ...(settings.events || {}),
+          items: normalizeEventItems(settings.events?.items || []),
         },
         shipping: { ...BLANK_SETTINGS.shipping, ...(settings.shipping || {}) },
         promises: { ...BLANK_SETTINGS.promises, ...(settings.promises || {}) },
@@ -3624,6 +3709,19 @@ function StorefrontSettings({ settings, isActing }) {
       ...current,
       [section]: { ...current[section], [key]: value },
     }));
+  const setEventItem = (index, patch) =>
+    setDraft((current) => {
+      const items = normalizeEventItems(current.events.items || []);
+      const currentItem = items[index] || blankEventItem();
+      items[index] = { ...currentItem, ...patch };
+      return {
+        ...current,
+        events: {
+          ...current.events,
+          items: normalizeEventItems(items),
+        },
+      };
+    });
   const save = async (event) => {
     event.preventDefault();
     const result = await dispatch(saveOnlineSettings(draft));
@@ -3727,7 +3825,7 @@ function StorefrontSettings({ settings, isActing }) {
                 onChange={(event) =>
                   set("footer", "supportEmail", event.target.value)
                 }
-              />
+                />
               <input
                 className="input input-sm input-bordered"
                 placeholder="Support phone"
@@ -3742,6 +3840,49 @@ function StorefrontSettings({ settings, isActing }) {
               placeholder="Store address"
               value={draft.footer.address}
               onChange={(event) => set("footer", "address", event.target.value)}
+            />
+            <input
+              className="input input-sm input-bordered w-full"
+              placeholder="Opening hours e.g. Mon-Sat 9am - 4pm"
+              value={draft.footer.openingHours}
+              onChange={(event) =>
+                set("footer", "openingHours", event.target.value)
+              }
+            />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input
+                className="input input-sm input-bordered"
+                placeholder="Payment logo URL"
+                value={draft.footer.paymentImage}
+                onChange={(event) =>
+                  set("footer", "paymentImage", event.target.value)
+                }
+              />
+              <input
+                className="input input-sm input-bordered"
+                placeholder="Footer warning icons URL"
+                value={draft.footer.restrictionImage}
+                onChange={(event) =>
+                  set("footer", "restrictionImage", event.target.value)
+                }
+              />
+            </div>
+            <input
+              className="input input-sm input-bordered w-full"
+              placeholder="Why e-cigarettes? page title"
+              value={draft.footer.whyECigarettesTitle}
+              onChange={(event) =>
+                set("footer", "whyECigarettesTitle", event.target.value)
+              }
+            />
+            <textarea
+              className="textarea textarea-sm textarea-bordered"
+              rows={4}
+              placeholder="Why e-cigarettes? page content"
+              value={draft.footer.whyECigarettesContent}
+              onChange={(event) =>
+                set("footer", "whyECigarettesContent", event.target.value)
+              }
             />
           </div>
         </section>
@@ -3779,6 +3920,161 @@ function StorefrontSettings({ settings, isActing }) {
               set("announcement", "secondary", event.target.value)
             }
           />
+        </div>
+      </section>
+      <section className="min-w-0 overflow-hidden rounded-xl border bg-base-100 p-4 sm:p-5">
+        <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+          <div className="min-w-0">
+            <h3 className="font-display text-lg font-bold">Events heading</h3>
+            <p className="text-xs text-base-content/50">
+              Optional fancy heading shown directly under the hero banner. Use it
+              for seasonal events, launches or short announcements.
+            </p>
+          </div>
+          <div className="min-w-0 sm:justify-self-end">
+            <Check
+              checked={Boolean(draft.events.enabled)}
+              onChange={(value) => set("events", "enabled", value)}
+              label="Show events heading"
+            />
+          </div>
+        </div>
+        <div className="mt-4 grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_180px]">
+          <input
+            className="input input-sm input-bordered w-full min-w-0"
+            maxLength={140}
+            value={draft.events.heading}
+            placeholder="e.g. Summer drop live now"
+            onChange={(event) => set("events", "heading", event.target.value)}
+          />
+          <select
+            className="select select-sm select-bordered w-full min-w-0"
+            value={draft.events.align}
+            onChange={(event) => set("events", "align", event.target.value)}
+          >
+            <option value="left">Align left</option>
+            <option value="center">Align center</option>
+            <option value="right">Align right</option>
+          </select>
+        </div>
+        <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-3">
+          {[0, 1, 2].map((index) => {
+            const item = draft.events.items?.[index] || {
+              kind: "product",
+              targetId: "",
+              enabled: false,
+            };
+            const options =
+              item.kind === "category" ? categoryOptions : productOptions;
+            return (
+              <div
+                key={index}
+                className={`min-w-0 rounded-xl border p-3 transition-colors ${
+                  item.enabled
+                    ? "border-primary/40 bg-primary/5"
+                    : "bg-base-200"
+                }`}
+              >
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-base-content/50">
+                    Event card {index + 1}
+                  </div>
+                  <label className="flex items-center gap-1 text-[11px] font-medium">
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-xs"
+                      checked={Boolean(item.enabled)}
+                      onChange={(event) =>
+                        setEventItem(index, { enabled: event.target.checked })
+                      }
+                    />
+                    Show
+                  </label>
+                </div>
+                <div className="grid min-w-0 gap-2">
+                  <select
+                    className="select select-sm select-bordered w-full min-w-0"
+                    value={item.kind}
+                    onChange={(event) =>
+                      setEventItem(index, {
+                        kind: event.target.value,
+                        targetId: "",
+                        eventPrice: "",
+                        tag: "",
+                      })
+                    }
+                  >
+                    <option value="product">Product</option>
+                    <option value="category">Category</option>
+                  </select>
+                  <select
+                    className="select select-sm select-bordered w-full min-w-0"
+                    value={item.targetId}
+                    onChange={(event) =>
+                      setEventItem(index, {
+                        targetId: event.target.value,
+                        enabled: Boolean(event.target.value),
+                      })
+                    }
+                  >
+                    <option value="">
+                      {item.kind === "category"
+                        ? "Choose category"
+                        : "Choose product"}
+                    </option>
+                    {options.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                        {option.hidden ? " (hidden)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {!options.length && (
+                    <p className="text-[11px] text-warning">
+                      No {item.kind === "category" ? "categories" : "products"} loaded yet.
+                      Use Refresh if this tab was opened before the catalogue loaded.
+                    </p>
+                  )}
+                  <input
+                    className="input input-sm input-bordered w-full min-w-0"
+                    maxLength={40}
+                    placeholder="Optional red tag e.g. Halloween deal"
+                    value={item.tag || ""}
+                    onChange={(event) =>
+                      setEventItem(index, { tag: event.target.value })
+                    }
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    className="input input-sm input-bordered w-full min-w-0"
+                    placeholder="Event price e.g. 5.99"
+                    value={item.eventPrice || ""}
+                    disabled={item.kind !== "product"}
+                    onChange={(event) =>
+                      setEventItem(index, { eventPrice: event.target.value })
+                    }
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div
+          className={`mt-5 overflow-hidden rounded-2xl border bg-black p-5 text-white shadow-inner ${
+            draft.events.align === "left"
+              ? "text-left"
+              : draft.events.align === "right"
+                ? "text-right"
+                : "text-center"
+          }`}
+        >
+          <div>
+            <span className="box-decoration-clone bg-white px-3 font-display text-3xl font-black leading-none text-black shadow-[8px_8px_0_#c6ff2e]">
+              {draft.events.heading || "Your event heading"}
+            </span>
+          </div>
         </div>
       </section>
       <section className="rounded-xl border bg-base-100 p-5">
@@ -3890,7 +4186,7 @@ function StorefrontSettings({ settings, isActing }) {
           <Field label="Trading name (if different)">
             <input
               className="input input-sm input-bordered"
-              placeholder="e.g. CliffsOfPuff"
+              placeholder="e.g. Cliffs of Puff"
               value={draft.business.tradingName}
               onChange={(event) =>
                 set("business", "tradingName", event.target.value)

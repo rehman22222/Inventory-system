@@ -6,8 +6,8 @@ export const Route = createFileRoute("/cookies")({
   component: Cookies,
   head: () => ({
     meta: [
-      { title: "Cookie Policy — CliffsOfPuff" },
-      { name: "description", content: "How CliffsOfPuff uses cookies and similar technologies." },
+      { title: "Cookie Policy — Cliffs of Puff" },
+      { name: "description", content: "How Cliffs of Puff uses cookies and similar technologies." },
     ],
   }),
 });

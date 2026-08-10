@@ -43,6 +43,11 @@ const OnlineHeroSlideSchema = new mongoose.Schema(
     image: { type: String, default: "" },
     mobileImage: { type: String, default: "" },
     imageAlt: { type: String, default: "" },
+    ctaPosition: {
+      type: String,
+      enum: ["bottom-left", "bottom-center", "bottom-right"],
+      default: "bottom-left",
+    },
 
     // The rotated corner badge: { top: "Save", big: "40%", bottom: "this week" }
     burst: {

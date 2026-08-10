@@ -91,11 +91,28 @@ export interface StorefrontSettings {
     supportEmail: string;
     supportPhone: string;
     address: string;
+    openingHours: string;
+    paymentImage: string;
+    restrictionImage: string;
+    whyECigarettesTitle: string;
+    whyECigarettesContent: string;
   };
   announcement: {
     enabled: boolean;
     primary: string;
     secondary: string;
+  };
+  events?: {
+    enabled: boolean;
+    heading: string;
+    align: "left" | "center" | "right";
+    items?: {
+      enabled?: boolean;
+      kind: "product" | "category";
+      targetId: string;
+      tag?: string;
+      eventPrice?: number | null;
+    }[];
   };
   emergencyAlert: {
     active: boolean;
@@ -194,6 +211,7 @@ export interface HeroSlide {
   image: string;
   mobileImage?: string;
   imageAlt: string;
+  ctaPosition?: "bottom-left" | "bottom-center" | "bottom-right";
   burst: { top: string; big: string; bottom: string };
   tone: "cream" | "ink" | "accent";
   product: {

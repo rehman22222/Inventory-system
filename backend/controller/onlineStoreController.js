@@ -302,6 +302,20 @@ async function ratingByListing(store, listingIds = null) {
 const requestError = (statusCode, message, extra = {}) =>
   Object.assign(new Error(message), { statusCode, ...extra });
 
+const eventPriceForItem = (settings, listingId, item) => {
+  const requestedEvent = String(item?.eventId || "").trim();
+  if (!requestedEvent || requestedEvent !== String(listingId)) return null;
+  const eventItem = (settings?.events?.items || []).find(
+    (entry) =>
+      entry?.enabled &&
+      entry.kind === "product" &&
+      String(entry.targetId) === String(listingId) &&
+      String(entry.targetId) === requestedEvent,
+  );
+  const eventPrice = Number(eventItem?.eventPrice);
+  return Number.isFinite(eventPrice) && eventPrice > 0 ? money(eventPrice) : null;
+};
+
 // Resolve every basket line from server-owned catalogue data. Both voucher
 // preview and final checkout use this function, so a browser can never invent
 // a product, a price or an eligible discount line.
@@ -312,6 +326,7 @@ const resolveOrderLines = async (store, items) => {
   // ("buy 3+ of any flavour"), not on a single line.
   const resolved = [];
   const qtyByListing = new Map();
+  const settings = await getOrCreateSettings(store);
   for (const item of items) {
     if (
       !mongoose.isValidObjectId(item.listing) &&
@@ -384,7 +399,14 @@ const resolveOrderLines = async (store, items) => {
     }
     const key = String(listing._id);
     qtyByListing.set(key, (qtyByListing.get(key) || 0) + qty);
-    resolved.push({ listing, selectedProduct, selectedVariant, qty, lineName });
+    resolved.push({
+      listing,
+      selectedProduct,
+      selectedVariant,
+      qty,
+      lineName,
+      eventPrice: eventPriceForItem(settings, listing._id, item),
+    });
   }
 
   // Second pass: price each line. The deal price applies to every unit of a
@@ -392,9 +414,10 @@ const resolveOrderLines = async (store, items) => {
   const lines = [];
   for (const r of resolved) {
     const listingQty = qtyByListing.get(String(r.listing._id)) || r.qty;
-    const price = money(
+    const basePrice = money(
       effectiveItemPrice(r.listing, r.selectedProduct, r.selectedVariant, listingQty),
     );
+    const price = r.eventPrice ? Math.min(r.eventPrice, basePrice) : basePrice;
     if (!Number.isFinite(price) || price <= 0) {
       throw requestError(
         409,
@@ -1820,11 +1843,17 @@ module.exports.updateStoreSettings = async (req, res) => {
       "supportEmail",
       "supportPhone",
       "address",
+      "openingHours",
+      "paymentImage",
+      "restrictionImage",
+      "whyECigarettesTitle",
+      "whyECigarettesContent",
     ]) {
       if (Object.prototype.hasOwnProperty.call(footer, key)) {
         settings.footer[key] = String(footer[key] || "").trim();
       }
     }
+    settings.markModified("footer");
     const announcement = req.body.announcement || {};
     if (!settings.announcement) settings.announcement = {};
     if (Object.prototype.hasOwnProperty.call(announcement, "enabled")) {
@@ -1886,6 +1915,34 @@ module.exports.updateStoreSettings = async (req, res) => {
     // Mongoose doesn't reliably flag sub-path edits on a defaulted nested
     // object; mark it so the whole `promises` object is actually persisted.
     settings.markModified("promises");
+    settings.events = settings.events || {};
+    const events = req.body.events || {};
+    if (Object.prototype.hasOwnProperty.call(events, "enabled")) {
+      settings.events.enabled = Boolean(events.enabled);
+    }
+    if (Object.prototype.hasOwnProperty.call(events, "heading")) {
+      settings.events.heading = String(events.heading || "").trim().slice(0, 140);
+    }
+    if (Object.prototype.hasOwnProperty.call(events, "align")) {
+      settings.events.align = ["left", "center", "right"].includes(events.align)
+        ? events.align
+        : "center";
+    }
+    if (Object.prototype.hasOwnProperty.call(events, "items")) {
+      settings.events.items = (Array.isArray(events.items) ? events.items : [])
+        .slice(0, 3)
+        .map((item) => ({
+          enabled: Boolean(item?.enabled),
+          kind: item?.kind === "category" ? "category" : "product",
+          targetId: String(item?.targetId || "").trim().slice(0, 160),
+          tag: String(item?.tag || "").trim().slice(0, 40),
+          eventPrice:
+            item?.eventPrice === "" || item?.eventPrice == null
+              ? null
+              : Math.max(0, Number(item.eventPrice) || 0),
+        }));
+    }
+    settings.markModified("events");
     const newThisWeek = req.body.newThisWeek || {};
     if (Object.prototype.hasOwnProperty.call(newThisWeek, "enabled")) {
       settings.newThisWeek.enabled = Boolean(newThisWeek.enabled);
@@ -2048,6 +2105,11 @@ const heroFields = async (body, store, current = {}) => {
     image: String(valueOf("image", current.image || "")).trim(),
     mobileImage: String(valueOf("mobileImage", current.mobileImage || "")).trim(),
     imageAlt: String(valueOf("imageAlt", current.imageAlt || "")).trim(),
+    ctaPosition: ["bottom-left", "bottom-center", "bottom-right"].includes(
+      valueOf("ctaPosition", current.ctaPosition || "bottom-left"),
+    )
+      ? valueOf("ctaPosition", current.ctaPosition || "bottom-left")
+      : "bottom-left",
     burst: valueOf("burst", current.burst || {}),
     tone: valueOf("tone", current.tone || "ink"),
     active: Boolean(valueOf("active", current.active ?? true)),
@@ -2610,6 +2672,7 @@ const publicStorefrontSettings = (settings) => ({
   social: settings.social,
   footer: settings.footer,
   announcement: settings.announcement,
+  events: settings.events,
   emergencyAlert: settings.emergencyAlert,
   shipping: settings.shipping,
   promises: settings.promises,
@@ -2930,6 +2993,7 @@ module.exports.storefrontHero = async (req, res) => {
           image: s.image,
           mobileImage: s.mobileImage,
           imageAlt: s.imageAlt,
+          ctaPosition: s.ctaPosition || "bottom-left",
           burst: s.burst,
           tone: s.tone,
           product: s.listing?.product
