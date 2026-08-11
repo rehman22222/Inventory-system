@@ -6,6 +6,14 @@ import { useCatalog } from "@/lib/catalog-context";
 import { subscribeNewsletter } from "@/lib/catalog-api";
 import logo from "@/assets/logo-cop.png";
 
+const footerBrandLogos = [
+  { src: "/brand-marquee/elfbar.png", alt: "Elf Bar" },
+  { src: "/brand-marquee/ivg.png", alt: "IVG" },
+  { src: "/brand-marquee/aspire.png", alt: "Aspire" },
+  { src: "/brand-marquee/lost-mary.png", alt: "Lost Mary", featured: true },
+  { src: "/brand-marquee/vaporesso.png", alt: "Vaporesso", featured: true },
+];
+
 function XIcon({ className = "" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -64,6 +72,7 @@ export function Footer() {
 
   return (
     <footer className="mt-16 overflow-hidden bg-black text-white">
+      <FooterBrandMarquee />
       <div className="container-x grid gap-9 py-12 text-center md:grid-cols-[1.05fr_1.35fr_0.9fr_0.9fr_1.25fr] md:text-left lg:gap-10">
         <div className="flex flex-col items-center md:items-start">
           <Link to="/" className="mb-6 flex justify-center md:justify-start" aria-label="Cliffs of Puff home">
@@ -142,7 +151,7 @@ export function Footer() {
               onChange={(event) => setEmail(event.target.value)}
               placeholder={settings.footer.newsletterHeading || "Subscribe to our news letter"}
               required
-              className="min-w-0 flex-1 bg-white px-3 py-2 text-sm text-black outline-none placeholder:text-black/75"
+              className="min-w-0 flex-1 bg-[#e9e7df] px-3 py-2 text-sm text-black outline-none placeholder:text-black/65"
             />
             <button
               type="submit"
@@ -226,6 +235,37 @@ export function Footer() {
         </div>
       )}
     </footer>
+  );
+}
+
+function FooterBrandMarquee() {
+  const row = [...footerBrandLogos, ...footerBrandLogos, ...footerBrandLogos];
+
+  return (
+    <section
+      className="border-y border-black/10 bg-[#efeee9] text-black"
+      aria-label="Featured brands"
+    >
+      <div className="overflow-hidden">
+        <div className="footer-brand-marquee-track flex items-center whitespace-nowrap py-2.5 sm:py-3.5">
+          {row.map((brand, index) => (
+            <div
+              key={`${brand.alt}-${index}`}
+              className="mx-4 flex h-9 w-[5.7rem] shrink-0 items-center justify-center sm:mx-6 sm:h-10 sm:w-[6.9rem] lg:mx-9 lg:h-11 lg:w-[8.2rem]"
+            >
+              <img
+                src={brand.src}
+                alt={brand.alt}
+                className={`max-h-full max-w-full object-contain opacity-90 grayscale-[8%] contrast-110 transition duration-300 hover:opacity-100 hover:grayscale-0 ${
+                  brand.featured ? "scale-[1.12]" : ""
+                }`}
+                loading="lazy"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 

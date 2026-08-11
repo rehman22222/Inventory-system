@@ -121,6 +121,14 @@
   animation: marquee 40s linear infinite;
 }
 
+@utility announcement-marquee-track {
+  animation: marquee 38s linear infinite;
+}
+
+@utility footer-brand-marquee-track {
+  animation: marquee 42s linear infinite;
+}
+
 @keyframes marquee {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }

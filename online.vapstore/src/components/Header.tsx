@@ -153,7 +153,7 @@ export function Header() {
       {announcementEnabled && (
       <div className="bg-ink text-primary-foreground">
         <div className="h-9 overflow-hidden border-b border-white/10 text-[11px] font-mono uppercase tracking-widest">
-          <div className="marquee-track flex h-full items-center whitespace-nowrap">
+          <div className="announcement-marquee-track flex h-full items-center whitespace-nowrap">
             {[0, 1, 2, 3].map((item) => (
               <span key={item} className="mx-8 inline-flex shrink-0 items-center gap-4">
                 <img
