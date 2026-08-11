@@ -239,7 +239,8 @@ export function Footer() {
 }
 
 function FooterBrandMarquee() {
-  const row = [...footerBrandLogos, ...footerBrandLogos, ...footerBrandLogos];
+  const sequence = [...footerBrandLogos, ...footerBrandLogos];
+  const row = [...sequence, ...sequence];
 
   return (
     <section
@@ -251,7 +252,7 @@ function FooterBrandMarquee() {
           {row.map((brand, index) => (
             <div
               key={`${brand.alt}-${index}`}
-              className="mx-4 flex h-9 w-[5.7rem] shrink-0 items-center justify-center sm:mx-6 sm:h-10 sm:w-[6.9rem] lg:mx-9 lg:h-11 lg:w-[8.2rem]"
+              className="mx-2.5 flex h-9 w-[5.7rem] shrink-0 items-center justify-center sm:mx-4 sm:h-10 sm:w-[6.9rem] lg:mx-5 lg:h-11 lg:w-[8.2rem]"
             >
               <img
                 src={brand.src}
