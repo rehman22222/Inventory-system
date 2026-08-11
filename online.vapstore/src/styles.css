@@ -129,6 +129,16 @@
   animation: marquee 35s linear infinite;
 }
 
+@media (max-width: 767px) {
+  .announcement-marquee-track {
+    animation-duration: 24s;
+  }
+
+  .footer-brand-marquee-track {
+    animation-duration: 26s;
+  }
+}
+
 @keyframes marquee {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
