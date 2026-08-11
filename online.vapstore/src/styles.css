@@ -131,11 +131,11 @@
 
 @media (max-width: 767px) {
   .announcement-marquee-track {
-    animation-duration: 18s;
+    animation: marquee 11.5s linear infinite !important;
   }
 
   .footer-brand-marquee-track {
-    animation-duration: 19s;
+    animation: marquee 12.5s linear infinite !important;
   }
 }
 
