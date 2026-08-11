@@ -109,6 +109,7 @@ function DealsModal({ onClose }) {
     setPicked((current) => current.filter((entry) => entry.productId !== productId));
 
   const normalTotal = picked.reduce((sum, entry) => sum + entry.price * entry.quantity, 0);
+  const pickedUnitCount = picked.reduce((sum, entry) => sum + Number(entry.quantity || 0), 0);
 
   const resetForm = () => {
     setName("");
@@ -140,7 +141,7 @@ function DealsModal({ onClose }) {
       toast.error(t("deals.percentMax"));
       return;
     }
-    if (picked.length < 2) {
+    if (pickedUnitCount < 2) {
       toast.error(t("deals.minProducts"));
       return;
     }

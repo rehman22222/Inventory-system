@@ -54,6 +54,12 @@ const summarise = (type, payload) => {
 const isDateString = (value) =>
   typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(value).getTime());
 
+const dealUnitCount = (items) =>
+  (Array.isArray(items) ? items : []).reduce(
+    (sum, item) => sum + Math.max(1, Math.floor(Number(item?.quantity || 1)) || 1),
+    0
+  );
+
 // An admin raises a request for something only the superadmin may do.
 module.exports.createRequest = async (req, res) => {
   try {
@@ -110,8 +116,8 @@ module.exports.createRequest = async (req, res) => {
       if (!Number(payload.discount) || Number(payload.discount) <= 0) {
         return res.status(400).json({ message: "Deal discount must be greater than zero" });
       }
-      if ((payload.items || []).length < 2) {
-        return res.status(400).json({ message: "Pick at least two products for the deal" });
+      if (dealUnitCount(payload.items) < 2) {
+        return res.status(400).json({ message: "Pick at least two units or products for the deal" });
       }
     }
 

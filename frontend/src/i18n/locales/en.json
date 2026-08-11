@@ -1052,7 +1052,7 @@
     "product": "Product",
     "nameRequired": "Enter a deal name",
     "discountRequired": "Enter a discount greater than zero",
-    "minProducts": "Pick at least two products",
+    "minProducts": "Pick at least two units or products",
     "createFailed": "Could not create the deal",
     "created": "Deal created",
     "deleted": "Deal deleted",

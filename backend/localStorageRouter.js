@@ -1597,6 +1597,11 @@ function localStorageRouter(app) {
     });
     return [...map.entries()].map(([product, quantity]) => ({ product, quantity }));
   };
+  const dealUnitCount = (items) =>
+    (Array.isArray(items) ? items : []).reduce(
+      (sum, item) => sum + Math.max(1, Math.floor(Number(item.quantity || 1)) || 1),
+      0
+    );
 
   router.get("/deal/all", (_req, res) => {
     const store = readStore();
@@ -1619,8 +1624,8 @@ function localStorageRouter(app) {
     }
 
     const cleanItems = normaliseDealItems(store, items);
-    if (cleanItems.length < 2) {
-      return res.status(400).json({ message: "Pick at least two products for the deal" });
+    if (dealUnitCount(cleanItems) < 2) {
+      return res.status(400).json({ message: "Pick at least two units or products for the deal" });
     }
 
     if (!store.deals) store.deals = [];
@@ -1661,8 +1666,8 @@ function localStorageRouter(app) {
     }
     if (items !== undefined) {
       const cleanItems = normaliseDealItems(store, items);
-      if (cleanItems.length < 2) {
-        return res.status(400).json({ message: "Pick at least two products for the deal" });
+      if (dealUnitCount(cleanItems) < 2) {
+        return res.status(400).json({ message: "Pick at least two units or products for the deal" });
       }
       deal.items = cleanItems;
     }

@@ -22,8 +22,10 @@ const DealSchema = new mongoose.Schema(
     items: {
       type: [DealItemSchema],
       validate: {
-        validator: (items) => Array.isArray(items) && items.length >= 2,
-        message: "A deal needs at least two products",
+        validator: (items) =>
+          Array.isArray(items) &&
+          items.reduce((sum, item) => sum + Math.max(1, Number(item.quantity || 1)), 0) >= 2,
+        message: "A deal needs at least two product units",
       },
     },
     active: { type: Boolean, default: true },

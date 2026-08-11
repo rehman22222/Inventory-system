@@ -18,6 +18,12 @@ const normaliseItems = (raw) => {
   return [...map.entries()].map(([product, quantity]) => ({ product, quantity }));
 };
 
+const dealUnitCount = (items) =>
+  (Array.isArray(items) ? items : []).reduce(
+    (sum, item) => sum + Math.max(1, Math.floor(Number(item.quantity || 1)) || 1),
+    0
+  );
+
 // A percentage over 100 would hand money back, so it is rejected outright.
 const validateDiscount = (discount, discountType) => {
   const amount = Number(discount);
@@ -51,8 +57,8 @@ module.exports.createDealRecord = async (
   }
 
   const cleanItems = normaliseItems(items);
-  if (cleanItems.length < 2) {
-    return { ok: false, status: 400, message: "Pick at least two products for the deal" };
+  if (dealUnitCount(cleanItems) < 2) {
+    return { ok: false, status: 400, message: "Pick at least two units or products for the deal" };
   }
 
   // Every product must actually exist.
@@ -152,8 +158,8 @@ module.exports.updateDeal = async (req, res) => {
 
     if (items !== undefined) {
       const cleanItems = normaliseItems(items);
-      if (cleanItems.length < 2) {
-        return res.status(400).json({ message: "Pick at least two products for the deal" });
+      if (dealUnitCount(cleanItems) < 2) {
+        return res.status(400).json({ message: "Pick at least two units or products for the deal" });
       }
       deal.items = cleanItems;
     }
