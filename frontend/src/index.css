@@ -348,3 +348,29 @@
   background: #2563eb;
   color: #fff;
 }
+
+body.osk-open {
+  padding-bottom: var(--osk-height, 0px);
+}
+
+body.osk-open .pos-modal-overlay {
+  align-items: flex-start;
+  padding-bottom: calc(var(--osk-height, 0px) + 1rem);
+  overflow-y: auto;
+}
+
+body.osk-open .pos-modal-panel {
+  max-height: calc(100dvh - var(--osk-height, 0px) - 2rem);
+}
+
+@media (max-height: 760px) {
+  .simple-keyboard.osk-dark .hg-row {
+    margin-bottom: 4px;
+  }
+
+  .simple-keyboard.osk-dark .hg-button {
+    height: 42px;
+    font-size: 15px;
+    border-radius: 7px;
+  }
+}

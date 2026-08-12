@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Keyboard from "react-simple-keyboard";
 import "react-simple-keyboard/build/css/index.css";
 import { FiX } from "react-icons/fi";
@@ -30,6 +30,16 @@ const hasNativeSoftKeyboard = () => {
   return isTouchMac;
 };
 
+const isKeyboardForcedForTesting = () => {
+  if (typeof window === "undefined") return false;
+  const params = new URLSearchParams(window.location.search);
+  return (
+    params.get("keyboard") === "1" ||
+    params.get("osk") === "1" ||
+    localStorage.getItem("osk-force") === "1"
+  );
+};
+
 // Which fields the keyboard drives (skip checkboxes, files, pickers, buttons…).
 const EDITABLE_SELECTOR =
   'input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]):not([type=date]):not([type=datetime-local]):not([type=month]):not([type=time]):not([type=week]):not([type=submit]):not([type=button]):not([type=reset]), textarea';
@@ -51,15 +61,53 @@ const setNativeValue = (el, value) => {
   el.dispatchEvent(new Event("input", { bubbles: true }));
 };
 
+const focusAndPlaceCaret = (el, position) => {
+  if (!el) return;
+  el.focus({ preventScroll: true });
+  try {
+    if (typeof el.setSelectionRange === "function") {
+      el.setSelectionRange(position, position);
+    }
+  } catch {
+    /* Some input types do not support selection ranges. */
+  }
+};
+
+const mutateActiveValue = (el, replacement, removeBeforeCaret = 0) => {
+  if (!el) return "";
+  const currentValue = el.value || "";
+  let start = currentValue.length;
+  let end = currentValue.length;
+
+  try {
+    if (typeof el.selectionStart === "number") start = el.selectionStart;
+    if (typeof el.selectionEnd === "number") end = el.selectionEnd;
+  } catch {
+    /* Fall back to editing at the end. */
+  }
+
+  const deleteFrom = Math.max(0, start - removeBeforeCaret);
+  const nextValue = `${currentValue.slice(0, deleteFrom)}${replacement}${currentValue.slice(end)}`;
+  const nextCaret = deleteFrom + replacement.length;
+
+  setNativeValue(el, nextValue);
+  focusAndPlaceCaret(el, nextCaret);
+  return nextValue;
+};
+
 function VirtualKeyboard() {
   const keyboard = useRef(null);
+  const keyboardPanel = useRef(null);
   const activeEl = useRef(null);
+  const lastEditableEl = useRef(null);
+  const forcedForTesting = useRef(isKeyboardForcedForTesting());
 
   // On phones/tablets the OS keyboard already handles input — decided once, up
   // front, so the whole component (button included) stays off those devices.
-  const nativeKeyboard = useRef(hasNativeSoftKeyboard());
+  const nativeKeyboard = useRef(!forcedForTesting.current && hasNativeSoftKeyboard());
 
   const [enabled, setEnabled] = useState(() => {
+    if (forcedForTesting.current) return true;
     if (nativeKeyboard.current) return false;
     const saved = typeof localStorage !== "undefined" ? localStorage.getItem("osk-enabled") : null;
     if (saved !== null) return saved === "1";
@@ -72,14 +120,95 @@ function VirtualKeyboard() {
   const [visible, setVisible] = useState(false);
   const [layoutName, setLayoutName] = useState("default");
 
+  const syncKeyboardHeight = useCallback(() => {
+    if (typeof document === "undefined") return;
+    const height = visible && keyboardPanel.current ? keyboardPanel.current.offsetHeight : 0;
+    document.documentElement.style.setProperty("--osk-height", `${height}px`);
+    document.body.classList.toggle("osk-open", enabled && visible && height > 0);
+  }, [enabled, visible]);
+
+  const scrollFieldIntoSafeView = useCallback((el) => {
+    if (!el) return;
+    window.setTimeout(() => {
+      try {
+        el.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+      } catch {
+        /* Ignore old browsers. */
+      }
+    }, 80);
+  }, []);
+
+  const showForCurrentField = useCallback(() => {
+    const focused = document.activeElement;
+    const remembered = lastEditableEl.current;
+    const firstModalField = document.querySelector(
+      ".pos-modal-panel input:not([type=checkbox]):not([type=radio]), .pos-modal-panel textarea, .pos-modal-panel select"
+    );
+    const el = isEditable(focused)
+      ? focused
+      : isEditable(remembered) && document.contains(remembered)
+        ? remembered
+        : isEditable(firstModalField)
+          ? firstModalField
+          : null;
+
+    if (!isEditable(el)) return false;
+    activeEl.current = el;
+    lastEditableEl.current = el;
+    setLayoutName("default");
+    focusAndPlaceCaret(el, (el.value || "").length);
+    if (keyboard.current) keyboard.current.setInput(el.value || "");
+    setVisible(true);
+    scrollFieldIntoSafeView(el);
+    return true;
+  }, [scrollFieldIntoSafeView]);
+
   useEffect(() => {
     try {
       localStorage.setItem("osk-enabled", enabled ? "1" : "0");
     } catch {
       /* ignore */
     }
-    if (!enabled) setVisible(false);
-  }, [enabled]);
+    if (!enabled) {
+      setVisible(false);
+      return;
+    }
+    window.setTimeout(showForCurrentField, 0);
+  }, [enabled, showForCurrentField]);
+
+  useLayoutEffect(() => {
+    syncKeyboardHeight();
+    if (!enabled || !visible) {
+      if (typeof document !== "undefined") {
+        document.body.classList.remove("osk-open");
+        document.documentElement.style.setProperty("--osk-height", "0px");
+      }
+      return undefined;
+    }
+
+    const observer =
+      typeof ResizeObserver !== "undefined" && keyboardPanel.current
+        ? new ResizeObserver(syncKeyboardHeight)
+        : null;
+    if (observer && keyboardPanel.current) observer.observe(keyboardPanel.current);
+
+    const onResize = () => syncKeyboardHeight();
+    window.addEventListener("resize", onResize);
+
+    if (activeEl.current) scrollFieldIntoSafeView(activeEl.current);
+
+    return () => {
+      if (observer) observer.disconnect();
+      window.removeEventListener("resize", onResize);
+    };
+  }, [enabled, scrollFieldIntoSafeView, syncKeyboardHeight, visible]);
+
+  useEffect(() => {
+    return () => {
+      document.body.classList.remove("osk-open");
+      document.documentElement.style.setProperty("--osk-height", "0px");
+    };
+  }, []);
 
   // Bind to whichever editable field is focused.
   useEffect(() => {
@@ -89,9 +218,11 @@ function VirtualKeyboard() {
       const el = e.target;
       if (isEditable(el)) {
         activeEl.current = el;
+        lastEditableEl.current = el;
         setLayoutName("default");
         if (keyboard.current) keyboard.current.setInput(el.value || "");
         setVisible(true);
+        scrollFieldIntoSafeView(el);
       }
     };
 
@@ -114,25 +245,54 @@ function VirtualKeyboard() {
       document.removeEventListener("focusin", onFocusIn);
       document.removeEventListener("focusout", onFocusOut);
     };
-  }, [enabled]);
+  }, [enabled, scrollFieldIntoSafeView]);
 
-  const onChange = useCallback((input) => {
-    if (activeEl.current) setNativeValue(activeEl.current, input);
+  const onChange = useCallback(() => {
+    // We apply key presses manually in onKeyPress. That keeps caret position,
+    // Backspace, and React controlled fields consistent.
   }, []);
 
   const onKeyPress = useCallback((button) => {
+    const el = activeEl.current;
+
     if (button === "{shift}" || button === "{lock}") {
       setLayoutName((prev) => (prev === "default" ? "shift" : "default"));
       return;
     }
+
     if (button === "{enter}") {
-      const el = activeEl.current;
       if (el && el.tagName !== "TEXTAREA") {
         setVisible(false);
         el.blur();
+      } else if (el) {
+        const value = mutateActiveValue(el, "\n");
+        if (keyboard.current) keyboard.current.setInput(value);
       }
+      return;
     }
-  }, []);
+
+    if (button === "{bksp}") {
+      const value = mutateActiveValue(el, "", 1);
+      if (keyboard.current) keyboard.current.setInput(value);
+      return;
+    }
+
+    if (!el) return;
+
+    const specialValues = {
+      "{space}": " ",
+      "{tab}": "\t",
+    };
+    const nextCharacter = specialValues[button] ?? (button.startsWith("{") ? "" : button);
+    if (!nextCharacter) return;
+
+    const value = mutateActiveValue(el, nextCharacter);
+    if (keyboard.current) keyboard.current.setInput(value);
+
+    if (layoutName === "shift") {
+      setLayoutName("default");
+    }
+  }, [layoutName]);
 
   // Devices with a native soft keyboard (phones/tablets) get nothing from us —
   // not even the toggle — so the OS keyboard is the only one that ever appears.
@@ -144,7 +304,14 @@ function VirtualKeyboard() {
           device. */}
       <button
         type="button"
-        onClick={() => setEnabled((v) => !v)}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() =>
+          setEnabled((wasEnabled) => {
+            const nextEnabled = !wasEnabled;
+            if (nextEnabled) window.setTimeout(showForCurrentField, 0);
+            return nextEnabled;
+          })
+        }
         title={enabled ? "Turn off on-screen keyboard" : "Turn on on-screen keyboard"}
         aria-label={enabled ? "Turn off on-screen keyboard" : "Turn on on-screen keyboard"}
         className={`no-print fixed bottom-3 right-3 z-[60] flex h-11 w-11 items-center justify-center rounded-full shadow-lg transition ${
@@ -159,6 +326,7 @@ function VirtualKeyboard() {
           // preventDefault on mousedown keeps the focused field focused when a key
           // is tapped, so typing lands in the right place.
           onMouseDown={(e) => e.preventDefault()}
+          ref={keyboardPanel}
           className="no-print fixed inset-x-0 bottom-0 z-[55] border-t border-slate-700 bg-slate-900 p-2 shadow-2xl"
         >
           <div className="mx-auto max-w-4xl">
