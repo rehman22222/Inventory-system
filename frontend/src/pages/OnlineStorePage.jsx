@@ -66,6 +66,7 @@ import {
   uploadListingImages,
 } from "../features/onlineStoreSlice";
 import { gettingallCategory } from "../features/categorySlice";
+import { isDemoMode } from "../lib/demoMode";
 
 const TABS = [
   { id: "overview", label: "Overview", icon: FiBarChart2 },
@@ -104,6 +105,7 @@ export default function OnlineStorePage() {
   const [listingToEdit, setListingToEdit] = useState("");
   const [loadedTabs, setLoadedTabs] = useState({});
   const online = useSelector((state) => state.onlineStore);
+  const showNoStoreAttached = isDemoMode();
 
   const editListing = (listing) => {
     setListingToEdit(listing._id);
@@ -226,79 +228,104 @@ export default function OnlineStorePage() {
         ))}
       </div>
 
-      {tab === "overview" && (
-        <Overview summary={online.summary} counts={online.counts} />
-      )}
-      {tab === "products" && (
-        <Products
-          listings={online.listings}
-          categories={online.categories}
-          counts={online.counts}
-          isActing={online.isActing}
-          editListingId={listingToEdit}
-          onEditHandled={() => setListingToEdit("")}
-        />
-      )}
-      {tab === "categories" && <Categories categories={online.categories} />}
-      {tab === "hero" && (
-        <HeroSlides
-          slides={online.slides}
-          listings={online.listings}
-          categories={online.categories}
-        />
-      )}
-      {tab === "best-sellers" && (
-        <BestSellerControls
-          listings={online.listings}
-          categories={online.categories}
-          settings={online.settings}
-          isActing={online.isActing}
-          onEditListing={editListing}
-        />
-      )}
-      {tab === "deals" && (
-        <DealsControls
-          listings={online.listings}
-          settings={online.settings}
-          isActing={online.isActing}
-        />
-      )}
-      {tab === "promotions" && (
-        <Promotions
-          vouchers={online.vouchers}
-          listings={online.listings}
-          categories={online.categories}
-          isActing={online.isActing}
-        />
-      )}
-      {tab === "orders" && (
-        <Orders orders={online.orders} isActing={online.isActing} />
-      )}
-      {tab === "newsletter" && (
-        <NewsletterEmails
-          subscribers={online.newsletterSubscribers}
-          settings={online.settings}
-          isActing={online.isActing}
-        />
-      )}
-      {tab === "emergency-alert" && (
-        <EmergencyAlertSettings
-          settings={online.settings}
-          isActing={online.isActing}
-        />
-      )}
-      {tab === "reviews" && (
-        <Reviews reviews={online.reviews} isActing={online.isActing} />
-      )}
-      {tab === "settings" && (
-        <StorefrontSettings
-          settings={online.settings}
-          listings={online.listings}
-          categories={online.categories}
-          isActing={online.isActing}
-        />
+      {showNoStoreAttached ? (
+        <NoStoreAttachedState tab={tab} />
+      ) : (
+        <>
+          {tab === "overview" && (
+            <Overview summary={online.summary} counts={online.counts} />
+          )}
+          {tab === "products" && (
+            <Products
+              listings={online.listings}
+              categories={online.categories}
+              counts={online.counts}
+              isActing={online.isActing}
+              editListingId={listingToEdit}
+              onEditHandled={() => setListingToEdit("")}
+            />
+          )}
+          {tab === "categories" && <Categories categories={online.categories} />}
+          {tab === "hero" && (
+            <HeroSlides
+              slides={online.slides}
+              listings={online.listings}
+              categories={online.categories}
+            />
+          )}
+          {tab === "best-sellers" && (
+            <BestSellerControls
+              listings={online.listings}
+              categories={online.categories}
+              settings={online.settings}
+              isActing={online.isActing}
+              onEditListing={editListing}
+            />
+          )}
+          {tab === "deals" && (
+            <DealsControls
+              listings={online.listings}
+              settings={online.settings}
+              isActing={online.isActing}
+            />
+          )}
+          {tab === "promotions" && (
+            <Promotions
+              vouchers={online.vouchers}
+              listings={online.listings}
+              categories={online.categories}
+              isActing={online.isActing}
+            />
+          )}
+          {tab === "orders" && (
+            <Orders orders={online.orders} isActing={online.isActing} />
+          )}
+          {tab === "newsletter" && (
+            <NewsletterEmails
+              subscribers={online.newsletterSubscribers}
+              settings={online.settings}
+              isActing={online.isActing}
+            />
+          )}
+          {tab === "emergency-alert" && (
+            <EmergencyAlertSettings
+              settings={online.settings}
+              isActing={online.isActing}
+            />
+          )}
+          {tab === "reviews" && (
+            <Reviews reviews={online.reviews} isActing={online.isActing} />
+          )}
+          {tab === "settings" && (
+            <StorefrontSettings
+              settings={online.settings}
+              listings={online.listings}
+              categories={online.categories}
+              isActing={online.isActing}
+            />
+          )}
+        </>
       )}
     </div>
+  );
+}
+
+function NoStoreAttachedState({ tab }) {
+  const tabLabel = TABS.find((item) => item.id === tab)?.label || "this section";
+
+  return (
+    <section className="rounded-2xl border border-dashed border-base-300 bg-base-100 p-8 text-center shadow-sm">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-base-200 text-2xl text-base-content/50">
+        <FiGlobe />
+      </div>
+      <h2 className="mt-4 font-display text-2xl font-bold">
+        No store attached yet
+      </h2>
+      <p className="mx-auto mt-2 max-w-xl text-sm text-base-content/60">
+        {tabLabel} will appear here once a real online store is connected. This
+        demo login is isolated, so it does not load or save live store data.
+      </p>
+    </section>
   );
 }
 
