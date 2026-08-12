@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axiosInstance from "../lib/axios";
 import toast from 'react-hot-toast';
+import { clearDemoMode, enableDemoMode, isDemoCredentials } from "../lib/demoMode";
 
 // The session lives in the httpOnly cookie (see lib/axios.js). The JWT must
 // never be persisted where script can read it, so we keep the user's profile
@@ -70,6 +71,10 @@ export const login = createAsyncThunk(
   "auth/login",
   async (credentials, { rejectWithValue }) => {
     try {
+      if (isDemoCredentials(credentials)) {
+        return enableDemoMode();
+      }
+
       const response = await axiosInstance.post("auth/login", credentials, { withCredentials: true });
       // The cookie the server just set is what authenticates us from here on.
       localStorage.setItem("user", JSON.stringify(withoutToken(response.data.user)));
@@ -94,6 +99,7 @@ export const logout = createAsyncThunk(
     } catch {
       // An expired/deleted session is already logged out on the server.
     } finally {
+      clearDemoMode();
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       localStorage.removeItem("authUser");

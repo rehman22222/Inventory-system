@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { clearDemoMode, handleDemoAxiosRequest } from './demoMode';
 
 // When the app is served by its own backend (production, full-stack deploy) the
 // API is same-origin, so no base URL is needed — "/api" is relative to whatever
@@ -33,12 +34,31 @@ const isAuthCall = (url = "") => url.includes("auth/login") || url.includes("aut
 
 let signingOut = false;
 
+axiosInstance.interceptors.request.use((config) => {
+  const demoResult = handleDemoAxiosRequest(config);
+
+  if (demoResult) {
+    return Promise.reject({
+      __demoResponse: true,
+      result: demoResult,
+      config,
+    });
+  }
+
+  return config;
+});
+
 // The account is gone (deleted by the super admin), or the token expired. The
 // server already refuses every call — without this the user just sits on a
 // dashboard where nothing works and no reason is given.
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.__demoResponse) {
+      if (error.result?.error) return Promise.reject(error.result.error);
+      return Promise.resolve(error.result?.response);
+    }
+
     const status = error.response?.status;
 
     if (status === 401 && !isAuthCall(error.config?.url) && !signingOut) {
@@ -46,6 +66,7 @@ axiosInstance.interceptors.response.use(
       signingOut = true;
 
       try {
+        clearDemoMode();
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         localStorage.removeItem("sessionExpiresAt");

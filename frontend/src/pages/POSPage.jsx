@@ -18,6 +18,7 @@ import {
   FiTag,
 } from "react-icons/fi";
 import axiosInstance from "../lib/axios";
+import { isDemoMode } from "../lib/demoMode";
 import useBarcodeScanner from "../lib/useBarcodeScanner";
 import LanguageSwitcher from "../Components/LanguageSwitcher";
 import { gettingallproducts } from "../features/productSlice";
@@ -216,16 +217,19 @@ function POSPage() {
   // never open to an empty grid just because the line is down.
   const products = useMemo(() => {
     if (Array.isArray(getallproduct) && getallproduct.length > 0) return getallproduct;
+    if (isDemoMode()) return [];
     return offlineCache?.products || [];
   }, [getallproduct, offlineCache]);
 
   const realCategories = useMemo(() => {
     if (Array.isArray(getallCategory) && getallCategory.length > 0) return getallCategory;
+    if (isDemoMode()) return [];
     return offlineCache?.categories || [];
   }, [getallCategory, offlineCache]);
 
   const dealSource = useMemo(() => {
     if (Array.isArray(allDeals) && allDeals.length > 0) return allDeals;
+    if (isDemoMode()) return [];
     return offlineCache?.deals || [];
   }, [allDeals, offlineCache]);
 
