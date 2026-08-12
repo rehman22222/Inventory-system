@@ -563,19 +563,19 @@ function ProductPage() {
             </div>
           ) : null}
 
-          <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:items-stretch">
-            <div className="flex items-center border hair">
+          <div className="mt-6 grid grid-cols-[112px_minmax(0,1fr)] items-stretch gap-3 sm:mt-8 sm:grid-cols-[152px_minmax(0,1fr)]">
+            <div className="flex min-w-0 items-center border hair">
               <button
                 onClick={() => setQty(Math.max(1, qty - 1))}
-                className="flex-1 p-3 hover:bg-accent hover:text-accent-foreground sm:flex-none"
+                className="flex h-full flex-1 items-center justify-center p-3 hover:bg-accent hover:text-accent-foreground"
                 aria-label="Decrease"
               >
                 <Minus className="h-4 w-4" />
               </button>
-              <span className="w-14 text-center font-display sm:w-10">{qty}</span>
+              <span className="w-10 text-center font-display">{qty}</span>
               <button
                 onClick={() => setQty(Math.min(activeStock, qty + 1))}
-                className="flex-1 p-3 hover:bg-accent hover:text-accent-foreground disabled:opacity-40 sm:flex-none"
+                className="flex h-full flex-1 items-center justify-center p-3 hover:bg-accent hover:text-accent-foreground disabled:opacity-40"
                 aria-label="Increase"
                 disabled={qty >= activeStock}
               >
