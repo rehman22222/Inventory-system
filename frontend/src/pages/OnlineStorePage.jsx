@@ -211,22 +211,24 @@ export default function OnlineStorePage() {
         </button>
       </header>
 
-      <div className="tabs tabs-boxed w-fit max-w-full flex-nowrap overflow-x-auto">
-        {TABS.map((item) => (
-          <button
-            key={item.id}
-            className={`tab h-auto shrink-0 flex-nowrap gap-2 whitespace-nowrap py-2 ${tab === item.id ? "tab-active" : ""}`}
-            onClick={() => setTab(item.id)}
-          >
-            <item.icon /> {item.label}
-            {item.id === "orders" && online.pendingOrders > 0 && (
-              <span className="badge badge-sm badge-warning">
-                {online.pendingOrders}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      {!showNoStoreAttached && (
+        <div className="tabs tabs-boxed w-fit max-w-full flex-nowrap overflow-x-auto">
+          {TABS.map((item) => (
+            <button
+              key={item.id}
+              className={`tab h-auto shrink-0 flex-nowrap gap-2 whitespace-nowrap py-2 ${tab === item.id ? "tab-active" : ""}`}
+              onClick={() => setTab(item.id)}
+            >
+              <item.icon /> {item.label}
+              {item.id === "orders" && online.pendingOrders > 0 && (
+                <span className="badge badge-sm badge-warning">
+                  {online.pendingOrders}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
 
       {showNoStoreAttached ? (
         <NoStoreAttachedState tab={tab} />
