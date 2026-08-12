@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Minus, Plus, ShieldCheck, Clock, RotateCcw, Check } from "lucide-react";
+import { Minus, Plus, ShieldCheck, Clock, RotateCcw, Check, ChevronDown } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
@@ -486,8 +486,8 @@ function ProductPage() {
                         </option>
                       ))}
                     </select>
-                    <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center font-mono text-xs text-ink-muted">
-                      v
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-ink-muted sm:right-4">
+                      <ChevronDown className="h-4 w-4" aria-hidden="true" />
                     </span>
                   </div>
                 </div>
@@ -540,8 +540,8 @@ function ProductPage() {
                         ),
                       )}
                     </select>
-                    <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center font-mono text-xs text-ink-muted">
-                      v
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-ink-muted sm:right-4">
+                      <ChevronDown className="h-4 w-4" aria-hidden="true" />
                     </span>
                   </div>
                 </div>
