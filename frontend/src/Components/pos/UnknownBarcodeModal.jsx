@@ -85,8 +85,9 @@ function UnknownBarcodeModal({ barcode, products, categories, onResolved, onClos
       title={t("pos.unknownBarcode.title")}
       subtitle={t("pos.unknownBarcode.subtitle", { barcode })}
       onClose={onClose}
+      width="max-w-3xl"
     >
-      <div className="mb-4 grid grid-cols-2 gap-2">
+      <div className="unknown-barcode-tabs mb-4 grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={() => setMode("link")}
@@ -147,8 +148,8 @@ function UnknownBarcodeModal({ barcode, products, categories, onResolved, onClos
           </div>
         </div>
       ) : (
-        <form onSubmit={createProduct} className="space-y-3">
-          <div>
+        <form onSubmit={createProduct} className="unknown-barcode-form space-y-3">
+          <div className="unknown-barcode-field unknown-barcode-name-field">
             <label className="mb-1 block text-xs uppercase text-slate-400">
               {t("pos.unknownBarcode.name")}
             </label>
@@ -160,13 +161,15 @@ function UnknownBarcodeModal({ barcode, products, categories, onResolved, onClos
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="unknown-barcode-inline-row grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-xs uppercase text-slate-400">
                 {t("pos.unknownBarcode.price")}
               </label>
               <input
                 type="number"
+                inputMode="decimal"
+                data-keyboard="numeric"
                 step="0.01"
                 min="0"
                 value={form.Price}
@@ -180,6 +183,8 @@ function UnknownBarcodeModal({ barcode, products, categories, onResolved, onClos
               </label>
               <input
                 type="number"
+                inputMode="numeric"
+                data-keyboard="numeric"
                 min="0"
                 value={form.quantity}
                 onChange={(event) => setForm({ ...form, quantity: event.target.value })}
@@ -188,7 +193,7 @@ function UnknownBarcodeModal({ barcode, products, categories, onResolved, onClos
             </div>
           </div>
 
-          <div>
+          <div className="unknown-barcode-category-field">
             <label className="mb-1 block text-xs uppercase text-slate-400">
               {t("pos.unknownBarcode.category")}
             </label>
@@ -212,7 +217,7 @@ function UnknownBarcodeModal({ barcode, products, categories, onResolved, onClos
             </select>
           </div>
 
-          <div className="border border-slate-800 bg-slate-950 px-3 py-2 text-sm">
+          <div className="unknown-barcode-summary border border-slate-800 bg-slate-950 px-3 py-2 text-sm">
             <span className="text-slate-400">{t("pos.unknownBarcode.barcodeLabel")}: </span>
             <span className="font-mono text-cyan-400">{barcode}</span>
           </div>

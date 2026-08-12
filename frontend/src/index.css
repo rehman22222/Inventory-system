@@ -349,28 +349,213 @@
   color: #fff;
 }
 
+.pos-numeric-keypad {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(34, 211, 238, 0.1), transparent 32%),
+    rgba(15, 23, 42, 0.72);
+  padding: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.pos-numeric-keypad-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pos-numeric-keypad-row-single {
+  grid-template-columns: 1fr;
+}
+
+.pos-numeric-key {
+  min-height: 50px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: linear-gradient(180deg, #263246 0%, #1d2738 100%);
+  color: #f8fafc;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow:
+    0 10px 24px rgba(2, 6, 23, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition:
+    transform 120ms ease,
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.pos-numeric-key:active {
+  transform: translateY(1px) scale(0.99);
+  border-color: rgba(34, 211, 238, 0.8);
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.pos-numeric-key-action {
+  color: #bae6fd;
+  font-size: 24px;
+}
+
+.pos-numeric-key-done {
+  min-height: 46px;
+  background: linear-gradient(180deg, #0e7490 0%, #155e75 100%);
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 body.osk-open {
   padding-bottom: var(--osk-height, 0px);
 }
 
 body.osk-open .pos-modal-overlay {
   align-items: flex-start;
-  padding-bottom: calc(var(--osk-height, 0px) + 1rem);
-  overflow-y: auto;
+  padding-top: 0.5rem;
+  padding-bottom: calc(var(--osk-height, 0px) + 0.5rem);
+  overflow: hidden;
 }
 
 body.osk-open .pos-modal-panel {
-  max-height: calc(100dvh - var(--osk-height, 0px) - 2rem);
+  max-height: calc(100dvh - var(--osk-height, 0px) - 1rem);
+}
+
+body.osk-open .pos-modal-panel > div:first-child {
+  padding: 0.85rem 1rem;
+}
+
+body.osk-open .pos-modal-panel > div:first-child h2 {
+  font-size: 1.05rem;
+  line-height: 1.25rem;
+}
+
+body.osk-open .pos-modal-panel > div:first-child p {
+  margin-top: 0.1rem;
+  font-size: 0.8rem;
+}
+
+body.osk-open .pos-modal-panel > div:nth-child(2) {
+  overflow: hidden;
+  padding: 0.7rem 1rem 0.85rem;
+}
+
+body.osk-open .pos-modal-panel .unknown-barcode-tabs {
+  margin-bottom: 0.55rem;
+}
+
+body.osk-open .pos-modal-panel .unknown-barcode-tabs button {
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+}
+
+body.osk-open .pos-modal-panel .unknown-barcode-form {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 0.55rem 0.75rem;
+}
+
+body.osk-open .pos-modal-panel .unknown-barcode-form label {
+  margin-bottom: 0.15rem;
+  font-size: 0.7rem;
+  line-height: 1rem;
+}
+
+body.osk-open .pos-modal-panel .unknown-barcode-name-field {
+  grid-column: 1 / -1;
+}
+
+body.osk-open .pos-modal-panel .unknown-barcode-inline-row,
+body.osk-open .pos-modal-panel .unknown-barcode-category-field,
+body.osk-open .pos-modal-panel .unknown-barcode-summary {
+  min-width: 0;
+}
+
+body.osk-open .pos-modal-panel .unknown-barcode-form input,
+body.osk-open .pos-modal-panel .unknown-barcode-form select {
+  height: 2.45rem;
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+
+body.osk-open .pos-modal-panel .unknown-barcode-form button[type="submit"] {
+  grid-column: 1 / -1;
+  padding-top: 0.55rem;
+  padding-bottom: 0.55rem;
+}
+
+body.osk-open .pos-modal-panel .unknown-barcode-summary {
+  display: flex;
+  align-items: center;
+  min-height: 2.45rem;
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+
+.osk-text .simple-keyboard.osk-dark .hg-row {
+  margin-bottom: 4px;
+}
+
+.osk-text .simple-keyboard.osk-dark .hg-button {
+  height: 38px;
+  font-size: 14px;
+  border-radius: 7px;
 }
 
 @media (max-height: 760px) {
   .simple-keyboard.osk-dark .hg-row {
-    margin-bottom: 4px;
+    margin-bottom: 3px;
   }
 
   .simple-keyboard.osk-dark .hg-button {
-    height: 42px;
-    font-size: 15px;
-    border-radius: 7px;
+    height: 34px;
+    font-size: 13px;
+    border-radius: 6px;
+  }
+
+  .osk-text .simple-keyboard.osk-dark .hg-button {
+    height: 34px;
+    font-size: 13px;
+  }
+
+  .pos-numeric-keypad {
+    gap: 6px;
+    padding: 10px;
+  }
+
+  .pos-numeric-keypad-row {
+    gap: 6px;
+  }
+
+  .pos-numeric-key {
+    min-height: 42px;
+    border-radius: 10px;
+    font-size: 17px;
+  }
+
+  .pos-numeric-key-action {
+    font-size: 21px;
+  }
+
+  .pos-numeric-key-done {
+    min-height: 40px;
+    font-size: 13px;
+  }
+}
+
+@media (max-height: 700px) {
+  body.osk-open .pos-modal-panel .unknown-barcode-form input,
+  body.osk-open .pos-modal-panel .unknown-barcode-form select,
+  body.osk-open .pos-modal-panel .unknown-barcode-summary {
+    height: 2.2rem;
+    min-height: 2.2rem;
+  }
+
+  .osk-text .simple-keyboard.osk-dark .hg-button {
+    height: 30px;
+    font-size: 12px;
   }
 }

@@ -47,6 +47,59 @@ const EDITABLE_SELECTOR =
 const isEditable = (el) =>
   el && el.matches && el.matches(EDITABLE_SELECTOR) && !el.readOnly && !el.disabled;
 
+const isNumericField = (el) => {
+  if (!el || el.tagName !== "INPUT") return false;
+  const type = (el.getAttribute("type") || "").toLowerCase();
+  const inputMode = (el.getAttribute("inputmode") || "").toLowerCase();
+  return (
+    type === "number" ||
+    inputMode === "numeric" ||
+    inputMode === "decimal" ||
+    el.dataset?.keyboard === "numeric"
+  );
+};
+
+const KEYBOARD_LAYOUTS = {
+  default: [
+    "` 1 2 3 4 5 6 7 8 9 0 - = {bksp}",
+    "{tab} q w e r t y u i o p [ ] \\",
+    "{lock} a s d f g h j k l ; ' {enter}",
+    "{shift} z x c v b n m , . / {shift}",
+    ".com @ {space}",
+  ],
+  shift: [
+    "~ ! @ # $ % ^ & * ( ) _ + {bksp}",
+    "{tab} Q W E R T Y U I O P { } |",
+    "{lock} A S D F G H J K L : \" {enter}",
+    "{shift} Z X C V B N M < > ? {shift}",
+    ".com @ {space}",
+  ],
+  numeric: [
+    "1 2 3",
+    "4 5 6",
+    "7 8 9",
+    ". 0 {bksp}",
+    "{enter}",
+  ],
+};
+
+const KEYBOARD_DISPLAY = {
+  "{bksp}": "backspace",
+  "{enter}": "< enter",
+  "{tab}": "tab",
+  "{lock}": "caps",
+  "{shift}": "shift",
+  "{space}": " ",
+};
+
+const NUMERIC_KEY_ROWS = [
+  ["1", "2", "3"],
+  ["4", "5", "6"],
+  ["7", "8", "9"],
+  [".", "0", "{bksp}"],
+  ["{enter}"],
+];
+
 // React tracks input values internally, so setting `el.value` directly is
 // ignored on the next render. Go through the native setter and fire a real
 // `input` event so controlled components update their state.
@@ -119,6 +172,7 @@ function VirtualKeyboard() {
   });
   const [visible, setVisible] = useState(false);
   const [layoutName, setLayoutName] = useState("default");
+  const [keyboardMode, setKeyboardMode] = useState("text");
 
   const syncKeyboardHeight = useCallback(() => {
     if (typeof document === "undefined") return;
@@ -155,7 +209,9 @@ function VirtualKeyboard() {
     if (!isEditable(el)) return false;
     activeEl.current = el;
     lastEditableEl.current = el;
-    setLayoutName("default");
+    const nextMode = isNumericField(el) ? "numeric" : "text";
+    setKeyboardMode(nextMode);
+    setLayoutName(nextMode === "numeric" ? "numeric" : "default");
     focusAndPlaceCaret(el, (el.value || "").length);
     if (keyboard.current) keyboard.current.setInput(el.value || "");
     setVisible(true);
@@ -219,7 +275,9 @@ function VirtualKeyboard() {
       if (isEditable(el)) {
         activeEl.current = el;
         lastEditableEl.current = el;
-        setLayoutName("default");
+        const nextMode = isNumericField(el) ? "numeric" : "text";
+        setKeyboardMode(nextMode);
+        setLayoutName(nextMode === "numeric" ? "numeric" : "default");
         if (keyboard.current) keyboard.current.setInput(el.value || "");
         setVisible(true);
         scrollFieldIntoSafeView(el);
@@ -254,6 +312,10 @@ function VirtualKeyboard() {
 
   const onKeyPress = useCallback((button) => {
     const el = activeEl.current;
+
+    if (layoutName === "numeric" && (button === "{shift}" || button === "{lock}" || button === "{tab}")) {
+      return;
+    }
 
     if (button === "{shift}" || button === "{lock}") {
       setLayoutName((prev) => (prev === "default" ? "shift" : "default"));
@@ -327,9 +389,11 @@ function VirtualKeyboard() {
           // is tapped, so typing lands in the right place.
           onMouseDown={(e) => e.preventDefault()}
           ref={keyboardPanel}
-          className="no-print fixed inset-x-0 bottom-0 z-[55] border-t border-slate-700 bg-slate-900 p-2 shadow-2xl"
+          className={`no-print fixed inset-x-0 bottom-0 z-[55] border-t border-slate-700 bg-slate-900 p-2 shadow-2xl ${
+            keyboardMode === "numeric" ? "osk-numeric" : "osk-text"
+          }`}
         >
-          <div className="mx-auto max-w-4xl">
+          <div className={`mx-auto ${keyboardMode === "numeric" ? "max-w-md" : "max-w-4xl"}`}>
             <div className="mb-1 flex justify-end">
               <button
                 type="button"
@@ -342,13 +406,41 @@ function VirtualKeyboard() {
                 <FiX className="h-4 w-4" /> Close
               </button>
             </div>
-            <Keyboard
-              keyboardRef={(r) => (keyboard.current = r)}
-              layoutName={layoutName}
-              onChange={onChange}
-              onKeyPress={onKeyPress}
-              theme="hg-theme-default osk-dark"
-            />
+            {keyboardMode === "numeric" ? (
+              <div className="pos-numeric-keypad" role="group" aria-label="Numeric keypad">
+                {NUMERIC_KEY_ROWS.map((row, rowIndex) => (
+                  <div
+                    key={`numeric-row-${rowIndex}`}
+                    className={`pos-numeric-keypad-row ${
+                      row.length === 1 ? "pos-numeric-keypad-row-single" : ""
+                    }`}
+                  >
+                    {row.map((key) => (
+                      <button
+                        key={key}
+                        type="button"
+                        className={`pos-numeric-key ${
+                          key === "{bksp}" ? "pos-numeric-key-action" : ""
+                        } ${key === "{enter}" ? "pos-numeric-key-done" : ""}`}
+                        onClick={() => onKeyPress(key)}
+                      >
+                        {key === "{bksp}" ? "⌫" : key === "{enter}" ? "Done" : key}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Keyboard
+                keyboardRef={(r) => (keyboard.current = r)}
+                layout={KEYBOARD_LAYOUTS}
+                layoutName={layoutName}
+                display={KEYBOARD_DISPLAY}
+                onChange={onChange}
+                onKeyPress={onKeyPress}
+                theme="hg-theme-default osk-dark"
+              />
+            )}
           </div>
         </div>
       )}
