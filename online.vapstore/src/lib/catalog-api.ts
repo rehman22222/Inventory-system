@@ -187,6 +187,10 @@ type ApiProduct = {
   productId: string;
   slug: string;
   name: string;
+  familyLabel?: string;
+  familyImage?: string;
+  catalogImage?: string;
+  selfVariantLabel?: string;
   brand: string;
   category: { id: string; slug: string; name: string } | null;
   categories: { id: string; slug: string; name: string }[];
@@ -197,6 +201,7 @@ type ApiProduct = {
   specs: Record<string, string>;
   flavour: string;
   optionLabel: string;
+  variantLabel?: string;
   variants: {
     productId: string;
     label: string;
@@ -205,6 +210,7 @@ type ApiProduct = {
     stock: number;
     image?: string;
   }[];
+  linkedListings?: ApiProduct[];
   tags: Product["tags"];
   price: number;
   regularPrice: number;
@@ -246,40 +252,50 @@ const toCategory = (c: ApiCategory): Category => ({
   parentSlug: c.parent || null,
 });
 
-const toProduct = (p: ApiProduct): Product => ({
-  id: p.slug,
-  listingId: p.id,
-  productId: p.productId,
-  name: p.name,
-  brand: p.brand || "",
-  category: p.category?.slug || "",
-  categories: (p.categories || []).map((category) => category.slug),
-  price: p.price,
-  regularPrice: p.regularPrice,
-  compareAt: p.compareAt ?? undefined,
-  sale: p.sale,
-  saleEndsAt: p.saleEndsAt ?? undefined,
-  qtyDeal: p.qtyDeal
-    ? { ...p.qtyDeal, image: p.qtyDeal.image ? cldProductImage(p.qtyDeal.image) : "" }
-    : null,
-  dealImage: p.dealImage ? cldProductImage(p.dealImage) : "",
-  publishedAt: p.publishedAt ?? undefined,
-  image: cldProductImage(p.image),
-  gallery: (p.gallery || []).map((image) => ({ ...image, url: cldProductImage(image.url) })),
-  tags: p.tags || [],
-  short: p.short || "",
-  description: p.description || "",
-  specs: p.specs || {},
-  flavor: p.flavour || undefined,
-  optionLabel: p.optionLabel || undefined,
-  variants: (p.variants || []).map((variant) => ({
-    ...variant,
-    image: variant.image ? cldProductImage(variant.image) : variant.image,
-  })),
-  stock: p.stock,
-  featured: p.featured,
-  rating: p.rating || { average: 0, count: 0 },
-});
+const toProduct = (p: ApiProduct): Product => {
+  const product: Product = {
+    id: p.slug,
+    listingId: p.id,
+    productId: p.productId,
+    name: p.name,
+    familyLabel: p.familyLabel || undefined,
+    familyImage: p.familyImage ? cldProductImage(p.familyImage) : undefined,
+    catalogImage: p.catalogImage ? cldProductImage(p.catalogImage) : undefined,
+    selfVariantLabel: p.selfVariantLabel || undefined,
+    brand: p.brand || "",
+    category: p.category?.slug || "",
+    categories: (p.categories || []).map((category) => category.slug),
+    price: p.price,
+    regularPrice: p.regularPrice,
+    compareAt: p.compareAt ?? undefined,
+    sale: p.sale,
+    saleEndsAt: p.saleEndsAt ?? undefined,
+    qtyDeal: p.qtyDeal
+      ? { ...p.qtyDeal, image: p.qtyDeal.image ? cldProductImage(p.qtyDeal.image) : "" }
+      : null,
+    dealImage: p.dealImage ? cldProductImage(p.dealImage) : "",
+    publishedAt: p.publishedAt ?? undefined,
+    image: cldProductImage(p.image),
+    gallery: (p.gallery || []).map((image) => ({ ...image, url: cldProductImage(image.url) })),
+    tags: p.tags || [],
+    short: p.short || "",
+    description: p.description || "",
+    specs: p.specs || {},
+    flavor: p.flavour || undefined,
+    optionLabel: p.optionLabel || undefined,
+    variantLabel: p.variantLabel || undefined,
+    variants: (p.variants || []).map((variant) => ({
+      ...variant,
+      image: variant.image ? cldProductImage(variant.image) : variant.image,
+    })),
+    linkedListings: [],
+    stock: p.stock,
+    featured: p.featured,
+    rating: p.rating || { average: 0, count: 0 },
+  };
+  product.linkedListings = (p.linkedListings || []).map(toProduct);
+  return product;
+};
 
 const loadCategories = async (): Promise<Category[]> => {
   const data = await get<{

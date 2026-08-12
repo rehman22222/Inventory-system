@@ -17,8 +17,11 @@ export function ProductCard({ product }: { product: Product }) {
   const outOfStock = product.stock <= 0;
   const priceUnavailable = product.price <= 0;
   const unavailable = outOfStock || priceUnavailable;
-  const onlyVariant = product.variants.length === 1 ? product.variants[0] : null;
-  const needsChoice = product.variants.length > 1;
+  const hasFamilyChoices = Boolean(product.linkedListings?.length);
+  const onlyVariant =
+    !hasFamilyChoices && product.variants.length === 1 ? product.variants[0] : null;
+  const needsChoice = hasFamilyChoices || product.variants.length > 1;
+  const cardImage = product.catalogImage || product.image;
 
   const handleAdd = () => {
     if (unavailable || needsChoice) return;
@@ -51,7 +54,7 @@ export function ProductCard({ product }: { product: Product }) {
         className="relative block aspect-square overflow-hidden bg-white p-1.5 sm:p-4"
       >
         <img
-          src={cldProductCardImage(product.image)}
+          src={cldProductCardImage(cardImage)}
           alt={product.name}
           loading="lazy"
           decoding="async"

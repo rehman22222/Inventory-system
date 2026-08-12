@@ -174,7 +174,7 @@ const effectiveItemPrice = (listing, product, variant = null, qty = 1) =>
     : regularItemPrice(listing, product, variant);
 
 /* Shape a listing + its product into what the storefront renders. */
-const publicListing = (l, { compact = false } = {}) => {
+const publicListing = (l, { compact = false, includeLinked = true } = {}) => {
   const p = l.product;
   if (!p) return null;
   const activeSale = baseSaleActive(l);
@@ -189,6 +189,26 @@ const publicListing = (l, { compact = false } = {}) => {
       stock: Number(variant.product.quantity || 0),
       image: variant.image || "",
     }));
+
+  const linkedListings = includeLinked
+    ? (l.linkedListings || [])
+        .filter((link) => link?.listing && link.listing.product)
+        .sort((a, b) => Number(a.sortWeight || 0) - Number(b.sortWeight || 0))
+        .map((link) => {
+          const child = publicListing(link.listing, {
+            compact: false,
+            includeLinked: false,
+          });
+          if (!child) return null;
+          return {
+            ...child,
+            familyLabel: String(link.label || child.name).trim() || child.name,
+            familyImage: link.image || "",
+          };
+        })
+        .filter(Boolean)
+    : [];
+
   const prices = variants.length
     ? variants.map((variant) => variant.price)
     : [money(displayPrice(l, p))];
@@ -241,7 +261,11 @@ const publicListing = (l, { compact = false } = {}) => {
       name: category.name,
     })),
     image: l.gallery?.[0]?.url || p.image?.url || "",
+    catalogImage: l.catalogImage?.url || "",
     variants,
+    variantLabel: l.variantLabel || "",
+    selfVariantLabel: l.selfVariantLabel || "",
+    linkedListings,
     tags,
     price,
     regularPrice,
@@ -1004,6 +1028,18 @@ module.exports.listListings = async (req, res) => {
         "name Price quantity barcode image lowStockThreshold",
       )
       .populate("variants.product", "name Price quantity barcode image")
+      .populate({
+        path: "linkedListings.listing",
+        populate: [
+          {
+            path: "product",
+            select: "name Price quantity barcode image lowStockThreshold",
+          },
+          { path: "variants.product", select: "name Price quantity barcode image" },
+          { path: "category", select: "name slug" },
+          { path: "categories", select: "name slug" },
+        ],
+      })
       .populate("category", "name slug")
       .populate("categories", "name slug")
       .sort({ sortWeight: 1, updatedAt: -1 })
@@ -1096,12 +1132,31 @@ module.exports.upsertListing = async (req, res) => {
       shortDescription: req.body.shortDescription ?? "",
       description: req.body.description ?? "",
       gallery,
+      catalogImage:
+        req.body.catalogImage && typeof req.body.catalogImage === "object"
+          ? {
+              url:
+                typeof req.body.catalogImage.url === "string"
+                  ? req.body.catalogImage.url.trim()
+                  : "",
+              publicId:
+                typeof req.body.catalogImage.publicId === "string"
+                  ? req.body.catalogImage.publicId.trim()
+                  : "",
+              alt:
+                typeof req.body.catalogImage.alt === "string"
+                  ? req.body.catalogImage.alt.trim()
+                  : product.name,
+            }
+          : { url: "", publicId: "", alt: "" },
       specs:
         req.body.specs && typeof req.body.specs === "object"
           ? req.body.specs
           : {},
       flavour: req.body.flavour ?? "",
       optionLabel: req.body.optionLabel ?? "",
+      variantLabel: req.body.variantLabel ?? "",
+      selfVariantLabel: req.body.selfVariantLabel ?? "",
       tags: Array.isArray(req.body.tags) ? req.body.tags : [],
       priceOverride:
         req.body.priceOverride === "" || req.body.priceOverride == null
@@ -1209,6 +1264,8 @@ module.exports.updateListing = async (req, res) => {
       "description",
       "flavour",
       "optionLabel",
+      "variantLabel",
+      "selfVariantLabel",
     ];
     for (const key of textFields) {
       if (Object.prototype.hasOwnProperty.call(req.body, key)) {
@@ -1374,6 +1431,23 @@ module.exports.updateListing = async (req, res) => {
         }));
     }
 
+    if (Object.prototype.hasOwnProperty.call(req.body, "catalogImage")) {
+      const image =
+        req.body.catalogImage && typeof req.body.catalogImage === "object"
+          ? req.body.catalogImage
+          : {};
+      const fallbackAlt = listing.webName || listing.product?.name || "";
+      listing.catalogImage = {
+        url: typeof image.url === "string" ? image.url.trim() : "",
+        publicId:
+          typeof image.publicId === "string" ? image.publicId.trim() : "",
+        alt:
+          typeof image.alt === "string" && image.alt.trim()
+            ? image.alt.trim()
+            : fallbackAlt,
+      };
+    }
+
     // Options — flavours / colours. Each option points at a REAL inventory
     // Product that owns its stock, so selling an option decrements that Product
     // (never the parent placeholder) exactly like the till. We validate that
@@ -1442,6 +1516,68 @@ module.exports.updateListing = async (req, res) => {
       listing.variants = normalised;
     }
 
+    // Linked product variants — whole online listings shown as product-family
+    // options (e.g. 2ml / 3ml). Each linked listing keeps its own flavours,
+    // prices and stock rules; checkout still receives the selected child
+    // listing/product, so no inventory duplication is introduced.
+    if (Object.prototype.hasOwnProperty.call(req.body, "linkedListings")) {
+      const raw = Array.isArray(req.body.linkedListings)
+        ? req.body.linkedListings
+        : [];
+      if (raw.length > 24) {
+        return res
+          .status(400)
+          .json({ message: "A product can have at most 24 linked product variants" });
+      }
+      const seen = new Set();
+      const normalised = [];
+      for (const entry of raw) {
+        const listingId = entry?.listing?._id || entry?.listing;
+        if (!mongoose.isValidObjectId(listingId)) {
+          return res.status(400).json({
+            message: "Each product variant must link to an online listing",
+          });
+        }
+        const key = String(listingId);
+        if (key === String(listing._id)) {
+          return res.status(400).json({
+            message: "A product cannot be linked to itself as a variant",
+          });
+        }
+        if (seen.has(key)) {
+          return res.status(400).json({
+            message: "Each linked product variant must be different",
+          });
+        }
+        const label = String(entry.label || "").trim();
+        if (!label) {
+          return res.status(400).json({
+            message: "Every linked product variant needs a display name",
+          });
+        }
+        seen.add(key);
+        normalised.push({
+          listing: listingId,
+          label: label.slice(0, 120),
+          image: typeof entry.image === "string" ? entry.image.trim() : "",
+          sortWeight: Number(entry.sortWeight || 0),
+        });
+      }
+      if (normalised.length) {
+        const ids = normalised.map((link) => link.listing);
+        const found = await OnlineListing.countDocuments({
+          _id: { $in: ids },
+          store,
+        });
+        if (found !== ids.length) {
+          return res.status(400).json({
+            message: "A linked product variant no longer belongs to this store",
+          });
+        }
+      }
+      listing.linkedListings = normalised;
+    }
+
     // Optional bulk override for Shopify options. Still writes only listing
     // presentation, never the linked Product.Price.
     if (req.body.applyPriceToVariants && listing.variants?.length) {
@@ -1457,6 +1593,18 @@ module.exports.updateListing = async (req, res) => {
         select: "name Price quantity barcode image lowStockThreshold",
       },
       { path: "variants.product", select: "name Price quantity barcode image" },
+      {
+        path: "linkedListings.listing",
+        populate: [
+          {
+            path: "product",
+            select: "name Price quantity barcode image lowStockThreshold",
+          },
+          { path: "variants.product", select: "name Price quantity barcode image" },
+          { path: "category", select: "name slug" },
+          { path: "categories", select: "name slug" },
+        ],
+      },
       { path: "category", select: "name slug" },
       { path: "categories", select: "name slug" },
     ]);
@@ -2850,16 +2998,36 @@ const loadStorefrontProducts = async (
   const listings = await OnlineListing.find(filter)
     .populate("product", "name Price quantity image")
     .populate("variants.product", "name Price quantity image")
+    .populate({
+      path: "linkedListings.listing",
+      populate: [
+        { path: "product", select: "name Price quantity image" },
+        { path: "variants.product", select: "name Price quantity image" },
+        { path: "category", select: "name slug" },
+        { path: "categories", select: "name slug" },
+      ],
+    })
     .populate("category", "name slug")
     .populate("categories", "name slug")
     .sort({ sortWeight: 1, createdAt: -1 })
     .lean();
+  const linkedChildIds = new Set();
+  for (const listing of listings) {
+    for (const link of listing.linkedListings || []) {
+      const childId = link?.listing?._id || link?.listing;
+      if (childId) linkedChildIds.add(String(childId));
+    }
+  }
+  const visibleListings = listings.filter(
+    (listing) => !linkedChildIds.has(String(listing._id)),
+  );
+
   const ratings = await ratingByListing(
     store,
-    listings.map((l) => l._id),
+    visibleListings.map((l) => l._id),
   );
-  for (const l of listings) l.rating = ratings.get(String(l._id));
-  return listings
+  for (const l of visibleListings) l.rating = ratings.get(String(l._id));
+  return visibleListings
     .map((listing) => publicListing(listing, { compact }))
     .filter(Boolean);
 };
@@ -2916,6 +3084,15 @@ module.exports.storefrontProduct = async (req, res) => {
     })
       .populate("product", "name Price quantity image")
       .populate("variants.product", "name Price quantity image")
+      .populate({
+        path: "linkedListings.listing",
+        populate: [
+          { path: "product", select: "name Price quantity image" },
+          { path: "variants.product", select: "name Price quantity image" },
+          { path: "category", select: "name slug" },
+          { path: "categories", select: "name slug" },
+        ],
+      })
       .populate("category", "name slug")
       .populate("categories", "name slug")
       .lean();

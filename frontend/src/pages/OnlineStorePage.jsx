@@ -656,6 +656,7 @@ function Products({
 
 function ProductEditor({ listing, categories, isActing, onClose }) {
   const dispatch = useDispatch();
+  const allListings = useSelector((state) => state.onlineStore.listings || []);
   const [useInventoryPrice, setUseInventoryPrice] = useState(
     listing.priceOverride == null,
   );
@@ -663,6 +664,9 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
   const [draft, setDraft] = useState({
     webName: listing.webName || listing.product?.name || "",
     brand: listing.brand || "",
+    optionLabel: listing.optionLabel || "",
+    variantLabel: listing.variantLabel || "",
+    selfVariantLabel: listing.selfVariantLabel || "",
     category: listing.category?._id || "",
     categories: (listing.categories || []).map((c) => c._id || c),
     priceOverride: listing.priceOverride ?? listing.product?.Price ?? "",
@@ -679,6 +683,15 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
       publicId: image.publicId || "",
       alt: image.alt || "",
     })),
+    catalogImage: {
+      url: listing.catalogImage?.url || "",
+      publicId: listing.catalogImage?.publicId || "",
+      alt:
+        listing.catalogImage?.alt ||
+        listing.webName ||
+        listing.product?.name ||
+        "",
+    },
     variants: (listing.variants || [])
       .filter((variant) => variant.product)
       .map((variant) => ({
@@ -689,6 +702,16 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
         kind: variant.kind || "option",
         image: variant.image || "",
         priceOverride: variant.priceOverride ?? "",
+      })),
+    linkedListings: (listing.linkedListings || [])
+      .filter((link) => link.listing)
+      .map((link) => ({
+        listing: link.listing?._id || link.listing,
+        listingName:
+          link.listing?.webName || link.listing?.product?.name || "",
+        label: link.label || link.listing?.webName || link.listing?.product?.name || "",
+        image: link.image || "",
+        sortWeight: link.sortWeight ?? 0,
       })),
   });
   const set = (key, value) =>
@@ -771,6 +794,25 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
       ].slice(0, 8),
     );
   };
+  const uploadCatalogImage = async (files) => {
+    const selected = Array.from(files || []);
+    if (!selected.length) return;
+    const result = await dispatch(uploadListingImages([selected[0]]));
+    if (result.error) return toast.error(result.payload || "Upload failed");
+    const image = result.payload[0];
+    if (!image?.url) return toast.error("Upload finished but no image URL was returned");
+    set("catalogImage", {
+      url: image.url,
+      publicId: image.publicId || "",
+      alt: draft.webName || listing.product?.name || "",
+    });
+  };
+  const removeCatalogImage = () =>
+    set("catalogImage", {
+      url: "",
+      publicId: "",
+      alt: draft.webName || listing.product?.name || "",
+    });
   const removeGalleryImage = (index) =>
     set(
       "gallery",
@@ -807,6 +849,40 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
     ]);
     closeOptionPicker();
   };
+  const addLinkedListing = (listingId) => {
+    if (!listingId) return;
+    if (String(listingId) === String(listing._id)) {
+      return toast.error("A product cannot link to itself");
+    }
+    if (draft.linkedListings.some((item) => item.listing === listingId)) {
+      return toast.error("That product is already linked as a variant");
+    }
+    const match = allListings.find((item) => item._id === listingId);
+    if (!match) return;
+    const label = match.webName || match.product?.name || "Variant";
+    set("linkedListings", [
+      ...draft.linkedListings,
+      {
+        listing: match._id,
+        listingName: label,
+        label,
+        image: "",
+        sortWeight: draft.linkedListings.length,
+      },
+    ]);
+  };
+  const setLinkedListingField = (index, key, value) =>
+    set(
+      "linkedListings",
+      draft.linkedListings.map((item, i) =>
+        i === index ? { ...item, [key]: value } : item,
+      ),
+    );
+  const removeLinkedListing = (index) =>
+    set(
+      "linkedListings",
+      draft.linkedListings.filter((_, i) => i !== index),
+    );
   const createOption = async () => {
     const name = newOption.name.trim();
     if (!name) return toast.error("Enter a product name");
@@ -871,12 +947,18 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
       return toast.error("Enter a valid online price");
     }
     if (draft.variants.some((variant) => !variant.label.trim())) {
-      return toast.error("Every option needs a name (flavour or colour)");
+      return toast.error("Every option needs a name (flavour, colour, volume, etc.)");
+    }
+    if (draft.linkedListings.some((item) => !item.label.trim())) {
+      return toast.error("Every linked product variant needs a display name");
     }
     const result = await dispatch(
       updateOnlineListing({
         id: listing._id,
         ...draft,
+        optionLabel: draft.optionLabel,
+        variantLabel: draft.variantLabel,
+        selfVariantLabel: draft.selfVariantLabel,
         priceOverride: useInventoryPrice ? null : draft.priceOverride,
         salePrice: draft.salePrice || null,
         saleStartsAt: draft.saleStartsAt || null,
@@ -886,6 +968,13 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
           publicId: image.publicId || "",
           alt: image.alt || draft.webName,
         })),
+        catalogImage: draft.catalogImage?.url
+          ? {
+              url: draft.catalogImage.url,
+              publicId: draft.catalogImage.publicId || "",
+              alt: draft.catalogImage.alt || draft.webName,
+            }
+          : { url: "", publicId: "", alt: "" },
         variants: draft.variants.map((variant) => ({
           product: variant.product,
           label: variant.label.trim(),
@@ -895,6 +984,12 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
             variant.priceOverride === "" || variant.priceOverride == null
               ? null
               : Number(variant.priceOverride),
+        })),
+        linkedListings: draft.linkedListings.map((item, index) => ({
+          listing: item.listing,
+          label: item.label.trim(),
+          image: item.image || "",
+          sortWeight: Number(item.sortWeight || index),
         })),
         applyPriceToVariants: applyToOptions,
       }),
@@ -942,6 +1037,30 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
             className="input input-sm input-bordered"
             value={draft.brand}
             onChange={(event) => set("brand", event.target.value)}
+          />
+        </Field>
+        <Field label="Dropdown label">
+          <input
+            className="input input-sm input-bordered"
+            placeholder="e.g. Flavour, Volume"
+            value={draft.optionLabel}
+            onChange={(event) => set("optionLabel", event.target.value)}
+          />
+        </Field>
+        <Field label="Product variant label">
+          <input
+            className="input input-sm input-bordered"
+            placeholder="e.g. Size, Volume, Puff count"
+            value={draft.variantLabel}
+            onChange={(event) => set("variantLabel", event.target.value)}
+          />
+        </Field>
+        <Field label="This product option name">
+          <input
+            className="input input-sm input-bordered"
+            placeholder="e.g. 2ml, 10mg, Standard"
+            value={draft.selfVariantLabel}
+            onChange={(event) => set("selfVariantLabel", event.target.value)}
           />
         </Field>
         <Field label="Online category" className="md:col-span-2">
@@ -1068,6 +1187,174 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
         </Field>
       </div>
 
+      <div className="mt-4 rounded-lg border border-accent/30 bg-accent/5 p-3">
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+          <div className="min-w-0">
+            <h4 className="flex items-center gap-2 text-sm font-semibold">
+              <FiImage /> Catalogue cover image
+            </h4>
+            <p className="max-w-2xl text-[11px] text-base-content/50">
+              Optional combined photo shown only on product cards, category pages
+              and search results. The product page still opens with the normal
+              product photo, then switches to the selected variant photo.
+            </p>
+          </div>
+          <label className="btn btn-xs w-full gap-1 sm:w-auto">
+            <FiUpload /> Upload cover
+            <input
+              hidden
+              type="file"
+              accept="image/*"
+              disabled={isUploading}
+              onChange={(event) => {
+                uploadCatalogImage(event.target.files);
+                event.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+        {draft.catalogImage?.url ? (
+          <div className="mt-3 grid gap-3 sm:grid-cols-[5rem_minmax(0,1fr)_auto] sm:items-center">
+            <img
+              className="h-20 w-20 rounded-lg border bg-base-200 object-cover"
+              src={draft.catalogImage.url}
+              alt=""
+            />
+            <div className="min-w-0">
+              <div className="truncate text-xs font-medium">
+                Catalogue cover is active
+              </div>
+              <div className="truncate text-[11px] text-base-content/45">
+                {draft.catalogImage.url}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs text-error"
+              onClick={removeCatalogImage}
+            >
+              <FiTrash2 /> Remove
+            </button>
+          </div>
+        ) : (
+          <p className="mt-3 text-[11px] text-base-content/40">
+            No separate catalogue cover yet — product cards use the first product
+            photo as fallback.
+          </p>
+        )}
+      </div>
+
+      <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,24rem)] lg:items-start">
+          <div className="min-w-0">
+            <h4 className="flex items-center gap-2 text-sm font-semibold">
+              <FiGrid /> Product family variants
+            </h4>
+            <p className="text-[11px] text-base-content/50">
+              Link existing website products as parent-level choices, like 2ml /
+              3ml. After the shopper chooses one, that linked product&apos;s own
+              flavours/options appear underneath.
+            </p>
+          </div>
+          <select
+            className="select select-sm select-bordered w-full min-w-0"
+            value=""
+            onChange={(event) => addLinkedListing(event.target.value)}
+          >
+            <option value="">Add linked website product</option>
+            {allListings
+              .filter((item) => item._id !== listing._id)
+              .map((item) => {
+                const disabled = draft.linkedListings.some(
+                  (linked) => linked.listing === item._id,
+                );
+                return (
+                  <option key={item._id} value={item._id} disabled={disabled}>
+                    {item.webName || item.product?.name || "Untitled product"}
+                    {disabled ? " (linked)" : ""}
+                  </option>
+                );
+              })}
+          </select>
+        </div>
+
+        {draft.linkedListings.length ? (
+          <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {draft.linkedListings.map((item, index) => (
+              <div
+                key={item.listing}
+                className="min-w-0 rounded-lg border border-primary/20 bg-base-100 p-2"
+              >
+                <div className="grid gap-2 sm:grid-cols-[3.5rem_minmax(0,1fr)]">
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded border bg-base-200">
+                    {item.image ? (
+                      <img
+                        className="h-full w-full object-cover"
+                        src={item.image}
+                        alt=""
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-base-content/30">
+                        <FiImage />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 space-y-2">
+                    <input
+                      className="input input-sm input-bordered w-full"
+                      placeholder="Display label e.g. 2ml"
+                      value={item.label}
+                      onChange={(event) =>
+                        setLinkedListingField(index, "label", event.target.value)
+                      }
+                    />
+                    <div className="truncate text-[11px] text-base-content/50">
+                      Linked: {item.listingName || "Website product"}
+                    </div>
+                    <input
+                      className="input input-sm input-bordered w-full"
+                      placeholder="Optional cover override URL"
+                      value={item.image}
+                      onChange={(event) =>
+                        setLinkedListingField(index, "image", event.target.value)
+                      }
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <input
+                        type="number"
+                        step="1"
+                        className="input input-sm input-bordered w-24 min-w-0"
+                        placeholder="Order"
+                        value={item.sortWeight}
+                        onChange={(event) =>
+                          setLinkedListingField(
+                            index,
+                            "sortWeight",
+                            event.target.value,
+                          )
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-xs text-error"
+                        onClick={() => removeLinkedListing(index)}
+                      >
+                        <FiTrash2 /> Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 text-[11px] text-base-content/40">
+            No linked product variants yet. This product will use only its own
+            options below.
+          </p>
+        )}
+      </div>
+
       <div className="mt-4 rounded-lg border border-base-300 p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -1129,12 +1416,12 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h4 className="flex items-center gap-2 text-sm font-semibold">
-              <FiTag /> Options — flavours &amp; colours
+              <FiTag /> Options - flavours, colours &amp; strengths
             </h4>
             <p className="text-[11px] text-base-content/50">
               Each option links to an inventory product, so its stock stays
-              shared with the till. Add as many as you need; give each a name and
-              its own photo.
+              shared with the till. Add flavours, nicotine strengths, bottle
+              sizes, or any linked product choice; give each a name and photo.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1161,6 +1448,13 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
               onClick={() => openOptionPicker("colour")}
             >
               <FiPlus /> Add colour
+            </button>
+            <button
+              type="button"
+              className={`btn btn-xs gap-1 ${optionKind === "option" ? "btn-primary" : ""}`}
+              onClick={() => openOptionPicker("option")}
+            >
+              <FiPlus /> Add strength / option
             </button>
           </div>
         </div>
@@ -1532,6 +1826,7 @@ function ProductPicker({ categories, onClose }) {
   const [onlineCategory, setOnlineCategory] = useState("");
   const [page, setPage] = useState(1);
   const [images, setImages] = useState([]);
+  const [createdListing, setCreatedListing] = useState(null);
 
   useEffect(() => {
     const timer = setTimeout(
@@ -1566,9 +1861,25 @@ function ProductPicker({ categories, onClose }) {
       return toast.error(result.payload || "Could not add product");
     toast.success(`${product.name} is live`);
     setImages([]);
+    setCreatedListing(result.payload);
     dispatch(getOnlineListings());
     dispatch(getCatalogue({ search, category: inventoryCategory, page }));
   };
+
+  if (createdListing) {
+    return (
+      <ProductEditor
+        key={createdListing._id}
+        listing={createdListing}
+        categories={categories}
+        isActing={isActing}
+        onClose={() => {
+          setCreatedListing(null);
+          onClose();
+        }}
+      />
+    );
+  }
 
   return (
     <section className="rounded-xl border border-base-300 bg-base-100 p-4">

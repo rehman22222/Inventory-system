@@ -63,6 +63,24 @@ const OnlineListingSchema = new mongoose.Schema(
         externalId: { type: String, trim: true, default: "" },
       },
     ],
+    // Optional product-family choices. This lets one storefront product page
+    // present linked listings as variants (e.g. 2ml / 3ml), while each linked
+    // listing can still own its own flavour/colour options and shared stock.
+    variantLabel: { type: String, trim: true, default: "" },
+    selfVariantLabel: { type: String, trim: true, default: "" },
+    linkedListings: [
+      {
+        _id: false,
+        listing: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "OnlineListing",
+          required: true,
+        },
+        label: { type: String, required: true, trim: true },
+        image: { type: String, default: "" },
+        sortWeight: { type: Number, default: 0 },
+      },
+    ],
 
     // The admin's on/off switch. Only `listed` products reach the storefront.
     listed: { type: Boolean, default: false },
@@ -83,6 +101,14 @@ const OnlineListingSchema = new mongoose.Schema(
         alt: { type: String, default: "" },
       },
     ],
+    // Optional catalogue/listing-card cover. This is intentionally separate
+    // from the product detail gallery, so a combined family image can appear in
+    // grids/search without replacing the real product or selected variant photo.
+    catalogImage: {
+      url: { type: String, default: "" },
+      publicId: { type: String, default: "" },
+      alt: { type: String, default: "" },
+    },
 
     // Free-form spec sheet, e.g. { "Battery": "1200 mAh", "Coil": "0.8 ohm" }.
     specs: { type: Map, of: String, default: {} },

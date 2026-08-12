@@ -202,7 +202,7 @@ export function Footer() {
             />
           )}
         </div>
-        <p>&copy; {year} Copyright Cliffsofpuff.com&nbsp; | &nbsp;Created by Eiretech360</p>
+        <p>&copy; {year} Copyright Cliffs of Puff&nbsp; | &nbsp;Created by Eiretech360</p>
         <div className="flex justify-center md:justify-end">
           {settings.footer.restrictionImage && (
             <img

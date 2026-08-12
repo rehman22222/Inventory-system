@@ -22,6 +22,10 @@ export interface Product {
   listingId: string;
   productId: string;
   name: string;
+  familyLabel?: string;
+  familyImage?: string;
+  catalogImage?: string;
+  selfVariantLabel?: string;
   brand: string;
   category: CategorySlug;
   categories: CategorySlug[];
@@ -48,6 +52,7 @@ export interface Product {
   specs: Record<string, string>;
   flavor?: string;
   optionLabel?: string;
+  variantLabel?: string;
   variants: {
     productId: string;
     label: string;
@@ -56,6 +61,7 @@ export interface Product {
     stock: number;
     image?: string;
   }[];
+  linkedListings?: Product[];
   stock: number;
   featured?: boolean;
   /** Verified-purchase review summary. `count` 0 when nobody has reviewed yet. */

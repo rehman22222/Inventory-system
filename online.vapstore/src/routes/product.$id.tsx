@@ -83,71 +83,124 @@ function ProductPage() {
   const navigate = useNavigate();
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
-  const [selectedProductId, setSelectedProductId] = useState(
-    product.variants.find((variant) => variant.stock > 0)?.productId ||
-      product.variants[0]?.productId ||
-      product.productId,
+  const familyChoices = product.linkedListings || [];
+  const hasFamilyChoices = familyChoices.length > 0;
+  const strengthPattern = /\b\d+(?:\.\d+)?\s*mg\b/i;
+  const volumePattern = /\b\d+(?:\.\d+)?\s*ml\b/i;
+  const inferOptionLabel = (items: { label: string }[], fallback = "Option") => {
+    const labels = items.map((item) => item.label || "").filter(Boolean);
+    if (!labels.length) return fallback;
+    if (labels.every((label) => volumePattern.test(label) || strengthPattern.test(label))) {
+      return "Volume";
+    }
+    return fallback;
+  };
+  const displayOptionLabel = (
+    preferred: string | undefined,
+    items: { label: string }[],
+    fallback = "Option",
+  ) => {
+    if (preferred?.trim()) return preferred.trim();
+    const inferred = inferOptionLabel(items, fallback);
+    return inferred;
+  };
+  const familyOptionLabelFor = (item: Product) =>
+    item.familyLabel ||
+    item.selfVariantLabel ||
+    item.variantLabel ||
+    item.flavor ||
+    item.name;
+  const familyOptions = hasFamilyChoices ? [product, ...familyChoices] : [];
+  const [selectedFamilyId, setSelectedFamilyId] = useState(product.listingId);
+  const selectedFamily = familyOptions.find(
+    (choice) => choice.listingId === selectedFamilyId,
   );
-  const selectedVariant = product.variants.find(
+  const choiceProduct = selectedFamily || product;
+  const hasVariantChoices = choiceProduct.variants.length > 0;
+  const [selectedProductId, setSelectedProductId] = useState(choiceProduct.productId);
+  // A manually clicked thumbnail wins until the shopper changes option; picking a
+  // different flavour/colour clears it so that option's own photo shows.
+  const [imageOverride, setImageOverride] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedFamilyId(product.listingId);
+  }, [product.listingId]);
+
+  useEffect(() => {
+    setSelectedProductId(choiceProduct.productId);
+    setQty(1);
+    setImageOverride(null);
+  }, [choiceProduct.listingId, choiceProduct.productId]);
+
+  const selectedVariant = choiceProduct.variants.find(
     (variant) => variant.productId === selectedProductId,
   );
-  const activeProductId = selectedVariant?.productId || product.productId;
-  const activePrice = selectedVariant?.price ?? product.price;
+  const activeProductId = selectedVariant?.productId || choiceProduct.productId;
+  const activePrice = selectedVariant?.price ?? choiceProduct.price;
   const eventOffer = (settings.events?.items || []).find(
     (item) =>
       item.enabled &&
       item.kind === "product" &&
-      item.targetId === product.listingId &&
-      item.targetId === search.event &&
+      item.targetId === choiceProduct.listingId &&
+      (!search.event || item.targetId === search.event) &&
       Number(item.eventPrice) > 0,
   );
   const eventUnitPrice = eventOffer ? Math.min(Number(eventOffer.eventPrice), activePrice) : null;
-  const activeStock = selectedVariant?.stock ?? product.stock;
+  const activeStock = selectedVariant?.stock ?? choiceProduct.stock;
   // Options imported without their own image can often still be matched to one
-  // of the product's gallery photos by name (e.g. the "Cola" flavour ↔ a
+  // of the product's gallery photos by name (e.g. the "Cola" flavour ? a
   // "cuba-cola.webp" gallery image). Display-only and conservative: it fires
   // only when the option has no explicit image and only on an exact
   // name-in-filename match, so it can never show the wrong flavour.
   const normalizeName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const imageForVariant = (variant: Product["variants"][number]): string => {
+  const imageForVariant = (
+    variant: Product["variants"][number],
+    source: Product = choiceProduct,
+  ): string => {
     if (variant.image) return variant.image;
     const key = normalizeName(variant.label);
     if (key.length < 4) return "";
-    const hit = product.gallery.find((image) =>
+    const hit = source.gallery.find((image) =>
       normalizeName(image.url.split("/").pop() || "").includes(key),
     );
     return hit?.url || "";
   };
   const activeImage =
-    (selectedVariant ? imageForVariant(selectedVariant) : "") || product.image;
-  // A manually clicked thumbnail wins until the shopper changes option; picking a
-  // different flavour/colour clears it so that option's own photo shows.
-  const [imageOverride, setImageOverride] = useState<string | null>(null);
-  const heroImage = imageOverride ?? activeImage;
+    (selectedVariant ? imageForVariant(selectedVariant, choiceProduct) : "") || choiceProduct.image;
+  const displayImage = selectedVariant
+    ? activeImage
+    : hasFamilyChoices && choiceProduct.listingId !== product.listingId
+      ? choiceProduct.familyImage || choiceProduct.image
+      : product.image;
   // Every distinct picture: the option images sit alongside the gallery so a
   // shopper can click any flavour/colour photo to open it.
   const gallery = [
+    displayImage,
+    choiceProduct.familyImage,
     activeImage,
-    ...product.variants.map((variant) => variant.image),
-    ...product.gallery.map((image) => image.url),
+    ...choiceProduct.variants.map((variant) => variant.image),
+    ...choiceProduct.gallery.map((image) => image.url),
   ].filter(
     (url, index, urls): url is string => Boolean(url) && urls.indexOf(url) === index,
   );
 
   // Preload the option/gallery photos after the product page opens. The user
-  // can then switch flavours/colours without the “wait for image download”
+  // can then switch flavours/colours without the ?wait for image download?
   // feeling, especially on mobile data.
   useEffect(() => {
-    const urls = [
-      product.image,
-      ...product.variants.map((variant) => imageForVariant(variant)),
-      ...product.gallery.map((image) => image.url),
-      product.qtyDeal?.image || "",
-      product.dealImage || "",
-    ].filter((url, index, urls): url is string => Boolean(url) && urls.indexOf(url) === index);
+    const productsToWarm = [product, ...familyChoices];
+    const urls = productsToWarm
+      .flatMap((item) => [
+        item.image,
+        ...item.variants.map((variant) => imageForVariant(variant, item)),
+        ...item.gallery.map((image) => image.url),
+        item.qtyDeal?.image || "",
+        item.dealImage || "",
+      ])
+      .filter((url, index, urls): url is string => Boolean(url) && urls.indexOf(url) === index);
 
     const timer = window.setTimeout(() => {
-      urls.slice(0, 16).forEach((url) => {
+      urls.slice(0, 20).forEach((url) => {
         const img = new Image();
         img.decoding = "async";
         img.src = cldProductHeroImage(url);
@@ -159,10 +212,10 @@ function ProductPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product.id]);
   // Clicking a photo that belongs to a flavour/colour option should select that
-  // option too — so the picture and the option buttons stay in sync both ways
-  // (option → picture already worked; this makes picture → option work).
+  // option too ? so the picture and the option buttons stay in sync both ways
+  // (option ? picture already worked; this makes picture ? option work).
   const selectImage = (image: string) => {
-    const variant = product.variants.find((v) => imageForVariant(v) === image);
+    const variant = choiceProduct.variants.find((v) => imageForVariant(v, choiceProduct) === image);
     if (variant) {
       setSelectedProductId(variant.productId);
       setImageOverride(null); // show the option's own photo
@@ -171,17 +224,19 @@ function ProductPage() {
       setImageOverride(image);
     }
   };
-  const onSale = !!product.compareAt;
+  const onSale = !!choiceProduct.compareAt;
   const outOfStock = activeStock <= 0;
   const availability = availabilityOf(activeStock);
   const priceUnavailable = activePrice <= 0;
-  const unavailable = outOfStock || priceUnavailable;
+  const familyRequired = false;
+  const optionRequired = hasVariantChoices && !selectedVariant;
+  const unavailable = outOfStock || priceUnavailable || optionRequired;
 
-  // Quantity deal ("buy N+ of any flavour, €X each"). It applies once the
-  // combined quantity of this product in the basket — every flavour together,
-  // plus the amount about to be added — reaches the threshold.
-  const qtyDeal = product.qtyDeal || null;
-  const inCartForListing = listingQty(product.listingId);
+  // Quantity deal ("buy N+ of any flavour, ?X each"). It applies once the
+  // combined quantity of this product in the basket ? every flavour together,
+  // plus the amount about to be added ? reaches the threshold.
+  const qtyDeal = choiceProduct.qtyDeal || null;
+  const inCartForListing = listingQty(choiceProduct.listingId);
   const projectedQty = inCartForListing + qty;
   const qtyDealActive = !!qtyDeal && projectedQty >= qtyDeal.minQty;
   const effectiveUnit = eventUnitPrice ?? (qtyDealActive ? qtyDeal!.price : activePrice);
@@ -189,30 +244,55 @@ function ProductPage() {
     ? Math.round((1 - qtyDeal.price / (qtyDeal.regularPrice || activePrice || 1)) * 100)
     : 0;
 
-  // Options are grouped by kind so flavours and colours appear as separate
-  // choice rows, each with its own heading.
+  const labelForKind = (kind: Product["variants"][number]["kind"]) => {
+    if (kind === "flavour") return "Flavour";
+    if (kind === "colour") return "Colour";
+    return displayOptionLabel(choiceProduct.optionLabel, choiceProduct.variants, "Option");
+  };
+
+  // Options are grouped for optgroup labels, but shown through one native select
+  // so mobile gets the familiar "Choose an option" picker and checkout still
+  // receives one exact inventory-linked SKU.
   const variantGroups = (["flavour", "colour", "option"] as const)
     .map((kind) => ({
       kind,
-      label: kind === "option" ? product.optionLabel || "option" : kind,
-      items: product.variants.filter((variant) => (variant.kind || "option") === kind),
+      label: labelForKind(kind),
+      items: choiceProduct.variants.filter((variant) => (variant.kind || "option") === kind),
     }))
     .filter((group) => group.items.length > 0);
+  const variantSelectLabel =
+    variantGroups.length === 1
+      ? variantGroups[0].label
+      : displayOptionLabel(choiceProduct.optionLabel, choiceProduct.variants, "Option");
+  const familySelectLabel = displayOptionLabel(
+    product.variantLabel,
+    familyOptions.map((item) => ({ label: familyOptionLabelFor(item) })),
+    "Option",
+  );
 
   const lineFor = () => ({
-    id: `${product.id}::${activeProductId}${eventUnitPrice ? "::event" : ""}`,
+    id: `${choiceProduct.id}::${activeProductId}${eventUnitPrice ? "::event" : ""}`,
     slug: product.id,
-    listingId: product.listingId,
+    listingId: choiceProduct.listingId,
     productId: activeProductId,
-    variantLabel: selectedVariant?.label,
-    name: selectedVariant?.label ? `${product.name} — ${selectedVariant.label}` : product.name,
-    brand: product.brand,
+    variantLabel:
+      [hasFamilyChoices ? familyOptionLabelFor(choiceProduct) : "", selectedVariant?.label]
+        .filter(Boolean)
+        .join(" / ") || undefined,
+    name: [
+      product.name,
+      hasFamilyChoices ? familyOptionLabelFor(choiceProduct) : "",
+      selectedVariant?.label,
+    ]
+      .filter(Boolean)
+      .join(" - "),
+    brand: choiceProduct.brand,
     price: activePrice,
-    image: activeImage,
+    image: displayImage,
     maxStock: activeStock,
     ...(eventUnitPrice
       ? {
-          eventId: product.listingId,
+          eventId: choiceProduct.listingId,
           eventPrice: eventUnitPrice,
           eventLabel: settings.events?.heading || "Event offer",
         }
@@ -237,24 +317,28 @@ function ProductPage() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <div className="container-x py-4 font-mono text-[11px] uppercase tracking-widest text-ink-muted">
-        <Link to="/" className="hover:text-ink">
-          Home
-        </Link>
-        {" / "}
-        <Link to="/category/$slug" params={{ slug: product.category }} className="hover:text-ink">
-          {product.category.replace("-", " ")}
-        </Link>
-        {" / "}
-        <span className="text-ink truncate">{product.name}</span>
+      <div className="container-x overflow-x-auto py-3 font-mono text-[10px] uppercase tracking-[0.28em] text-ink-muted sm:py-4 sm:text-[11px]">
+        <div className="flex min-w-0 items-center gap-2 whitespace-nowrap">
+          <Link to="/" className="hover:text-ink">
+            Home
+          </Link>
+          <span>/</span>
+          <Link to="/category/$slug" params={{ slug: product.category }} className="hover:text-ink">
+            {product.category.replace("-", " ")}
+          </Link>
+          <span>/</span>
+          <span className="max-w-[18rem] truncate text-ink sm:max-w-[34rem]">
+            {product.name}
+          </span>
+        </div>
       </div>
 
-      <section className="container-x pb-12 grid gap-8 lg:grid-cols-[1fr_1fr]">
+      <section className="container-x grid gap-6 pb-10 sm:gap-8 sm:pb-12 lg:grid-cols-[1fr_1fr]">
         {/* Gallery */}
         <div className="grid gap-3 lg:sticky lg:top-28 lg:self-start">
-          <div className="border hair bg-white aspect-square max-h-[560px] overflow-hidden relative p-5 sm:p-8">
+          <div className="relative aspect-square max-h-[560px] overflow-hidden border hair bg-white p-4 sm:p-8">
             <img
-              src={cldProductHeroImage(heroImage)}
+              src={cldProductHeroImage(imageOverride ?? displayImage)}
               alt={product.name}
               loading="eager"
               decoding="async"
@@ -268,7 +352,7 @@ function ProductPage() {
             )}
           </div>
           {gallery.length > 1 && (
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-4 gap-2 sm:gap-3">
               {gallery.slice(0, 8).map((image) => (
                 <button
                   type="button"
@@ -276,7 +360,7 @@ function ProductPage() {
                   onClick={() => selectImage(image)}
                   aria-label="View this photo"
                   className={`border hair bg-white aspect-square overflow-hidden p-1.5 transition-opacity hover:opacity-90 ${
-                    image === heroImage ? "outline outline-2 outline-ink" : ""
+                    image === (imageOverride ?? displayImage) ? "outline outline-2 outline-ink" : ""
                   }`}
                 >
                   <img
@@ -293,11 +377,11 @@ function ProductPage() {
         </div>
 
         {/* Details */}
-        <div>
-          <div className="font-mono text-[11px] uppercase tracking-widest text-ink-muted">
+        <div className="min-w-0">
+          <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-ink-muted sm:text-[11px]">
             {product.brand} · {product.category.replace("-", " ")}
           </div>
-          <h1 className="mt-3 font-display text-3xl sm:text-4xl md:text-5xl leading-[1] md:leading-[0.95] tracking-tight break-words">
+          <h1 className="mt-3 break-words font-display text-3xl leading-[1] tracking-tight sm:text-4xl md:text-5xl md:leading-[0.95]">
             {product.name}
           </h1>
           {summary.count > 0 && (
@@ -310,9 +394,13 @@ function ProductPage() {
           )}
           <p className="mt-4 text-base text-ink-muted">{product.short}</p>
 
-          <div className="mt-8 flex items-baseline gap-4">
-            <span className="font-display text-4xl">
-              {priceUnavailable ? "Price to be confirmed" : formatPrice(effectiveUnit)}
+          <div className="mt-6 flex flex-wrap items-baseline gap-3 sm:mt-8 sm:gap-4">
+            <span className="font-display text-3xl sm:text-4xl">
+              {familyRequired
+                ? formatPrice(product.price)
+                : priceUnavailable
+                  ? "Price to be confirmed"
+                  : formatPrice(effectiveUnit)}
             </span>
             {(eventUnitPrice || onSale) && (
               <span className="font-mono text-sm text-ink-muted line-through">
@@ -368,35 +456,103 @@ function ProductPage() {
             </div>
           )}
 
-          {variantGroups.length > 0 ? (
-            <div className="mt-8 space-y-5">
-              {variantGroups.map((group) => (
-                <fieldset key={group.kind}>
-                  <legend className="eyebrow mb-2">Choose {group.label}</legend>
-                  <div className="flex flex-wrap gap-2">
-                    {group.items.map((variant) => (
-                      <button
-                        type="button"
-                        key={variant.productId}
-                        onClick={() => {
-                          setSelectedProductId(variant.productId);
-                          setQty(1);
-                          setImageOverride(null);
-                        }}
-                        disabled={variant.stock <= 0}
-                        className={`border hair px-3 py-2 font-display text-sm transition-colors ${
-                          variant.productId === activeProductId
-                            ? "bg-ink text-primary-foreground"
-                            : "hover:bg-accent hover:text-accent-foreground"
-                        } disabled:cursor-not-allowed disabled:opacity-40`}
-                      >
-                        {variant.label}
-                        {variant.stock <= 0 ? " · sold out" : ""}
-                      </button>
-                    ))}
+          {(hasFamilyChoices || variantGroups.length > 0) ? (
+            <div className="mt-6 space-y-3 sm:mt-8">
+              {hasFamilyChoices && (
+                <div className="grid border hair bg-surface sm:grid-cols-[150px_1fr]">
+                  <div className="flex items-center border-b hair px-3 py-2 font-display text-sm text-ink sm:border-b-0 sm:border-r sm:px-4 sm:py-3">
+                    {familySelectLabel}
                   </div>
-                </fieldset>
-              ))}
+                  <div className="relative">
+                    <select
+                      id="product-family-option"
+                      value={selectedFamily?.listingId || ""}
+                      onChange={(event) => {
+                        setSelectedFamilyId(event.target.value);
+                        setQty(1);
+                        setImageOverride(null);
+                      }}
+                      className="h-full min-h-12 w-full appearance-none bg-transparent px-3 pr-10 text-sm text-ink outline-none transition-colors hover:bg-background/50 focus:ring-2 focus:ring-ink/20 sm:min-h-14 sm:px-4 sm:pr-12 sm:text-base"
+                      required
+                    >
+                      {familyOptions.map((choice) => (
+                        <option
+                          key={choice.listingId}
+                          value={choice.listingId}
+                          disabled={choice.stock <= 0}
+                        >
+                          {familyOptionLabelFor(choice)}
+                          {choice.stock <= 0 ? " - sold out" : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center font-mono text-xs text-ink-muted">
+                      v
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {(!hasFamilyChoices || selectedFamily) && variantGroups.length > 0 && (
+                <div className="grid border hair bg-surface sm:grid-cols-[150px_1fr]">
+                  <div className="flex items-center border-b hair px-3 py-2 font-display text-sm text-ink sm:border-b-0 sm:border-r sm:px-4 sm:py-3">
+                    {variantSelectLabel}
+                  </div>
+                  <div className="relative">
+                    <select
+                      id="product-option"
+                      value={selectedVariant?.productId || ""}
+                      onChange={(event) => {
+                        const next = event.target.value;
+                        setSelectedProductId(next || choiceProduct.productId);
+                        setQty(1);
+                        setImageOverride(null);
+                      }}
+                      className="h-full min-h-12 w-full appearance-none bg-transparent px-3 pr-10 text-sm text-ink outline-none transition-colors hover:bg-background/50 focus:ring-2 focus:ring-ink/20 sm:min-h-14 sm:px-4 sm:pr-12 sm:text-base"
+                      required
+                    >
+                      <option value="">Choose an option</option>
+                      {variantGroups.map((group) =>
+                        variantGroups.length > 1 ? (
+                          <optgroup key={group.kind} label={group.label}>
+                            {group.items.map((variant) => (
+                              <option
+                                key={variant.productId}
+                                value={variant.productId}
+                                disabled={variant.stock <= 0}
+                              >
+                                {variant.label}
+                                {variant.stock <= 0 ? " - sold out" : ""}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ) : (
+                          group.items.map((variant) => (
+                            <option
+                              key={variant.productId}
+                              value={variant.productId}
+                              disabled={variant.stock <= 0}
+                            >
+                              {variant.label}
+                              {variant.stock <= 0 ? " - sold out" : ""}
+                            </option>
+                          ))
+                        ),
+                      )}
+                    </select>
+                    <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center font-mono text-xs text-ink-muted">
+                      v
+                    </span>
+                  </div>
+                </div>
+              )}
+              {selectedVariant && (
+                <div className="font-mono text-[11px] uppercase tracking-widest text-ink-muted">
+                  {selectedVariant.stock > 0
+                    ? `${availabilityOf(selectedVariant.stock).label} - selected`
+                    : "Selected option is sold out"}
+                </div>
+              )}
             </div>
           ) : product.flavor ? (
             <div className="mt-8">
@@ -407,19 +563,19 @@ function ProductPage() {
             </div>
           ) : null}
 
-          <div className="mt-8 flex items-stretch gap-3">
+          <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:items-stretch">
             <div className="flex items-center border hair">
               <button
                 onClick={() => setQty(Math.max(1, qty - 1))}
-                className="p-3 hover:bg-accent hover:text-accent-foreground"
+                className="flex-1 p-3 hover:bg-accent hover:text-accent-foreground sm:flex-none"
                 aria-label="Decrease"
               >
                 <Minus className="h-4 w-4" />
               </button>
-              <span className="w-10 text-center font-display">{qty}</span>
+              <span className="w-14 text-center font-display sm:w-10">{qty}</span>
               <button
                 onClick={() => setQty(Math.min(activeStock, qty + 1))}
-                className="p-3 hover:bg-accent hover:text-accent-foreground disabled:opacity-40"
+                className="flex-1 p-3 hover:bg-accent hover:text-accent-foreground disabled:opacity-40 sm:flex-none"
                 aria-label="Increase"
                 disabled={qty >= activeStock}
               >
@@ -436,7 +592,9 @@ function ProductPage() {
                   <Check className="h-4 w-4" /> Added to cart
                 </>
               ) : unavailable ? (
-                priceUnavailable ? (
+                optionRequired ? (
+                  "Choose an option"
+                ) : priceUnavailable ? (
                   "Price unavailable"
                 ) : (
                   "Out of stock"
@@ -457,13 +615,11 @@ function ProductPage() {
 
           {!priceUnavailable && (
             <div className="mt-3 font-mono text-[11px] uppercase tracking-widest text-ink-muted">
-              {outOfStock
-                ? "Currently unavailable"
-                : `${availability.label} · ${promises.dispatch}`}
+              {outOfStock ? "Currently unavailable" : availability.label}
             </div>
           )}
 
-          <div className="mt-8 grid grid-cols-3 gap-3 border-y hair py-6">
+          <div className="mt-8 grid gap-3 border-y hair py-5 sm:grid-cols-3 sm:py-6">
             {[
               { icon: Clock, label: promises.dispatch },
               ...(promises.authentic
@@ -485,12 +641,19 @@ function ProductPage() {
               {Object.entries(product.specs)
                 .filter(([k]) => {
                   // Hide developer/internal specs — shoppers only need the
-                  // availability line below, not our catalogue id or raw counts.
+                  // availability line below, not our catalogue id, raw counts,
+                  // or option metadata that is already handled by dropdowns.
                   const key = k.toLowerCase();
                   return (
                     !key.includes("catalogue") &&
                     !key.includes("source") &&
-                    !key.includes("stock")
+                    !key.includes("stock") &&
+                    !key.includes("option") &&
+                    !key.includes("variant") &&
+                    !key.includes("flavour") &&
+                    !key.includes("flavor") &&
+                    !key.includes("strength") &&
+                    !key.includes("volume")
                   );
                 })
                 .map(([k, v]) => (

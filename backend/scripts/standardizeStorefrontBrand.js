@@ -20,11 +20,11 @@ const editablePaths = [
 function canonicalizeBrand(value) {
   if (typeof value !== "string") return value;
   return value
-    .replace(/Candy Cloud Vape/gi, "CliffsOfPuff")
-    .replace(/Candy Cloud team/gi, "CliffsOfPuff team")
-    .replace(/Candy Cloud's/gi, "CliffsOfPuff's")
-    .replace(/ClipsOfPuff/gi, "CliffsOfPuff")
-    .replace(/Cliffs of Puff/gi, "CliffsOfPuff")
+    .replace(/Candy Cloud Vape/gi, "Cliffs of Puff")
+    .replace(/Candy Cloud team/gi, "Cliffs of Puff team")
+    .replace(/Candy Cloud's/gi, "Cliffs of Puff's")
+    .replace(/ClipsOfPuff/gi, "Cliffs of Puff")
+    .replace(/CliffsOfPuff/gi, "Cliffs of Puff")
     .replace(/21\+\s*only/gi, "18+ only");
 }
 

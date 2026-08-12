@@ -55,7 +55,7 @@ const campaigns = [
     titleItalic: "discover",
     titleBadge: "something",
     titleBottom: "different.",
-    copy: "Browse one of CliffsOfPuff's standout collections, selected directly from the live catalogue.",
+    copy: "Browse one of Cliffs of Puff's standout collections, selected directly from the live catalogue.",
     burst: { top: "New", big: "TRY", bottom: "today" },
     tone: "ink",
   },
