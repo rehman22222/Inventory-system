@@ -192,7 +192,7 @@ export function Footer() {
       </div>
 
       <div className="container-x grid items-center gap-5 pb-10 text-center text-sm md:grid-cols-[1fr_auto_1fr]">
-        <div className="flex justify-center gap-5 md:justify-start">
+        <div className="order-1 flex justify-center gap-5 md:justify-start">
           {settings.footer.paymentImage && (
             <img
               src={settings.footer.paymentImage}
@@ -202,8 +202,12 @@ export function Footer() {
             />
           )}
         </div>
-        <p>&copy; {year} Copyright Cliffs of Puff&nbsp; | &nbsp;Created by Eiretech360</p>
-        <div className="flex justify-center md:justify-end">
+        <p className="order-3 mx-auto max-w-[18rem] text-xs leading-5 text-white/85 sm:max-w-none sm:text-sm md:order-2">
+          &copy; {year} Copyright Cliffs of Puff
+          <span className="hidden sm:inline">&nbsp; | &nbsp;</span>
+          <span className="block sm:inline">Created by Eiretech360</span>
+        </p>
+        <div className="order-2 flex justify-center md:order-3 md:justify-end">
           {settings.footer.restrictionImage && (
             <img
               src={settings.footer.restrictionImage}

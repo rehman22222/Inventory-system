@@ -85,6 +85,15 @@ function ProductPage() {
   const [added, setAdded] = useState(false);
   const familyChoices = product.linkedListings || [];
   const hasFamilyChoices = familyChoices.length > 0;
+  const fallbackGalleryCover =
+    product.gallery.find((image) => image.url && image.url !== product.image)?.url ||
+    product.gallery[0]?.url ||
+    "";
+  const defaultCatalogImage =
+    product.catalogImage ||
+    product.familyImage ||
+    (hasFamilyChoices ? fallbackGalleryCover : "") ||
+    product.image;
   const strengthPattern = /\b\d+(?:\.\d+)?\s*mg\b/i;
   const volumePattern = /\b\d+(?:\.\d+)?\s*ml\b/i;
   const inferOptionLabel = (items: { label: string }[], fallback = "Option") => {
@@ -111,26 +120,31 @@ function ProductPage() {
     item.flavor ||
     item.name;
   const familyOptions = hasFamilyChoices ? [product, ...familyChoices] : [];
-  const [selectedFamilyId, setSelectedFamilyId] = useState(product.listingId);
+  const [selectedFamilyId, setSelectedFamilyId] = useState(
+    hasFamilyChoices ? "" : product.listingId,
+  );
   const selectedFamily = familyOptions.find(
     (choice) => choice.listingId === selectedFamilyId,
   );
   const choiceProduct = selectedFamily || product;
+  const hasChosenFamily = !hasFamilyChoices || Boolean(selectedFamily);
   const hasVariantChoices = choiceProduct.variants.length > 0;
-  const [selectedProductId, setSelectedProductId] = useState(choiceProduct.productId);
+  const [selectedProductId, setSelectedProductId] = useState(
+    hasVariantChoices ? "" : choiceProduct.productId,
+  );
   // A manually clicked thumbnail wins until the shopper changes option; picking a
   // different flavour/colour clears it so that option's own photo shows.
   const [imageOverride, setImageOverride] = useState<string | null>(null);
 
   useEffect(() => {
-    setSelectedFamilyId(product.listingId);
-  }, [product.listingId]);
+    setSelectedFamilyId(hasFamilyChoices ? "" : product.listingId);
+  }, [hasFamilyChoices, product.listingId]);
 
   useEffect(() => {
-    setSelectedProductId(choiceProduct.productId);
+    setSelectedProductId(choiceProduct.variants.length > 0 ? "" : choiceProduct.productId);
     setQty(1);
     setImageOverride(null);
-  }, [choiceProduct.listingId, choiceProduct.productId]);
+  }, [choiceProduct.listingId, choiceProduct.productId, choiceProduct.variants.length]);
 
   const selectedVariant = choiceProduct.variants.find(
     (variant) => variant.productId === selectedProductId,
@@ -165,22 +179,34 @@ function ProductPage() {
     );
     return hit?.url || "";
   };
+  const familyImage = choiceProduct.familyImage || choiceProduct.image;
   const activeImage =
-    (selectedVariant ? imageForVariant(selectedVariant, choiceProduct) : "") || choiceProduct.image;
+    (selectedVariant ? imageForVariant(selectedVariant, choiceProduct) : "") || familyImage;
+  const needsFamilyChoice = hasFamilyChoices && !selectedFamily;
+  const needsVariantChoice = hasVariantChoices && !selectedVariant;
   const displayImage = selectedVariant
     ? activeImage
-    : hasFamilyChoices && choiceProduct.listingId !== product.listingId
-      ? choiceProduct.familyImage || choiceProduct.image
-      : product.image;
+    : needsFamilyChoice
+      ? defaultCatalogImage
+      : hasFamilyChoices
+        ? familyImage
+        : hasVariantChoices
+          ? defaultCatalogImage
+          : product.image;
   // Every distinct picture: the option images sit alongside the gallery so a
   // shopper can click any flavour/colour photo to open it.
-  const gallery = [
-    displayImage,
-    choiceProduct.familyImage,
-    activeImage,
-    ...choiceProduct.variants.map((variant) => variant.image),
-    ...choiceProduct.gallery.map((image) => image.url),
-  ].filter(
+  const gallerySource = needsFamilyChoice || needsVariantChoice
+    ? [displayImage]
+    : hasChosenFamily
+    ? [
+        displayImage,
+        hasFamilyChoices ? familyImage : choiceProduct.familyImage,
+        activeImage,
+        ...choiceProduct.variants.map((variant) => variant.image),
+        ...choiceProduct.gallery.map((image) => image.url),
+      ]
+    : [defaultCatalogImage];
+  const gallery = gallerySource.filter(
     (url, index, urls): url is string => Boolean(url) && urls.indexOf(url) === index,
   );
 
@@ -228,9 +254,9 @@ function ProductPage() {
   const outOfStock = activeStock <= 0;
   const availability = availabilityOf(activeStock);
   const priceUnavailable = activePrice <= 0;
-  const familyRequired = false;
-  const optionRequired = hasVariantChoices && !selectedVariant;
-  const unavailable = outOfStock || priceUnavailable || optionRequired;
+  const familyRequired = needsFamilyChoice;
+  const optionRequired = needsVariantChoice;
+  const unavailable = outOfStock || priceUnavailable || familyRequired || optionRequired;
 
   // Quantity deal ("buy N+ of any flavour, ?X each"). It applies once the
   // combined quantity of this product in the basket ? every flavour together,
@@ -475,6 +501,7 @@ function ProductPage() {
                       className="h-full min-h-12 w-full appearance-none bg-transparent px-3 pr-10 text-sm text-ink outline-none transition-colors hover:bg-background/50 focus:ring-2 focus:ring-ink/20 sm:min-h-14 sm:px-4 sm:pr-12 sm:text-base"
                       required
                     >
+                      <option value="">Choose an option</option>
                       {familyOptions.map((choice) => (
                         <option
                           key={choice.listingId}
@@ -592,7 +619,7 @@ function ProductPage() {
                   <Check className="h-4 w-4" /> Added to cart
                 </>
               ) : unavailable ? (
-                optionRequired ? (
+                familyRequired || optionRequired ? (
                   "Choose an option"
                 ) : priceUnavailable ? (
                   "Price unavailable"

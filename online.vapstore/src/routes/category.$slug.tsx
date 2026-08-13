@@ -72,6 +72,7 @@ function CategoryPage() {
   const filters = useProductFilters(products, category.slug);
   const list = filters.filtered;
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const isLostMaryCategory = category.slug === "lost-mary" || /lost\s*mary/i.test(category.name);
 
   return (
     <div className="min-h-screen bg-background">
@@ -103,23 +104,35 @@ function CategoryPage() {
               )}
               <span className="text-ink">{category.name}</span>
             </nav>
-            <h1 className="mt-6 font-display text-4xl sm:text-5xl md:text-8xl leading-[0.95] md:leading-[0.9] tracking-tight break-words">
-              {category.name.split(" ").map((w: string, i: number, arr: string[]) => (
-                <span key={i}>
-                  {i === 1 ? (
-                    <span
-                      className="italic font-normal"
-                      style={{ fontFamily: '"Instrument Serif", serif' }}
-                    >
-                      {w}
-                    </span>
-                  ) : (
-                    w
-                  )}
-                  {i < arr.length - 1 ? " " : ""}
-                </span>
-              ))}
-            </h1>
+            {isLostMaryCategory ? (
+              <h1
+                className="mt-6 break-words text-5xl font-black uppercase leading-[0.85] tracking-[-0.07em] text-black sm:text-6xl md:text-8xl"
+                style={{
+                  fontFamily: '"Arial Black", Impact, Haettenschweiler, sans-serif',
+                  fontStretch: "condensed",
+                }}
+              >
+                Lost Mary
+              </h1>
+            ) : (
+              <h1 className="mt-6 font-display text-4xl sm:text-5xl md:text-8xl leading-[0.95] md:leading-[0.9] tracking-tight break-words">
+                {category.name.split(" ").map((w: string, i: number, arr: string[]) => (
+                  <span key={i}>
+                    {i === 1 ? (
+                      <span
+                        className="italic font-normal"
+                        style={{ fontFamily: '"Instrument Serif", serif' }}
+                      >
+                        {w}
+                      </span>
+                    ) : (
+                      w
+                    )}
+                    {i < arr.length - 1 ? " " : ""}
+                  </span>
+                ))}
+              </h1>
+            )}
             <p className="mt-6 max-w-md text-base text-ink-muted">
               {category.tagline}. {products.length} products in stock.
             </p>
