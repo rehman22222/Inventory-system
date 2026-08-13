@@ -9,9 +9,10 @@ import { useCatalog } from "@/lib/catalog-context";
 export const Route = createFileRoute("/search")({
   // ?q= drives the search. Kept a plain string so a shared/bookmarked search URL
   // works and SSR can render results on first paint.
-  validateSearch: (search: Record<string, unknown>): { q: string } => ({
-    q: typeof search.q === "string" ? search.q : "",
-  }),
+  validateSearch: (search: Record<string, unknown>): { q?: string } => {
+    const q = typeof search.q === "string" ? search.q.trim() : "";
+    return q ? { q } : {};
+  },
   component: SearchPage,
   head: () => ({
     meta: [
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/search")({
 });
 
 function SearchPage() {
-  const { q } = Route.useSearch();
+  const { q = "" } = Route.useSearch();
   const navigate = useNavigate();
   const { products, categories } = useCatalog();
   const [term, setTerm] = useState(q);

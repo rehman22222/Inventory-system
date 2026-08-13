@@ -54,7 +54,7 @@ function HeroButton({ slide, active }: { slide: HeroSlide; active: boolean }) {
     return (
       <Link
         to="/shop"
-        search={{ products: slide.ctaPrimary.search.products, q: "" }}
+        search={{ products: slide.ctaPrimary.search.products }}
         tabIndex={active ? 0 : -1}
         onPointerDown={stopCarouselDrag}
         className={HERO_CTA_CLASS}
@@ -70,7 +70,7 @@ function HeroButton({ slide, active }: { slide: HeroSlide; active: boolean }) {
   return (
     <Link
       to="/shop"
-      search={{ products: "", q: slide.ctaPrimary.search?.q || "" }}
+      search={slide.ctaPrimary.search?.q ? { q: slide.ctaPrimary.search.q } : {}}
       tabIndex={active ? 0 : -1}
       onPointerDown={stopCarouselDrag}
       className={HERO_CTA_CLASS}

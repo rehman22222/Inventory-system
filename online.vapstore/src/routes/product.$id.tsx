@@ -15,9 +15,10 @@ import { canonicalUrl } from "@/lib/seo";
 
 export const Route = createFileRoute("/product/$id")({
   component: ProductPage,
-  validateSearch: (search: Record<string, unknown>) => ({
-    event: typeof search.event === "string" ? search.event : "",
-  }),
+  validateSearch: (search: Record<string, unknown>): { event?: string } => {
+    const event = typeof search.event === "string" ? search.event.trim() : "";
+    return event ? { event } : {};
+  },
   // `params.id` is the listing slug. Price and stock come back live, so the
   // page always shows what the shop currently holds.
   loader: async ({

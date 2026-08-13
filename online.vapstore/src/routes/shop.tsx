@@ -12,10 +12,14 @@ import { canonicalUrl } from "@/lib/seo";
 
 export const Route = createFileRoute("/shop")({
   component: Shop,
-  validateSearch: (search: Record<string, unknown>) => ({
-    products: typeof search.products === "string" ? search.products : "",
-    q: typeof search.q === "string" ? search.q : "",
-  }),
+  validateSearch: (search: Record<string, unknown>): { products?: string; q?: string } => {
+    const products = typeof search.products === "string" ? search.products.trim() : "";
+    const q = typeof search.q === "string" ? search.q.trim() : "";
+    return {
+      ...(products ? { products } : {}),
+      ...(q ? { q } : {}),
+    };
+  },
   head: () => ({
     meta: [
       { title: "Shop All — Cliffs of Puff" },

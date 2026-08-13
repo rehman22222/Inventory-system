@@ -230,7 +230,7 @@ export function Header() {
           <button
             aria-label={t("nav.search")}
             className="lg:hidden p-2"
-            onClick={() => navigate({ to: "/search", search: { q: "" } })}
+            onClick={() => navigate({ to: "/search", search: {} })}
           >
             <Search className="h-5 w-5" />
           </button>
