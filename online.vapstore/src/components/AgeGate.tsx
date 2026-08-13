@@ -7,13 +7,14 @@ import {
   type TouchEvent,
   type WheelEvent,
 } from "react";
-import { getCookie, setSessionCookie } from "@/lib/cookies";
+import { getCookie, setCookie } from "@/lib/cookies";
 import { getSessionId } from "@/lib/session";
 import logo from "@/assets/logo-cop.png";
 
 // Consent lives in a first-party cookie tied to the visitor's session id. It
-// expires with the browser session, so age is confirmed once per visit.
+// expires after 24 hours, so regular customers are not asked on every visit.
 const CONSENT_COOKIE = "cop_age_ok";
+const CONSENT_TTL_SECONDS = 24 * 60 * 60;
 
 function hasValidConsent(sessionId: string) {
   return getCookie(CONSENT_COOKIE) === sessionId;
@@ -71,7 +72,7 @@ export function AgeGate({ children }: { children: ReactNode }) {
 
   const acceptAge = () => {
     const sid = getSessionId();
-    setSessionCookie(CONSENT_COOKIE, sid);
+    setCookie(CONSENT_COOKIE, sid, CONSENT_TTL_SECONDS);
     setAccepted(true);
   };
 
