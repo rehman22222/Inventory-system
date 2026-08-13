@@ -33,7 +33,7 @@ function EventsHeading({
     price?: number;
     eventPrice?: number | null;
     href:
-      | { to: "/product/$id"; params: { id: string }; search?: { event?: string } }
+      | { to: "/product/$id"; params: { id: string } }
       | { to: "/category/$slug"; params: { slug: string } };
   }[];
 }) {
@@ -149,7 +149,6 @@ function eventDeckItems(
           href: {
             to: "/product/$id" as const,
             params: { id: product.id },
-            search: item.eventPrice ? { event: product.listingId } : undefined,
           },
       };
     })

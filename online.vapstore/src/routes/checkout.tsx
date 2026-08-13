@@ -16,6 +16,7 @@ export const Route = createFileRoute("/checkout")({
     meta: [
       { title: "Checkout — Cliffs of Puff" },
       { name: "description", content: "Place your Cliffs of Puff order." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
 });

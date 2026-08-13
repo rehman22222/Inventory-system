@@ -8,6 +8,7 @@ import { FilterSidebar } from "@/components/FilterSidebar";
 import { brandsOf } from "@/lib/catalog";
 import { useCatalog } from "@/lib/catalog-context";
 import { useProductFilters, type Sort } from "@/lib/useProductFilters";
+import { canonicalUrl } from "@/lib/seo";
 
 export const Route = createFileRoute("/shop")({
   component: Shop,
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/shop")({
       { property: "og:title", content: "Shop All — Cliffs of Puff" },
       { property: "og:description", content: "Browse the full Cliffs of Puff vape catalogue." },
     ],
+    links: [{ rel: "canonical", href: canonicalUrl("/shop") }],
   }),
 });
 

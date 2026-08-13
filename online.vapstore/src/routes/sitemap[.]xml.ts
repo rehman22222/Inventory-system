@@ -13,7 +13,7 @@ export const Route = createFileRoute("/sitemap.xml")({
         // Built from what is actually listed, so the sitemap follows the shop
         // rather than a hardcoded catalogue.
         const { categories, products } = await storefrontForSitemap();
-        const staticPaths = ["/", "/shop", "/sale", "/cart"];
+        const staticPaths = ["/", "/shop", "/sale"];
         const catPaths = categories.map((c) => `/category/${c.slug}`);
         const productPaths = products.map((p) => `/product/${p.id}`);
         const all = [...staticPaths, ...catPaths, ...productPaths];

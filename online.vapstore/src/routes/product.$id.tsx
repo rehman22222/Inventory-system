@@ -11,6 +11,7 @@ import { Stars } from "@/components/Stars";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/lib/cart";
 import { cldProductHeroImage, cldProductThumbImage } from "@/lib/img";
+import { canonicalUrl } from "@/lib/seo";
 
 export const Route = createFileRoute("/product/$id")({
   component: ProductPage,
@@ -44,6 +45,9 @@ export const Route = createFileRoute("/product/$id")({
           { property: "og:image", content: loaderData.product.image },
           { property: "og:type", content: "product" },
         ]
+      : [],
+    links: loaderData
+      ? [{ rel: "canonical", href: canonicalUrl(`/product/${loaderData.product.id}`) }]
       : [],
   }),
   notFoundComponent: () => (

@@ -24,8 +24,16 @@ const PRODUCTION_CSP = [
   "upgrade-insecure-requests",
 ].join("; ");
 
-function secureResponse(response: Response): Response {
+function staticAssetCacheControl(pathname: string): string | null {
+  if (!/\.(?:avif|css|gif|ico|jpe?g|js|png|svg|webp|woff2?)$/i.test(pathname)) return null;
+  if (pathname.startsWith("/assets/")) return "public, max-age=31536000, immutable";
+  return "public, max-age=2592000";
+}
+
+function secureResponse(response: Response, request?: Request): Response {
   const headers = new Headers(response.headers);
+  const pathname = request ? new URL(request.url).pathname : "";
+  const assetCache = staticAssetCacheControl(pathname);
   headers.delete("server");
   headers.delete("x-powered-by");
   headers.set("x-content-type-options", "nosniff");
@@ -36,6 +44,9 @@ function secureResponse(response: Response): Response {
   if (process.env.NODE_ENV === "production") {
     headers.set("content-security-policy", PRODUCTION_CSP);
     headers.set("strict-transport-security", "max-age=31536000; includeSubDomains");
+  }
+  if (assetCache) {
+    headers.set("cache-control", assetCache);
   }
 
   return new Response(response.body, {
@@ -85,7 +96,7 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return secureResponse(await normalizeCatastrophicSsrResponse(response));
+      return secureResponse(await normalizeCatastrophicSsrResponse(response), request);
     } catch (error) {
       console.error(error);
       return secureResponse(
@@ -93,6 +104,7 @@ export default {
           status: 500,
           headers: { "content-type": "text/html; charset=utf-8" },
         }),
+        request,
       );
     }
   },
