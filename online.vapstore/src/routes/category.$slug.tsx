@@ -9,6 +9,7 @@ import { getCategoryPage } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
 import { cldCategoryPageImage } from "@/lib/img";
 import { useProductFilters, type Sort } from "@/lib/useProductFilters";
+import { StorefrontNotFound } from "@/components/StorefrontNotFound";
 
 export const Route = createFileRoute("/category/$slug")({
   component: CategoryPage,
@@ -33,14 +34,11 @@ export const Route = createFileRoute("/category/$slug")({
       : [],
   }),
   notFoundComponent: () => (
-    <div className="min-h-screen grid place-items-center p-8">
-      <div className="text-center">
-        <div className="font-display text-4xl">Category not found</div>
-        <Link to="/shop" className="mt-6 inline-block btn-primary">
-          Back to shop
-        </Link>
-      </div>
-    </div>
+    <StorefrontNotFound
+      eyebrow="Category not found"
+      title="That collection has moved."
+      message="The category may have been renamed or removed. Search for what you need, or browse all products currently available."
+    />
   ),
   errorComponent: () => (
     <div className="min-h-screen grid place-items-center p-8">

@@ -12,6 +12,7 @@ import { formatPrice } from "@/lib/format";
 import { useCart } from "@/lib/cart";
 import { cldProductHeroImage, cldProductThumbImage } from "@/lib/img";
 import { canonicalUrl } from "@/lib/seo";
+import { StorefrontNotFound } from "@/components/StorefrontNotFound";
 
 export const Route = createFileRoute("/product/$id")({
   component: ProductPage,
@@ -52,14 +53,11 @@ export const Route = createFileRoute("/product/$id")({
       : [],
   }),
   notFoundComponent: () => (
-    <div className="min-h-screen grid place-items-center p-8">
-      <div className="text-center">
-        <div className="font-display text-4xl">Product not found</div>
-        <Link to="/shop" className="mt-6 inline-block btn-primary">
-          Back to shop
-        </Link>
-      </div>
-    </div>
+    <StorefrontNotFound
+      eyebrow="Product not found"
+      title="This product is no longer here."
+      message="It may be unavailable or listed under a new address. Search by product name, flavour or brand, or browse the current catalogue."
+    />
   ),
   errorComponent: () => (
     <div className="min-h-screen grid place-items-center p-8">
