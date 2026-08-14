@@ -22,8 +22,8 @@ function AboutPage() {
       eyebrow="About"
       title="About Us"
       content={
-        settings.footer.description ||
-        "Cliffs of Puff is an independent, age-restricted vape store focused on authentic products and reliable service."
+        settings.policies.about ||
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
       }
     />
   );

@@ -72,6 +72,27 @@ export const Route = createFileRoute("/product/$id")({
   ),
 });
 
+function displaySpecEntries(product: Product, choiceProduct: Product): [string, unknown][] {
+  const brand = (choiceProduct.brand || product.brand || "").trim();
+  const sourceSpecs = { ...(product.specs || {}), ...(choiceProduct.specs || {}) };
+  const entries = Object.entries(sourceSpecs).filter(([k]) => {
+    const key = k.toLowerCase();
+    return (
+      key !== "brand" &&
+      !key.includes("catalogue") &&
+      !key.includes("source") &&
+      !key.includes("stock") &&
+      !key.includes("option") &&
+      !key.includes("variant") &&
+      !key.includes("flavour") &&
+      !key.includes("flavor") &&
+      !key.includes("strength") &&
+      !key.includes("volume")
+    );
+  });
+  return brand ? [["Brand", brand], ...entries] : entries;
+}
+
 function ProductPage() {
   const { product, related, reviews, summary } = Route.useLoaderData() as {
     product: Product;
@@ -272,6 +293,7 @@ function ProductPage() {
   const qtyDealPct = qtyDeal
     ? Math.round((1 - qtyDeal.price / (qtyDeal.regularPrice || activePrice || 1)) * 100)
     : 0;
+  const displaySpecs = displaySpecEntries(product, choiceProduct);
 
   const labelForKind = (kind: Product["variants"][number]["kind"]) => {
     if (kind === "flavour") return "Flavour";
@@ -431,9 +453,9 @@ function ProductPage() {
                   ? "Price to be confirmed"
                   : formatPrice(effectiveUnit)}
             </span>
-            {(eventUnitPrice || onSale) && (
+            {eventUnitPrice && (
               <span className="font-mono text-sm text-ink-muted line-through">
-                {formatPrice(eventUnitPrice ? activePrice : product.compareAt!)}
+                {formatPrice(activePrice)}
               </span>
             )}
           </div>
@@ -668,25 +690,7 @@ function ProductPage() {
           <div className="mt-8">
             <div className="eyebrow mb-3">Specifications</div>
             <dl className="divide-y hair border-y hair">
-              {Object.entries(product.specs)
-                .filter(([k]) => {
-                  // Hide developer/internal specs — shoppers only need the
-                  // availability line below, not our catalogue id, raw counts,
-                  // or option metadata that is already handled by dropdowns.
-                  const key = k.toLowerCase();
-                  return (
-                    !key.includes("catalogue") &&
-                    !key.includes("source") &&
-                    !key.includes("stock") &&
-                    !key.includes("option") &&
-                    !key.includes("variant") &&
-                    !key.includes("flavour") &&
-                    !key.includes("flavor") &&
-                    !key.includes("strength") &&
-                    !key.includes("volume")
-                  );
-                })
-                .map(([k, v]) => (
+              {displaySpecs.map(([k, v]) => (
                 <div
                   key={k}
                   className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-1 sm:gap-4 py-3"
@@ -694,7 +698,7 @@ function ProductPage() {
                   <dt className="font-mono text-[11px] uppercase tracking-widest text-ink-muted">
                     {k}
                   </dt>
-                  <dd className="text-sm">{v}</dd>
+                  <dd className="text-sm">{String(v)}</dd>
                 </div>
               ))}
               <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-1 sm:gap-4 py-3">

@@ -1,6 +1,6 @@
-import { Link } from "@tanstack/react-router";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
 import { Facebook, Instagram } from "lucide-react";
 import { useCatalog } from "@/lib/catalog-context";
 import { subscribeNewsletter } from "@/lib/catalog-api";
@@ -34,11 +34,22 @@ export function Footer() {
   const { t } = useTranslation();
   const { categories, settings } = useCatalog();
   const [email, setEmail] = useState("");
-  const [newsletterState, setNewsletterState] = useState<"idle" | "saving" | "done" | "error">("idle");
+  const [newsletterState, setNewsletterState] = useState<"idle" | "saving" | "done" | "error">(
+    "idle",
+  );
   const [newsletterMessage, setNewsletterMessage] = useState("");
   const year = new Date().getFullYear();
 
   const categoryLinks = [...categories].sort((a, b) => a.name.localeCompare(b.name));
+  const footerLinks = settings.footerLinks;
+  const informationLinks = ["contact", "terms", "privacy", "refunds", "about"] as const;
+  const featureLinks = ["bestSellers", "whyECigarettes", "deals", "blog"] as const;
+  const businessRows = [
+    ["Registered / legal name", settings.business.legalName],
+    ["Trading name", settings.business.tradingName],
+    ["Company registration no.", settings.business.companyNumber],
+    ["VAT registration no.", settings.business.vatNumber],
+  ].filter((row) => row[1]);
   const social = [
     { key: "facebook", label: "Facebook", href: settings.social.facebook, Icon: Facebook },
     { key: "instagram", label: "Instagram", href: settings.social.instagram, Icon: Instagram },
@@ -75,7 +86,11 @@ export function Footer() {
       <FooterBrandMarquee />
       <div className="container-x grid gap-9 py-12 text-center md:grid-cols-[1.05fr_1.35fr_0.9fr_0.9fr_1.25fr] md:text-left lg:gap-10">
         <div className="flex flex-col items-center md:items-start">
-          <Link to="/" className="mb-6 flex justify-center md:justify-start" aria-label="Cliffs of Puff home">
+          <Link
+            to="/"
+            className="mb-6 flex justify-center md:justify-start"
+            aria-label="Cliffs of Puff home"
+          >
             <img
               src={logo}
               alt="Cliffs of Puff"
@@ -97,6 +112,19 @@ export function Footer() {
           {settings.footer.openingHours && (
             <p className="mt-3 text-sm text-white/85">{settings.footer.openingHours}</p>
           )}
+          {settings.footer.supportPhone && (
+            <a
+              className="mt-3 text-sm text-white/85 hover:text-accent"
+              href={`tel:${settings.footer.supportPhone}`}
+            >
+              {settings.footer.supportPhone}
+            </a>
+          )}
+          {settings.footer.address && (
+            <p className="mt-3 whitespace-pre-line text-sm leading-6 text-white/70">
+              {settings.footer.address}
+            </p>
+          )}
         </div>
 
         <ul className="grid grid-cols-2 gap-x-7 gap-y-3.5 text-sm">
@@ -110,37 +138,22 @@ export function Footer() {
         </ul>
 
         <FooterColumn>
-          <FooterLink>
-            <Link to="/contact">Contact us</Link>
-          </FooterLink>
-          <FooterLink>
-            <span>Terms and Conditions</span>
-          </FooterLink>
-          <FooterLink>
-            <span>Privacy Policy</span>
-          </FooterLink>
-          <FooterLink>
-            <span>Return &amp; Refund</span>
-          </FooterLink>
-          <FooterLink>
-            <span>About Us</span>
-          </FooterLink>
+          {informationLinks.map((key) => (
+            <ConfiguredFooterLink key={key} link={footerLinks[key]} />
+          ))}
         </FooterColumn>
 
         <FooterColumn>
-          <FooterLink>
-            <a href="/#best-sellers">Best Sellers</a>
-          </FooterLink>
-          <FooterLink>
-            <span>{settings.footer.whyECigarettesTitle || "Why e-cigarettes?"}</span>
-          </FooterLink>
-          <FooterLink>
-            <Link to="/sale">Deals</Link>
-          </FooterLink>
+          {featureLinks.map((key) => (
+            <ConfiguredFooterLink key={key} link={footerLinks[key]} />
+          ))}
         </FooterColumn>
 
         <div>
-          <form className="mx-auto flex max-w-xs border border-white/60 md:mx-0" onSubmit={submitNewsletter}>
+          <form
+            className="mx-auto flex max-w-xs border border-white/60 md:mx-0"
+            onSubmit={submitNewsletter}
+          >
             <label className="sr-only" htmlFor="footer-email">
               {t("footer.emailLabel")}
             </label>
@@ -191,7 +204,21 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="container-x grid items-center gap-5 pb-10 text-center text-sm md:grid-cols-[1fr_auto_1fr]">
+      {businessRows.length > 0 && (
+        <section className="container-x pb-6 text-center text-xs leading-6 text-white/60 md:text-left">
+          <p className="border-t border-white/10 pt-5">
+            {businessRows.map(([label, value], index) => (
+              <span key={label} className="inline">
+                {index > 0 && <span className="mx-2 text-white/25">|</span>}
+                <span className="text-white/55">{label}:</span>{" "}
+                <span className="break-words text-white/80">{value}</span>
+              </span>
+            ))}
+          </p>
+        </section>
+      )}
+
+      <div className="container-x grid items-center gap-5 border-t border-white/10 py-7 text-center text-sm md:grid-cols-2">
         <div className="order-1 flex justify-center gap-5 md:justify-start">
           {settings.footer.paymentImage && (
             <img
@@ -202,12 +229,7 @@ export function Footer() {
             />
           )}
         </div>
-        <p className="order-3 mx-auto max-w-[18rem] text-xs leading-5 text-white/85 sm:max-w-none sm:text-sm md:order-2">
-          &copy; {year} Copyright Cliffs of Puff
-          <span className="hidden sm:inline">&nbsp; | &nbsp;</span>
-          <span className="block sm:inline">Created by Eiretech360</span>
-        </p>
-        <div className="order-2 flex justify-center md:order-3 md:justify-end">
+        <div className="order-2 flex justify-center md:justify-end">
           {settings.footer.restrictionImage && (
             <img
               src={settings.footer.restrictionImage}
@@ -218,26 +240,13 @@ export function Footer() {
           )}
         </div>
       </div>
-
-      {(settings.business.tradingName ||
-        settings.business.legalName ||
-        settings.business.companyNumber ||
-        settings.business.vatNumber) && (
-        <div className="border-t border-white/10">
-          <div className="container-x flex flex-wrap justify-center gap-x-6 gap-y-2 py-4 text-xs text-white/40">
-            {[
-              settings.business.tradingName,
-              settings.business.legalName,
-              settings.business.companyNumber,
-              settings.business.vatNumber,
-            ]
-              .filter(Boolean)
-              .map((item) => (
-                <span key={item}>{item}</span>
-              ))}
-          </div>
-        </div>
-      )}
+      <div className="border-t border-white/10 px-5 py-5 text-center">
+        <p className="mx-auto max-w-[20rem] text-xs leading-5 text-white/65 sm:max-w-none">
+          &copy; {year} Copyright Cliffs of Puff
+          <span className="hidden sm:inline">&nbsp; | &nbsp;</span>
+          <span className="block sm:inline">Created by Eiretech360</span>
+        </p>
+      </div>
     </footer>
   );
 }
@@ -283,5 +292,25 @@ function FooterLink({ children }: { children: ReactNode }) {
     <li className="[&_a]:text-white [&_a]:transition-colors [&_a:hover]:text-accent [&_span]:text-white">
       {children}
     </li>
+  );
+}
+
+function ConfiguredFooterLink({
+  link,
+}: {
+  link?: { enabled: boolean; label: string; href: string };
+}) {
+  if (!link?.enabled || !link.label || !link.href) return null;
+  const external = /^https?:\/\//i.test(link.href);
+  return (
+    <FooterLink>
+      <a
+        href={link.href}
+        target={external ? "_blank" : undefined}
+        rel={external ? "noopener noreferrer" : undefined}
+      >
+        {link.label}
+      </a>
+    </FooterLink>
   );
 }

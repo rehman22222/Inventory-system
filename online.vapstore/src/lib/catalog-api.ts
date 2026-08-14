@@ -25,6 +25,17 @@ const defaultStorefrontSettings: StorefrontSettings = {
     whyECigarettesContent:
       "E-cigarettes give adult smokers an alternative to combustible cigarettes. Cliffs of Puff stocks age-restricted, authentic products only.",
   },
+  footerLinks: {
+    contact: { enabled: true, label: "Contact us", href: "/contact" },
+    terms: { enabled: true, label: "Terms and Conditions", href: "/terms" },
+    privacy: { enabled: true, label: "Privacy Policy", href: "/privacy" },
+    refunds: { enabled: true, label: "Return & Refund", href: "/refunds" },
+    about: { enabled: true, label: "About Us", href: "/about" },
+    bestSellers: { enabled: true, label: "Best Sellers", href: "/#best-sellers" },
+    whyECigarettes: { enabled: true, label: "Why e-cigarettes?", href: "/why-e-cigarettes" },
+    deals: { enabled: true, label: "Deals", href: "/sale" },
+    blog: { enabled: true, label: "Blog", href: "/blog" },
+  },
   announcement: {
     enabled: true,
     primary: "Free shipping over {free} · {dispatch}",
@@ -70,6 +81,15 @@ const defaultStorefrontSettings: StorefrontSettings = {
     ctaLabel: "See the deals",
     limit: 4,
   },
+  blog: {
+    eyebrow: "Journal",
+    heading: "Stories, guides & updates.",
+    intro: "Product guides, store news and useful information from Cliffs of Puff.",
+    featuredHeading: "Featured article",
+    latestHeading: "Latest articles",
+    seoTitle: "Blog",
+    seoDescription: "News, guides and product stories from Cliffs of Puff.",
+  },
   business: { legalName: "", tradingName: "", companyNumber: "", vatNumber: "" },
   policies: {
     terms: "",
@@ -77,6 +97,7 @@ const defaultStorefrontSettings: StorefrontSettings = {
     shippingReturns: "",
     refunds: "",
     cookies: "",
+    about: "",
   },
 };
 
@@ -108,6 +129,13 @@ const responseCache = new Map<
 >();
 
 async function get<T>(path: string, fallback: T): Promise<T> {
+  // Blog content is edited directly from E360 and managers expect their saved
+  // article blocks to show immediately while previewing the storefront. Keep
+  // catalogue/settings caching, but always fetch fresh blog pages.
+  if (path.startsWith("/blog")) {
+    return fetchBackend<T>(path, fallback);
+  }
+
   const now = Date.now();
   const cached = responseCache.get(path);
   if (cached?.value !== undefined && cached.expiresAt > now) {
@@ -316,6 +344,12 @@ const mergeSettings = (settings?: StorefrontSettings): StorefrontSettings => {
   return {
     social: { ...defaultStorefrontSettings.social, ...(settings?.social || {}) },
     footer: { ...defaultStorefrontSettings.footer, ...(settings?.footer || {}) },
+    footerLinks: Object.fromEntries(
+      Object.entries(defaultStorefrontSettings.footerLinks).map(([key, value]) => [
+        key,
+        { ...value, ...(settings?.footerLinks?.[key as keyof StorefrontSettings["footerLinks"]] || {}) },
+      ]),
+    ) as StorefrontSettings["footerLinks"],
     announcement: {
       ...defaultStorefrontSettings.announcement,
       ...(settings?.announcement || {}),
@@ -347,6 +381,10 @@ const mergeSettings = (settings?: StorefrontSettings): StorefrontSettings => {
     deals: {
       ...defaultStorefrontSettings.deals,
       ...(settings?.deals || {}),
+    },
+    blog: {
+      ...defaultStorefrontSettings.blog,
+      ...(settings?.blog || {}),
     },
     business: {
       ...defaultStorefrontSettings.business,
@@ -512,6 +550,53 @@ export type NewsletterInput = z.infer<typeof newsletterSchema>;
 export const subscribeNewsletter = createServerFn({ method: "POST" })
   .validator((input: NewsletterInput) => newsletterSchema.parse(input))
   .handler(async ({ data }): Promise<{ message: string }> => post("/newsletter", data));
+
+export interface BlogBlock {
+  _id?: string;
+  type: "paragraph" | "heading" | "quote" | "image" | "video" | "button";
+  text: string;
+  url: string;
+  caption: string;
+  alt?: string;
+  level?: "h2" | "h3";
+  align?: "left" | "center" | "right";
+}
+
+export interface BlogPostSummary {
+  _id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  coverImage: string;
+  coverAlt?: string;
+  author: string;
+  publishedAt: string;
+  featured?: boolean;
+  titleAlign?: "left" | "center";
+  seoTitle?: string;
+  seoDescription?: string;
+  blocks?: BlogBlock[];
+}
+
+export interface BlogPost extends BlogPostSummary {
+  blocks: BlogBlock[];
+}
+
+export const getBlogPosts = createServerFn({ method: "GET" }).handler(
+  async (): Promise<BlogPostSummary[]> => {
+    const data = await get<{ posts: BlogPostSummary[] }>("/blog", { posts: [] });
+    return data.posts || [];
+  },
+);
+
+export const getBlogPost = createServerFn({ method: "GET" })
+  .validator((slug: string) => String(slug))
+  .handler(async ({ data: slug }): Promise<BlogPost | null> => {
+    const data = await get<{ post: BlogPost | null }>(`/blog/${encodeURIComponent(slug)}`, {
+      post: null,
+    });
+    return data.post || null;
+  });
 
 /* ── Reviews ───────────────────────────────────────────────────────────────*/
 

@@ -31,6 +31,17 @@ export const defaultStorefrontSettings: StorefrontSettings = {
     whyECigarettesContent:
       "E-cigarettes give adult smokers an alternative to combustible cigarettes. Cliffs of Puff stocks age-restricted, authentic products only.",
   },
+  footerLinks: {
+    contact: { enabled: true, label: "Contact us", href: "/contact" },
+    terms: { enabled: true, label: "Terms and Conditions", href: "/terms" },
+    privacy: { enabled: true, label: "Privacy Policy", href: "/privacy" },
+    refunds: { enabled: true, label: "Return & Refund", href: "/refunds" },
+    about: { enabled: true, label: "About Us", href: "/about" },
+    bestSellers: { enabled: true, label: "Best Sellers", href: "/#best-sellers" },
+    whyECigarettes: { enabled: true, label: "Why e-cigarettes?", href: "/why-e-cigarettes" },
+    deals: { enabled: true, label: "Deals", href: "/sale" },
+    blog: { enabled: true, label: "Blog", href: "/blog" },
+  },
   announcement: {
     enabled: true,
     primary: "Free shipping over {free} · {dispatch}",
@@ -76,6 +87,15 @@ export const defaultStorefrontSettings: StorefrontSettings = {
     ctaLabel: "See the deals",
     limit: 4,
   },
+  blog: {
+    eyebrow: "Journal",
+    heading: "Stories, guides & updates.",
+    intro: "Product guides, store news and useful information from Cliffs of Puff.",
+    featuredHeading: "Featured article",
+    latestHeading: "Latest articles",
+    seoTitle: "Blog",
+    seoDescription: "News, guides and product stories from Cliffs of Puff.",
+  },
   business: { legalName: "", tradingName: "", companyNumber: "", vatNumber: "" },
   policies: {
     terms: "",
@@ -83,6 +103,7 @@ export const defaultStorefrontSettings: StorefrontSettings = {
     shippingReturns: "",
     refunds: "",
     cookies: "",
+    about: "",
   },
 };
 

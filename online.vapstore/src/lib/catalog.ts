@@ -103,6 +103,18 @@ export interface StorefrontSettings {
     whyECigarettesTitle: string;
     whyECigarettesContent: string;
   };
+  footerLinks: Record<
+    | "contact"
+    | "terms"
+    | "privacy"
+    | "refunds"
+    | "about"
+    | "bestSellers"
+    | "whyECigarettes"
+    | "deals"
+    | "blog",
+    { enabled: boolean; label: string; href: string }
+  >;
   announcement: {
     enabled: boolean;
     primary: string;
@@ -158,6 +170,15 @@ export interface StorefrontSettings {
     ctaLabel: string;
     limit: number;
   };
+  blog: {
+    eyebrow: string;
+    heading: string;
+    intro: string;
+    featuredHeading: string;
+    latestHeading: string;
+    seoTitle: string;
+    seoDescription: string;
+  };
   business: {
     legalName: string;
     tradingName: string;
@@ -170,6 +191,7 @@ export interface StorefrontSettings {
     shippingReturns: string;
     refunds: string;
     cookies: string;
+    about: string;
   };
 }
 

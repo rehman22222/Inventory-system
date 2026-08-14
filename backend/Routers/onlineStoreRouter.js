@@ -41,6 +41,12 @@ const {
   placeOrder,
   subscribeNewsletter,
   submitContactMessage,
+  listBlogPosts,
+  createBlogPost,
+  updateBlogPost,
+  deleteBlogPost,
+  storefrontBlogPosts,
+  storefrontBlogPost,
 } = require("../controller/onlineStoreController");
 const {
   catalogue,
@@ -108,6 +114,11 @@ adminRouter.get("/reviews", listReviews);
 adminRouter.patch("/reviews/:id", updateReview);
 adminRouter.delete("/reviews/:id", deleteReview);
 
+adminRouter.get("/blog", listBlogPosts);
+adminRouter.post("/blog", createBlogPost);
+adminRouter.put("/blog/:id", updateBlogPost);
+adminRouter.delete("/blog/:id", deleteBlogPost);
+
 /* ── Storefront router — /api/storefront ─────────────────────────────────────
  * Called server-to-server by the website's SSR layer, never from a shopper's
  * browser. A shared key stands in for a session.
@@ -154,5 +165,7 @@ storefrontRouter.post("/vouchers/validate", validateStorefrontVoucher);
 storefrontRouter.post("/orders", placeOrder);
 storefrontRouter.post("/newsletter", subscribeNewsletter);
 storefrontRouter.post("/contact", submitContactMessage);
+storefrontRouter.get("/blog", storefrontBlogPosts);
+storefrontRouter.get("/blog/:slug", storefrontBlogPost);
 
 module.exports = { adminRouter, storefrontRouter };

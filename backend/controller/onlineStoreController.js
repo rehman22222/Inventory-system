@@ -7,6 +7,7 @@ const OnlineOrder = require("../models/OnlineOrdermodel");
 const OnlineNewsletterSubscriber = require("../models/OnlineNewsletterSubscribermodel");
 const OnlineVoucher = require("../models/OnlineVouchermodel");
 const OnlineStoreSetting = require("../models/OnlineStoreSettingmodel");
+const OnlineBlogPost = require("../models/OnlineBlogPostmodel");
 const OnlineReview = require("../models/OnlineReviewmodel");
 const Product = require("../models/Productmodel");
 const Sale = require("../models/Salesmodel");
@@ -1953,6 +1954,25 @@ const socialUrl = (platform, raw) => {
   return parsed.toString();
 };
 
+const FOOTER_LINK_KEYS = [
+  "contact",
+  "terms",
+  "privacy",
+  "refunds",
+  "about",
+  "bestSellers",
+  "whyECigarettes",
+  "deals",
+  "blog",
+];
+
+const safeFooterHref = (raw) => {
+  const value = String(raw || "").trim().slice(0, 500);
+  if (!value) return "";
+  if (/^(\/(?!\/)|#|https?:\/\/|mailto:|tel:)/i.test(value)) return value;
+  throw requestError(400, "Footer links must use /, #, http(s), mailto or tel URLs");
+};
+
 const getOrCreateSettings = (store) =>
   OnlineStoreSetting.findOneAndUpdate(
     { store },
@@ -2002,6 +2022,25 @@ module.exports.updateStoreSettings = async (req, res) => {
       }
     }
     settings.markModified("footer");
+    const footerLinks = req.body.footerLinks || {};
+    if (!settings.footerLinks) settings.footerLinks = {};
+    for (const key of FOOTER_LINK_KEYS) {
+      if (!Object.prototype.hasOwnProperty.call(footerLinks, key)) continue;
+      const incoming = footerLinks[key] || {};
+      if (!settings.footerLinks[key]) settings.footerLinks[key] = {};
+      if (Object.prototype.hasOwnProperty.call(incoming, "enabled")) {
+        settings.footerLinks[key].enabled = Boolean(incoming.enabled);
+      }
+      if (Object.prototype.hasOwnProperty.call(incoming, "label")) {
+        settings.footerLinks[key].label = String(incoming.label || "")
+          .trim()
+          .slice(0, 80);
+      }
+      if (Object.prototype.hasOwnProperty.call(incoming, "href")) {
+        settings.footerLinks[key].href = safeFooterHref(incoming.href);
+      }
+    }
+    settings.markModified("footerLinks");
     const announcement = req.body.announcement || {};
     if (!settings.announcement) settings.announcement = {};
     if (Object.prototype.hasOwnProperty.call(announcement, "enabled")) {
@@ -2154,6 +2193,22 @@ module.exports.updateStoreSettings = async (req, res) => {
       }
       settings.deals.limit = limit;
     }
+    const blog = req.body.blog || {};
+    if (!settings.blog) settings.blog = {};
+    for (const [key, maxLength] of [
+      ["eyebrow", 80],
+      ["heading", 140],
+      ["intro", 500],
+      ["featuredHeading", 100],
+      ["latestHeading", 100],
+      ["seoTitle", 70],
+      ["seoDescription", 170],
+    ]) {
+      if (Object.prototype.hasOwnProperty.call(blog, key)) {
+        settings.blog[key] = String(blog[key] || "").trim().slice(0, maxLength);
+      }
+    }
+    settings.markModified("blog");
     const business = req.body.business || {};
     for (const key of ["legalName", "tradingName", "companyNumber", "vatNumber"]) {
       if (Object.prototype.hasOwnProperty.call(business, key)) {
@@ -2169,6 +2224,7 @@ module.exports.updateStoreSettings = async (req, res) => {
       "shippingReturns",
       "refunds",
       "cookies",
+      "about",
     ]) {
       if (Object.prototype.hasOwnProperty.call(policies, key)) {
         settings.policies[key] = String(policies[key] || "")
@@ -2819,6 +2875,7 @@ const publicStorefrontSettings = (settings) => ({
   logo: settings.logo,
   social: settings.social,
   footer: settings.footer,
+  footerLinks: settings.footerLinks,
   announcement: settings.announcement,
   events: settings.events,
   emergencyAlert: settings.emergencyAlert,
@@ -2827,9 +2884,187 @@ const publicStorefrontSettings = (settings) => ({
   newThisWeek: settings.newThisWeek,
   bestSellers: settings.bestSellers,
   deals: settings.deals,
+  blog: settings.blog,
   business: settings.business,
   policies: settings.policies,
 });
+
+const BLOG_BLOCK_TYPES = new Set([
+  "paragraph",
+  "heading",
+  "quote",
+  "image",
+  "video",
+  "button",
+]);
+const blogMediaUrl = (raw) => {
+  const value = String(raw || "").trim().slice(0, 2000);
+  if (!value) return "";
+  if (/^(https?:\/\/|\/(?!\/))/i.test(value)) return value;
+  throw requestError(400, "Blog media must use a valid http(s) or site-relative URL");
+};
+const cleanBlogBlocks = (blocks) =>
+  (Array.isArray(blocks) ? blocks : []).slice(0, 40).map((block) => ({
+    type: BLOG_BLOCK_TYPES.has(block?.type) ? block.type : "paragraph",
+    text: String(block?.text || "").trim().slice(0, 12000),
+    url: blogMediaUrl(block?.url),
+    caption: String(block?.caption || "").trim().slice(0, 300),
+    alt: String(block?.alt || "").trim().slice(0, 300),
+    level: block?.level === "h3" ? "h3" : "h2",
+    align: ["left", "center", "right"].includes(block?.align)
+      ? block.align
+      : "left",
+  }));
+const uniqueBlogSlug = async (store, candidate, excludeId = null) => {
+  const base = slugify(candidate) || `article-${Date.now()}`;
+  let slug = base;
+  let suffix = 2;
+  while (
+    await OnlineBlogPost.exists({
+      store,
+      slug,
+      ...(excludeId ? { _id: { $ne: excludeId } } : {}),
+    })
+  ) {
+    slug = `${base}-${suffix++}`;
+  }
+  return slug;
+};
+const applyBlogPayload = async (post, payload, store) => {
+  if (Object.prototype.hasOwnProperty.call(payload, "title")) {
+    post.title = String(payload.title || "").trim().slice(0, 180);
+  }
+  if (!post.title) throw requestError(400, "Blog title is required");
+  if (Object.prototype.hasOwnProperty.call(payload, "slug") || post.isNew) {
+    post.slug = await uniqueBlogSlug(store, payload.slug || post.title, post.isNew ? null : post._id);
+  }
+  for (const [key, max] of [
+    ["excerpt", 600],
+    ["author", 100],
+    ["seoTitle", 70],
+    ["seoDescription", 170],
+    ["coverAlt", 300],
+  ]) {
+    if (Object.prototype.hasOwnProperty.call(payload, key)) {
+      post[key] = String(payload[key] || "").trim().slice(0, max);
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(payload, "coverImage")) {
+    post.coverImage = blogMediaUrl(payload.coverImage);
+  }
+  if (Object.prototype.hasOwnProperty.call(payload, "blocks")) {
+    post.blocks = cleanBlogBlocks(payload.blocks);
+  }
+  if (Object.prototype.hasOwnProperty.call(payload, "featured")) {
+    post.featured = Boolean(payload.featured);
+  }
+  if (Object.prototype.hasOwnProperty.call(payload, "titleAlign")) {
+    post.titleAlign = payload.titleAlign === "left" ? "left" : "center";
+  }
+  if (Object.prototype.hasOwnProperty.call(payload, "status")) {
+    post.status = payload.status === "published" ? "published" : "draft";
+  }
+  if (post.status === "published") {
+    post.publishedAt = payload.publishedAt ? new Date(payload.publishedAt) : post.publishedAt || new Date();
+    if (Number.isNaN(post.publishedAt?.getTime())) throw requestError(400, "Invalid publish date");
+  } else {
+    post.publishedAt = null;
+  }
+};
+
+module.exports.listBlogPosts = async (req, res) => {
+  try {
+    const store = await storeId();
+    const posts = await OnlineBlogPost.find({ store }).sort({ updatedAt: -1 }).lean();
+    return res.status(200).json({ posts });
+  } catch (error) {
+    return res.status(500).json({ message: "Could not load blog posts", error: error.message });
+  }
+};
+
+module.exports.createBlogPost = async (req, res) => {
+  try {
+    const store = await storeId();
+    const post = new OnlineBlogPost({ store, updatedBy: req.user?._id });
+    await applyBlogPayload(post, req.body || {}, store);
+    await post.save();
+    emit(req, "onlineBlogChanged", {});
+    return res.status(201).json({ message: "Blog post created", post });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : "Could not create blog post",
+      error: error.message,
+    });
+  }
+};
+
+module.exports.updateBlogPost = async (req, res) => {
+  try {
+    const store = await storeId();
+    const post = await OnlineBlogPost.findOne({ _id: req.params.id, store });
+    if (!post) return res.status(404).json({ message: "Blog post not found" });
+    await applyBlogPayload(post, req.body || {}, store);
+    post.updatedBy = req.user?._id;
+    await post.save();
+    emit(req, "onlineBlogChanged", {});
+    return res.status(200).json({ message: "Blog post saved", post });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : "Could not update blog post",
+      error: error.message,
+    });
+  }
+};
+
+module.exports.deleteBlogPost = async (req, res) => {
+  try {
+    const store = await storeId();
+    const post = await OnlineBlogPost.findOneAndDelete({ _id: req.params.id, store });
+    if (!post) return res.status(404).json({ message: "Blog post not found" });
+    emit(req, "onlineBlogChanged", {});
+    return res.status(200).json({ message: "Blog post deleted" });
+  } catch (error) {
+    return res.status(500).json({ message: "Could not delete blog post", error: error.message });
+  }
+};
+
+module.exports.storefrontBlogPosts = async (req, res) => {
+  try {
+    const store = await storeId();
+    const posts = await OnlineBlogPost.find({
+      store,
+      status: "published",
+      publishedAt: { $lte: new Date() },
+    })
+      .select("title slug excerpt coverImage coverAlt author publishedAt seoTitle seoDescription featured titleAlign blocks")
+      .sort({ featured: -1, publishedAt: -1 })
+      .lean();
+    return res.status(200).json({ posts });
+  } catch (error) {
+    return res.status(500).json({ message: "Could not load blog", error: error.message });
+  }
+};
+
+module.exports.storefrontBlogPost = async (req, res) => {
+  try {
+    const store = await storeId();
+    const slug = slugify(req.params.slug);
+    const post = await OnlineBlogPost.findOne({
+      store,
+      slug,
+      status: "published",
+      publishedAt: { $lte: new Date() },
+    })
+      .select(
+        "title slug excerpt coverImage coverAlt author publishedAt seoTitle seoDescription blocks featured titleAlign",
+      )
+      .lean();
+    if (!post) return res.status(404).json({ message: "Blog post not found" });
+    return res.status(200).json({ post });
+  } catch (error) {
+    return res.status(500).json({ message: "Could not load blog post", error: error.message });
+  }
+};
 
 module.exports.storefrontSettings = async (req, res) => {
   try {

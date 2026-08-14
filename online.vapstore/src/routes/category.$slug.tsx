@@ -131,9 +131,9 @@ function CategoryPage() {
                 ))}
               </h1>
             )}
-            <p className="mt-6 max-w-md text-base text-ink-muted">
-              {category.tagline}. {products.length} products in stock.
-            </p>
+            {category.tagline ? (
+              <p className="mt-6 max-w-md text-base text-ink-muted">{category.tagline}</p>
+            ) : null}
           </div>
           <div className="inline-block max-w-full overflow-hidden border hair bg-white leading-none md:justify-self-end">
             <img

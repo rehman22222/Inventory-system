@@ -115,6 +115,20 @@ You can control or delete cookies through your browser settings. Blocking essent
 
 ${POLICY_REVIEW_NOTE}`;
 
+const DEFAULT_ABOUT = `## About Us
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer posuere erat a ante venenatis dapibus posuere velit aliquet.
+
+## Our approach
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec ullamcorper nulla non metus auctor fringilla.`;
+
+const footerLink = (label, href) => ({
+  enabled: { type: Boolean, default: true },
+  label: { type: String, default: label, trim: true, maxlength: 80 },
+  href: { type: String, default: href, trim: true, maxlength: 500 },
+});
+
 const OnlineStoreSettingSchema = new mongoose.Schema(
   {
     store: {
@@ -165,6 +179,20 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
         trim: true,
         maxlength: 4000,
       },
+    },
+    // Footer navigation is owner-editable without making the storefront's
+    // layout arbitrary. Each known destination can be renamed, redirected or
+    // hidden while retaining a stable, accessible place in the footer.
+    footerLinks: {
+      contact: footerLink("Contact us", "/contact"),
+      terms: footerLink("Terms and Conditions", "/terms"),
+      privacy: footerLink("Privacy Policy", "/privacy"),
+      refunds: footerLink("Return & Refund", "/refunds"),
+      about: footerLink("About Us", "/about"),
+      bestSellers: footerLink("Best Sellers", "/#best-sellers"),
+      whyECigarettes: footerLink("Why e-cigarettes?", "/why-e-cigarettes"),
+      deals: footerLink("Deals", "/sale"),
+      blog: footerLink("Blog", "/blog"),
     },
     announcement: {
       enabled: { type: Boolean, default: true },
@@ -311,6 +339,50 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
       },
       limit: { type: Number, default: 4, min: 2, max: 8 },
     },
+    blog: {
+      eyebrow: {
+        type: String,
+        default: "Journal",
+        trim: true,
+        maxlength: 80,
+      },
+      heading: {
+        type: String,
+        default: "Stories, guides & updates.",
+        trim: true,
+        maxlength: 140,
+      },
+      intro: {
+        type: String,
+        default: "Product guides, store news and useful information from Cliffs of Puff.",
+        trim: true,
+        maxlength: 500,
+      },
+      featuredHeading: {
+        type: String,
+        default: "Featured article",
+        trim: true,
+        maxlength: 100,
+      },
+      latestHeading: {
+        type: String,
+        default: "Latest articles",
+        trim: true,
+        maxlength: 100,
+      },
+      seoTitle: {
+        type: String,
+        default: "Blog",
+        trim: true,
+        maxlength: 70,
+      },
+      seoDescription: {
+        type: String,
+        default: "News, guides and product stories from Cliffs of Puff.",
+        trim: true,
+        maxlength: 170,
+      },
+    },
     // Business identity shown in the storefront footer — required for EU
     // e-commerce transparency. All optional so a sole trader can leave the bits
     // that don't apply to them blank.
@@ -334,6 +406,7 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
       },
       refunds: { type: String, default: DEFAULT_REFUNDS, trim: true, maxlength: 20000 },
       cookies: { type: String, default: DEFAULT_COOKIES, trim: true, maxlength: 20000 },
+      about: { type: String, default: DEFAULT_ABOUT, trim: true, maxlength: 20000 },
     },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,

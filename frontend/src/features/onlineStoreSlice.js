@@ -334,6 +334,55 @@ export const saveOnlineSettings = createAsyncThunk(
   },
 );
 
+// Blog content is store-scoped and intentionally separate from inventory.
+export const getOnlineBlogPosts = createAsyncThunk(
+  "online/blog/get",
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await axiosInstance.get("online/blog");
+      return data.posts || [];
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not load blog posts"));
+    }
+  },
+);
+
+export const createOnlineBlogPost = createAsyncThunk(
+  "online/blog/create",
+  async (payload, { rejectWithValue }) => {
+    try {
+      const { data } = await axiosInstance.post("online/blog", payload);
+      return data.post;
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not create the blog post"));
+    }
+  },
+);
+
+export const updateOnlineBlogPost = createAsyncThunk(
+  "online/blog/update",
+  async ({ id, ...payload }, { rejectWithValue }) => {
+    try {
+      const { data } = await axiosInstance.put(`online/blog/${id}`, payload);
+      return data.post;
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not update the blog post"));
+    }
+  },
+);
+
+export const deleteOnlineBlogPost = createAsyncThunk(
+  "online/blog/delete",
+  async (id, { rejectWithValue }) => {
+    try {
+      await axiosInstance.delete(`online/blog/${id}`);
+      return id;
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not delete the blog post"));
+    }
+  },
+);
+
 // ── Hero slides ─────────────────────────────────────────────────────────────
 export const getNewsletterSubscribers = createAsyncThunk(
   "online/newsletter/get",
@@ -459,6 +508,7 @@ const initialState = {
   slides: [],
   vouchers: [],
   settings: null,
+  blogPosts: [],
   newsletterSubscribers: [],
   orders: [],
   pendingOrders: 0,
@@ -635,6 +685,41 @@ const onlineStoreSlice = createSlice({
       })
       .addCase(getNewsletterSubscribers.fulfilled, (s, a) => {
         s.newsletterSubscribers = a.payload;
+      })
+
+      // Blog
+      .addCase(getOnlineBlogPosts.fulfilled, (s, a) => {
+        s.blogPosts = a.payload;
+      })
+      .addCase(createOnlineBlogPost.pending, (s) => {
+        s.isActing = true;
+      })
+      .addCase(createOnlineBlogPost.fulfilled, (s, a) => {
+        s.isActing = false;
+        s.blogPosts = upsert(s.blogPosts, a.payload);
+      })
+      .addCase(createOnlineBlogPost.rejected, (s) => {
+        s.isActing = false;
+      })
+      .addCase(updateOnlineBlogPost.pending, (s) => {
+        s.isActing = true;
+      })
+      .addCase(updateOnlineBlogPost.fulfilled, (s, a) => {
+        s.isActing = false;
+        s.blogPosts = upsert(s.blogPosts, a.payload);
+      })
+      .addCase(updateOnlineBlogPost.rejected, (s) => {
+        s.isActing = false;
+      })
+      .addCase(deleteOnlineBlogPost.pending, (s) => {
+        s.isActing = true;
+      })
+      .addCase(deleteOnlineBlogPost.fulfilled, (s, a) => {
+        s.isActing = false;
+        s.blogPosts = s.blogPosts.filter((post) => post._id !== a.payload);
+      })
+      .addCase(deleteOnlineBlogPost.rejected, (s) => {
+        s.isActing = false;
       })
 
       // Hero

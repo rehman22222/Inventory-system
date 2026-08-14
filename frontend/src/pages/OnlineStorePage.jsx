@@ -4,6 +4,9 @@ import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import {
   FiBarChart2,
+  FiBookOpen,
+  FiArrowDown,
+  FiArrowUp,
   FiDownloadCloud,
   FiEdit2,
   FiAlertTriangle,
@@ -34,15 +37,18 @@ import {
 } from "react-icons/fa6";
 import {
   createHeroSlide,
+  createOnlineBlogPost,
   createInventoryProduct,
   createOnlineCategory,
   deleteHeroSlide,
+  deleteOnlineBlogPost,
   deleteOnlineCategory,
   deleteOnlineListing,
   deleteOnlineVoucher,
   getCatalogue,
   getHeroSlides,
   getOnlineCategories,
+  getOnlineBlogPosts,
   getOnlineReviews,
   updateOnlineReview,
   deleteOnlineReview,
@@ -61,6 +67,7 @@ import {
   downloadOnlineReport,
   toggleOnlineListing,
   updateHeroSlide,
+  updateOnlineBlogPost,
   updateOnlineCategory,
   updateOnlineListing,
   uploadListingImages,
@@ -75,6 +82,7 @@ const TABS = [
   { id: "hero", label: "Hero banner", icon: FiImage },
   { id: "best-sellers", label: "Best sellers", icon: FiStar },
   { id: "deals", label: "Deals", icon: FiPercent },
+  { id: "blog", label: "Blog", icon: FiBookOpen },
   { id: "promotions", label: "Vouchers", icon: FiTag },
   { id: "orders", label: "Orders", icon: FiShoppingCart },
   { id: "newsletter", label: "Emails for newsletter", icon: FiMail },
@@ -97,6 +105,10 @@ const toLocalDateTime = (value) => {
     .toISOString()
     .slice(0, 16);
 };
+
+const storefrontPublicUrl = (
+  process.env.REACT_APP_STOREFRONT_URL || "https://cliffsofpuff.com"
+).replace(/\/$/, "");
 
 export default function OnlineStorePage() {
   const { t } = useTranslation();
@@ -122,6 +134,7 @@ export default function OnlineStorePage() {
     dispatch(getOnlineOrders());
     dispatch(getNewsletterSubscribers());
     dispatch(getOnlineReviews());
+    dispatch(getOnlineBlogPosts());
     dispatch(gettingallCategory());
     setLoadedTabs(
       Object.fromEntries(TABS.map((item) => [item.id, true])),
@@ -159,6 +172,9 @@ export default function OnlineStorePage() {
       dispatch(getOnlineCategories());
     } else if (tab === "deals") {
       dispatch(getOnlineListings());
+      dispatch(getOnlineSettings());
+    } else if (tab === "blog") {
+      dispatch(getOnlineBlogPosts());
       dispatch(getOnlineSettings());
     } else if (tab === "promotions") {
       dispatch(getOnlineVouchers());
@@ -267,6 +283,13 @@ export default function OnlineStorePage() {
           {tab === "deals" && (
             <DealsControls
               listings={online.listings}
+              settings={online.settings}
+              isActing={online.isActing}
+            />
+          )}
+          {tab === "blog" && (
+            <BlogManager
+              posts={online.blogPosts}
               settings={online.settings}
               isActing={online.isActing}
             />
@@ -3886,6 +3909,559 @@ function Promotions({ vouchers, listings, categories, isActing }) {
   );
 }
 
+const BLOG_PAGE_DEFAULTS = {
+  eyebrow: "Journal",
+  heading: "Stories, guides & updates.",
+  intro: "Product guides, store news and useful information from Cliffs of Puff.",
+  featuredHeading: "Featured article",
+  latestHeading: "Latest articles",
+  seoTitle: "Blog",
+  seoDescription: "News, guides and product stories from Cliffs of Puff.",
+};
+
+const makeBlankBlogBlock = (type = "paragraph") => ({
+  type,
+  text: "",
+  url: "",
+  caption: "",
+  alt: "",
+  level: "h2",
+  align: "left",
+});
+
+const makeBlankBlogPost = () => ({
+  title: "",
+  slug: "",
+  excerpt: "",
+  coverImage: "",
+  coverAlt: "",
+  author: "Cliffs of Puff",
+  featured: false,
+  titleAlign: "center",
+  status: "draft",
+  publishedAt: "",
+  seoTitle: "",
+  seoDescription: "",
+  blocks: [makeBlankBlogBlock("paragraph")],
+});
+
+function BlogManager({ posts = [], settings, isActing }) {
+  const dispatch = useDispatch();
+  const [editingId, setEditingId] = useState("");
+  const [draft, setDraft] = useState(makeBlankBlogPost);
+  const [pageDraft, setPageDraft] = useState(BLOG_PAGE_DEFAULTS);
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    setPageDraft({ ...BLOG_PAGE_DEFAULTS, ...(settings?.blog || {}) });
+  }, [settings?.blog]);
+
+  const reset = () => {
+    setEditingId("");
+    setDraft(makeBlankBlogPost());
+  };
+  const edit = (post) => {
+    setEditingId(post._id);
+    setDraft({
+      title: post.title || "",
+      slug: post.slug || "",
+      excerpt: post.excerpt || "",
+      coverImage: post.coverImage || "",
+      coverAlt: post.coverAlt || "",
+      author: post.author || "Cliffs of Puff",
+      featured: Boolean(post.featured),
+      titleAlign: post.titleAlign === "left" ? "left" : "center",
+      status: post.status === "published" ? "published" : "draft",
+      publishedAt: toLocalDateTime(post.publishedAt),
+      seoTitle: post.seoTitle || "",
+      seoDescription: post.seoDescription || "",
+      blocks: Array.isArray(post.blocks) && post.blocks.length
+        ? post.blocks.map((block) => ({
+            type: block.type || "paragraph",
+            text: block.text || "",
+            url: block.url || "",
+            caption: block.caption || "",
+            alt: block.alt || "",
+            level: block.level === "h3" ? "h3" : "h2",
+            align: ["center", "right"].includes(block.align) ? block.align : "left",
+          }))
+        : [makeBlankBlogBlock("paragraph")],
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const setBlock = (index, patch) =>
+    setDraft((current) => ({
+      ...current,
+      blocks: current.blocks.map((block, blockIndex) =>
+        blockIndex === index ? { ...block, ...patch } : block,
+      ),
+    }));
+  const moveBlock = (index, direction) => {
+    setDraft((current) => {
+      const nextIndex = index + direction;
+      if (nextIndex < 0 || nextIndex >= current.blocks.length) return current;
+      const blocks = [...current.blocks];
+      [blocks[index], blocks[nextIndex]] = [blocks[nextIndex], blocks[index]];
+      return { ...current, blocks };
+    });
+  };
+  const uploadImage = async (files, blockIndex = null) => {
+    if (!files?.length) return;
+    setIsUploading(true);
+    try {
+      const images = await dispatch(uploadListingImages(files)).unwrap();
+      const url = images?.[0]?.url || images?.[0];
+      if (!url) throw new Error("Upload did not return an image URL");
+      if (blockIndex === null) {
+        setDraft((current) => ({ ...current, coverImage: url }));
+      } else {
+        setBlock(blockIndex, { url });
+      }
+      toast.success("Image uploaded");
+    } catch (error) {
+      toast.error(typeof error === "string" ? error : error?.message || "Image upload failed");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+  const savePost = async (event) => {
+    event.preventDefault();
+    const payload = {
+      ...draft,
+      publishedAt: draft.status === "published" && draft.publishedAt
+        ? new Date(draft.publishedAt).toISOString()
+        : undefined,
+    };
+    const action = editingId
+      ? updateOnlineBlogPost({ id: editingId, ...payload })
+      : createOnlineBlogPost(payload);
+    const result = await dispatch(action);
+    if (result.error) {
+      toast.error(result.payload || "Could not save the blog post");
+      return;
+    }
+    toast.success(editingId ? "Blog post updated" : "Blog post created");
+    reset();
+  };
+  const saveBlogPage = async (event) => {
+    event.preventDefault();
+    const result = await dispatch(saveOnlineSettings({ blog: pageDraft }));
+    result.error
+      ? toast.error(result.payload || "Could not save the blog page")
+      : toast.success("Blog page settings saved");
+  };
+  const remove = async (post) => {
+    if (!window.confirm(`Delete “${post.title}”? This cannot be undone.`)) return;
+    const result = await dispatch(deleteOnlineBlogPost(post._id));
+    result.error
+      ? toast.error(result.payload || "Could not delete the blog post")
+      : toast.success("Blog post deleted");
+    if (!result.error && editingId === post._id) reset();
+  };
+
+  return (
+    <div className="min-w-0 space-y-5">
+      <form onSubmit={saveBlogPage} className="rounded-xl border bg-base-100 p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl font-bold">Blog landing page</h2>
+            <p className="mt-1 text-xs text-base-content/50">
+              Control the headings and introduction shown on the public blog page.
+            </p>
+          </div>
+          <button className="btn btn-primary btn-sm gap-2" disabled={isActing}>
+            <FiSave /> Save page settings
+          </button>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <Field label="Eyebrow">
+            <input className="input input-sm input-bordered w-full" maxLength={80} value={pageDraft.eyebrow}
+              onChange={(event) => setPageDraft((current) => ({ ...current, eyebrow: event.target.value }))} />
+          </Field>
+          <Field label="Page heading">
+            <input className="input input-sm input-bordered w-full" maxLength={140} value={pageDraft.heading}
+              onChange={(event) => setPageDraft((current) => ({ ...current, heading: event.target.value }))} />
+          </Field>
+          <Field label="Introduction">
+            <textarea rows={3} className="textarea textarea-sm textarea-bordered w-full" maxLength={500} value={pageDraft.intro}
+              onChange={(event) => setPageDraft((current) => ({ ...current, intro: event.target.value }))} />
+          </Field>
+          <Field label="Featured section heading">
+            <input className="input input-sm input-bordered w-full" maxLength={100} value={pageDraft.featuredHeading}
+              onChange={(event) => setPageDraft((current) => ({ ...current, featuredHeading: event.target.value }))} />
+          </Field>
+          <Field label="Latest section heading">
+            <input className="input input-sm input-bordered w-full" maxLength={100} value={pageDraft.latestHeading}
+              onChange={(event) => setPageDraft((current) => ({ ...current, latestHeading: event.target.value }))} />
+          </Field>
+          <Field label="Search result title">
+            <input className="input input-sm input-bordered w-full" maxLength={70} value={pageDraft.seoTitle}
+              onChange={(event) => setPageDraft((current) => ({ ...current, seoTitle: event.target.value }))} />
+            <span className="mt-1 block text-right text-[10px] text-base-content/45">{pageDraft.seoTitle.length}/70</span>
+          </Field>
+          <Field label="Search result description">
+            <textarea rows={3} className="textarea textarea-sm textarea-bordered w-full" maxLength={170} value={pageDraft.seoDescription}
+              onChange={(event) => setPageDraft((current) => ({ ...current, seoDescription: event.target.value }))} />
+            <span className="mt-1 block text-right text-[10px] text-base-content/45">{pageDraft.seoDescription.length}/170</span>
+          </Field>
+        </div>
+      </form>
+
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+        <form onSubmit={savePost} className="min-w-0 space-y-5 rounded-xl border bg-base-100 p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl font-bold">
+              {editingId ? "Edit blog post" : "Create blog post"}
+            </h2>
+            <p className="mt-1 text-xs text-base-content/50">
+              Build structured articles with images, video, links and search metadata. Drafts stay private.
+            </p>
+          </div>
+          {editingId && (
+            <button type="button" className="btn btn-sm" onClick={reset}>
+              <FiX /> Cancel edit
+            </button>
+          )}
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Title">
+            <input
+              required
+              maxLength={180}
+              className="input input-sm input-bordered w-full"
+              placeholder="Article title"
+              value={draft.title}
+              onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
+            />
+          </Field>
+          <Field label="URL slug (optional)">
+            <input
+              maxLength={180}
+              className="input input-sm input-bordered w-full font-mono text-xs"
+              placeholder="article-url-slug"
+              value={draft.slug}
+              onChange={(event) => setDraft((current) => ({ ...current, slug: event.target.value }))}
+            />
+          </Field>
+        </div>
+        <Field label="Excerpt">
+          <textarea
+            required
+            maxLength={600}
+            rows={3}
+            className="textarea textarea-bordered w-full"
+            placeholder="A concise summary shown on the blog page and link previews."
+            value={draft.excerpt}
+            onChange={(event) => setDraft((current) => ({ ...current, excerpt: event.target.value }))}
+          />
+        </Field>
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Cover image URL">
+            <input
+              className="input input-sm input-bordered w-full"
+              placeholder="https://res.cloudinary.com/..."
+              value={draft.coverImage}
+              onChange={(event) => setDraft((current) => ({ ...current, coverImage: event.target.value }))}
+            />
+          </Field>
+          <Field label="Upload cover image">
+            <input
+              type="file"
+              accept="image/*"
+              className="file-input file-input-sm file-input-bordered w-full"
+              disabled={isUploading}
+              onChange={(event) => uploadImage(event.target.files)}
+            />
+          </Field>
+        </div>
+        <Field label="Cover image alternative text">
+          <input
+            maxLength={300}
+            className="input input-sm input-bordered w-full"
+            placeholder="Describe the image for accessibility and search engines"
+            value={draft.coverAlt}
+            onChange={(event) => setDraft((current) => ({ ...current, coverAlt: event.target.value }))}
+          />
+        </Field>
+        {draft.coverImage && (
+          <img src={draft.coverImage} alt="Blog cover preview" className="aspect-[16/8] w-full rounded-lg border object-cover" />
+        )}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="Author">
+            <input
+              maxLength={100}
+              className="input input-sm input-bordered w-full"
+              value={draft.author}
+              onChange={(event) => setDraft((current) => ({ ...current, author: event.target.value }))}
+            />
+          </Field>
+          <Field label="Status">
+            <select
+              className="select select-sm select-bordered w-full"
+              value={draft.status}
+              onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))}
+            >
+              <option value="draft">Draft</option>
+              <option value="published">Published</option>
+            </select>
+          </Field>
+          <Field label="Publish date (optional)">
+            <input
+              type="datetime-local"
+              className="input input-sm input-bordered w-full"
+              disabled={draft.status !== "published"}
+              value={draft.publishedAt}
+              onChange={(event) => setDraft((current) => ({ ...current, publishedAt: event.target.value }))}
+            />
+          </Field>
+          <Field label="Article title alignment">
+            <select
+              className="select select-sm select-bordered w-full"
+              value={draft.titleAlign}
+              onChange={(event) => setDraft((current) => ({ ...current, titleAlign: event.target.value }))}
+            >
+              <option value="center">Centre</option>
+              <option value="left">Left</option>
+            </select>
+          </Field>
+        </div>
+        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-base-300 p-3 text-sm">
+          <input
+            type="checkbox"
+            className="checkbox checkbox-sm"
+            checked={draft.featured}
+            onChange={(event) => setDraft((current) => ({ ...current, featured: event.target.checked }))}
+          />
+          <span>
+            <strong>Feature this article</strong>
+            <span className="ml-2 text-base-content/50">Show it prominently on the blog landing page.</span>
+          </span>
+        </label>
+
+        <section className="rounded-xl border border-base-300 bg-base-200/30 p-3 sm:p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="font-display font-bold">Article content</h3>
+              <p className="text-xs text-base-content/50">Add reusable editorial blocks in the order they should appear.</p>
+            </div>
+            <select
+              className="select select-sm select-bordered"
+              defaultValue=""
+              onChange={(event) => {
+                if (!event.target.value) return;
+                setDraft((current) => ({
+                  ...current,
+                  blocks: [...current.blocks, makeBlankBlogBlock(event.target.value)],
+                }));
+                event.target.value = "";
+              }}
+            >
+              <option value="" disabled>Add content block</option>
+              <option value="heading">Heading</option>
+              <option value="paragraph">Paragraph</option>
+              <option value="quote">Quote</option>
+              <option value="image">Image</option>
+              <option value="video">Video</option>
+              <option value="button">Button / link</option>
+            </select>
+          </div>
+          <div className="mt-4 space-y-3">
+            {draft.blocks.map((block, index) => (
+              <div key={`${block.type}-${index}`} className="rounded-lg border bg-base-100 p-3">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <select
+                    className="select select-xs select-bordered"
+                    value={block.type}
+                    onChange={(event) => setBlock(index, { ...makeBlankBlogBlock(event.target.value), type: event.target.value })}
+                  >
+                    <option value="heading">Heading</option>
+                    <option value="paragraph">Paragraph</option>
+                    <option value="quote">Quote</option>
+                    <option value="image">Image</option>
+                    <option value="video">Video</option>
+                    <option value="button">Button / link</option>
+                  </select>
+                  <div className="flex gap-1">
+                    <button type="button" className="btn btn-ghost btn-xs" disabled={index === 0}
+                      aria-label={`Move block ${index + 1} up`} onClick={() => moveBlock(index, -1)}>
+                      <FiArrowUp />
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-xs" disabled={index === draft.blocks.length - 1}
+                      aria-label={`Move block ${index + 1} down`} onClick={() => moveBlock(index, 1)}>
+                      <FiArrowDown />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs text-error"
+                      aria-label={`Remove block ${index + 1}`}
+                      onClick={() => setDraft((current) => ({
+                        ...current,
+                        blocks: current.blocks.filter((_, blockIndex) => blockIndex !== index),
+                      }))}
+                    >
+                      <FiTrash2 /> Remove
+                    </button>
+                  </div>
+                </div>
+                {["heading", "paragraph", "quote"].includes(block.type) ? (
+                  <div className="grid gap-2">
+                    {block.type === "heading" && (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <select className="select select-sm select-bordered w-full" value={block.level}
+                          onChange={(event) => setBlock(index, { level: event.target.value })}>
+                          <option value="h2">Section heading (H2)</option>
+                          <option value="h3">Subheading (H3)</option>
+                        </select>
+                        <select className="select select-sm select-bordered w-full" value={block.align}
+                          onChange={(event) => setBlock(index, { align: event.target.value })}>
+                          <option value="left">Align left</option>
+                          <option value="center">Align centre</option>
+                          <option value="right">Align right</option>
+                        </select>
+                      </div>
+                    )}
+                    <textarea
+                      rows={block.type === "heading" ? 2 : 4}
+                      className="textarea textarea-sm textarea-bordered w-full"
+                      placeholder={block.type === "heading" ? "Section heading" : block.type === "quote" ? "Quotation" : "Article paragraph"}
+                      value={block.text}
+                      onChange={(event) => setBlock(index, { text: event.target.value })}
+                    />
+                  </div>
+                ) : (
+                  <div className="grid gap-2">
+                    <input
+                      className="input input-sm input-bordered w-full"
+                      placeholder={block.type === "video" ? "YouTube, Vimeo or direct video URL" : block.type === "button" ? "Destination URL" : "Image URL"}
+                      value={block.url}
+                      onChange={(event) => setBlock(index, { url: event.target.value })}
+                    />
+                    {block.type === "image" && (
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="file-input file-input-sm file-input-bordered w-full"
+                        disabled={isUploading}
+                        onChange={(event) => uploadImage(event.target.files, index)}
+                      />
+                    )}
+                    {block.type === "button" && (
+                      <input
+                        className="input input-sm input-bordered w-full"
+                        placeholder="Button label"
+                        value={block.text}
+                        onChange={(event) => setBlock(index, { text: event.target.value })}
+                      />
+                    )}
+                    <input
+                      className="input input-sm input-bordered w-full"
+                      placeholder={block.type === "button" ? "Optional supporting text" : "Optional caption"}
+                      value={block.caption}
+                      onChange={(event) => setBlock(index, { caption: event.target.value })}
+                    />
+                    {block.type === "image" && (
+                      <input
+                        className="input input-sm input-bordered w-full"
+                        maxLength={300}
+                        placeholder="Image alternative text"
+                        value={block.alt}
+                        onChange={(event) => setBlock(index, { alt: event.target.value })}
+                      />
+                    )}
+                    {block.type === "button" && (
+                      <select className="select select-sm select-bordered w-full" value={block.align}
+                        onChange={(event) => setBlock(index, { align: event.target.value })}>
+                        <option value="left">Align left</option>
+                        <option value="center">Align centre</option>
+                        <option value="right">Align right</option>
+                      </select>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <details className="rounded-xl border border-base-300 p-4">
+          <summary className="cursor-pointer font-display font-bold">Search preview settings</summary>
+          <div className="mt-3 grid gap-3">
+            <input
+              maxLength={70}
+              className="input input-sm input-bordered w-full"
+              placeholder="SEO title"
+              value={draft.seoTitle}
+              onChange={(event) => setDraft((current) => ({ ...current, seoTitle: event.target.value }))}
+            />
+            <p className="text-right text-[10px] text-base-content/45">{draft.seoTitle.length}/70</p>
+            <textarea
+              maxLength={170}
+              rows={3}
+              className="textarea textarea-sm textarea-bordered w-full"
+              placeholder="SEO description"
+              value={draft.seoDescription}
+              onChange={(event) => setDraft((current) => ({ ...current, seoDescription: event.target.value }))}
+            />
+            <p className="text-right text-[10px] text-base-content/45">{draft.seoDescription.length}/170</p>
+          </div>
+        </details>
+
+        <button className="btn btn-primary w-full gap-2" disabled={isActing || isUploading}>
+          <FiSave /> {editingId ? "Save blog post" : "Create blog post"}
+        </button>
+      </form>
+
+      <section className="min-w-0 rounded-xl border bg-base-100 p-4 sm:p-5">
+        <h2 className="font-display text-xl font-bold">Blog library</h2>
+        <p className="mt-1 text-xs text-base-content/50">Published and draft articles for this store.</p>
+        <div className="mt-4 space-y-3">
+          {posts.map((post) => (
+            <article key={post._id} className="overflow-hidden rounded-xl border border-base-300">
+              {post.coverImage && (
+                <img src={post.coverImage} alt="" className="aspect-[16/8] w-full object-cover" loading="lazy" />
+              )}
+              <div className="p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`badge badge-sm ${post.status === "published" ? "badge-success" : "badge-ghost"}`}>
+                    {post.status === "published" && post.publishedAt && new Date(post.publishedAt) > new Date()
+                      ? "Scheduled"
+                      : post.status === "published" ? "Published" : "Draft"}
+                  </span>
+                  {post.featured && <span className="badge badge-sm badge-primary">Featured</span>}
+                  <span className="font-mono text-[10px] text-base-content/45">/{post.slug}</span>
+                </div>
+                <h3 className="mt-2 font-display text-lg font-bold leading-tight">{post.title}</h3>
+                <p className="mt-2 line-clamp-3 text-sm text-base-content/60">{post.excerpt}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button type="button" className="btn btn-sm gap-2" onClick={() => edit(post)}>
+                    <FiEdit2 /> Edit
+                  </button>
+                  {post.status === "published" && (!post.publishedAt || new Date(post.publishedAt) <= new Date()) && (
+                    <a className="btn btn-sm gap-2" href={`${storefrontPublicUrl}/blog/${post.slug}`} target="_blank" rel="noopener noreferrer">
+                      <FiExternalLink /> View
+                    </a>
+                  )}
+                  <button type="button" className="btn btn-sm btn-ghost gap-2 text-error" disabled={isActing} onClick={() => remove(post)}>
+                    <FiTrash2 /> Delete
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+          {!posts.length && (
+            <div className="rounded-xl border border-dashed border-base-300 p-8 text-center text-sm text-base-content/50">
+              No blog posts yet. Create a draft to begin.
+            </div>
+          )}
+        </div>
+      </section>
+      </div>
+    </div>
+  );
+}
+
 const BLANK_SETTINGS = {
   logo: "",
   social: { instagram: "", facebook: "", twitter: "", tiktok: "" },
@@ -3902,8 +4478,20 @@ const BLANK_SETTINGS = {
     whyECigarettesContent:
       "E-cigarettes give adult smokers an alternative to combustible cigarettes. Cliffs of Puff stocks age-restricted, authentic products only.",
   },
+  footerLinks: {
+    contact: { enabled: true, label: "Contact us", href: "/contact" },
+    terms: { enabled: true, label: "Terms and Conditions", href: "/terms" },
+    privacy: { enabled: true, label: "Privacy Policy", href: "/privacy" },
+    refunds: { enabled: true, label: "Return & Refund", href: "/refunds" },
+    about: { enabled: true, label: "About Us", href: "/about" },
+    bestSellers: { enabled: true, label: "Best Sellers", href: "/#best-sellers" },
+    whyECigarettes: { enabled: true, label: "Why e-cigarettes?", href: "/why-e-cigarettes" },
+    deals: { enabled: true, label: "Deals", href: "/sale" },
+    blog: { enabled: true, label: "Blog", href: "/blog" },
+  },
   announcement: { enabled: true, primary: "", secondary: "" },
   events: { enabled: false, heading: "", align: "center", items: [] },
+  blog: { ...BLOG_PAGE_DEFAULTS },
   emergencyAlert: {
     active: false,
     title: "Website under maintenance",
@@ -3930,6 +4518,7 @@ const BLANK_SETTINGS = {
     shippingReturns: "",
     refunds: "",
     cookies: "",
+    about: "",
   },
 };
 
@@ -3962,6 +4551,19 @@ const POLICY_FIELDS = [
   ["shippingReturns", "Shipping & Returns", "/shipping-returns"],
   ["refunds", "Refund Policy", "/refunds"],
   ["cookies", "Cookie Policy", "/cookies"],
+  ["about", "About Us", "/about"],
+];
+
+const FOOTER_LINK_FIELDS = [
+  ["contact", "Contact"],
+  ["terms", "Terms and Conditions"],
+  ["privacy", "Privacy Policy"],
+  ["refunds", "Return & Refund"],
+  ["about", "About Us"],
+  ["bestSellers", "Best Sellers"],
+  ["whyECigarettes", "Why e-cigarettes?"],
+  ["deals", "Deals"],
+  ["blog", "Blog"],
 ];
 
 const SOCIAL_CHANNELS = [
@@ -4028,6 +4630,12 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
         logo: settings.logo || "",
         social: { ...BLANK_SETTINGS.social, ...(settings.social || {}) },
         footer: { ...BLANK_SETTINGS.footer, ...(settings.footer || {}) },
+        footerLinks: Object.fromEntries(
+          Object.entries(BLANK_SETTINGS.footerLinks).map(([key, value]) => [
+            key,
+            { ...value, ...(settings.footerLinks?.[key] || {}) },
+          ]),
+        ),
         announcement: {
           ...BLANK_SETTINGS.announcement,
           ...(settings.announcement || {}),
@@ -4037,6 +4645,7 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
           ...(settings.events || {}),
           items: normalizeEventItems(settings.events?.items || []),
         },
+        blog: { ...BLANK_SETTINGS.blog, ...(settings.blog || {}) },
         shipping: { ...BLANK_SETTINGS.shipping, ...(settings.shipping || {}) },
         promises: { ...BLANK_SETTINGS.promises, ...(settings.promises || {}) },
         business: { ...BLANK_SETTINGS.business, ...(settings.business || {}) },
@@ -4048,6 +4657,14 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
     setDraft((current) => ({
       ...current,
       [section]: { ...current[section], [key]: value },
+    }));
+  const setFooterLink = (key, patch) =>
+    setDraft((current) => ({
+      ...current,
+      footerLinks: {
+        ...current.footerLinks,
+        [key]: { ...current.footerLinks[key], ...patch },
+      },
     }));
   const setEventItem = (index, patch) =>
     setDraft((current) => {
@@ -4227,6 +4844,47 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
           </div>
         </section>
       </div>
+      <section className="rounded-xl border bg-base-100 p-5">
+        <h3 className="font-display text-lg font-bold">Footer navigation</h3>
+        <p className="mt-1 text-xs text-base-content/50">
+          Rename, redirect or hide each customer-facing footer link. Use a store
+          path such as <code>/blog</code>, a full HTTPS URL, email or phone link.
+        </p>
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          {FOOTER_LINK_FIELDS.map(([key, fallbackLabel]) => {
+            const link = draft.footerLinks[key];
+            return (
+              <div key={key} className="rounded-lg border border-base-300 bg-base-200/40 p-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <span className="text-xs font-semibold">{fallbackLabel}</span>
+                  <Check
+                    checked={Boolean(link.enabled)}
+                    onChange={(value) => setFooterLink(key, { enabled: value })}
+                    label="Visible"
+                  />
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input
+                    className="input input-sm input-bordered min-w-0"
+                    maxLength={80}
+                    aria-label={`${fallbackLabel} label`}
+                    placeholder="Link label"
+                    value={link.label}
+                    onChange={(event) => setFooterLink(key, { label: event.target.value })}
+                  />
+                  <input
+                    className="input input-sm input-bordered min-w-0 font-mono text-xs"
+                    aria-label={`${fallbackLabel} destination`}
+                    placeholder="/page or https://..."
+                    value={link.href}
+                    onChange={(event) => setFooterLink(key, { href: event.target.value })}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
       <section className="rounded-xl border bg-base-100 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h3 className="font-display text-lg font-bold">
