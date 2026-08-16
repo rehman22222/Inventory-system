@@ -49,6 +49,39 @@ export const currency = (value) =>
     maximumFractionDigits: 2,
   })}`;
 
+// The till's number boxes are type="text", not type="number".
+//
+// A number input runs the browser's value-sanitisation step, and that step will
+// not hold a half-typed decimal: handed "1." it decides the string is not a
+// number and blanks the field outright. On the on-screen keypad that meant
+// tapping "." wiped a price the cashier had already keyed in, and backspacing
+// back through a decimal point did nothing at all. A number input also reports
+// selectionStart as null, so the caret cannot be placed mid-value, and it paints
+// spinner arrows that are easy to nudge by accident on a touch screen.
+//
+// Plain text has none of those problems. `inputMode` still raises the numeric
+// pad on a device with its own keyboard, and `data-keyboard="numeric"` tells our
+// on-screen one to do the same — so pair these helpers with both.
+
+// Digits and at most one decimal point. A partial "1." is kept exactly as typed
+// so the cashier can carry on to "1.50"; everything else is dropped keystroke by
+// keystroke, which is what stops letters arriving from a physical keyboard.
+//
+// A point typed on its own becomes "0." rather than ".". That matters more than
+// it looks: every caller reads these boxes with Number(), and Number(".") is
+// NaN — which would spread silently through a discount, a tax rate and on into
+// the basket total. With the leading zero, every string this can return is one
+// Number() reads as a finite value, so no caller has to defend against it.
+export const sanitizeDecimal = (raw) => {
+  const cleaned = String(raw ?? "").replace(/[^\d.]/g, "");
+  const [whole, ...rest] = cleaned.split(".");
+  if (rest.length === 0) return whole;
+  return `${whole === "" ? "0" : whole}.${rest.join("")}`;
+};
+
+// Whole numbers only — stock counts, usage limits.
+export const sanitizeInteger = (raw) => String(raw ?? "").replace(/\D/g, "");
+
 // Categories have no colour field in the model, so derive a stable one from the
 // name — the same category always gets the same tile colour.
 const TILE_COLORS = [

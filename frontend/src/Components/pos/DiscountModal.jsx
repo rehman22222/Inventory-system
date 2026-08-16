@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import PosModal from "./PosModal";
-import { currency } from "./posUtils";
+import { currency, sanitizeDecimal } from "./posUtils";
 
 function DiscountModal({ subtotal, discount, discountType, onApply, onClose }) {
   const { t } = useTranslation();
@@ -66,11 +66,11 @@ function DiscountModal({ subtotal, discount, discountType, onApply, onClose }) {
 
         <input
           autoFocus
-          type="number"
-          min="0"
-          step="0.01"
+          type="text"
+          inputMode="decimal"
+          data-keyboard="numeric"
           value={value}
-          onChange={(event) => setValue(event.target.value)}
+          onChange={(event) => setValue(sanitizeDecimal(event.target.value))}
           className="w-full border border-slate-700 bg-slate-950 px-3 py-3 text-center font-mono text-2xl text-slate-100 outline-none focus:border-cyan-500"
         />
 

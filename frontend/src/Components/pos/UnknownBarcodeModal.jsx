@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import axiosInstance from "../../lib/axios";
 import PosModal from "./PosModal";
-import { currency, MISC_CATEGORY } from "./posUtils";
+import { currency, MISC_CATEGORY, sanitizeDecimal, sanitizeInteger } from "./posUtils";
 
 // The imported catalogue has PLU codes but no barcodes, so most first scans of a
 // product will miss. Instead of a dead-end toast, let the cashier resolve it on
@@ -167,13 +167,13 @@ function UnknownBarcodeModal({ barcode, products, categories, onResolved, onClos
                 {t("pos.unknownBarcode.price")}
               </label>
               <input
-                type="number"
+                type="text"
                 inputMode="decimal"
                 data-keyboard="numeric"
-                step="0.01"
-                min="0"
                 value={form.Price}
-                onChange={(event) => setForm({ ...form, Price: event.target.value })}
+                onChange={(event) =>
+                  setForm({ ...form, Price: sanitizeDecimal(event.target.value) })
+                }
                 className="w-full border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-cyan-500"
               />
             </div>
@@ -182,12 +182,13 @@ function UnknownBarcodeModal({ barcode, products, categories, onResolved, onClos
                 {t("pos.unknownBarcode.openingStock")}
               </label>
               <input
-                type="number"
+                type="text"
                 inputMode="numeric"
                 data-keyboard="numeric"
-                min="0"
                 value={form.quantity}
-                onChange={(event) => setForm({ ...form, quantity: event.target.value })}
+                onChange={(event) =>
+                  setForm({ ...form, quantity: sanitizeInteger(event.target.value) })
+                }
                 className="w-full border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-cyan-500"
               />
             </div>

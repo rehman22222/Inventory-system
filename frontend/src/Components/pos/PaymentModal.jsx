@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FiTrash2 } from "react-icons/fi";
 import PosModal from "./PosModal";
-import { currency } from "./posUtils";
+import { currency, sanitizeDecimal } from "./posUtils";
 
 // The tender screen. A customer paying €50 can hand over €30 cash and put €20
 // on a card: each tender is added in turn, the remaining balance drops, and the
@@ -147,12 +147,11 @@ function PaymentModal({ total, methods, onConfirm, onClose, busy }) {
             >
               <input
                 autoFocus
-                type="number"
-                min="0"
-                step="0.01"
+                type="text"
                 inputMode="decimal"
+                data-keyboard="numeric"
                 value={amount}
-                onChange={(event) => setAmount(event.target.value)}
+                onChange={(event) => setAmount(sanitizeDecimal(event.target.value))}
                 placeholder={currency(remaining)}
                 className="w-full border border-slate-700 bg-slate-950 px-3 py-2.5 text-center font-mono text-lg text-slate-100 outline-none focus:border-cyan-500"
               />

@@ -43,6 +43,7 @@ import {
   currency,
   setCurrencyCode,
   applicableDeals,
+  sanitizeDecimal,
   MISC_CATEGORY,
 } from "../Components/pos/posUtils";
 import {
@@ -1035,16 +1036,15 @@ function POSPage() {
                 </label>
 
                 <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
+                  type="text"
                   inputMode="decimal"
+                  data-keyboard="numeric"
                   disabled={!taxEnabled}
                   value={taxRate}
                   onChange={(event) => {
-                    setTaxRate(event.target.value);
-                    localStorage.setItem(TAX_RATE_KEY, event.target.value);
+                    const next = sanitizeDecimal(event.target.value);
+                    setTaxRate(next);
+                    localStorage.setItem(TAX_RATE_KEY, next);
                   }}
                   placeholder="0"
                   title={t("pos.taxRateHint")}

@@ -59,6 +59,14 @@ const isNumericField = (el) => {
   );
 };
 
+// Strictly <input type="number">, which is the only kind that rejects a partial
+// decimal. A text field wearing inputmode="decimal" holds "66." quite happily
+// and needs none of the special handling below.
+const isNumberInput = (el) =>
+  Boolean(el) &&
+  el.tagName === "INPUT" &&
+  (el.getAttribute("type") || "").toLowerCase() === "number";
+
 const KEYBOARD_LAYOUTS = {
   default: [
     "` 1 2 3 4 5 6 7 8 9 0 - = {bksp}",
@@ -103,15 +111,34 @@ const NUMERIC_KEY_ROWS = [
 // React tracks input values internally, so setting `el.value` directly is
 // ignored on the next render. Go through the native setter and fire a real
 // `input` event so controlled components update their state.
+//
+// Returns false when the browser refused the value, having left the field
+// blank. A number input runs a value-sanitisation step that empties itself
+// rather than hold a string it considers invalid, so a single keypress could
+// otherwise wipe out everything the cashier had already entered. Nothing a key
+// tap does should ever destroy more than that one character, so the previous
+// value is put back and no input event is fired — the field simply doesn't move.
 const setNativeValue = (el, value) => {
   const proto =
     el instanceof HTMLTextAreaElement
       ? HTMLTextAreaElement.prototype
       : HTMLInputElement.prototype;
   const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
-  if (setter) setter.call(el, value);
-  else el.value = value;
+  const previous = el.value;
+  const write = (next) => {
+    if (setter) setter.call(el, next);
+    else el.value = next;
+  };
+
+  write(value);
+
+  if (value !== "" && el.value === "") {
+    write(previous);
+    return false;
+  }
+
   el.dispatchEvent(new Event("input", { bubbles: true }));
+  return true;
 };
 
 const focusAndPlaceCaret = (el, position) => {
@@ -143,9 +170,14 @@ const mutateActiveValue = (el, replacement, removeBeforeCaret = 0) => {
   const nextValue = `${currentValue.slice(0, deleteFrom)}${replacement}${currentValue.slice(end)}`;
   const nextCaret = deleteFrom + replacement.length;
 
-  setNativeValue(el, nextValue);
-  focusAndPlaceCaret(el, nextCaret);
-  return nextValue;
+  // Report what the field actually ended up holding, not what we asked for —
+  // a refused write leaves the old value in place, and the keyboard's own
+  // buffer has to agree with the field or the next keypress edits the wrong
+  // string.
+  const applied = setNativeValue(el, nextValue);
+  const settled = el.value || "";
+  focusAndPlaceCaret(el, applied ? nextCaret : settled.length);
+  return settled;
 };
 
 function VirtualKeyboard() {
@@ -153,6 +185,9 @@ function VirtualKeyboard() {
   const keyboardPanel = useRef(null);
   const activeEl = useRef(null);
   const lastEditableEl = useRef(null);
+  // A decimal point tapped on a number field, waiting for the digit it belongs
+  // to. See onKeyPress — the two are written to the field together.
+  const pendingDecimal = useRef(false);
   const forcedForTesting = useRef(isKeyboardForcedForTesting());
 
   // On phones/tablets the OS keyboard already handles input — decided once, up
@@ -209,6 +244,8 @@ function VirtualKeyboard() {
     if (!isEditable(el)) return false;
     activeEl.current = el;
     lastEditableEl.current = el;
+    // A point armed on the previous field must never land in this one.
+    pendingDecimal.current = false;
     const nextMode = isNumericField(el) ? "numeric" : "text";
     setKeyboardMode(nextMode);
     setLayoutName(nextMode === "numeric" ? "numeric" : "default");
@@ -275,6 +312,7 @@ function VirtualKeyboard() {
       if (isEditable(el)) {
         activeEl.current = el;
         lastEditableEl.current = el;
+        pendingDecimal.current = false;
         const nextMode = isNumericField(el) ? "numeric" : "text";
         setKeyboardMode(nextMode);
         setLayoutName(nextMode === "numeric" ? "numeric" : "default");
@@ -323,6 +361,7 @@ function VirtualKeyboard() {
     }
 
     if (button === "{enter}") {
+      pendingDecimal.current = false;
       if (el && el.tagName !== "TEXTAREA") {
         setVisible(false);
         el.blur();
@@ -334,6 +373,20 @@ function VirtualKeyboard() {
     }
 
     if (button === "{bksp}") {
+      pendingDecimal.current = false;
+
+      // Deleting the digit after a point would leave "1.", which a number field
+      // refuses to hold — the write is rejected and backspace looks stuck. Take
+      // the point along with the digit so the key always does something.
+      if (isNumberInput(el)) {
+        const trimmed = (el.value || "").slice(0, -1);
+        const next = trimmed.endsWith(".") ? trimmed.slice(0, -1) : trimmed;
+        setNativeValue(el, next);
+        focusAndPlaceCaret(el, next.length);
+        if (keyboard.current) keyboard.current.setInput(next);
+        return;
+      }
+
       const value = mutateActiveValue(el, "", 1);
       if (keyboard.current) keyboard.current.setInput(value);
       return;
@@ -347,6 +400,37 @@ function VirtualKeyboard() {
     };
     const nextCharacter = specialValues[button] ?? (button.startsWith("{") ? "" : button);
     if (!nextCharacter) return;
+
+    // <input type="number"> cannot hold a partial decimal. Handed "66." the
+    // browser decides that isn't a number and blanks the field, so tapping "."
+    // wiped a price the cashier had already keyed in.
+    //
+    // The point is therefore held back and written together with the digit that
+    // follows it, which is always a value the field accepts:
+    // "66" + "." + "5" is stored in one go as "66.5".
+    if (isNumberInput(el)) {
+      if (nextCharacter === ".") {
+        // A second point in the same number means nothing — ignore it rather
+        // than arm a pending one that would corrupt the next digit.
+        if (!(el.value || "").includes(".")) pendingDecimal.current = true;
+        return;
+      }
+
+      if (pendingDecimal.current) {
+        pendingDecimal.current = false;
+
+        if (/^[0-9]$/.test(nextCharacter)) {
+          // ".5" is refused for the same reason "66." is — a digit is required
+          // on both sides of the point, so an empty field starts at zero.
+          const base = el.value || "";
+          const decimal = `${base === "" ? "0" : base}.${nextCharacter}`;
+          setNativeValue(el, decimal);
+          focusAndPlaceCaret(el, decimal.length);
+          if (keyboard.current) keyboard.current.setInput(decimal);
+          return;
+        }
+      }
+    }
 
     const value = mutateActiveValue(el, nextCharacter);
     if (keyboard.current) keyboard.current.setInput(value);

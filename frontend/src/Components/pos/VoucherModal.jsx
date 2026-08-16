@@ -5,7 +5,7 @@ import axiosInstance from "../../lib/axios";
 import { cacheGet, isVoucherSpentOffline } from "../../lib/offlineDb";
 import { isNetworkError } from "../../lib/offlineQueue";
 import PosModal from "./PosModal";
-import { currency } from "./posUtils";
+import { currency, sanitizeDecimal, sanitizeInteger } from "./posUtils";
 
 // Work out what a cached voucher is worth, mirroring Vouchermodel's
 // computeDiscount + rejectionReason so an offline preview matches what the
@@ -263,11 +263,13 @@ function VoucherModal({ subtotal, applied, canGenerate, onApply, onRemove, onClo
                 {form.type === "percent" ? t("pos.voucher.percentValue") : t("pos.voucher.amountValue")}
               </label>
               <input
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
+                inputMode="decimal"
+                data-keyboard="numeric"
                 value={form.value}
-                onChange={(event) => setForm({ ...form, value: event.target.value })}
+                onChange={(event) =>
+                  setForm({ ...form, value: sanitizeDecimal(event.target.value) })
+                }
                 className={field}
               />
             </div>
@@ -277,21 +279,26 @@ function VoucherModal({ subtotal, applied, canGenerate, onApply, onRemove, onClo
             <div>
               <label className={label}>{t("pos.voucher.minSpend")}</label>
               <input
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
+                inputMode="decimal"
+                data-keyboard="numeric"
                 value={form.minSpend}
-                onChange={(event) => setForm({ ...form, minSpend: event.target.value })}
+                onChange={(event) =>
+                  setForm({ ...form, minSpend: sanitizeDecimal(event.target.value) })
+                }
                 className={field}
               />
             </div>
             <div>
               <label className={label}>{t("pos.voucher.usageLimit")}</label>
               <input
-                type="number"
-                min="1"
+                type="text"
+                inputMode="numeric"
+                data-keyboard="numeric"
                 value={form.usageLimit}
-                onChange={(event) => setForm({ ...form, usageLimit: event.target.value })}
+                onChange={(event) =>
+                  setForm({ ...form, usageLimit: sanitizeInteger(event.target.value) })
+                }
                 className={field}
               />
             </div>
