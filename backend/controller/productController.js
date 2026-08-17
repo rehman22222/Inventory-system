@@ -353,6 +353,38 @@ module.exports.SearchProduct = async (req, res) => {
   };
 
 
+// One product, in full.
+//
+// The till fetches its catalogue with a narrow projection that deliberately
+// leaves out cost price — that is the shop's margin, and it has no business
+// sitting in every terminal's memory. So the till's edit form asks for the whole
+// record only for the one product being edited, and only for someone allowed to
+// change it (the route restricts this to admin/manager, same as EditProduct).
+module.exports.getProductById = async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    if (!mongoose.isValidObjectId(productId)) {
+      return res.status(400).json({ message: "Invalid product id" });
+    }
+
+    const product = await Product.findById(productId)
+      .populate("Category", "name")
+      .lean();
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    return res.status(200).json({ product });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Error fetching product", error: error.message });
+  }
+};
+
+
 // Exact barcode match — what the POS scanner calls on every scan.
 module.exports.getProductByBarcode = async (req, res) => {
   try {

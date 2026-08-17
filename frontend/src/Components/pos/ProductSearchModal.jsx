@@ -1,13 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FiArrowRight, FiImage, FiSearch } from "react-icons/fi";
+import { FiArrowRight, FiEdit2, FiImage, FiSearch } from "react-icons/fi";
 import PosModal from "./PosModal";
+import ProductEditPanel from "./ProductEditPanel";
 import { currency } from "./posUtils";
 
 // A filter-rich product search, in the style of a real till: a category tree on
 // the left, a "search by" selector and sort controls on top, and result rows
-// that show barcode, stock, price and category — each with an add button.
-function ProductSearchModal({ products, categories, onPick, onClose }) {
+// that show barcode, stock, price and category — each with an add button, and an
+// edit button for whoever is allowed to correct the catalogue.
+//
+// `canEdit` mirrors the server: PUT /product/editproduct is adminOrManager, so a
+// staff cashier never sees the button. Hiding it is presentation only — the
+// server refuses the write regardless.
+function ProductSearchModal({ products, categories, canEdit = false, onPick, onEdited, onClose }) {
   const { t } = useTranslation();
 
   const [query, setQuery] = useState("");
@@ -15,6 +21,10 @@ function ProductSearchModal({ products, categories, onPick, onClose }) {
   const [categoryId, setCategoryId] = useState(null); // null = all categories
   const [sortBy, setSortBy] = useState("name"); // name | price | stock
   const [asc, setAsc] = useState(true);
+  // The row being edited, or null while browsing. The panel replaces the results
+  // rather than stacking a second modal on top — one thing on screen at a time
+  // is the only thing that works on a till.
+  const [editing, setEditing] = useState(null);
 
   const inputRef = useRef(null);
   useEffect(() => {
@@ -68,6 +78,21 @@ function ProductSearchModal({ products, categories, onPick, onClose }) {
       onClose={onClose}
       width="max-w-5xl"
     >
+      {editing ? (
+        <div className="flex min-h-[60vh] flex-col">
+          <ProductEditPanel
+            product={editing}
+            categories={categories}
+            onSaved={() => {
+              setEditing(null);
+              // The till is holding a cached catalogue; a saved price or stock
+              // count means nothing until that is refetched.
+              onEdited?.();
+            }}
+            onClose={() => setEditing(null)}
+          />
+        </div>
+      ) : (
       <div className="flex min-h-[60vh] gap-3">
         {/* Category tree */}
         <aside className="w-44 shrink-0 space-y-1 overflow-y-auto border-e border-slate-800 pe-2">
@@ -186,6 +211,21 @@ function ProductSearchModal({ products, categories, onPick, onClose }) {
                       {product.Category?.name || t("pos.uncategorized")}
                     </span>
 
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => setEditing(product)}
+                        title={t("pos.productEdit.title", { defaultValue: "Edit product" })}
+                        aria-label={t("pos.productEdit.editNamed", {
+                          defaultValue: "Edit {{name}}",
+                          name: product.name,
+                        })}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center border border-slate-700 text-slate-300 transition hover:border-cyan-600 hover:bg-slate-800 hover:text-cyan-300"
+                      >
+                        <FiEdit2 className="h-4 w-4" />
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       disabled={out}
@@ -202,6 +242,7 @@ function ProductSearchModal({ products, categories, onPick, onClose }) {
           </div>
         </div>
       </div>
+      )}
     </PosModal>
   );
 }

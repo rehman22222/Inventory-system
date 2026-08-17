@@ -1466,7 +1466,16 @@ function POSPage() {
         <ProductSearchModal
           products={products}
           categories={categories}
+          // Correcting the catalogue is an elevated action — the same rule the
+          // server applies to PUT /product/editproduct.
+          canEdit={isElevated}
           onPick={(product) => tapProduct(product)}
+          // A saved edit only reaches the grid, the tiles and the basket prices
+          // once the till refetches what it is selling from.
+          onEdited={() => {
+            dispatch(gettingallproducts({ view: "pos" }));
+            dispatch(gettingallCategory());
+          }}
           onClose={() => setModal(null)}
         />
       )}

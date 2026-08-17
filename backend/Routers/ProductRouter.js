@@ -1,6 +1,6 @@
 const express=require("express")
 const router=express.Router()
-const {Addproduct,quickAddProduct,getTopProductsByQuantity,RemoveProduct,SearchProduct,EditProduct,getProduct,getProductByBarcode,attachBarcode,generateRandomBarcodes}=require('../controller/productController')
+const {Addproduct,quickAddProduct,getTopProductsByQuantity,RemoveProduct,SearchProduct,EditProduct,getProduct,getProductById,getProductByBarcode,attachBarcode,generateRandomBarcodes}=require('../controller/productController')
 const {authmiddleware,adminmiddleware,adminOrManager,adminOrSuperadmin}=require('../middleware/Authmiddleware')
 const {upload}=require('../middleware/upload')
 
@@ -21,6 +21,16 @@ router.get("/barcode/:code",authmiddleware,getProductByBarcode)
 router.put("/:productId/barcode",authmiddleware,attachBarcode)
 router.put("/editproduct/:productId",authmiddleware,adminOrManager,upload.single("image"),EditProduct)
 router.get("/getTopProductsByQuantity",authmiddleware,getTopProductsByQuantity)
+
+// One whole product, for the till's edit form. Restricted to the same people who
+// may actually save the edit, because this is the only product read that returns
+// costPrice.
+//
+// This MUST stay the LAST get route in this file. A bare "/:productId" matches
+// any single segment, so registered above the literal paths it would swallow
+// "/getproduct", "/searchproduct" and "/getTopProductsByQuantity" and try to
+// look each one up as an id — the exact bug supplierrouter.js documents.
+router.get("/:productId",authmiddleware,adminOrManager,getProductById)
 
 
 
