@@ -217,6 +217,47 @@ describe("on-screen keypad — capitals by default", () => {
 
     expect(field.value).toBe("qW");
   });
+
+  test("the top row is digits, not symbols", () => {
+    focusField(textBox);
+
+    // A physical keyboard pairs capitals with the symbol row. Here capitals are
+    // the default, so pairing them that way would have put "!@#$%" in front of
+    // the cashier and hidden the digits behind a toggle.
+    expect(container.querySelector('[data-skbtn="1"]')).not.toBeNull();
+    expect(container.querySelector('[data-skbtn="!"]')).toBeNull();
+
+    tap("6");
+    tap("0");
+    tap("0");
+    tap("0");
+
+    expect(field.value).toBe("6000");
+  });
+
+  test("the symbols arrive with lowercase on caps", () => {
+    focusField(textBox);
+    tap("{lock}");
+
+    expect(container.querySelector('[data-skbtn="!"]')).not.toBeNull();
+    expect(container.querySelector('[data-skbtn="1"]')).toBeNull();
+
+    tap("@");
+
+    expect(field.value).toBe("@");
+  });
+
+  test("everyday punctuation stays on the default layout", () => {
+    focusField(textBox);
+
+    // A full stop and a comma are needed far more often at a till than "<" and
+    // ">", so they sit with the capitals rather than behind caps.
+    tap("A");
+    tap(".");
+    tap("B");
+
+    expect(field.value).toBe("A.B");
+  });
 });
 
 describe("on-screen keypad — staying open while the form is used", () => {

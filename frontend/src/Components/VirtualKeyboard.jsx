@@ -83,21 +83,37 @@ const isNumberInput = (el) =>
   el.tagName === "INPUT" &&
   (el.getAttribute("type") || "").toLowerCase() === "number";
 
+// The till's normal rows: CAPITALS WITH DIGITS, plus the everyday punctuation.
+//
+// This is deliberately not a physical keyboard's pairing. There, shift gives you
+// capitals AND the symbol row together — which put "!@#$%" in front of the
+// cashier by default and pushed the digits out of reach. Here letters and numbers
+// share one layout, because a product name and a quantity are what actually get
+// typed, and neither should need a toggle.
+const CAPS_ROWS = [
+  "` 1 2 3 4 5 6 7 8 9 0 - = {bksp}",
+  "{tab} Q W E R T Y U I O P [ ] \\",
+  "{lock} A S D F G H J K L ; ' {enter}",
+  "{shift} Z X C V B N M , . / {shift}",
+  ".com @ {space}",
+];
+
+// What caps switches to: lowercase, and the symbols that came off the row above.
+const LOWER_ROWS = [
+  "~ ! @ # $ % ^ & * ( ) _ + {bksp}",
+  "{tab} q w e r t y u i o p { } |",
+  "{lock} a s d f g h j k l : \" {enter}",
+  "{shift} z x c v b n m < > ? {shift}",
+  ".com @ {space}",
+];
+
 const KEYBOARD_LAYOUTS = {
-  default: [
-    "` 1 2 3 4 5 6 7 8 9 0 - = {bksp}",
-    "{tab} q w e r t y u i o p [ ] \\",
-    "{lock} a s d f g h j k l ; ' {enter}",
-    "{shift} z x c v b n m , . / {shift}",
-    ".com @ {space}",
-  ],
-  shift: [
-    "~ ! @ # $ % ^ & * ( ) _ + {bksp}",
-    "{tab} Q W E R T Y U I O P { } |",
-    "{lock} A S D F G H J K L : \" {enter}",
-    "{shift} Z X C V B N M < > ? {shift}",
-    ".com @ {space}",
-  ],
+  caps: CAPS_ROWS,
+  lower: LOWER_ROWS,
+  // react-simple-keyboard falls back to a layout called "default" if the name it
+  // is given ever goes missing. Point that at the till's normal rows so the worst
+  // case is the usual keyboard rather than an empty one.
+  default: CAPS_ROWS,
   numeric: [
     "1 2 3",
     "4 5 6",
@@ -124,8 +140,8 @@ const KEYBOARD_DISPLAY = {
 // again. There is deliberately no one-shot shift release: releasing after a
 // single letter would drop the very next character back out of caps, which is
 // the opposite of what is wanted when caps is the default.
-const TEXT_LAYOUT_CAPS = "shift";
-const TEXT_LAYOUT_LOWER = "default";
+const TEXT_LAYOUT_CAPS = "caps";
+const TEXT_LAYOUT_LOWER = "lower";
 
 // Which layout a field should open with.
 const layoutFor = (mode) => (mode === "numeric" ? "numeric" : TEXT_LAYOUT_CAPS);
