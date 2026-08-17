@@ -191,6 +191,15 @@ function Home() {
     return Math.max(highest, Math.round(((regular - dealPrice) / regular) * 100));
   }, 0);
 
+  // The deals headline is owner-editable, so whatever is in settings wins — but
+  // a settings record that has never been edited is still carrying an old
+  // default, and that is not wording anyone chose. Those are treated as unset so
+  // the shop shows the current headline instead of a stale one.
+  const LEGACY_DEALS_TITLES = ["Weekly deals.", "Don’t miss out."];
+  const dealsTitle = LEGACY_DEALS_TITLES.includes(settings.deals.title)
+    ? t("home.dealsTitle")
+    : settings.deals.title;
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -246,7 +255,7 @@ function Home() {
                     <br />
                   </>
                 )}
-                {settings.deals.title === "Weekly deals." ? "Don’t miss out." : settings.deals.title}
+                {dealsTitle}
               </h2>
               {settings.deals.subtitle && (
                 <p className="mt-6 max-w-md text-sm text-primary-foreground/70">

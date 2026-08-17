@@ -320,7 +320,7 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
       },
       title: {
         type: String,
-        default: "Don’t miss out.",
+        default: "Don’t Miss Out.",
         trim: true,
         maxlength: 120,
       },

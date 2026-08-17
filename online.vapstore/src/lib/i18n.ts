@@ -44,15 +44,19 @@ const resources = {
       },
       home: {
         bestEyebrow: "§ 01 — Best seller",
-        bestTitle: "Best seller",
-        bestHighlight: "products.",
+        bestTitle: "Best Seller",
+        bestHighlight: "Products",
         allProducts: "All products",
         dealsEyebrow: "§ 02 — Deals",
         upTo: "UP TO",
         off: "-{{percent}}% OFF",
+        // Shown when the shop has not set its own deals headline — see
+        // routes/index.tsx for how a previous default is told apart from wording
+        // the owner actually chose.
+        dealsTitle: "Don’t Miss Out.",
         categoriesEyebrow: "§ 03 — Categories",
-        shopBy: "Shop by",
-        category: "category",
+        shopBy: "Shop By",
+        category: "Category",
         viewAll: "View all →",
         everything: "Everything",
         shopAllProducts: "Shop all\nproducts",

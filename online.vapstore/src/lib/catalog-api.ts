@@ -75,7 +75,7 @@ const defaultStorefrontSettings: StorefrontSettings = {
   deals: {
     enabled: true,
     eyebrow: "Live sale",
-    title: "Don’t miss out.",
+    title: "Don’t Miss Out.",
     subtitle:
       "Limited-time online prices selected by the Cliffs of Puff team. Stock updates from the same inventory used at the till.",
     ctaLabel: "See the deals",
