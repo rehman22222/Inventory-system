@@ -438,8 +438,16 @@ body.osk-open .pos-modal-panel > div:first-child p {
   font-size: 0.8rem;
 }
 
+/* The modal body keeps scrolling while the keyboard is up.
+ *
+ * This was `overflow: hidden`, which suited the quick-add form: it reflows into
+ * a compact grid that fits in the space left beside the keyboard, so there was
+ * nothing to scroll. A taller panel — the product edit form — did not fit, and
+ * hidden meant its last fields and its save button simply could not be reached.
+ * Auto costs the short form nothing (no overflow, no scrollbar) and makes the
+ * tall one usable. */
 body.osk-open .pos-modal-panel > div:nth-child(2) {
-  overflow: hidden;
+  overflow-y: auto;
   padding: 0.7rem 1rem 0.85rem;
 }
 

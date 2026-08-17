@@ -79,7 +79,9 @@ function ProductSearchModal({ products, categories, canEdit = false, onPick, onE
       width="max-w-5xl"
     >
       {editing ? (
-        <div className="flex min-h-[60vh] flex-col">
+        // No minimum height here: with the keyboard up the modal is short, and a
+        // 60vh floor would push the form past the bottom where it cannot scroll.
+        <div>
           <ProductEditPanel
             product={editing}
             categories={categories}

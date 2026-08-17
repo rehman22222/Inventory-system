@@ -185,7 +185,7 @@ function ProductEditPanel({ product, categories, onSaved, onClose }) {
 
   if (loading) {
     return (
-      <div className="grid flex-1 place-items-center py-16">
+      <div className="grid place-items-center py-16">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-500" />
       </div>
     );
@@ -193,7 +193,7 @@ function ProductEditPanel({ product, categories, onSaved, onClose }) {
 
   if (loadError) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16">
+      <div className="flex flex-col items-center justify-center gap-4 py-16">
         <p className="text-sm text-rose-300">{loadError}</p>
         <button
           type="button"
@@ -206,8 +206,11 @@ function ProductEditPanel({ product, categories, onSaved, onClose }) {
     );
   }
 
+  // The modal body is the scroll container (see PosModal), so this is plain flow
+  // rather than a second nested scroller — one scrollbar, and the fields cannot
+  // end up clipped in the space left beside the on-screen keyboard.
   return (
-    <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
+    <form onSubmit={submit}>
       <div className="mb-3 flex items-center justify-between gap-3 border-b border-slate-800 pb-3">
         <div className="min-w-0">
           <p className="text-[11px] uppercase tracking-wide text-slate-500">
@@ -225,7 +228,7 @@ function ProductEditPanel({ product, categories, onSaved, onClose }) {
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pe-1">
+      <div className="space-y-3">
         {/* Image */}
         <div className="flex items-center gap-3">
           {imagePreview ? (
@@ -412,7 +415,9 @@ function ProductEditPanel({ product, categories, onSaved, onClose }) {
         </div>
       </div>
 
-      <div className="mt-3 flex gap-2 border-t border-slate-800 pt-3">
+      {/* Pinned to the bottom of the scroll area: on a till the cashier should
+          never have to hunt for Update, however long the form is. */}
+      <div className="sticky bottom-0 -mx-1 mt-3 flex gap-2 border-t border-slate-800 bg-slate-900 px-1 pb-1 pt-3">
         <button
           type="button"
           onClick={onClose}
