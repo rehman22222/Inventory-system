@@ -47,6 +47,22 @@ const EDITABLE_SELECTOR =
 const isEditable = (el) =>
   el && el.matches && el.matches(EDITABLE_SELECTOR) && !el.readOnly && !el.disabled;
 
+// Focus leaving a text field does not always mean the cashier has finished with
+// the form. Picking a category from the dropdown, or tapping a tab inside the
+// till's modal, is part of filling that same form — but a <select> is not
+// something this keyboard can type into, so it used to read as "they've left",
+// the keyboard shut, and `body.osk-open` came off. That last part is what was
+// actually felt: the modal is sized against the keyboard, so it sprang back to
+// full height and everything jumped under the cashier's hands mid-entry.
+//
+// So the keyboard stays up for anything inside the modal, keeping the last text
+// field as its target — tapping a letter simply returns there.
+const keepsKeyboardOpen = (el) => {
+  if (!el || el === document.body) return false;
+  if (el.tagName === "SELECT") return true;
+  return typeof el.closest === "function" && Boolean(el.closest(".pos-modal-panel"));
+};
+
 const isNumericField = (el) => {
   if (!el || el.tagName !== "INPUT") return false;
   const type = (el.getAttribute("type") || "").toLowerCase();
@@ -99,6 +115,20 @@ const KEYBOARD_DISPLAY = {
   "{shift}": "shift",
   "{space}": " ",
 };
+
+// The till opens in CAPITALS. Almost everything a cashier types here is a
+// product name, a brand or a flavour, and those are printed in caps on the
+// packaging — so caps is the common case, not the exception.
+//
+// caps/shift therefore toggles DOWN to lowercase and stays there until pressed
+// again. There is deliberately no one-shot shift release: releasing after a
+// single letter would drop the very next character back out of caps, which is
+// the opposite of what is wanted when caps is the default.
+const TEXT_LAYOUT_CAPS = "shift";
+const TEXT_LAYOUT_LOWER = "default";
+
+// Which layout a field should open with.
+const layoutFor = (mode) => (mode === "numeric" ? "numeric" : TEXT_LAYOUT_CAPS);
 
 const NUMERIC_KEY_ROWS = [
   ["1", "2", "3"],
@@ -206,7 +236,7 @@ function VirtualKeyboard() {
     );
   });
   const [visible, setVisible] = useState(false);
-  const [layoutName, setLayoutName] = useState("default");
+  const [layoutName, setLayoutName] = useState(TEXT_LAYOUT_CAPS);
   const [keyboardMode, setKeyboardMode] = useState("text");
 
   const syncKeyboardHeight = useCallback(() => {
@@ -248,7 +278,7 @@ function VirtualKeyboard() {
     pendingDecimal.current = false;
     const nextMode = isNumericField(el) ? "numeric" : "text";
     setKeyboardMode(nextMode);
-    setLayoutName(nextMode === "numeric" ? "numeric" : "default");
+    setLayoutName(layoutFor(nextMode));
     focusAndPlaceCaret(el, (el.value || "").length);
     if (keyboard.current) keyboard.current.setInput(el.value || "");
     setVisible(true);
@@ -315,7 +345,7 @@ function VirtualKeyboard() {
         pendingDecimal.current = false;
         const nextMode = isNumericField(el) ? "numeric" : "text";
         setKeyboardMode(nextMode);
-        setLayoutName(nextMode === "numeric" ? "numeric" : "default");
+        setLayoutName(layoutFor(nextMode));
         if (keyboard.current) keyboard.current.setInput(el.value || "");
         setVisible(true);
         scrollFieldIntoSafeView(el);
@@ -328,10 +358,13 @@ function VirtualKeyboard() {
     const onFocusOut = () => {
       setTimeout(() => {
         const now = document.activeElement;
-        if (!isEditable(now)) {
-          activeEl.current = null;
-          setVisible(false);
-        }
+        if (isEditable(now)) return;
+        // Still somewhere in the same form (the category dropdown, a tab) — hold
+        // the keyboard and its target where they are.
+        if (keepsKeyboardOpen(now)) return;
+
+        activeEl.current = null;
+        setVisible(false);
       }, 120);
     };
 
@@ -356,7 +389,11 @@ function VirtualKeyboard() {
     }
 
     if (button === "{shift}" || button === "{lock}") {
-      setLayoutName((prev) => (prev === "default" ? "shift" : "default"));
+      // A straight toggle between capitals and lowercase, and it stays where it
+      // is put — see TEXT_LAYOUT_CAPS for why there is no one-shot release.
+      setLayoutName((prev) =>
+        prev === TEXT_LAYOUT_CAPS ? TEXT_LAYOUT_LOWER : TEXT_LAYOUT_CAPS,
+      );
       return;
     }
 
@@ -434,10 +471,6 @@ function VirtualKeyboard() {
 
     const value = mutateActiveValue(el, nextCharacter);
     if (keyboard.current) keyboard.current.setInput(value);
-
-    if (layoutName === "shift") {
-      setLayoutName("default");
-    }
   }, [layoutName]);
 
   // Devices with a native soft keyboard (phones/tablets) get nothing from us —

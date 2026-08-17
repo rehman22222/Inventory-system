@@ -34,10 +34,15 @@ const focusField = (attributes) => {
   return field;
 };
 
+// The numeric keypad is our own <button>s, labelled by what they show. The text
+// layout comes from react-simple-keyboard, which renders <div data-skbtn> keyed
+// by the layout token ("Q", "{lock}") instead. Accept either.
 const tap = (label) => {
-  const key = [...container.querySelectorAll("button")].find(
+  const ourKey = [...container.querySelectorAll("button")].find(
     (button) => button.textContent === label,
   );
+  const key = ourKey || container.querySelector(`[data-skbtn="${label}"]`);
+
   if (!key) throw new Error(`No "${label}" key on the keypad`);
   act(() => key.dispatchEvent(new MouseEvent("click", { bubbles: true })));
 };
@@ -175,4 +180,118 @@ describe("on-screen keypad — carry-over between fields", () => {
 
     stock.remove();
   });
+});
+
+describe("on-screen keypad — capitals by default", () => {
+  // Cashiers type product names, brands and flavours, which are printed in
+  // capitals on the packaging. Caps is the common case here, not the exception.
+  const textBox = { type: "text" };
+
+  test("a text field opens in capitals", () => {
+    focusField(textBox);
+
+    tap("Q");
+
+    expect(field.value).toBe("Q");
+  });
+
+  test("caps drops to lowercase and stays there", () => {
+    focusField(textBox);
+
+    tap("{lock}");
+    tap("q");
+    tap("w");
+
+    // Both letters are lowercase: there is no one-shot release putting the
+    // second character back into capitals.
+    expect(field.value).toBe("qw");
+  });
+
+  test("caps toggles back up again", () => {
+    focusField(textBox);
+
+    tap("{lock}");
+    tap("q");
+    tap("{lock}");
+    tap("W");
+
+    expect(field.value).toBe("qW");
+  });
+});
+
+describe("on-screen keypad — staying open while the form is used", () => {
+  const openModalWithSelect = () => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "pos-modal-panel";
+    wrapper.innerHTML =
+      '<input id="name" type="text" /><select id="cat"><option>Miscellaneous</option></select>';
+    document.body.appendChild(wrapper);
+    return wrapper;
+  };
+
+  const settle = async () => {
+    // onFocusOut defers its decision by 120ms.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    });
+  };
+
+  // Mounting schedules a one-off showForCurrentField on a 0ms timer, and that
+  // re-focuses the remembered field. Left pending it lands in the middle of the
+  // scenario below and decides the outcome instead of the code under test, so it
+  // is flushed before anything is asserted.
+  const settleMount = settle;
+
+  test("picking a category does not close the keyboard", async () => {
+    const wrapper = openModalWithSelect();
+    const name = wrapper.querySelector("#name");
+    const category = wrapper.querySelector("#cat");
+
+    act(() => {
+      name.focus();
+      name.dispatchEvent(new Event("focusin", { bubbles: true }));
+    });
+    await settleMount();
+    expect(container.querySelector(".osk-text, .osk-numeric")).not.toBeNull();
+
+    // Move to the dropdown, which is not something the keyboard can type into.
+    act(() => {
+      category.focus();
+      name.dispatchEvent(new Event("focusout", { bubbles: true }));
+    });
+    await settle();
+
+    // Still up — the modal is sized against it, so closing here yanked the whole
+    // card back to full height mid-entry.
+    expect(container.querySelector(".osk-text, .osk-numeric")).not.toBeNull();
+
+    wrapper.remove();
+  });
+
+  test("leaving the form entirely does close it", async () => {
+    const wrapper = openModalWithSelect();
+    const name = wrapper.querySelector("#name");
+
+    act(() => {
+      name.focus();
+      name.dispatchEvent(new Event("focusin", { bubbles: true }));
+    });
+    await settleMount();
+    expect(container.querySelector(".osk-text, .osk-numeric")).not.toBeNull();
+
+    const outside = document.createElement("button");
+    document.body.appendChild(outside);
+
+    act(() => {
+      outside.focus();
+      name.dispatchEvent(new Event("focusout", { bubbles: true }));
+    });
+    await settle();
+
+    expect(container.querySelector(".osk-text, .osk-numeric")).toBeNull();
+
+    outside.remove();
+    wrapper.remove();
+  });
+
 });
