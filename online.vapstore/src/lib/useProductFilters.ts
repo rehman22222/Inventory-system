@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { Product } from "./catalog";
+import { brandKey, type Product } from "./catalog";
 
 /* Shared product filtering for the Shop and Category pages.
  *
@@ -77,7 +77,14 @@ export function useProductFilters(products: Product[], lockedCategory?: string) 
     if (!lockedCategory && category !== "all") {
       out = out.filter((p) => p.category === category || p.categories.includes(category));
     }
-    if (brand !== "all") out = out.filter((p) => p.brand === brand);
+    // Matched on the normalised key, not the exact string. The chips show one
+    // spelling per brand, so a listing that spells it "Loom" against a chip
+    // reading "LOOM" has to still be found — otherwise deduplicating the chips
+    // would quietly hide products.
+    if (brand !== "all") {
+      const wanted = brandKey(brand);
+      out = out.filter((p) => brandKey(p.brand) === wanted);
+    }
 
     const mn = minPrice === "" ? null : Number(minPrice);
     const mx = maxPrice === "" ? null : Number(maxPrice);

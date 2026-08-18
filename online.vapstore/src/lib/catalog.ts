@@ -286,5 +286,36 @@ export const bestSellers = (products: Product[], limit = 8) => {
   return flagged.slice(0, limit);
 };
 
-export const brandsOf = (products: Product[]) =>
-  [...new Set(products.map((p) => p.brand).filter(Boolean))].sort();
+/** Normalised key for a brand — what decides whether two spellings are one brand. */
+export const brandKey = (brand?: string) => (brand || "").trim().toUpperCase();
+
+/**
+ * The brands present in a set of products, one chip each.
+ *
+ * Two things this has to get right, both of which it used to get wrong:
+ *
+ * Deduplication is case-insensitive. A brand entered as "LOOM" on one listing
+ * and "Loom" on another is one brand, and the chips render uppercase — so
+ * keeping both put the same name on screen twice with no way to tell them apart.
+ *
+ * Sorting goes through localeCompare. The default sort compares UTF-16 code
+ * units, which places every capital before every lowercase letter: "ELUX" landed
+ * before "Elf Bar", "PIXL" before "Pablo", "VELO" before "Vaporesso". Uppercased
+ * for display, that reads as no order at all.
+ */
+export const brandsOf = (products: Product[]) => {
+  const byKey = new Map<string, string>();
+
+  for (const product of products) {
+    const brand = (product.brand || "").trim();
+    if (!brand) continue;
+
+    // First spelling seen wins the label; the key is what matches.
+    const key = brandKey(brand);
+    if (!byKey.has(key)) byKey.set(key, brand);
+  }
+
+  return [...byKey.values()].sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base" }),
+  );
+};

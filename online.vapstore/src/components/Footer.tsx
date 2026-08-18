@@ -150,6 +150,22 @@ export function Footer() {
         </FooterColumn>
 
         <div>
+          {/* The shop's registered details sit with the newsletter rather than in
+              a band of their own underneath: they belong to the same column of
+              formalities, and a full-width strip of small print pushed the
+              payment and age marks further from the content they qualify.
+              Nothing renders until the shop fills these in. */}
+          {businessRows.length > 0 && (
+            <ul className="mb-6 space-y-1 text-xs leading-5 text-white/70">
+              {businessRows.map(([label, value]) => (
+                <li key={label}>
+                  <span className="text-white/50">{label}:</span>{" "}
+                  <span className="break-words text-white/85">{value}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
           <form
             className="mx-auto flex max-w-xs border border-white/60 md:mx-0"
             onSubmit={submitNewsletter}
@@ -183,40 +199,34 @@ export function Footer() {
               {newsletterMessage}
             </p>
           )}
+          {/* A row of marks rather than a stack of "Follow us on X" lines: four
+              networks as sentences ran taller than the column beside them, and
+              the icons already say which is which. Only the ones the shop has
+              actually set appear — see `social` above. */}
           {social.length > 0 && (
-            <div className="mt-6 space-y-3">
-              {social.map(({ key, label, href, Icon }) => (
-                <a
-                  key={key}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-3 text-sm transition-colors hover:text-accent md:justify-start"
-                >
-                  <span className="grid h-6 w-6 place-items-center">
-                    <Icon className="h-6 w-6" />
-                  </span>
-                  <span>Follow us on {label}</span>
-                </a>
-              ))}
+            <div className="mt-6">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/50">
+                {t("footer.followUs", { defaultValue: "Follow us" })}
+              </p>
+              <div className="mt-3 flex items-center justify-center gap-2.5 md:justify-start">
+                {social.map(({ key, label, href, Icon }) => (
+                  <a
+                    key={key}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={label}
+                    title={label}
+                    className="grid h-10 w-10 place-items-center rounded-full border border-white/25 text-white transition-colors hover:border-accent hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Icon className="h-[18px] w-[18px]" />
+                  </a>
+                ))}
+              </div>
             </div>
           )}
         </div>
       </div>
-
-      {businessRows.length > 0 && (
-        <section className="container-x pb-6 text-center text-xs leading-6 text-white/60 md:text-left">
-          <p className="border-t border-white/10 pt-5">
-            {businessRows.map(([label, value], index) => (
-              <span key={label} className="inline">
-                {index > 0 && <span className="mx-2 text-white/25">|</span>}
-                <span className="text-white/55">{label}:</span>{" "}
-                <span className="break-words text-white/80">{value}</span>
-              </span>
-            ))}
-          </p>
-        </section>
-      )}
 
       <div className="container-x grid items-center gap-5 border-t border-white/10 py-7 text-center text-sm md:grid-cols-2">
         <div className="order-1 flex justify-center gap-5 md:justify-start">
