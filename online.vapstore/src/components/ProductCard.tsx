@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ShoppingBag, Check } from "lucide-react";
 import { useState } from "react";
 import type { Product } from "@/lib/catalog";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, truncateProductName } from "@/lib/format";
 import { useCart } from "@/lib/cart";
 import { cldProductCardImage } from "@/lib/img";
 
@@ -75,20 +75,21 @@ export function ProductCard({ product }: { product: Product }) {
       </Link>
 
       <div className="flex flex-1 flex-col border-t hair p-4">
-        <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+        <div className="truncate font-mono text-[10px] uppercase tracking-widest text-ink-muted">
           {product.brand}
         </div>
         <Link
           to="/product/$id"
           params={{ id: product.id }}
           preload="intent"
-          className="mt-1 font-display text-sm leading-tight tracking-tight break-words hover:text-accent-foreground hover:bg-accent"
+          className="mt-1 line-clamp-2 min-h-[2.5em] font-display text-sm leading-tight tracking-tight break-words hover:text-accent-foreground hover:bg-accent"
+          title={product.name}
         >
-          {product.name}
+          {truncateProductName(product.name)}
         </Link>
 
         {/* Price */}
-        <div className="mt-3 flex items-baseline gap-2">
+        <div className="mt-auto pt-3 flex items-baseline gap-2">
           <span className="font-display text-base">
             {priceUnavailable ? t("productCard.priceTbc") : formatPrice(product.price)}
           </span>
@@ -100,7 +101,7 @@ export function ProductCard({ product }: { product: Product }) {
             to="/product/$id"
             params={{ id: product.id }}
             preload="intent"
-            className="mt-4 inline-flex items-center justify-center gap-2 bg-ink text-primary-foreground font-mono text-[11px] uppercase tracking-widest py-2.5 border border-ink transition-colors hover:bg-accent hover:text-accent-foreground hover:border-accent"
+            className="mt-3 inline-flex items-center justify-center gap-1.5 whitespace-nowrap bg-ink text-primary-foreground font-mono text-[10px] uppercase tracking-[0.16em] py-2 border border-ink transition-colors hover:bg-accent hover:text-accent-foreground hover:border-accent sm:text-[11px]"
           >
             <ShoppingBag className="h-3.5 w-3.5" /> {t("productCard.chooseOptions")}
           </Link>
@@ -108,7 +109,7 @@ export function ProductCard({ product }: { product: Product }) {
           <button
             onClick={handleAdd}
             disabled={unavailable}
-            className="mt-4 inline-flex items-center justify-center gap-2 bg-ink text-primary-foreground font-mono text-[11px] uppercase tracking-widest py-2.5 border border-ink transition-colors hover:bg-accent hover:text-accent-foreground hover:border-accent disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-ink disabled:hover:text-primary-foreground"
+            className="mt-3 inline-flex items-center justify-center gap-1.5 whitespace-nowrap bg-ink text-primary-foreground font-mono text-[10px] uppercase tracking-[0.16em] py-2 border border-ink transition-colors hover:bg-accent hover:text-accent-foreground hover:border-accent sm:text-[11px] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-ink disabled:hover:text-primary-foreground"
             aria-label={t("productCard.addLabel", { product: product.name })}
           >
             {added ? (

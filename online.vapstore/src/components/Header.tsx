@@ -19,7 +19,7 @@ import {
 } from "@/lib/catalog";
 import { useCatalog } from "@/lib/catalog-context";
 import logo from "@/assets/logo-cop.png";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, truncateProductName } from "@/lib/format";
 import { useCart } from "@/lib/cart";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
@@ -560,8 +560,11 @@ function MegaMenu({
                   <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted truncate">
                     {p.brand}
                   </div>
-                  <div className="mt-0.5 font-display text-[11px] leading-tight line-clamp-2 min-h-[2rem]">
-                    {p.name}
+                  <div
+                    className="mt-0.5 font-display text-[11px] leading-tight line-clamp-2 min-h-[2rem]"
+                    title={p.name}
+                  >
+                    {truncateProductName(p.name)}
                   </div>
                   <div className="mt-1 font-display text-xs">{formatPrice(p.price)}</div>
                 </div>

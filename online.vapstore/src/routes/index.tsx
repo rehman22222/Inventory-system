@@ -15,7 +15,7 @@ import {
 import { getHero } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
 import { HeroCarousel } from "@/components/HeroCarousel";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, truncateProductName } from "@/lib/format";
 import { cldProductCardImage } from "@/lib/img";
 
 function EventsHeading({
@@ -92,8 +92,11 @@ function EventsHeading({
                   <div className="font-mono text-[7px] uppercase tracking-widest text-ink-muted sm:text-[9px]">
                     {item.kind}
                   </div>
-                  <div className="mt-1 line-clamp-2 font-display text-sm leading-none sm:text-lg">
-                    {item.title}
+                  <div
+                    className="mt-1 line-clamp-2 font-display text-sm leading-none sm:text-lg"
+                    title={item.title}
+                  >
+                    {item.kind === "product" ? truncateProductName(item.title) : item.title}
                   </div>
                   {item.kind === "product" && typeof item.price === "number" && (
                     <div className="mt-2 flex items-center gap-1.5 sm:mt-3 sm:gap-2">
@@ -311,8 +314,11 @@ function Home() {
                       <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted">
                         {product.brand}
                       </div>
-                      <div className="truncate font-display text-xs leading-tight">
-                        {product.name}
+                      <div
+                        className="truncate font-display text-xs leading-tight"
+                        title={product.name}
+                      >
+                        {truncateProductName(product.name)}
                       </div>
                       <div className="mt-2 flex items-baseline gap-2">
                         <span className="font-display text-lg">{formatPrice(dealPrice)}</span>

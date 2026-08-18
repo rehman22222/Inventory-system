@@ -6,6 +6,8 @@ import { useCatalog } from "@/lib/catalog-context";
 import { subscribeNewsletter } from "@/lib/catalog-api";
 import logo from "@/assets/logo-cop.png";
 
+type SocialIcon = (props: { className?: string }) => ReactNode;
+
 const footerBrandLogos = [
   { src: "/brand-marquee/elfbar.png", alt: "Elf Bar" },
   { src: "/brand-marquee/ivg.png", alt: "IVG" },
@@ -42,8 +44,28 @@ export function Footer() {
 
   const categoryLinks = [...categories].sort((a, b) => a.name.localeCompare(b.name));
   const footerLinks = settings.footerLinks;
-  const informationLinks = ["contact", "terms", "privacy", "refunds", "about"] as const;
-  const featureLinks = ["bestSellers", "whyECigarettes", "deals", "blog"] as const;
+  // Both link columns are filled from one ordered list rather than from
+  // "information" and "features" separately: whichever pages a shop turns on,
+  // the two columns come out within one row of each other instead of, say, five
+  // against three.
+  const pageLinkKeys = [
+    "contact",
+    "terms",
+    "privacy",
+    "refunds",
+    "about",
+    "bestSellers",
+    "whyECigarettes",
+    "deals",
+    "blog",
+  ] as const;
+  const pageLinks = pageLinkKeys
+    .map((key) => footerLinks[key])
+    .filter((link) => link?.enabled && link.label && link.href);
+  const pageColumns = [
+    pageLinks.slice(0, Math.ceil(pageLinks.length / 2)),
+    pageLinks.slice(Math.ceil(pageLinks.length / 2)),
+  ];
   const businessRows = [
     ["Registered name", settings.business.legalName],
     ["Trading name", settings.business.tradingName],
@@ -84,17 +106,17 @@ export function Footer() {
   return (
     <footer className="mt-16 overflow-hidden bg-black text-white">
       <FooterBrandMarquee />
-      <div className="container-x grid gap-9 py-12 text-center md:grid-cols-[1.05fr_1.35fr_0.9fr_0.9fr_1.25fr] md:text-left lg:gap-10">
-        <div className="flex flex-col items-center md:items-start">
+      <div className="container-x grid grid-cols-2 gap-x-6 gap-y-6 py-8 text-center md:grid-cols-[1.05fr_1.35fr_0.9fr_0.9fr_1.25fr] md:gap-9 md:py-12 md:text-left lg:gap-10">
+        <div className="col-span-2 flex flex-col items-center md:col-span-1 md:items-start">
           <Link
             to="/"
-            className="mb-6 flex justify-center md:justify-start"
+            className="mb-4 flex justify-center md:mb-6 md:justify-start"
             aria-label="Cliffs of Puff home"
           >
             <img
               src={logo}
               alt="Cliffs of Puff"
-              className="h-28 w-auto object-contain drop-shadow-[0_10px_30px_rgba(198,255,46,0.18)]"
+              className="h-20 w-auto object-contain drop-shadow-[0_10px_30px_rgba(198,255,46,0.18)] md:h-28"
               loading="lazy"
             />
           </Link>
@@ -110,7 +132,7 @@ export function Footer() {
             </p>
           )}
           {settings.footer.openingHours && (
-            <p className="mt-3 text-sm text-white/85">{settings.footer.openingHours}</p>
+            <p className="mt-2 text-sm text-white/85 md:mt-3">{settings.footer.openingHours}</p>
           )}
           {settings.footer.supportPhone && (
             <a
@@ -127,7 +149,7 @@ export function Footer() {
           )}
         </div>
 
-        <ul className="grid grid-cols-2 gap-x-7 gap-y-3.5 text-sm">
+        <ul className="hidden grid-cols-2 gap-x-7 gap-y-3.5 text-sm md:grid">
           {categoryLinks.map((category) => (
             <FooterLink key={category.slug}>
               <Link to="/category/$slug" params={{ slug: category.slug }}>
@@ -137,19 +159,17 @@ export function Footer() {
           ))}
         </ul>
 
-        <FooterColumn>
-          {informationLinks.map((key) => (
-            <ConfiguredFooterLink key={key} link={footerLinks[key]} />
-          ))}
-        </FooterColumn>
+        {pageColumns.map((column, index) => (
+          <FooterColumn key={index}>
+            {column.map((link) => (
+              <ConfiguredFooterLink key={link.label} link={link} />
+            ))}
+          </FooterColumn>
+        ))}
 
-        <FooterColumn>
-          {featureLinks.map((key) => (
-            <ConfiguredFooterLink key={key} link={footerLinks[key]} />
-          ))}
-        </FooterColumn>
+        {social.length > 0 && <SocialRow social={social} className="col-span-2 mt-1 md:hidden" />}
 
-        <div>
+        <div className="col-span-2 md:col-span-1">
           <form
             className="mx-auto flex max-w-xs border border-white/60 md:mx-0"
             onSubmit={submitNewsletter}
@@ -197,36 +217,11 @@ export function Footer() {
             </ul>
           )}
 
-          {/* A row of marks rather than a stack of "Follow us on X" lines: four
-              networks as sentences ran taller than the column beside them, and
-              the icons already say which is which. Only the ones the shop has
-              actually set appear — see `social` above. */}
-          {social.length > 0 && (
-            <div className="mt-6">
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/50">
-                {t("footer.followUs", { defaultValue: "Follow us" })}
-              </p>
-              <div className="mt-3 flex items-center justify-center gap-2.5 md:justify-start">
-                {social.map(({ key, label, href, Icon }) => (
-                  <a
-                    key={key}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={label}
-                    title={label}
-                    className="grid h-10 w-10 place-items-center rounded-full border border-white/25 text-white transition-colors hover:border-accent hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <Icon className="h-[18px] w-[18px]" />
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
+          {social.length > 0 && <SocialRow social={social} className="mt-6 hidden md:block" />}
         </div>
       </div>
 
-      <div className="container-x grid items-center gap-5 border-t border-white/10 py-7 text-center text-sm md:grid-cols-2">
+      <div className="container-x grid items-center gap-4 border-t border-white/10 py-5 text-center text-sm md:grid-cols-2 md:gap-5 md:py-7">
         <div className="order-1 flex justify-center gap-5 md:justify-start">
           {settings.footer.paymentImage && (
             <img
@@ -248,7 +243,7 @@ export function Footer() {
           )}
         </div>
       </div>
-      <div className="border-t border-white/10 px-5 py-5 text-center">
+      <div className="border-t border-white/10 px-5 py-4 text-center md:py-5">
         <p className="mx-auto max-w-[20rem] text-xs leading-5 text-white/65 sm:max-w-none">
           &copy; {year} Copyright Cliffs of Puff
           <span className="hidden sm:inline">&nbsp; | &nbsp;</span>
@@ -291,8 +286,45 @@ function FooterBrandMarquee() {
   );
 }
 
+/* A row of marks rather than a stack of "Follow us on X" lines: four networks as
+   sentences ran taller than the column beside them, and the icons already say
+   which is which. Only the ones the shop has actually set are passed in. On a
+   phone it is its own band under the page links; on desktop it stays tucked
+   under the registered details. */
+function SocialRow({
+  social,
+  className = "",
+}: {
+  social: { key: string; label: string; href: string; Icon: SocialIcon }[];
+  className?: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className={className}>
+      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/50">
+        {t("footer.followUs", { defaultValue: "Follow us" })}
+      </p>
+      <div className="mt-2.5 flex items-center justify-center gap-2.5 md:justify-start">
+        {social.map(({ key, label, href, Icon }) => (
+          <a
+            key={key}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={label}
+            title={label}
+            className="grid h-9 w-9 place-items-center rounded-full border border-white/25 md:h-10 md:w-10 text-white transition-colors hover:border-accent hover:bg-accent hover:text-accent-foreground"
+          >
+            <Icon className="h-[18px] w-[18px]" />
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FooterColumn({ children }: { children: ReactNode }) {
-  return <ul className="space-y-5 text-sm">{children}</ul>;
+  return <ul className="space-y-3 text-sm md:space-y-5">{children}</ul>;
 }
 
 function FooterLink({ children }: { children: ReactNode }) {
