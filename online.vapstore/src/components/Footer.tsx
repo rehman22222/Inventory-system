@@ -45,7 +45,7 @@ export function Footer() {
   const informationLinks = ["contact", "terms", "privacy", "refunds", "about"] as const;
   const featureLinks = ["bestSellers", "whyECigarettes", "deals", "blog"] as const;
   const businessRows = [
-    ["Registered / legal name", settings.business.legalName],
+    ["Registered name", settings.business.legalName],
     ["Trading name", settings.business.tradingName],
     ["Company registration no.", settings.business.companyNumber],
     ["VAT registration no.", settings.business.vatNumber],
@@ -150,22 +150,6 @@ export function Footer() {
         </FooterColumn>
 
         <div>
-          {/* The shop's registered details sit with the newsletter rather than in
-              a band of their own underneath: they belong to the same column of
-              formalities, and a full-width strip of small print pushed the
-              payment and age marks further from the content they qualify.
-              Nothing renders until the shop fills these in. */}
-          {businessRows.length > 0 && (
-            <ul className="mb-6 space-y-1 text-xs leading-5 text-white/70">
-              {businessRows.map(([label, value]) => (
-                <li key={label}>
-                  <span className="text-white/50">{label}:</span>{" "}
-                  <span className="break-words text-white/85">{value}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-
           <form
             className="mx-auto flex max-w-xs border border-white/60 md:mx-0"
             onSubmit={submitNewsletter}
@@ -199,6 +183,20 @@ export function Footer() {
               {newsletterMessage}
             </p>
           )}
+          {/* The registered details follow the newsletter: signing up is what the
+              column is for, and the small print qualifies it rather than
+              introducing it. Nothing renders until the shop fills these in. */}
+          {businessRows.length > 0 && (
+            <ul className="mt-6 space-y-1 text-xs leading-5 text-white/70">
+              {businessRows.map(([label, value]) => (
+                <li key={label}>
+                  <span className="text-white/50">{label}:</span>{" "}
+                  <span className="break-words text-white/85">{value}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
           {/* A row of marks rather than a stack of "Follow us on X" lines: four
               networks as sentences ran taller than the column beside them, and
               the icons already say which is which. Only the ones the shop has
