@@ -350,7 +350,21 @@
     "costRateHint": "Use your bank's rate from the payment, not an estimate.",
     "costConverted": "{{amount}} {{from}} = {{result}} {{to}} — this is what gets stored",
     "costRateFromSettings": "Settings: {{rate}} (leave blank to use it)",
-    "costRateMissing": "No rate saved for {{currency}} — set one in Settings, or type one here."
+    "costRateMissing": "No rate saved for {{currency}} — set one in Settings, or type one here.",
+    "deleting": "Deleting…",
+    "deleteConfirmTitle": "Delete this product?",
+    "deleteConfirmIntro": "This product is still in use. Deleting it will also remove it from everywhere below, and this cannot be undone.",
+    "deleteConfirmPrompt": "Type {{word}} to confirm",
+    "deleteConfirmAction": "Delete anyway",
+    "deleteBlockerOnline": "It will be taken off the online store ({{count}} listing).",
+    "deleteBlockerOnline_other": "It will be taken off the online store ({{count}} listings).",
+    "deleteBlockerDeals": "It will be removed from {{count}} deal.",
+    "deleteBlockerDeals_other": "It will be removed from {{count}} deals.",
+    "deleteBlockerSales": "It appears on {{count}} past sale.",
+    "deleteBlockerSales_other": "It appears on {{count}} past sales.",
+    "deleteBlockerSalesNote": "Old receipts will still print, but you will not be able to refund this item back into stock.",
+    "deleteBlockerStranded": "that page also carries {{count}} other flavour, which will stop being sold online",
+    "deleteBlockerStranded_other": "that page also carries {{count}} other flavours, which will stop being sold online"
   },
   "categories": {
     "totalCategory": "Total Category",

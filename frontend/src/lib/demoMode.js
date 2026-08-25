@@ -296,7 +296,8 @@ export const handleDemoAxiosRequest = (config = {}) => {
   }
 
   if (method === "delete" && url.includes("product/removeproduct/")) {
-    const productId = url.split("product/removeproduct/")[1];
+    // The real route now takes ?confirm=DELETE; keep the id, drop the query.
+    const productId = url.split("product/removeproduct/")[1].split("?")[0];
     state.products = state.products.filter((product) => product._id !== productId);
     saveDemoState(state);
     return { response: response(config, { success: true }) };

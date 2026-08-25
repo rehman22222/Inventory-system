@@ -350,7 +350,21 @@
     "costRateHint": "اندازے کے بجائے ادائیگی پر اپنے بینک کی شرح استعمال کریں۔",
     "costConverted": "{{amount}} {{from}} = {{result}} {{to}} — یہی محفوظ ہوگا",
     "costRateFromSettings": "سیٹنگز: {{rate}} (خالی چھوڑیں تو یہی چلے گا)",
-    "costRateMissing": "{{currency}} کے لیے کوئی شرح محفوظ نہیں — سیٹنگز میں مقرر کریں یا یہاں لکھیں۔"
+    "costRateMissing": "{{currency}} کے لیے کوئی شرح محفوظ نہیں — سیٹنگز میں مقرر کریں یا یہاں لکھیں۔",
+    "deleting": "حذف ہو رہا ہے…",
+    "deleteConfirmTitle": "کیا یہ پروڈکٹ حذف کریں؟",
+    "deleteConfirmIntro": "یہ پروڈکٹ ابھی استعمال میں ہے۔ حذف کرنے پر یہ نیچے دی گئی ہر جگہ سے بھی ہٹ جائے گا، اور اسے واپس نہیں لایا جا سکتا۔",
+    "deleteConfirmPrompt": "تصدیق کے لیے {{word}} لکھیں",
+    "deleteConfirmAction": "پھر بھی حذف کریں",
+    "deleteBlockerOnline": "یہ آن لائن سٹور سے ہٹا دیا جائے گا ({{count}} لسٹنگ)۔",
+    "deleteBlockerOnline_other": "یہ آن لائن سٹور سے ہٹا دیا جائے گا ({{count}} لسٹنگز)۔",
+    "deleteBlockerDeals": "یہ {{count}} ڈیل سے نکال دیا جائے گا۔",
+    "deleteBlockerDeals_other": "یہ {{count}} ڈیلز سے نکال دیا جائے گا۔",
+    "deleteBlockerSales": "یہ {{count}} پرانی سیل میں موجود ہے۔",
+    "deleteBlockerSales_other": "یہ {{count}} پرانی سیلز میں موجود ہے۔",
+    "deleteBlockerSalesNote": "پرانی رسیدیں پھر بھی پرنٹ ہوں گی، مگر آپ اس آئٹم کو واپس سٹاک میں ریفنڈ نہیں کر سکیں گے۔",
+    "deleteBlockerStranded": "اُس صفحے پر {{count}} اور فلیور بھی ہے، جو آن لائن بکنا بند ہو جائے گا",
+    "deleteBlockerStranded_other": "اُس صفحے پر {{count}} اور فلیورز بھی ہیں، جو آن لائن بکنا بند ہو جائیں گے"
   },
   "categories": {
     "totalCategory": "کل زمرہ",

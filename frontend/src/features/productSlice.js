@@ -31,14 +31,30 @@ export const Addproduct=createAsyncThunk('product/addproduct',async(product,{rej
   })
 
 
-  export const Removeproduct=createAsyncThunk('product/removeproduct',async(productId,{rejectWithValue})=>{
+  // Accepts a bare id (the long-standing shape) or { productId, confirm }. The
+  // server refuses a product that is still on the storefront or in a deal until
+  // `confirm` carries the typed word back, so the rejection has to hand the whole
+  // payload on — the page needs `needsConfirmation` and `blockers`, not just a
+  // message to toast.
+  export const Removeproduct=createAsyncThunk('product/removeproduct',async(arg,{rejectWithValue})=>{
+    const productId = typeof arg === "string" ? arg : arg?.productId;
+    const confirm = typeof arg === "string" ? undefined : arg?.confirm;
+
     try {
-       const response=await axiosInstance.delete(`product/removeproduct/${productId}`,productId,{ withCredentials: true,})
+       const response=await axiosInstance.delete(
+         `product/removeproduct/${productId}${confirm ? `?confirm=${encodeURIComponent(confirm)}` : ""}`,
+         { withCredentials: true },
+       )
        return response.data;
-  
-      
+
+
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Product remove failed");
+      const data = error.response?.data;
+      return rejectWithValue(
+        data && typeof data === "object"
+          ? { ...data, message: data.message || "Product remove failed" }
+          : { message: "Product remove failed" },
+      );
     }
   })
 
@@ -175,7 +191,11 @@ extraReducers:(builder)=>{
 
   .addCase(Removeproduct.fulfilled, (state, action) => {
     state.isproductremove = false;
-    state.getallproduct = state.getallproduct.filter(product => product._id !== action.meta.arg);
+    // The thunk takes either an id or { productId, confirm }; read the id out of
+    // whichever shape was dispatched, or the row silently stays on screen.
+    const removedId =
+      typeof action.meta.arg === "string" ? action.meta.arg : action.meta.arg?.productId;
+    state.getallproduct = state.getallproduct.filter(product => product._id !== removedId);
 
   })
   

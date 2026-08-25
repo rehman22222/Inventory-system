@@ -16,6 +16,7 @@ import {
 import { gettingallCategory } from "../features/categorySlice";
 import { gettingStore } from "../features/storeSlice";
 import GenerateBarcodesModal from "../Components/GenerateBarcodesModal";
+import ConfirmDeleteProductModal from "../Components/ConfirmDeleteProductModal";
 import DealsModal from "../Components/DealsModal";
 import ReportButton from "../Components/ReportButton";
 import toast from "react-hot-toast";
@@ -171,12 +172,38 @@ function Productpage() {
   // Shelf label is optional, but if given it must be letters/numbers.
   const shelfLabelValid = shelfLabel === "" || /^[A-Za-z0-9][A-Za-z0-9\- ]*$/.test(shelfLabel);
 
-  const handleremove = async (productId) => {
-    dispatch(Removeproduct(productId))
-      .unwrap()
-      .then(() => toast.success(t("products.removed")))
-      .catch((error) => toast.error(error || t("products.removeFail")));
+  // A product nothing points at goes straight away. One that is still on the
+  // storefront, in a deal, or on past sales comes back as a 409 describing what
+  // else would go with it — that becomes the confirmation dialog rather than a
+  // toast the user can only read and lose.
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const removeProduct = async (productId, confirm) => {
+    setDeleting(true);
+    try {
+      const result = await dispatch(
+        Removeproduct(confirm ? { productId, confirm } : productId),
+      ).unwrap();
+      setPendingDelete(null);
+      toast.success(t("products.removed"));
+      // Listings and deals may have been edited on the way out; the storefront
+      // side of the screen is stale until it is asked again.
+      if (result?.cleaned?.listingsDeleted || result?.cleaned?.dealsEdited) {
+        dispatch(gettingallproducts());
+      }
+    } catch (error) {
+      if (error?.needsConfirmation) {
+        setPendingDelete({ ...error, productId });
+      } else {
+        toast.error(error?.message || t("products.removeFail"));
+      }
+    } finally {
+      setDeleting(false);
+    }
   };
+
+  const handleremove = (productId) => removeProduct(productId);
 
   const handleEditSubmit = (event) => {
     event.preventDefault();
@@ -591,6 +618,15 @@ function Productpage() {
 
         {showDeals && canManageDeals && (
           <DealsModal onClose={() => setShowDeals(false)} />
+        )}
+
+        {pendingDelete && (
+          <ConfirmDeleteProductModal
+            details={pendingDelete}
+            busy={deleting}
+            onConfirm={(word) => removeProduct(pendingDelete.productId, word)}
+            onClose={() => setPendingDelete(null)}
+          />
         )}
 
         {/* Product list */}

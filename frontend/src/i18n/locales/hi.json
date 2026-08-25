@@ -350,7 +350,21 @@
     "costRateHint": "अनुमान के बजाय भुगतान पर अपने बैंक की दर उपयोग करें।",
     "costConverted": "{{amount}} {{from}} = {{result}} {{to}} — यही संग्रहीत होगा",
     "costRateFromSettings": "सेटिंग्स: {{rate}} (खाली छोड़ें तो यही लगेगा)",
-    "costRateMissing": "{{currency}} के लिए कोई दर सहेजी नहीं — सेटिंग्स में तय करें या यहाँ लिखें।"
+    "costRateMissing": "{{currency}} के लिए कोई दर सहेजी नहीं — सेटिंग्स में तय करें या यहाँ लिखें।",
+    "deleting": "हटाया जा रहा है…",
+    "deleteConfirmTitle": "क्या यह उत्पाद हटाएं?",
+    "deleteConfirmIntro": "यह उत्पाद अभी इस्तेमाल में है। हटाने पर यह नीचे दी गई हर जगह से भी हट जाएगा, और इसे वापस नहीं लाया जा सकता।",
+    "deleteConfirmPrompt": "पुष्टि के लिए {{word}} टाइप करें",
+    "deleteConfirmAction": "फिर भी हटाएं",
+    "deleteBlockerOnline": "इसे ऑनलाइन स्टोर से हटा दिया जाएगा ({{count}} लिस्टिंग)।",
+    "deleteBlockerOnline_other": "इसे ऑनलाइन स्टोर से हटा दिया जाएगा ({{count}} लिस्टिंग)।",
+    "deleteBlockerDeals": "इसे {{count}} डील से निकाल दिया जाएगा।",
+    "deleteBlockerDeals_other": "इसे {{count}} डील से निकाल दिया जाएगा।",
+    "deleteBlockerSales": "यह {{count}} पुरानी बिक्री में मौजूद है।",
+    "deleteBlockerSales_other": "यह {{count}} पुरानी बिक्री में मौजूद है।",
+    "deleteBlockerSalesNote": "पुरानी रसीदें फिर भी प्रिंट होंगी, लेकिन आप इस आइटम को वापस स्टॉक में रिफंड नहीं कर पाएंगे।",
+    "deleteBlockerStranded": "उस पेज पर {{count}} और फ्लेवर भी है, जो ऑनलाइन बिकना बंद हो जाएगा",
+    "deleteBlockerStranded_other": "उस पेज पर {{count}} और फ्लेवर भी हैं, जो ऑनलाइन बिकना बंद हो जाएंगे"
   },
   "categories": {
     "totalCategory": "कुल श्रेणी",

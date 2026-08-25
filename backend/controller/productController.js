@@ -3,6 +3,8 @@ const zlib = require("zlib");
 const Product=require('../models/Productmodel')
 const Category=require('../models/ Categorymodel')
 const OnlineListing=require('../models/OnlineListingmodel')
+const Sale=require('../models/Salesmodel')
+const Deal=require('../models/Dealmodel')
 
 const logActivity=require('../libs/logger')
 const { uploadImage, deleteImage } = require('../libs/cloudinaryImage')
@@ -261,10 +263,107 @@ module.exports.quickAddProduct = async (req, res) => {
 
     module.exports.RemoveProduct = async (req, res) => {
       try {
-        const { productId } = req.params; 
+        const { productId } = req.params;
         const userId=req.user._id;
         const ipAddress=req.ip
-    
+
+        if (!mongoose.isValidObjectId(productId)) {
+          return res.status(400).json({ message: "Invalid product id" });
+        }
+
+        const doomed = await Product.findById(productId);
+        if (!doomed) {
+          return res.status(404).json({ message: "Product not found!" });
+        }
+
+        // Deleting a product that something else still points at is not wrong,
+        // but it is never something to do by accident: it takes the item off the
+        // storefront too. So the first attempt reports what else it would take
+        // with it, and only a typed confirmation goes through.
+        const [listings, soldCount, deals] = await Promise.all([
+          OnlineListing.find({
+            $or: [{ product: productId }, { "variants.product": productId }],
+          }).select("title product variants").lean(),
+          Sale.countDocuments({ "products.product": productId }),
+          Deal.find({ "items.product": productId }).select("name items mode groupQuantity").lean(),
+        ]);
+
+        const blockers = [];
+        if (listings.length) {
+          // A listing cannot outlive the product it is built on, so deleting a
+          // master takes its whole shop page — and every flavour hanging off it
+          // stops being buyable online. That is the part worth saying out loud.
+          const asMaster = listings.filter((l) => String(l.product) === String(productId));
+          const strandedVariants = asMaster.reduce(
+            (sum, l) => sum + (l.variants || []).filter((v) => String(v.product) !== String(productId)).length,
+            0,
+          );
+
+          blockers.push({
+            kind: "online",
+            count: listings.length,
+            names: listings.map((l) => l.title).filter(Boolean).slice(0, 5),
+            listingsRemoved: asMaster.length,
+            strandedVariants,
+          });
+        }
+        if (soldCount) blockers.push({ kind: "sales", count: soldCount });
+        if (deals.length) {
+          blockers.push({ kind: "deals", count: deals.length, names: deals.map((d) => d.name) });
+        }
+
+        // The word is deliberately short and fixed: this gets typed on a
+        // touchscreen keyboard, where retyping a long product name is its own
+        // kind of accident.
+        const CONFIRM_WORD = "DELETE";
+        const confirmed =
+          String(req.query.confirm || req.body?.confirm || "").trim().toUpperCase() === CONFIRM_WORD;
+
+        if (blockers.length && !confirmed) {
+          return res.status(409).json({
+            needsConfirmation: true,
+            confirmWord: CONFIRM_WORD,
+            product: doomed.name,
+            blockers,
+            message: `"${doomed.name}" is still in use. Confirm to delete it and remove it from everywhere it appears.`,
+          });
+        }
+
+        // Confirmed: take the references with it rather than leaving them
+        // dangling. A listing whose master product is gone has nothing left to
+        // sell, so it goes; a variant is just pulled out of its listing.
+        const cleaned = { listingsDeleted: 0, variantsPulled: 0, dealsEdited: 0, dealsDisabled: 0 };
+        if (blockers.length) {
+          const pulled = await OnlineListing.updateMany(
+            { "variants.product": productId },
+            { $pull: { variants: { product: productId } } },
+          );
+          cleaned.variantsPulled = pulled.modifiedCount || 0;
+
+          const removed = await OnlineListing.deleteMany({ product: productId });
+          cleaned.listingsDeleted = removed.deletedCount || 0;
+
+          if (deals.length) {
+            const edited = await Deal.updateMany(
+              { "items.product": productId },
+              { $pull: { items: { product: productId } } },
+            );
+            cleaned.dealsEdited = edited.modifiedCount || 0;
+
+            // A deal that no longer has enough products to be a deal must not
+            // stay switched on at the till.
+            const survivors = await Deal.find({ _id: { $in: deals.map((d) => d._id) } }).select("items mode groupQuantity active");
+            for (const deal of survivors) {
+              const units = (deal.items || []).reduce((sum, i) => sum + Math.max(1, Number(i.quantity || 1)), 0);
+              const stillValid = deal.mode === "mix" ? (deal.items || []).length > 0 : units >= 2;
+              if (!stillValid && deal.active) {
+                await Deal.updateOne({ _id: deal._id }, { $set: { active: false } });
+                cleaned.dealsDisabled += 1;
+              }
+            }
+          }
+        }
+
         const deletedProduct = await Product.findByIdAndDelete(productId);
 
         if (!deletedProduct) {
@@ -274,16 +373,29 @@ module.exports.quickAddProduct = async (req, res) => {
         // Remove its image from Cloudinary so we don't leave orphaned assets.
         await deleteImage(deletedProduct.image?.publicId);
 
+        // What went with it belongs in the log too — "why did this vanish from
+        // the website" is the question this record has to answer later.
+        const alsoRemoved = [
+          cleaned.listingsDeleted ? `${cleaned.listingsDeleted} online listing(s)` : null,
+          cleaned.variantsPulled ? `${cleaned.variantsPulled} listing variant(s)` : null,
+          cleaned.dealsEdited ? `${cleaned.dealsEdited} deal(s)` : null,
+          cleaned.dealsDisabled ? `${cleaned.dealsDisabled} deal(s) switched off` : null,
+        ].filter(Boolean);
+
         await logActivity({
           action: "Delete Product",
-          description: `Product ${deletedProduct.name}" was deleted.`,
+          description: `Product "${deletedProduct.name}" was deleted${alsoRemoved.length ? `, along with ${alsoRemoved.join(", ")}` : ""}.`,
           entity: "product",
           entityId: deletedProduct._id,
           userId: userId,
           ipAddress: ipAddress,
         });
-    
-        res.status(200).json({ message: "Product deleted successfully" });
+
+        res.status(200).json({
+          message: "Product deleted successfully",
+          product: deletedProduct.name,
+          cleaned,
+        });
     
       } catch (error) {
         res.status(500).json({ message: "Error deleting product", error: error.message });

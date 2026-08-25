@@ -350,7 +350,21 @@
     "costRateHint": "استخدم سعر مصرفك عند الدفع وليس تقديرًا.",
     "costConverted": "{{amount}} {{from}} = {{result}} {{to}} — هذا ما سيتم حفظه",
     "costRateFromSettings": "الإعدادات: {{rate}} (اتركه فارغًا لاستخدامه)",
-    "costRateMissing": "لا يوجد سعر محفوظ لـ {{currency}} — حدده في الإعدادات أو اكتبه هنا."
+    "costRateMissing": "لا يوجد سعر محفوظ لـ {{currency}} — حدده في الإعدادات أو اكتبه هنا.",
+    "deleting": "جارٍ الحذف…",
+    "deleteConfirmTitle": "هل تريد حذف هذا المنتج؟",
+    "deleteConfirmIntro": "هذا المنتج ما زال قيد الاستخدام. حذفه سيزيله أيضًا من كل مكان أدناه، ولا يمكن التراجع عن ذلك.",
+    "deleteConfirmPrompt": "اكتب {{word}} للتأكيد",
+    "deleteConfirmAction": "احذف على أي حال",
+    "deleteBlockerOnline": "سيتم سحبه من المتجر الإلكتروني ({{count}} إدراج).",
+    "deleteBlockerOnline_other": "سيتم سحبه من المتجر الإلكتروني ({{count}} إدراجات).",
+    "deleteBlockerDeals": "سيتم إزالته من {{count}} عرض.",
+    "deleteBlockerDeals_other": "سيتم إزالته من {{count}} عروض.",
+    "deleteBlockerSales": "يظهر في {{count}} عملية بيع سابقة.",
+    "deleteBlockerSales_other": "يظهر في {{count}} عمليات بيع سابقة.",
+    "deleteBlockerSalesNote": "ستظل الإيصالات القديمة تُطبع، لكن لن تتمكن من إرجاع هذا الصنف إلى المخزون.",
+    "deleteBlockerStranded": "تحتوي تلك الصفحة أيضًا على {{count}} نكهة أخرى ستتوقف عن البيع عبر الإنترنت",
+    "deleteBlockerStranded_other": "تحتوي تلك الصفحة أيضًا على {{count}} نكهات أخرى ستتوقف عن البيع عبر الإنترنت"
   },
   "categories": {
     "totalCategory": "إجمالي الفئات",

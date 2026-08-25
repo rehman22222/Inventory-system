@@ -350,7 +350,21 @@
     "costRateHint": "Bain úsáid as ráta do bhainc ón íocaíocht, ní meastachán.",
     "costConverted": "{{amount}} {{from}} = {{result}} {{to}} — sin a stórálfar",
     "costRateFromSettings": "Socruithe: {{rate}} (fág folamh chun é a úsáid)",
-    "costRateMissing": "Níl aon ráta sábháilte do {{currency}} — socraigh ceann sna Socruithe, nó clóscríobh ceann anseo."
+    "costRateMissing": "Níl aon ráta sábháilte do {{currency}} — socraigh ceann sna Socruithe, nó clóscríobh ceann anseo.",
+    "deleting": "Á scriosadh…",
+    "deleteConfirmTitle": "Scrios an táirge seo?",
+    "deleteConfirmIntro": "Tá an táirge seo fós in úsáid. Má scriosann tú é, bainfear de gach áit thíos é freisin, agus ní féidir é sin a chur ar ais.",
+    "deleteConfirmPrompt": "Clóscríobh {{word}} le deimhniú",
+    "deleteConfirmAction": "Scrios mar sin féin",
+    "deleteBlockerOnline": "Bainfear den siopa ar líne é ({{count}} liostáil).",
+    "deleteBlockerOnline_other": "Bainfear den siopa ar líne é ({{count}} liostáil).",
+    "deleteBlockerDeals": "Bainfear as {{count}} margadh é.",
+    "deleteBlockerDeals_other": "Bainfear as {{count}} margadh é.",
+    "deleteBlockerSales": "Tá sé ar {{count}} díolachán a rinneadh cheana.",
+    "deleteBlockerSales_other": "Tá sé ar {{count}} díolachán a rinneadh cheana.",
+    "deleteBlockerSalesNote": "Priontálfar seanadmhálacha fós, ach ní bheidh tú in ann an mhír seo a aisíoc ar ais sa stoc.",
+    "deleteBlockerStranded": "tá {{count}} blas eile ar an leathanach sin freisin, agus stopfar á ndíol ar líne",
+    "deleteBlockerStranded_other": "tá {{count}} blas eile ar an leathanach sin freisin, agus stopfar á ndíol ar líne"
   },
   "categories": {
     "totalCategory": "Catagóir Iomlán",

@@ -350,7 +350,21 @@
     "costRateHint": "অনুমান নয়, পেমেন্টে আপনার ব্যাংকের হার ব্যবহার করুন।",
     "costConverted": "{{amount}} {{from}} = {{result}} {{to}} — এটিই সংরক্ষিত হবে",
     "costRateFromSettings": "সেটিংস: {{rate}} (ফাঁকা রাখলে এটিই ব্যবহৃত হবে)",
-    "costRateMissing": "{{currency}}-এর জন্য কোনো হার সংরক্ষিত নেই — সেটিংসে নির্ধারণ করুন বা এখানে লিখুন।"
+    "costRateMissing": "{{currency}}-এর জন্য কোনো হার সংরক্ষিত নেই — সেটিংসে নির্ধারণ করুন বা এখানে লিখুন।",
+    "deleting": "মুছে ফেলা হচ্ছে…",
+    "deleteConfirmTitle": "এই পণ্যটি মুছবেন?",
+    "deleteConfirmIntro": "এই পণ্যটি এখনও ব্যবহৃত হচ্ছে। মুছে ফেললে এটি নিচের প্রতিটি জায়গা থেকেও সরে যাবে, এবং এটি আর ফেরানো যাবে না।",
+    "deleteConfirmPrompt": "নিশ্চিত করতে {{word}} টাইপ করুন",
+    "deleteConfirmAction": "তবুও মুছুন",
+    "deleteBlockerOnline": "এটি অনলাইন স্টোর থেকে সরিয়ে নেওয়া হবে ({{count}}টি লিস্টিং)।",
+    "deleteBlockerOnline_other": "এটি অনলাইন স্টোর থেকে সরিয়ে নেওয়া হবে ({{count}}টি লিস্টিং)।",
+    "deleteBlockerDeals": "এটি {{count}}টি ডিল থেকে সরানো হবে।",
+    "deleteBlockerDeals_other": "এটি {{count}}টি ডিল থেকে সরানো হবে।",
+    "deleteBlockerSales": "এটি {{count}}টি পুরোনো বিক্রয়ে রয়েছে।",
+    "deleteBlockerSales_other": "এটি {{count}}টি পুরোনো বিক্রয়ে রয়েছে।",
+    "deleteBlockerSalesNote": "পুরোনো রসিদ এখনও প্রিন্ট হবে, তবে আপনি এই আইটেমটি স্টকে ফেরত রিফান্ড করতে পারবেন না।",
+    "deleteBlockerStranded": "ওই পেজে আরও {{count}}টি ফ্লেভার আছে, যেগুলো অনলাইনে বিক্রি বন্ধ হয়ে যাবে",
+    "deleteBlockerStranded_other": "ওই পেজে আরও {{count}}টি ফ্লেভার আছে, যেগুলো অনলাইনে বিক্রি বন্ধ হয়ে যাবে"
   },
   "categories": {
     "totalCategory": "মোট বিভাগ",
