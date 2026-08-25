@@ -38,8 +38,11 @@ function applicableDeals(cartMap, deals) {
     const products = [];
 
     if (deal.mode === "mix") {
-      // Pick-any-N: the shopper mixes flavours freely, so the basket is flattened
-      // into individual units and only the count matters.
+      // Pick-any-N is a THRESHOLD, not a repeating set. Once the basket holds
+      // enough of the chosen products the offer is on, and everything after
+      // that stays in it — a tenth item falling back to full price because it
+      // did not complete another group of three is exactly what a shopper
+      // reads as the till cheating them.
       const need = Math.floor(Number(deal.groupQuantity || 0));
       if (need < 2) continue;
 
@@ -52,14 +55,20 @@ function applicableDeals(cartMap, deals) {
         for (let i = 0; i < have; i += 1) units.push(Number(line?.price || 0));
       }
 
-      sets = Math.floor(units.length / need);
-      if (sets < 1) continue;
+      if (units.length < need) continue;
+      sets = 1; // the offer lands once, however far past the threshold they go
 
-      // Dearest first. A shopper who bought a €9 and a €5 of the same offer
-      // expects the deal on the €9 — the other way round reads as a short-change
-      // and is the complaint every mix-and-match till eventually gets.
+      // Dearest first. A shopper who bought a EUR 9 and a EUR 5 of the same
+      // offer expects the deal on the EUR 9 — the other way round reads as a
+      // short-change and is the complaint every mix-and-match till gets.
       units.sort((a, b) => b - a);
-      setValue = units.slice(0, sets * need).reduce((sum, price) => sum + price, 0);
+
+      // A set price can only price the units it names; an amount or a
+      // percentage comes off everything that qualified.
+      setValue =
+        deal.discountType === "setPrice"
+          ? units.slice(0, need).reduce((sum, price) => sum + price, 0)
+          : units.reduce((sum, price) => sum + price, 0);
     } else {
       let complete = Infinity;
       let oneSet = 0;

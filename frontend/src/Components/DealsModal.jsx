@@ -60,14 +60,29 @@ function DealsModal({ onClose }) {
   // Everything the filter finds — the list on screen is capped, but "add all"
   // must not be: a pick-any deal on ELFLIQ means all 33 flavours, not the first
   // hundred rows that happened to render.
+  //
+  // Matching is word-by-word and space-blind, because a deal built from a
+  // half-matching search is a deal that quietly fails at the till. This
+  // catalogue writes the same strength three ways — "10mg/ml", "10 Mg/ml",
+  // "10 mg" — so a plain substring search on "ELFLIQ 10mg" found 24 of the 33
+  // flavours and the cashier scanning one of the other nine saw no discount.
   const allMatches = useMemo(() => {
-    const value = query.trim().toLowerCase();
+    const squash = (value) => String(value || "").toLowerCase().replace(/\s+/g, "");
+    const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+
     return products.filter((product) => {
       if (categoryId && String(product.Category?._id) !== String(categoryId)) return false;
-      if (!value) return true;
-      return (
-        product.name?.toLowerCase().includes(value) ||
-        product.barcode?.toLowerCase().includes(value)
+      if (!terms.length) return true;
+
+      const name = String(product.name || "").toLowerCase();
+      const barcode = String(product.barcode || "").toLowerCase();
+      const squashed = squash(product.name) + squash(product.barcode);
+
+      // Every word has to appear somewhere — order and spacing are the
+      // catalogue's business, not the person searching it.
+      return terms.every(
+        (term) =>
+          name.includes(term) || barcode.includes(term) || squashed.includes(squash(term)),
       );
     });
   }, [products, query, categoryId]);

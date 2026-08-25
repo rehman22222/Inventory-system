@@ -146,7 +146,7 @@ export const applicableDeals = (cart, deals) => {
     const products = [];
 
     if (deal.mode === "mix") {
-      // Pick-any-N: flatten to units, only the count decides.
+      // Pick-any-N is a THRESHOLD, not a repeating set — see libs/deals.js.
       const need = Math.floor(Number(deal.groupQuantity || 0));
       if (need < 2) return;
 
@@ -159,12 +159,14 @@ export const applicableDeals = (cart, deals) => {
         for (let i = 0; i < have; i += 1) units.push(Number(line?.price || 0));
       });
 
-      sets = Math.floor(units.length / need);
-      if (sets < 1) return;
+      if (units.length < need) return;
+      sets = 1;
 
-      // Dearest first — see libs/deals.js for why.
       units.sort((a, b) => b - a);
-      setValue = units.slice(0, sets * need).reduce((sum, price) => sum + price, 0);
+      setValue =
+        deal.discountType === "setPrice"
+          ? units.slice(0, need).reduce((sum, price) => sum + price, 0)
+          : units.reduce((sum, price) => sum + price, 0);
     } else {
       let complete = Infinity;
       let oneSet = 0;
