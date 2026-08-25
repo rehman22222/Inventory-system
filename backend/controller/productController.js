@@ -283,7 +283,7 @@ module.exports.quickAddProduct = async (req, res) => {
         const [listings, soldCount, deals] = await Promise.all([
           OnlineListing.find({
             $or: [{ product: productId }, { "variants.product": productId }],
-          }).select("title product variants").lean(),
+          }).select("webName seo.title slug product variants").lean(),
           Sale.countDocuments({ "products.product": productId }),
           Deal.find({ "items.product": productId }).select("name items mode groupQuantity").lean(),
         ]);
@@ -299,10 +299,15 @@ module.exports.quickAddProduct = async (req, res) => {
             0,
           );
 
+          // A listing is titled by `webName`; imported ones often leave it blank,
+          // so fall back the way the online-store page itself does rather than
+          // naming the page nothing at all.
+          const listingName = (l) => l.webName || l.seo?.title || l.slug || "";
+
           blockers.push({
             kind: "online",
             count: listings.length,
-            names: listings.map((l) => l.title).filter(Boolean).slice(0, 5),
+            names: listings.map(listingName).filter(Boolean).slice(0, 5),
             listingsRemoved: asMaster.length,
             strandedVariants,
           });
