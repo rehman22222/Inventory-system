@@ -219,7 +219,7 @@ function Supplierpage() {
         </div>
 
         {isFormVisible && (
-          <div className="fixed right-0 top-0 z-50 flex h-svh w-full max-w-2xl flex-col overflow-hidden border-l-2 border-base-300 bg-base-100 shadow-xl">
+          <div className="admin-drawer fixed right-0 top-0 z-50 flex h-svh w-full max-w-2xl flex-col overflow-hidden border-l-2 border-base-300 bg-base-100 shadow-xl">
             <div className="flex items-center justify-between border-b border-base-300 px-5 py-3">
               <h1 className="text-lg font-semibold">
                 {selectedSupplier ? t("suppliers.editSupplier") : t("suppliers.addSupplier")}

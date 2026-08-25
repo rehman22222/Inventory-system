@@ -567,3 +567,18 @@ body.osk-open .pos-modal-panel .unknown-barcode-summary {
     font-size: 12px;
   }
 }
+
+/* The admin slide-over drawers end above the on-screen keyboard.
+ *
+ * Products, Categories, Suppliers, Orders, Sales and Stock all open the same
+ * right-hand drawer, fixed at `h-svh`. `body.osk-open` adds bottom padding to
+ * push the page clear of the keyboard, but a fixed element is positioned
+ * against the viewport and ignores it — so the drawer stayed full height and
+ * the keyboard sat on top of its last fields and its save button.
+ *
+ * Each drawer already scrolls internally; it simply had no idea it was shorter.
+ * Giving it the real height hands those fields back to that existing scroller,
+ * which is why no markup had to change. */
+body.osk-open .admin-drawer {
+  height: calc(100dvh - var(--osk-height, 0px));
+}
