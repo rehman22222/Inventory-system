@@ -158,7 +158,21 @@ module.exports.checkout = async (req, res) => {
       .map((item) => item.product)
       .filter((id) => mongoose.isValidObjectId(id));
 
-    const foundProducts = await Product.find({ _id: { $in: basketIds } });
+    // The basket, the voucher and the active deals are three independent reads
+    // that used to run one after another. On a remote cluster each is its own
+    // ~100ms round trip, and the cashier waited through all three before the
+    // sale even started. Fetching them together costs one round trip instead of
+    // three. Nothing about the answers changes — the same queries, against the
+    // same data — and every check below still runs in the same order, so a bad
+    // cart still fails on exactly the message it failed on before.
+    const [foundProducts, prefetchedVoucher, activeDeals] = await Promise.all([
+      Product.find({ _id: { $in: basketIds } }),
+      voucherCode
+        ? Voucher.findOne({ code: String(voucherCode).trim().toUpperCase() })
+        : null,
+      Deal.find({ active: true }).lean(),
+    ]);
+
     const productsById = new Map(
       foundProducts.map((product) => [String(product._id), product]),
     );
@@ -215,9 +229,7 @@ module.exports.checkout = async (req, res) => {
     let voucherDiscount = 0;
 
     if (voucherCode) {
-      voucher = await Voucher.findOne({
-        code: String(voucherCode).trim().toUpperCase(),
-      });
+      voucher = prefetchedVoucher;
 
       if (!voucher) {
         return res.status(400).json({ message: "Voucher not found" });
@@ -256,7 +268,6 @@ module.exports.checkout = async (req, res) => {
       });
     }
 
-    const activeDeals = await Deal.find({ active: true }).lean();
     const dealResult = applicableDeals(cartMap, activeDeals);
 
     const dealRoom = Math.max(subtotal - voucherDiscount - manualDiscount, 0);
