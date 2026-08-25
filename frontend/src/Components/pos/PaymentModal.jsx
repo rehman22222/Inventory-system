@@ -12,6 +12,9 @@ import { currency, sanitizeDecimal } from "./posUtils";
 // The method buttons TAKE the payment rather than just selecting a method:
 // tapping one settles whatever is left on it. Type an amount first only when
 // splitting — €30 → CASH leaves €20, then CARD clears the rest in one tap.
+//
+// A tap that clears the bill exactly also CLOSES the sale — no second confirm.
+// A tap that leaves change does not: the cashier has to see what to hand back.
 function PaymentModal({ total, methods, onConfirm, onClose, busy }) {
   const { t } = useTranslation();
 
@@ -33,10 +36,23 @@ function PaymentModal({ total, methods, onConfirm, onClose, busy }) {
 
   const addPayment = (value, payMethod) => {
     const entry = Math.round(Number(value || 0) * 100) / 100;
-    if (entry <= 0) return;
+    if (entry <= 0 || busy) return;
 
-    setPayments((current) => [...current, { method: payMethod, amount: entry }]);
+    const next = [...payments, { method: payMethod, amount: entry }];
+    setPayments(next);
     setAmount("");
+
+    // One tap, one sale. The overwhelmingly common sale is exact and single
+    // tender: making the cashier confirm a screen that has nothing left to say
+    // is a keystroke per customer, all day.
+    //
+    // It closes ONLY on an exact settle. The moment there is change to hand
+    // back, the screen stays up and shows the figure — a till that pockets the
+    // sale before the cashier has read "change €2.80" is how drawers go short.
+    const nowPaid = next.reduce((sum, item) => sum + item.amount, 0);
+    const covered = nowPaid + 0.001 >= total;
+    const owesChange = nowPaid - total > 0.001;
+    if (covered && !owesChange) onConfirm(next);
   };
 
   // Tap a method to settle on it. Whatever is in the amount box wins; empty

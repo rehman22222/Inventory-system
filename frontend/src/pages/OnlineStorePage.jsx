@@ -26,6 +26,7 @@ import {
   FiToggleLeft,
   FiToggleRight,
   FiTrash2,
+  FiLayers,
   FiUpload,
   FiX,
 } from "react-icons/fi";
@@ -63,6 +64,7 @@ import {
   saveOnlineSettings,
   saveOnlineVoucher,
   searchInventoryProducts,
+  setOnlineListingStock,
   setOrderStatus,
   downloadOnlineReport,
   toggleOnlineListing,
@@ -502,6 +504,38 @@ function Products({
     });
   }, [listings, query, categoryFilter]);
 
+  // Set one figure across every flavour this listing sells. The prompt says
+  // "per variant" because it is: eight flavours at 15 is 120 units on the shelf,
+  // not 15, and that misreading is the whole reason this wording is fixed here.
+  const setStock = async (listing) => {
+    const name = listing.webName || listing.product?.name || "this product";
+    const answer = window.prompt(
+      `Stock PER VARIANT for ${name}.
+
+Every web flavour is set to this number. Flavours the shop counts for real are left alone.`,
+      "",
+    );
+    if (answer === null) return;
+    const quantity = Number(String(answer).trim());
+    if (!Number.isFinite(quantity) || quantity < 0) {
+      toast.error("Enter a whole number, 0 or more");
+      return;
+    }
+
+    const result = await dispatch(
+      setOnlineListingStock({ id: listing._id, quantity: Math.floor(quantity) }),
+    );
+    if (result.error) {
+      toast.error(result.payload || "Could not set stock");
+      return;
+    }
+    const { applied, skipped = [] } = result.payload;
+    toast.success(
+      `${applied} variant(s) set to ${Math.floor(quantity)} each` +
+        (skipped.length ? ` · left alone: ${skipped.join(", ")}` : ""),
+    );
+  };
+
   const toggle = async (listing) => {
     const result = await dispatch(
       toggleOnlineListing({ id: listing._id, listed: !listing.listed }),
@@ -639,6 +673,13 @@ function Products({
                       onClick={() => setEditing(listing)}
                     >
                       <FiEdit2 />
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-xs"
+                      title="Set stock for every web flavour"
+                      onClick={() => setStock(listing)}
+                    >
+                      <FiLayers />
                     </button>
                     <button
                       className="btn btn-ghost btn-xs"

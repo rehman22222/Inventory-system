@@ -2,6 +2,7 @@ const mongoose = require('mongoose')
 const zlib = require("zlib");
 const Product=require('../models/Productmodel')
 const Category=require('../models/ Categorymodel')
+const OnlineListing=require('../models/OnlineListingmodel')
 
 const logActivity=require('../libs/logger')
 const { uploadImage, deleteImage } = require('../libs/cloudinaryImage')
@@ -152,6 +153,9 @@ module.exports.quickAddProduct = async (req, res) => {
             pos: "name Desciption Category Price quantity lowStockThreshold barcode image.url",
             dashboard: "name Category Price quantity lowStockThreshold",
             lookup: "name",
+            // What the till's unknown-barcode dialog needs to show a candidate
+            // and let the cashier recognise it: enough to identify, nothing more.
+            link: "name Price Category barcode quantity stockCounted",
             supplier: "name barcode supplier Price",
           };
           const view = Object.prototype.hasOwnProperty.call(views, req.query.view)
@@ -160,6 +164,40 @@ module.exports.quickAddProduct = async (req, res) => {
           const projection =
             views[view] ||
             "name Desciption shelfLabel Category Price costPrice costSource quantity lowStockThreshold barcode expiryDate image.url supplier";
+
+          // The till can only ring up what it can scan. Online-only products —
+          // web flavours that share a Product row with the shop but were never
+          // given a barcode, and never will be — are filtered out of the POS
+          // view so the cashier's grid holds shelf stock and nothing else. They
+          // stay in every other view: the product pages still manage them, and
+          // the website still sells them off the same `quantity`.
+          const filter =
+            view === "pos" ? { barcode: { $exists: true, $nin: [null, ""] } } : {};
+
+          // The Products page can narrow the catalogue to one channel. "pos" is
+          // what the till can scan; "online" is what a listing actually sells —
+          // taken from the listings themselves rather than from a category name,
+          // so the products BOTH channels share (barcoded on the shelf and sold
+          // on the site) show up under either filter, which is the whole point
+          // of them being one row. Default stays the full catalogue.
+          const channel = ["pos", "online"].includes(req.query.channel)
+            ? req.query.channel
+            : "all";
+          // "Which products are still waiting for a barcode?" — the till asks
+          // this when a scan finds nothing and the cashier is holding the box.
+          const needsBarcode = String(req.query.needsBarcode || "") === "1";
+
+          const onlineProductIds = async () => {
+            const listings = await OnlineListing.find({})
+              .select("product variants.product")
+              .lean();
+            const ids = new Set();
+            for (const l of listings) {
+              if (l.product) ids.add(String(l.product));
+              for (const v of l.variants || []) if (v.product) ids.add(String(v.product));
+            }
+            return [...ids].map((id) => new mongoose.Types.ObjectId(id));
+          };
           
           // .lean() returns plain objects instead of full Mongoose documents —
           // the wire JSON is identical, but the server skips hydrating every
@@ -171,22 +209,38 @@ module.exports.quickAddProduct = async (req, res) => {
           // consumer only ever reads Category._id and Category.name, so there
           // is no reason to ship the rest of each category document with every
           // product row.
+          // Cache per view AND channel: they are different answers to different
+          // questions and must not share an entry.
           const catalogue = await getProductCatalog(async () => {
-          const productsPromise = Product.find({})
+          const scoped = { ...filter };
+          if (channel === "pos") {
+            scoped.barcode = { $exists: true, $nin: [null, ""] };
+          } else if (channel === "online") {
+            scoped._id = { $in: await onlineProductIds() };
+          }
+          if (needsBarcode) {
+            // Unset or empty — both mean "never been given one".
+            scoped.$or = [{ barcode: { $exists: false } }, { barcode: { $in: [null, ""] } }];
+          }
+          const productsPromise = Product.find(scoped)
             .select(projection)
             .populate('Category', 'name')
             .lean();
 
           // estimatedDocumentCount() reads collection metadata (O(1)) instead of
-          // scanning to count — accurate enough for a total, far cheaper.
+          // scanning to count — accurate enough for a total, far cheaper. A
+          // filtered view has to count for real, but only over the sparse
+          // barcode index rather than the whole collection.
           const [Products, totalProduct] = await Promise.all([
             productsPromise,
-            Product.estimatedDocumentCount(),
+            Object.keys(scoped).length
+              ? Product.countDocuments(scoped)
+              : Product.estimatedDocumentCount(),
           ]);
 
             const json = JSON.stringify({ Products, totalProduct });
             return { json, gzip: zlib.gzipSync(json) };
-          }, view);
+          }, `${view}:${channel}:${needsBarcode ? "nb" : "any"}`);
 
             res.set("Cache-Control", "private, no-store");
           res.vary("Accept-Encoding").type("application/json");
@@ -260,12 +314,17 @@ module.exports.quickAddProduct = async (req, res) => {
         // Apply only the fields that were actually provided. costPrice is handled
         // separately below because it may need converting first.
         const editable = ["name", "Desciption", "shelfLabel", "Category", "Price", "quantity", "lowStockThreshold", "barcode", "expiryDate"];
+        // Typing a quantity by hand IS the count. From here the figure is the
+        // shop's own, and bulk "set every web flavour to 15" must not undo it.
         editable.forEach((field) => {
           if (source[field] !== undefined && source[field] !== "") {
             product[field] =
               typeof source[field] === "string" ? source[field].trim() : source[field];
           }
         });
+        if (source.quantity !== undefined && String(source.quantity).trim() !== "") {
+          product.stockCounted = true;
+        }
 
         if (source.costPrice !== undefined && source.costPrice !== "") {
           const { shopCcy, rates } = await fxContext();
@@ -411,10 +470,23 @@ module.exports.getProductByBarcode = async (req, res) => {
 // "Learn on scan": attach a freshly scanned barcode to a product that doesn't
 // have one yet. This is how the imported PLU-only catalogue gains real barcodes
 // during normal trading.
+//
+// It also settles who owns the stock. Somebody is standing at the till with the
+// box in their hand — that is the strongest evidence this catalogue ever gets
+// that the figure is real, so the product becomes `stockCounted` and bulk tools
+// stop flattening it. Passing `quantity` records what they actually counted.
 module.exports.attachBarcode = async (req, res) => {
   try {
     const { productId } = req.params;
     const barcode = String(req.body?.barcode || "").trim();
+    const replace = Boolean(req.body?.replace);
+    const hasQuantity =
+      req.body?.quantity !== undefined && String(req.body.quantity).trim() !== "";
+    const quantity = hasQuantity ? Math.floor(Number(req.body.quantity)) : null;
+
+    if (hasQuantity && (!Number.isFinite(quantity) || quantity < 0)) {
+      return res.status(400).json({ message: "Enter a quantity of 0 or more" });
+    }
 
     if (!barcode) {
       return res.status(400).json({ message: "Barcode is required" });
@@ -433,19 +505,37 @@ module.exports.attachBarcode = async (req, res) => {
         .json({ message: `Barcode already belongs to ${clash.name}`, product: clash });
     }
 
+    // The barcode being scanned is free (checked above), but the product picked
+    // may already carry a different one — easy to do from an unfiltered list,
+    // and it would silently retire a code the shelf labels still use.
+    const target = await Product.findById(productId).select("barcode name");
+    if (!target) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+    if (target.barcode && target.barcode !== barcode && !replace) {
+      return res.status(409).json({
+        message: `${target.name} already has barcode ${target.barcode}`,
+        currentBarcode: target.barcode,
+        needsReplaceConfirmation: true,
+      });
+    }
+
+    const update = { barcode, stockCounted: true };
+    if (hasQuantity) update.quantity = quantity;
+
     const product = await Product.findByIdAndUpdate(
       productId,
-      { barcode },
+      update,
       { new: true }
     ).populate("Category");
 
-    if (!product) {
-      return res.status(404).json({ message: "Product not found" });
-    }
-
     await logActivity({
       action: "Attach Barcode",
-      description: `Barcode ${barcode} linked to ${product.name}.`,
+      description:
+        `Barcode ${barcode} linked to ${product.name}` +
+        (target.barcode && target.barcode !== barcode ? ` (replaced ${target.barcode})` : "") +
+        (hasQuantity ? `, counted stock set to ${quantity}` : "") +
+        ".",
       entity: "product",
       entityId: product._id,
       userId: req.user?._id,

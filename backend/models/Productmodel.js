@@ -55,6 +55,20 @@ const ProductSchema= new mongoose.Schema({
         type:Number,
         default:0
     },
+    // Has anybody actually counted this stock, or is the number a placeholder?
+    //
+    // Bulk tools ("set every web flavour of VELO to 15") must never flatten a
+    // figure the shop maintains for real. The test is deliberately NOT "does it
+    // have a barcode" — a barcode is a label, not a promise that the count is
+    // true, and an item can be properly counted without ever carrying one.
+    //
+    // Seeded from barcode presence because that is the best evidence available
+    // today, but from here it moves on its own: a stocktake, a goods-in scan or
+    // a manual edit flips it, and bulk leaves it alone from then on.
+    stockCounted:{
+        type:Boolean,
+        default:false
+    },
     // Per-product low-stock threshold. Falls back to 10 where unset.
     lowStockThreshold:{
         type:Number,

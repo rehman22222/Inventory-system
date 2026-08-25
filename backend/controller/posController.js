@@ -15,6 +15,7 @@ const { applicableDeals } = require("../libs/deals");
 const { startOfDay, endOfDay } = require("../libs/time");
 const { raiseReorderForProduct } = require("./reorderController");
 const logActivity = require("../libs/logger");
+const { emitStockChanged } = require('../libs/stockEvents');
 
 const DEFAULT_LOW_STOCK = 10;
 
@@ -335,7 +336,11 @@ module.exports.checkout = async (req, res) => {
       };
 
       try {
-        for (const line of lines) {
+        // Every line used to cost three sequential round trips — decrement,
+        // movement row, sale row. On a remote cluster that is ~100ms each, so a
+        // five-item basket spent well over a second waiting on the network with
+        // the cashier watching. The work is identical; only the shape changed.
+        const decrement = async (line) => {
           // Guarded decrement: the filter re-checks stock at write time, so two
           // tills selling the last unit can't both succeed.
           const updated = await Product.findOneAndUpdate(
@@ -355,55 +360,69 @@ module.exports.checkout = async (req, res) => {
 
           undo.stock.push({ product: updated._id, quantity: line.quantity });
           line.product = updated;
+        };
 
-          const [stockTx] = await StockTransaction.create(
-            [
-              {
-                product: updated._id,
-                type: "Stock-out",
-                quantity: line.quantity,
-                supplier: updated.supplier,
-                reference: receiptNo,
-              },
-            ],
-            opts(session),
-          );
+        // Distinct products can be decremented together — each carries its own
+        // stock guard, so they cannot interfere. The same product appearing on
+        // two lines is the one case that must stay in order: run in parallel and
+        // both guards would read the pre-sale figure and both would pass.
+        const distinct =
+          new Set(lines.map((line) => String(line.product._id))).size === lines.length;
 
-          undo.stockTx.push(stockTx._id);
-
-          // Spread discount and tax across the lines in proportion to their value
-          // so that the Sale rows sum back to the receipt total.
-          const share = subtotal > 0 ? line.lineTotal / subtotal : 0;
-          const lineDiscount = money(totalDiscount * share);
-          const lineTax = money(tax * share);
-
-          const [sale] = await Sale.create(
-            [
-              {
-                customerName,
-                receiptNo,
-                cashier: cashierId,
-                cashierName,
-                products: {
-                  product: updated._id,
-                  quantity: line.quantity,
-                  price: line.price,
-                },
-                totalAmount: money(line.lineTotal - lineDiscount + lineTax),
-                discount: lineDiscount,
-                tax: lineTax,
-                paymentMethod: settledWith,
-                paymentStatus: "paid",
-                status: "completed",
-                source: "pos",
-              },
-            ],
-            opts(session),
-          );
-
-          saleIds.push(sale._id);
-          undo.sales.push(sale._id);
+        if (distinct) {
+          // allSettled, not all: a rejection must not leave siblings in flight
+          // while compensation is already unwinding what they wrote.
+          const results = await Promise.allSettled(lines.map(decrement));
+          const failed = results.find((result) => result.status === "rejected");
+          if (failed) throw failed.reason;
+        } else {
+          for (const line of lines) await decrement(line);
         }
+
+        const createdTx = await StockTransaction.insertMany(
+          lines.map((line) => ({
+            product: line.product._id,
+            type: "Stock-out",
+            quantity: line.quantity,
+            supplier: line.product.supplier,
+            reference: receiptNo,
+          })),
+          opts(session),
+        );
+        undo.stockTx.push(...createdTx.map((doc) => doc._id));
+
+        const createdSales = await Sale.insertMany(
+          lines.map((line) => {
+            // Spread discount and tax across the lines in proportion to their
+            // value so that the Sale rows sum back to the receipt total.
+            const share = subtotal > 0 ? line.lineTotal / subtotal : 0;
+            const lineDiscount = money(totalDiscount * share);
+            const lineTax = money(tax * share);
+
+            return {
+              customerName,
+              receiptNo,
+              cashier: cashierId,
+              cashierName,
+              products: {
+                product: line.product._id,
+                quantity: line.quantity,
+                price: line.price,
+              },
+              totalAmount: money(line.lineTotal - lineDiscount + lineTax),
+              discount: lineDiscount,
+              tax: lineTax,
+              paymentMethod: settledWith,
+              paymentStatus: "paid",
+              status: "completed",
+              source: "pos",
+            };
+          }),
+          opts(session),
+        );
+
+        saleIds.push(...createdSales.map((doc) => doc._id));
+        undo.sales.push(...createdSales.map((doc) => doc._id));
 
         if (voucher) {
           // Redeem atomically: the filter re-checks the usage limit at write time,
@@ -506,19 +525,35 @@ module.exports.checkout = async (req, res) => {
       }
     });
 
-    await raiseLowStockAlerts(
-      lines.map((line) => line.product),
+    // The lines carry the post-decrement documents, so the new quantities are
+    // already in hand — every other screen can move without asking again.
+    emitStockChanged(
+      req,
+      lines.map((line) => ({
+        product: line.product?._id,
+        quantity: line.product?.quantity,
+      })),
       `POS sale ${receipt.receiptNo}`,
     );
 
-    await logActivity({
+    // The sale is committed; these are bookkeeping. Awaiting them held the
+    // receipt back by two more round trips while a customer stood at the
+    // counter, and neither can undo a sale that already happened. Failures are
+    // logged rather than thrown — a notification that did not send must never
+    // look like a sale that did not complete.
+    raiseLowStockAlerts(
+      lines.map((line) => line.product),
+      `POS sale ${receipt.receiptNo}`,
+    ).catch((error) => console.error("Low-stock alert failed:", error.message));
+
+    logActivity({
       action: "POS Checkout",
       description: `Receipt ${receipt.receiptNo} completed for ${customerName}.`,
       entity: "order",
       entityId: receipt._id,
       userId: cashierId,
       ipAddress: req.ip,
-    });
+    }).catch((error) => console.error("Activity log failed:", error.message));
 
     return res.status(201).json({
       success: true,

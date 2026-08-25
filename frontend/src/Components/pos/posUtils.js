@@ -141,29 +141,61 @@ export const applicableDeals = (cart, deals) => {
     const items = Array.isArray(deal.items) ? deal.items : [];
     if (items.length === 0) return;
 
-    let sets = Infinity;
+    let sets = 0;
     let setValue = 0;
     const products = [];
 
-    items.forEach((item) => {
-      const need = Number(item.quantity || 1);
-      if (need <= 0) return;
-      const pid = itemProductId(item);
-      products.push(pid);
-      const line = cartMap.get(pid);
-      sets = Math.min(sets, Math.floor(Number(line?.quantity || 0) / need));
-      setValue += Number(line?.price || 0) * need;
-    });
+    if (deal.mode === "mix") {
+      // Pick-any-N: flatten to units, only the count decides.
+      const need = Math.floor(Number(deal.groupQuantity || 0));
+      if (need < 2) return;
 
-    if (!Number.isFinite(sets) || sets < 1) return;
+      const units = [];
+      items.forEach((item) => {
+        const pid = itemProductId(item);
+        products.push(pid);
+        const line = cartMap.get(pid);
+        const have = Math.floor(Number(line?.quantity || 0));
+        for (let i = 0; i < have; i += 1) units.push(Number(line?.price || 0));
+      });
 
-    const raw =
-      deal.discountType === "percent"
-        ? (setValue * sets * Number(deal.discount || 0)) / 100
-        : Number(deal.discount || 0) * sets;
+      sets = Math.floor(units.length / need);
+      if (sets < 1) return;
 
-    // Never give back more than the deal's own goods are worth.
-    const amount = round2(Math.min(raw, setValue * sets));
+      // Dearest first — see libs/deals.js for why.
+      units.sort((a, b) => b - a);
+      setValue = units.slice(0, sets * need).reduce((sum, price) => sum + price, 0);
+    } else {
+      let complete = Infinity;
+      let oneSet = 0;
+
+      items.forEach((item) => {
+        const need = Number(item.quantity || 1);
+        if (need <= 0) return;
+        const pid = itemProductId(item);
+        products.push(pid);
+        const line = cartMap.get(pid);
+        complete = Math.min(complete, Math.floor(Number(line?.quantity || 0) / need));
+        oneSet += Number(line?.price || 0) * need;
+      });
+
+      if (!Number.isFinite(complete) || complete < 1) return;
+      sets = complete;
+      setValue = oneSet * sets;
+    }
+
+    let raw;
+    if (deal.discountType === "percent") {
+      raw = (setValue * Number(deal.discount || 0)) / 100;
+    } else if (deal.discountType === "setPrice") {
+      raw = setValue - Number(deal.discount || 0) * sets;
+    } else {
+      raw = Number(deal.discount || 0) * sets;
+    }
+
+    // Never give back more than the deal's own goods are worth, and never make
+    // the basket dearer than it already was.
+    const amount = round2(Math.max(0, Math.min(raw, setValue)));
     if (amount <= 0) return;
 
     applied.push({ dealId: deal._id, name: deal.name, sets, amount, products });

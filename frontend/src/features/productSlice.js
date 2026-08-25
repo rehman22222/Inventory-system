@@ -119,7 +119,31 @@ export const Addproduct=createAsyncThunk('product/addproduct',async(product,{rej
 const productSlice = createSlice({
 name:"product",
 initialState:initialState,
-reducers:{},
+reducers:{
+  // A sale somewhere else moved this product's stock. Patch the one number
+  // rather than refetching the catalogue: with several tills open, reloading
+  // 1,600 products on every sale anywhere is the stampede this avoids.
+  // The till just sold these. Subtract locally instead of refetching a 370 KB
+  // catalogue to learn a number we already know — the socket event arrives with
+  // the absolute figure a moment later and lands on the same value.
+  stockSold: (state, action) => {
+    for (const line of action.payload || []) {
+      const id = String(line?.product || "");
+      const sold = Number(line?.quantity);
+      if (!id || !Number.isFinite(sold)) continue;
+      const product = state.getallproduct.find((entry) => String(entry._id) === id);
+      if (product) product.quantity = Math.max(0, Number(product.quantity || 0) - sold);
+    }
+  },
+  stockChanged: (state, action) => {
+    const { productId, quantity } = action.payload || {};
+    if (!productId || !Number.isFinite(Number(quantity))) return;
+    const product = state.getallproduct.find(
+      (entry) => String(entry._id) === String(productId),
+    );
+    if (product) product.quantity = Number(quantity);
+  },
+},
 extraReducers:(builder)=>{
   builder
 
@@ -261,5 +285,7 @@ extraReducers:(builder)=>{
 
 
 
+
+export const { stockChanged, stockSold } = productSlice.actions;
 
 export default productSlice.reducer;

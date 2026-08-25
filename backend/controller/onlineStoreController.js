@@ -16,6 +16,7 @@ const Store = require("../models/Storemodel");
 const Category = require("../models/ Categorymodel");
 const { nextSequence } = require("../models/Countermodel");
 const logActivity = require("../libs/logger");
+const { emitStockChanged } = require("../libs/stockEvents");
 const { sendMail, brandedHtml, esc } = require("../libs/mailer");
 
 // Same rounding the till uses, so a web total and a counter total can never
@@ -1638,6 +1639,95 @@ module.exports.updateListing = async (req, res) => {
 };
 
 // The switch the owner actually reaches for.
+/* Set one quantity across a listing's flavours — but only the placeholders.
+ *
+ * A brand like VELO sells ten flavours online while the shop keeps a real count
+ * of two of them. Typing the figure ten times is the sort of chore that ends in
+ * a typo, so this writes it once. What it must never do is flatten a number
+ * somebody maintains: those variants are skipped and named back to the caller.
+ *
+ * The test is `stockCounted`, NOT "has a barcode". A barcode is a label; it
+ * promises nothing about whether the count is true, and an item can be properly
+ * counted without ever carrying one.
+ *
+ * The figure is PER VARIANT, deliberately. "VELO: 15" across eight flavours
+ * would let the website sell 120 units — the route says `quantity` and the UI
+ * says "per variant" so nobody reads it as a total.
+ */
+module.exports.bulkVariantQuantity = async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id))
+      return res.status(400).json({ message: "Invalid listing id" });
+
+    const quantity = Math.floor(Number(req.body.quantity));
+    if (!Number.isFinite(quantity) || quantity < 0)
+      return res.status(400).json({ message: "Enter a quantity of 0 or more" });
+
+    const store = await storeId();
+    const listing = await OnlineListing.findOne({ _id: req.params.id, store })
+      .populate("product", "name barcode stockCounted")
+      .populate("variants.product", "name barcode stockCounted");
+    if (!listing) return res.status(404).json({ message: "Listing not found" });
+
+    const slots = (listing.variants || [])
+      .filter((variant) => variant.product)
+      .map((variant) => ({ label: variant.label || "", product: variant.product }));
+    const rows = slots.length
+      ? slots
+      : listing.product
+        ? [{ label: "", product: listing.product }]
+        : [];
+
+    if (!rows.length)
+      return res.status(400).json({ message: "This listing has nothing to stock" });
+
+    const applied = [];
+    const skipped = [];
+    for (const row of rows) {
+      if (row.product.stockCounted) {
+        skipped.push(row.label || row.product.name);
+      } else {
+        applied.push(row.product._id);
+      }
+    }
+
+    if (applied.length) {
+      await Product.updateMany(
+        { _id: { $in: applied } },
+        { $set: { quantity, updatedAt: new Date() } },
+      );
+      // Same event the till and the website already listen to.
+      emitStockChanged(
+        req,
+        applied.map((id) => ({ product: id, quantity })),
+        `Bulk stock on ${listing.webName || listing.slug}`,
+      );
+    }
+
+    await logActivity({
+      action: "Online Listing Bulk Stock",
+      description: `${listing.webName || listing.slug}: ${applied.length} variant(s) set to ${quantity}${
+        skipped.length ? `, ${skipped.length} left alone (counted stock)` : ""
+      }.`,
+      entity: "onlineListing",
+      entityId: listing._id,
+      userId: req.user?._id,
+      ipAddress: req.ip,
+    });
+
+    return res.status(200).json({
+      message: `${applied.length} variant(s) set to ${quantity} each`,
+      quantity,
+      applied: applied.length,
+      skipped,
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Could not set stock", error: error.message });
+  }
+};
+
 module.exports.toggleListing = async (req, res) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id))

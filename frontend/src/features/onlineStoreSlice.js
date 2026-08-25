@@ -244,6 +244,24 @@ export const updateOnlineListing = createAsyncThunk(
   },
 );
 
+// One figure across a listing's flavours — PER VARIANT, never a total. The
+// server skips any product whose count somebody actually maintains and names
+// them back, so the caller can say what it left alone.
+export const setOnlineListingStock = createAsyncThunk(
+  "online/listings/stock",
+  async ({ id, quantity }, { rejectWithValue }) => {
+    try {
+      const { data } = await axiosInstance.patch(
+        `online/listings/${id}/stock`,
+        { quantity },
+      );
+      return data;
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not set stock"));
+    }
+  },
+);
+
 export const toggleOnlineListing = createAsyncThunk(
   "online/listings/toggle",
   async ({ id, listed }, { rejectWithValue }) => {

@@ -208,9 +208,24 @@ module.exports.Searchcategory = async (req, res) => {
      
       
       ],
-    });
+    }).lean();
 
-    res.json(category);
+    // The list shows a "Total Product" column, so a searched category has to
+    // carry the same count the unfiltered list gives it — otherwise the column
+    // goes blank the moment someone types. Counted over just the matches rather
+    // than the whole catalogue, since that is all this response can show.
+    const counts = await Product.aggregate([
+      { $match: { Category: { $in: category.map((c) => c._id) } } },
+      { $group: { _id: "$Category", count: { $sum: 1 } } },
+    ]);
+    const countByCat = new Map(counts.map((c) => [String(c._id), c.count]));
+
+    res.json(
+      category.map((entry) => ({
+        ...entry,
+        productCount: countByCat.get(String(entry._id)) || 0,
+      })),
+    );
   } catch (error) {
     res.status(500).json({ message: "Error finding category", error: error.message });
   }

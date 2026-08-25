@@ -8,6 +8,7 @@ const {
   upsertListing,
   updateListing,
   toggleListing,
+  bulkVariantQuantity,
   deleteListing,
   listVouchers,
   createVoucher,
@@ -88,6 +89,7 @@ adminRouter.get("/listings", listListings);
 adminRouter.post("/listings", upsertListing);
 adminRouter.put("/listings/:id", updateListing);
 adminRouter.patch("/listings/:id/toggle", toggleListing);
+adminRouter.patch("/listings/:id/stock", bulkVariantQuantity);
 adminRouter.delete("/listings/:id", deleteListing);
 
 adminRouter.get("/vouchers", listVouchers);

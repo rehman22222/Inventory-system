@@ -94,11 +94,19 @@ function Productpage() {
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productPage, setProductPage] = useState(1);
+  // Which channel's catalogue to show. "all" is the default and the honest one:
+  // the two channels share rows, so narrowing is a lens, not a partition.
+  const [channel, setChannel] = useState("all");
 
   useEffect(() => {
-    dispatch(gettingallproducts());
+    dispatch(gettingallproducts(channel === "all" ? {} : { channel }));
     dispatch(gettingallCategory());
-  }, [dispatch, editedProduct, isproductadd]);
+  }, [dispatch, editedProduct, isproductadd, channel]);
+
+  // A narrower catalogue can be shorter than the page you were on.
+  useEffect(() => {
+    setProductPage(1);
+  }, [channel]);
 
   // The cost field needs the shop's own currency and its saved exchange rates;
   // this page is reachable without passing through the till, which is the only
@@ -596,31 +604,27 @@ function Productpage() {
                   : `${productStart}-${productEnd} of ${displayProducts.length} products`}
               </p>
             </div>
-            {displayProducts.length > PRODUCT_PAGE_SIZE && (
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-lg border border-base-300 p-1">
+              {[
+                { key: "all", label: "All" },
+                { key: "pos", label: "POS" },
+                { key: "online", label: "Online" },
+              ].map((option) => (
                 <button
+                  key={option.key}
                   type="button"
-                  className="rounded-md border border-base-300 px-3 py-1.5 text-sm font-medium disabled:opacity-40"
-                  disabled={safeProductPage <= 1}
-                  onClick={() => setProductPage((page) => Math.max(1, page - 1))}
+                  aria-pressed={channel === option.key}
+                  onClick={() => setChannel(option.key)}
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                    channel === option.key
+                      ? "bg-blue-800 text-white"
+                      : "text-base-content/70 hover:bg-base-200"
+                  }`}
                 >
-                  Previous
+                  {option.label}
                 </button>
-                <span className="text-sm text-base-content/60">
-                  Page {safeProductPage} / {productPageCount}
-                </span>
-                <button
-                  type="button"
-                  className="rounded-md border border-base-300 px-3 py-1.5 text-sm font-medium disabled:opacity-40"
-                  disabled={safeProductPage >= productPageCount}
-                  onClick={() =>
-                    setProductPage((page) => Math.min(productPageCount, page + 1))
-                  }
-                >
-                  Next
-                </button>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
           <div className="relative overflow-x-auto">
             {productListLoading && (
@@ -698,6 +702,40 @@ function Productpage() {
               </tbody>
             </table>
           </div>
+
+          {/* Paging sits under the table: with 75 rows a page, whoever needs the
+              next page has just scrolled past all of them, and sending them back
+              to the top to move on is the one thing this control must not do. */}
+          {displayProducts.length > PRODUCT_PAGE_SIZE && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-base-content/60">
+                {`${productStart}-${productEnd} of ${displayProducts.length} products`}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="rounded-md border border-base-300 px-3 py-1.5 text-sm font-medium disabled:opacity-40"
+                  disabled={safeProductPage <= 1}
+                  onClick={() => setProductPage((page) => Math.max(1, page - 1))}
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-base-content/60">
+                  Page {safeProductPage} / {productPageCount}
+                </span>
+                <button
+                  type="button"
+                  className="rounded-md border border-base-300 px-3 py-1.5 text-sm font-medium disabled:opacity-40"
+                  disabled={safeProductPage >= productPageCount}
+                  onClick={() =>
+                    setProductPage((page) => Math.min(productPageCount, page + 1))
+                  }
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

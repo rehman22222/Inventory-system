@@ -41,6 +41,10 @@ function DealsModal({ onClose }) {
   const [discount, setDiscount] = useState("");
   // "amount" = € off the bundle; "percent" = % off the deal's own products.
   const [discountType, setDiscountType] = useState("amount");
+  // "bundle" = a recipe (1 vape + 2 coils). "mix" = pick any N from the chosen
+  // products, which is what a pod with fifteen flavours actually needs.
+  const [mode, setMode] = useState("bundle");
+  const [groupQuantity, setGroupQuantity] = useState("3");
   const [picked, setPicked] = useState([]); // [{ productId, name, price, quantity }]
   const [query, setQuery] = useState("");
   // "" = all categories; otherwise a category _id to browse.
@@ -53,24 +57,51 @@ function DealsModal({ onClose }) {
 
   // Browse by category and/or search text. With neither, show everything so the
   // whole catalogue is reachable without typing.
-  const matches = useMemo(() => {
+  // Everything the filter finds — the list on screen is capped, but "add all"
+  // must not be: a pick-any deal on ELFLIQ means all 33 flavours, not the first
+  // hundred rows that happened to render.
+  const allMatches = useMemo(() => {
     const value = query.trim().toLowerCase();
-    return products
-      .filter((product) => {
-        if (categoryId && String(product.Category?._id) !== String(categoryId)) return false;
-        if (!value) return true;
-        return (
-          product.name?.toLowerCase().includes(value) ||
-          product.barcode?.toLowerCase().includes(value)
-        );
-      })
-      .slice(0, 100);
+    return products.filter((product) => {
+      if (categoryId && String(product.Category?._id) !== String(categoryId)) return false;
+      if (!value) return true;
+      return (
+        product.name?.toLowerCase().includes(value) ||
+        product.barcode?.toLowerCase().includes(value)
+      );
+    });
   }, [products, query, categoryId]);
+
+  const matches = useMemo(() => allMatches.slice(0, 100), [allMatches]);
 
   const pickedIds = useMemo(
     () => new Set(picked.map((entry) => entry.productId)),
     [picked]
   );
+
+  // Typing "ELFLIQ 10mg" and adding thirty-three rows one at a time is the sort
+  // of chore that ends in a half-built deal, so the whole filter goes in at once.
+  const addAllMatching = () => {
+    setPicked((current) => {
+      const seen = new Set(current.map((entry) => entry.productId));
+      const additions = allMatches
+        .filter((product) => !seen.has(product._id))
+        .map((product) => ({
+          productId: product._id,
+          name: product.name,
+          price: Number(product.Price || 0),
+          quantity: 1,
+        }));
+      if (!additions.length) {
+        toast(t("deals.allAlreadyAdded", "All of these are already in the deal"));
+        return current;
+      }
+      toast.success(
+        t("deals.addedCount", "{{n}} products added", { n: additions.length }),
+      );
+      return [...current, ...additions];
+    });
+  };
 
   const addProduct = (product) => {
     setPicked((current) => {
@@ -115,16 +146,31 @@ function DealsModal({ onClose }) {
     setName("");
     setDiscount("");
     setDiscountType("amount");
+    setMode("bundle");
+    setGroupQuantity("3");
     setPicked([]);
     setQuery("");
   };
 
   // What the deal is actually worth against the picked products, so the form can
-  // show the resulting price before it is saved.
-  const savings =
-    discountType === "percent"
-      ? (normalTotal * Number(discount || 0)) / 100
-      : Number(discount || 0);
+  // show the resulting price before it is saved. Mirrors libs/deals.js — in mix
+  // mode one set is the N dearest units, since that is what the till will pick.
+  const need = Math.floor(Number(groupQuantity || 0));
+  const mixSetValue = (() => {
+    if (mode !== "mix" || need < 2) return 0;
+    const units = [];
+    picked.forEach((entry) => {
+      for (let i = 0; i < Number(entry.quantity || 0); i += 1) units.push(Number(entry.price || 0));
+    });
+    units.sort((a, b) => b - a);
+    return units.slice(0, need).reduce((sum, price) => sum + price, 0);
+  })();
+  const setValue = mode === "mix" ? mixSetValue : normalTotal;
+  const savings = (() => {
+    if (discountType === "percent") return (setValue * Number(discount || 0)) / 100;
+    if (discountType === "setPrice") return Math.max(0, setValue - Number(discount || 0));
+    return Number(discount || 0);
+  })();
 
   const submit = async (event) => {
     event.preventDefault();
@@ -141,7 +187,22 @@ function DealsModal({ onClose }) {
       toast.error(t("deals.percentMax"));
       return;
     }
-    if (pickedUnitCount < 2) {
+    if (mode === "mix") {
+      if (!picked.length) {
+        toast.error(t("deals.minProducts"));
+        return;
+      }
+      if (need < 2) {
+        toast.error(t("deals.mixMin", "Set the number to buy — at least 2"));
+        return;
+      }
+      if (need > pickedUnitCount) {
+        toast.error(
+          t("deals.mixTooFew", "Pick more products — the set is bigger than the list"),
+        );
+        return;
+      }
+    } else if (pickedUnitCount < 2) {
       toast.error(t("deals.minProducts"));
       return;
     }
@@ -150,7 +211,15 @@ function DealsModal({ onClose }) {
       name: name.trim(),
       discount: Number(discount),
       discountType,
-      items: picked.map((entry) => ({ product: entry.productId, quantity: entry.quantity })),
+      mode,
+      // Only meaningful for mix; the server ignores it on a bundle.
+      groupQuantity: mode === "mix" ? need : 0,
+      // In mix mode every chosen product is simply eligible — the per-product
+      // quantity is not a requirement, so it is pinned to 1.
+      items: picked.map((entry) => ({
+        product: entry.productId,
+        quantity: mode === "mix" ? 1 : entry.quantity,
+      })),
     };
 
     // A deal gives money away, so it is the owner's call. Everyone else sends it
@@ -219,6 +288,65 @@ function DealsModal({ onClose }) {
           {/* Create form */}
           <form onSubmit={submit} className="space-y-4 rounded-xl border border-base-300 bg-base-200/40 p-4">
             <div className="grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-xs font-semibold uppercase text-base-content/60">
+                  {t("deals.mode", "Deal type")}
+                </label>
+                <div className="flex gap-2">
+                  {[
+                    {
+                      key: "bundle",
+                      title: t("deals.modeBundle", "Bundle"),
+                      hint: t("deals.modeBundleHint", "1 vape + 2 coils — all of them"),
+                    },
+                    {
+                      key: "mix",
+                      title: t("deals.modeMix", "Pick any"),
+                      hint: t("deals.modeMixHint", "Any 3 from the list, mix freely"),
+                    },
+                  ].map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => setMode(option.key)}
+                      className={`flex-1 rounded-lg border-2 px-3 py-2 text-start transition ${
+                        mode === option.key
+                          ? "border-blue-800 bg-blue-800/10"
+                          : "border-base-300 hover:bg-base-200"
+                      }`}
+                    >
+                      <span className="block text-sm font-semibold">{option.title}</span>
+                      <span className="block text-xs text-base-content/60">{option.hint}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {mode === "mix" && (
+                <div className="sm:col-span-2">
+                  <label className="mb-1 block text-xs font-semibold uppercase text-base-content/60">
+                    {t("deals.groupQuantity", "How many to buy")}
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min="2"
+                      step="1"
+                      value={groupQuantity}
+                      onChange={(e) => setGroupQuantity(e.target.value)}
+                      className="h-10 w-24 rounded-lg border-2 border-base-300 bg-base-100 px-3 text-center"
+                    />
+                    <p className="text-xs text-base-content/60">
+                      {t(
+                        "deals.groupQuantityHint",
+                        "Any {{n}} from the products below — the shopper mixes flavours however they like.",
+                        { n: need >= 2 ? need : "…" },
+                      )}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="mb-1 block text-xs font-semibold uppercase text-base-content/60">
                   {t("deals.name")}
@@ -241,6 +369,7 @@ function DealsModal({ onClose }) {
                     {[
                       { key: "amount", label: "€" },
                       { key: "percent", label: "%" },
+                      { key: "setPrice", label: "=€" },
                     ].map((option) => (
                       <button
                         key={option.key}
@@ -268,7 +397,11 @@ function DealsModal({ onClose }) {
                   />
                 </div>
                 <p className="mt-1 text-xs text-base-content/50">
-                  {discountType === "percent" ? t("deals.percentHint") : t("deals.amountHint")}
+                  {discountType === "percent"
+                    ? t("deals.percentHint")
+                    : discountType === "setPrice"
+                      ? t("deals.setPriceHint", "The whole set costs this much")
+                      : t("deals.amountHint")}
                 </p>
               </div>
             </div>
@@ -297,6 +430,14 @@ function DealsModal({ onClose }) {
                   placeholder={t("deals.searchProducts")}
                   className="h-10 flex-1 rounded-lg border-2 border-base-300 bg-base-100 px-3"
                 />
+                <button
+                  type="button"
+                  onClick={addAllMatching}
+                  disabled={!allMatches.length}
+                  className="h-10 shrink-0 rounded-lg bg-blue-800 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-40"
+                >
+                  {t("deals.addAll", "Add all")} {allMatches.length ? `(${allMatches.length})` : ""}
+                </button>
               </div>
 
               <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-base-300 bg-base-100">
@@ -349,14 +490,20 @@ function DealsModal({ onClose }) {
                     <span className="tabular-nums text-sm text-base-content/60">
                       ${entry.price.toFixed(2)}
                     </span>
-                    <input
-                      type="number"
-                      min="1"
-                      value={entry.quantity}
-                      onChange={(e) => setQty(entry.productId, Number(e.target.value))}
-                      className="h-8 w-16 rounded-md border-2 border-base-300 bg-base-100 px-2 text-center text-sm"
-                      aria-label={t("deals.quantity")}
-                    />
+                    {mode === "mix" ? (
+                      <span className="text-xs uppercase tracking-wide text-base-content/40">
+                        {t("deals.eligible", "eligible")}
+                      </span>
+                    ) : (
+                      <input
+                        type="number"
+                        min="1"
+                        value={entry.quantity}
+                        onChange={(e) => setQty(entry.productId, Number(e.target.value))}
+                        className="h-8 w-16 rounded-md border-2 border-base-300 bg-base-100 px-2 text-center text-sm"
+                        aria-label={t("deals.quantity")}
+                      />
+                    )}
                     <button
                       type="button"
                       onClick={() => removePicked(entry.productId)}

@@ -21,7 +21,9 @@ import axiosInstance from "../lib/axios";
 import { isDemoMode } from "../lib/demoMode";
 import useBarcodeScanner from "../lib/useBarcodeScanner";
 import LanguageSwitcher from "../Components/LanguageSwitcher";
-import { gettingallproducts } from "../features/productSlice";
+import { gettingallproducts, stockChanged, stockSold } from "../features/productSlice";
+import { io } from "socket.io-client";
+import { socketURL } from "../lib/socket";
 import { gettingallCategory } from "../features/categorySlice";
 import { gettingallDeals } from "../features/dealSlice";
 import ActionRail from "../Components/pos/ActionRail";
@@ -141,6 +143,19 @@ function POSPage() {
   // Anything the till rang up while the line was down.
   const [offlineCache, setOfflineCache] = useState(null);
 
+  // Stock moved somewhere else — the website, or another till. The number on
+  // screen updates without a refetch, so a cashier never offers something the
+  // web has just sold. The sale itself was already safe (the decrement is
+  // guarded server-side); this is about not showing a figure that has moved on.
+  useEffect(() => {
+    const socket = io(socketURL, {
+      withCredentials: true,
+      transports: ["websocket", "polling"],
+    });
+    socket.on("stockChanged", (payload) => dispatch(stockChanged(payload)));
+    return () => socket.disconnect();
+  }, [dispatch]);
+
   useEffect(() => {
     dispatch(gettingallproducts({ view: "pos" }));
     dispatch(gettingallCategory());
@@ -259,11 +274,39 @@ function POSPage() {
   // — it is the catch-all for items that were just quick-added at the counter,
   // so it is reached for constantly and must not be buried mid-list. Everything
   // else keeps the order the server sent.
+  // What the till can actually sell, counted per category. The server holds
+  // back products with no barcode from the POS view, so a category whose every
+  // item is online-only (the "ONLINE — ..." ones) would otherwise render as a
+  // tile that opens onto an empty grid. Counting the loaded products rather
+  // than trusting the category's own `productCount` also keeps the badge
+  // honest: that count is taken over the whole catalogue, so it would promise
+  // a cashier 235 items behind a tile that only holds 228.
+  const stockedCounts = useMemo(() => {
+    const counts = new Map();
+    for (const product of products) {
+      const id = product?.Category?._id;
+      if (!id) continue;
+      const key = String(id);
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return counts;
+  }, [products]);
+
   const categories = useMemo(() => {
     const isMisc = (entry) => entry?.name === MISC_CATEGORY;
+    // "ONLINE — …" are the website's shelves, not the shop's. One of their
+    // products picking up a barcode should not put a web aisle on the till;
+    // the item still scans, it just isn't browsable here.
+    const isWebAisle = (entry) => /^ONLINE — /.test(entry?.name || "");
+    const stocked = realCategories
+      .filter((entry) => stockedCounts.has(String(entry?._id)) && !isWebAisle(entry))
+      .map((entry) => ({
+        ...entry,
+        productCount: stockedCounts.get(String(entry._id)),
+      }));
     const pinned = [
-      ...realCategories.filter(isMisc),
-      ...realCategories.filter((entry) => !isMisc(entry)),
+      ...stocked.filter(isMisc),
+      ...stocked.filter((entry) => !isMisc(entry)),
     ];
 
     if (activeDeals.length === 0) return pinned;
@@ -272,7 +315,7 @@ function POSPage() {
       { _id: DEALS_TAB, name: t("pos.dealsTile"), productCount: activeDeals.length },
       ...pinned,
     ];
-  }, [realCategories, activeDeals, t]);
+  }, [realCategories, stockedCounts, activeDeals, t]);
 
   // Open the first category as soon as the list arrives.
   useEffect(() => {
@@ -785,7 +828,18 @@ function POSPage() {
 
       finishSale(response.data.receipt);
       toast.success(t("pos.receiptCompleted"));
-      dispatch(gettingallproducts({ view: "pos" }));
+      // The grid only needs the quantities to move, and the receipt already says
+      // what left the shelf. Pulling the whole catalogue back after every sale
+      // put a third of a megabyte and half a second between the cashier and the
+      // next customer.
+      dispatch(
+        stockSold(
+          (response.data.receipt?.items || []).map((item) => ({
+            product: item.product,
+            quantity: item.quantity,
+          })),
+        ),
+      );
       // A completed sale is a good moment to drain anything still queued.
       syncQueue();
     } catch (error) {
@@ -1562,7 +1616,6 @@ function POSPage() {
       {unknownBarcode && (
         <UnknownBarcodeModal
           barcode={unknownBarcode}
-          products={products}
           categories={categories}
           onResolved={(product) => {
             setUnknownBarcode(null);

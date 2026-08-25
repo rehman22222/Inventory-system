@@ -31,8 +31,11 @@ const validateDiscount = (discount, discountType) => {
   if (!Number.isFinite(amount) || amount <= 0) {
     return "Deal discount must be greater than zero";
   }
-  if (discountType !== undefined && discountType !== "amount" && discountType !== "percent") {
-    return "Deal discount type must be amount or percent";
+  if (
+    discountType !== undefined &&
+    !["amount", "percent", "setPrice"].includes(discountType)
+  ) {
+    return "Deal discount type must be amount, percent or setPrice";
   }
   if (discountType === "percent" && amount > 100) {
     return "A percentage deal cannot exceed 100%";
@@ -44,7 +47,7 @@ const validateDiscount = (discount, discountType) => {
 // Shared creation logic. Both the direct endpoint and the approval executor go
 // through here, so an approved deal is identical to a directly-created one.
 module.exports.createDealRecord = async (
-  { name, discount, discountType = "amount", items },
+  { name, discount, discountType = "amount", items, mode = "bundle", groupQuantity = 0 },
   actor = {}
 ) => {
   if (!name || !String(name).trim()) {
@@ -56,8 +59,19 @@ module.exports.createDealRecord = async (
     return { ok: false, status: 400, message: invalid };
   }
 
+  const dealMode = mode === "mix" ? "mix" : "bundle";
+  const groupSize = Math.floor(Number(groupQuantity || 0));
+
   const cleanItems = normaliseItems(items);
-  if (dealUnitCount(cleanItems) < 2) {
+  if (dealMode === "mix") {
+    // Pick-any-N: the list is what qualifies, the number is the whole rule.
+    if (!cleanItems.length) {
+      return { ok: false, status: 400, message: "Pick at least one product for the deal" };
+    }
+    if (!Number.isFinite(groupSize) || groupSize < 2) {
+      return { ok: false, status: 400, message: "Set how many to buy — at least two" };
+    }
+  } else if (dealUnitCount(cleanItems) < 2) {
     return { ok: false, status: 400, message: "Pick at least two units or products for the deal" };
   }
 
@@ -73,6 +87,8 @@ module.exports.createDealRecord = async (
     name: String(name).trim(),
     discount: Number(discount),
     discountType,
+    mode: dealMode,
+    groupQuantity: dealMode === "mix" ? groupSize : 0,
     items: cleanItems,
     createdBy: actor._id,
   });

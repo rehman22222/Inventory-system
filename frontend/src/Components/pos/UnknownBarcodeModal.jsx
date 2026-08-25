@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import axiosInstance from "../../lib/axios";
@@ -10,11 +10,18 @@ import { currency, MISC_CATEGORY, sanitizeDecimal, sanitizeInteger } from "./pos
 // the spot — either by attaching the scanned code to a product that already
 // exists, or by creating the product there and then. Either way the barcode is
 // learned and the next scan of that item goes straight into the cart.
-function UnknownBarcodeModal({ barcode, products, categories, onResolved, onClose }) {
+function UnknownBarcodeModal({ barcode, categories, onResolved, onClose }) {
   const { t } = useTranslation();
   const [mode, setMode] = useState("link"); // "link" | "create"
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Which pool to offer. The till's own catalogue is barcoded by definition —
+  // exactly the products this dialog can never be about — so the candidates are
+  // fetched rather than taken from the grid behind it.
+  const [scope, setScope] = useState("needs"); // "needs" | "online" | "all"
+  const [candidates, setCandidates] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -25,29 +32,96 @@ function UnknownBarcodeModal({ barcode, products, categories, onResolved, onClos
     quantity: "1",
   });
 
+  useEffect(() => {
+    if (mode !== "link") return undefined;
+    let cancelled = false;
+    const params = { view: "link" };
+    if (scope === "needs") params.needsBarcode = "1";
+    if (scope === "online") {
+      params.needsBarcode = "1";
+      params.channel = "online";
+    }
+
+    setLoading(true);
+    axiosInstance
+      .get("product/getproduct", { params })
+      .then((response) => {
+        if (!cancelled) setCandidates(response.data?.Products || []);
+      })
+      .catch(() => {
+        // A failed lookup must not trap the cashier — "Create new" still works.
+        if (!cancelled) setCandidates([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, scope]);
+
+  // The whole pool is shown before anything is typed: a cashier holding a box
+  // knows the product by sight, not by the words the catalogue happens to use.
+  //
+  // No fallback pool. An empty result means this filter genuinely holds nothing;
+  // quietly showing a different set would invite linking the scanned code to a
+  // product the cashier never asked to see.
   const matches = useMemo(() => {
     const value = query.trim().toLowerCase();
-    if (!value) return [];
-    return products
-      .filter(
-        (product) =>
-          product.name?.toLowerCase().includes(value) ||
-          product.Desciption?.toLowerCase().includes(value)
-      )
-      .slice(0, 30);
-  }, [products, query]);
+    const pool = candidates;
+    const filtered = value
+      ? pool.filter(
+          (product) =>
+            product.name?.toLowerCase().includes(value) ||
+            product.Desciption?.toLowerCase().includes(value)
+        )
+      : pool;
+    return filtered.slice(0, 60);
+  }, [candidates, query]);
 
-  const linkToProduct = async (product) => {
+  // Linking is the moment the count becomes real — the box is in their hand —
+  // so the figure is confirmed here rather than guessed at later.
+  const [picked, setPicked] = useState(null);
+  const [countedQty, setCountedQty] = useState("");
+
+  const choose = (product) => {
+    setPicked(product);
+    setCountedQty(String(product.quantity ?? ""));
+  };
+
+  const linkToProduct = async (product, { replace = false } = {}) => {
     setBusy(true);
     try {
-      const response = await axiosInstance.put(`product/${product._id}/barcode`, { barcode });
+      const response = await axiosInstance.put(`product/${product._id}/barcode`, {
+        barcode,
+        quantity: countedQty,
+        replace,
+      });
       toast.success(t("pos.unknownBarcode.linked", { name: product.name }));
       onResolved(response.data.product);
     } catch (error) {
+      // The product already carries a different code: never silently retire it.
+      if (error.response?.status === 409 && error.response.data?.needsReplaceConfirmation) {
+        const ok = window.confirm(
+          `${product.name} ${t("pos.unknownBarcode.alreadyHas", "already has barcode")} ` +
+            `${error.response.data.currentBarcode}.
+
+` +
+            t("pos.unknownBarcode.replaceAsk", "Replace it with the scanned one?"),
+        );
+        if (ok) {
+          setBusy(false);
+          return linkToProduct(product, { replace: true });
+        }
+        setBusy(false);
+        return undefined;
+      }
       toast.error(error.response?.data?.message || t("pos.unknownBarcode.linkFailed"));
     } finally {
       setBusy(false);
     }
+    return undefined;
   };
 
   const createProduct = async (event) => {
@@ -118,8 +192,76 @@ function UnknownBarcodeModal({ barcode, products, categories, onResolved, onClos
             className="w-full border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-cyan-500"
           />
 
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: "needs", label: t("pos.unknownBarcode.scopeNeeds", "Needs barcode") },
+              { key: "online", label: t("pos.unknownBarcode.scopeOnline", "Online") },
+              { key: "all", label: t("pos.unknownBarcode.scopeAll", "All products") },
+            ].map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setScope(option.key)}
+                className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+                  scope === option.key
+                    ? "bg-cyan-700 text-white"
+                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          {picked && (
+            <div className="border border-cyan-700 bg-slate-900 p-3">
+              <p className="text-sm font-semibold text-slate-100">{picked.name}</p>
+              <p className="mb-2 text-xs text-slate-400">
+                {picked.barcode
+                  ? `${t("pos.unknownBarcode.alreadyHas", "already has barcode")} ${picked.barcode}`
+                  : t("pos.unknownBarcode.noBarcodeYet", "no barcode yet")}
+              </p>
+              <label className="mb-1 block text-xs uppercase text-slate-400">
+                {t("pos.unknownBarcode.countNow", "How many on the shelf?")}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  autoFocus
+                  type="text"
+                  inputMode="numeric"
+                  data-keyboard="numeric"
+                  value={countedQty}
+                  onChange={(event) => setCountedQty(sanitizeInteger(event.target.value))}
+                  className="w-28 border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-cyan-500"
+                />
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => linkToProduct(picked)}
+                  className="bg-cyan-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {t("pos.unknownBarcode.linkTab")}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setPicked(null)}
+                  className="bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-300"
+                >
+                  {t("common.cancel", "Cancel")}
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="max-h-72 space-y-1 overflow-y-auto">
-            {query.trim() && matches.length === 0 && (
+            {loading && (
+              <p className="py-6 text-center text-sm text-slate-500">
+                {t("common.loading", "Loading...")}
+              </p>
+            )}
+
+            {!loading && matches.length === 0 && (
               <p className="py-6 text-center text-sm text-slate-500">
                 {t("pos.unknownBarcode.noMatches")}
               </p>
@@ -130,7 +272,7 @@ function UnknownBarcodeModal({ barcode, products, categories, onResolved, onClos
                 key={product._id}
                 type="button"
                 disabled={busy}
-                onClick={() => linkToProduct(product)}
+                onClick={() => choose(product)}
                 className="flex w-full items-center justify-between gap-3 border border-slate-800 bg-slate-950 px-3 py-2 text-start transition hover:border-cyan-600 hover:bg-slate-800 disabled:opacity-50"
               >
                 <span className="min-w-0">
@@ -138,6 +280,7 @@ function UnknownBarcodeModal({ barcode, products, categories, onResolved, onClos
                   <span className="block truncate text-xs text-slate-500">
                     {product.Category?.name || t("pos.uncategorized")}
                     {product.barcode ? ` · ${product.barcode}` : ""}
+                    {product.stockCounted ? "" : ` · ${t("pos.unknownBarcode.webStock", "web stock")}`}
                   </span>
                 </span>
                 <span className="shrink-0 text-sm font-semibold tabular-nums">

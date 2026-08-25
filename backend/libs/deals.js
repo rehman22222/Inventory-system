@@ -1,9 +1,15 @@
 // Deal matching — shared by the POS checkout controller and the demo-mode
 // router so both apply exactly the same discount as the till previews.
 //
-// A deal is a set of products (each with a required quantity) and a discount
-// that applies once for every complete set present in the basket: a
-// "Vape + Coil = €3 off" deal with two vapes and two coils applies twice.
+// A deal is a set of products and a discount that applies once for every
+// complete set present in the basket: a "Vape + Coil = €3 off" deal with two
+// vapes and two coils applies twice.
+//
+// Two shapes of set:
+//   bundle — a recipe. Each product at its own quantity, all of them present.
+//   mix    — pick-any-N across the chosen products. Fifteen flavours of one pod
+//            and an offer of "any 3 for €10": the shopper mixes them however
+//            they like and only the total count decides.
 //
 // The discount is either a fixed amount per set, or a percentage OFF THE DEAL'S
 // OWN PRODUCTS — not off the whole basket. A "10% off Vape + Coil" deal must not
@@ -25,34 +31,71 @@ function applicableDeals(cartMap, deals) {
     const items = Array.isArray(deal.items) ? deal.items : [];
     if (items.length === 0) continue;
 
-    // How many complete sets of this deal are in the basket, and what one set
-    // is worth at shelf price (needed for a percentage deal).
-    let sets = Infinity;
+    // How many complete sets are in the basket, and what those sets are worth
+    // at shelf price. `setValue` covers EVERY set found, not one of them.
+    let sets = 0;
     let setValue = 0;
     const products = [];
 
-    for (const item of items) {
-      const need = Number(item.quantity || 1);
-      if (need <= 0) continue;
+    if (deal.mode === "mix") {
+      // Pick-any-N: the shopper mixes flavours freely, so the basket is flattened
+      // into individual units and only the count matters.
+      const need = Math.floor(Number(deal.groupQuantity || 0));
+      if (need < 2) continue;
 
-      const id = String(item.product);
-      products.push(id);
+      const units = [];
+      for (const item of items) {
+        const id = String(item.product);
+        products.push(id);
+        const line = cartMap.get(id);
+        const have = Math.floor(Number(line?.quantity || 0));
+        for (let i = 0; i < have; i += 1) units.push(Number(line?.price || 0));
+      }
 
-      const line = cartMap.get(id);
-      const have = Number(line?.quantity || 0);
-      sets = Math.min(sets, Math.floor(have / need));
-      setValue += Number(line?.price || 0) * need;
+      sets = Math.floor(units.length / need);
+      if (sets < 1) continue;
+
+      // Dearest first. A shopper who bought a €9 and a €5 of the same offer
+      // expects the deal on the €9 — the other way round reads as a short-change
+      // and is the complaint every mix-and-match till eventually gets.
+      units.sort((a, b) => b - a);
+      setValue = units.slice(0, sets * need).reduce((sum, price) => sum + price, 0);
+    } else {
+      let complete = Infinity;
+      let oneSet = 0;
+
+      for (const item of items) {
+        const need = Number(item.quantity || 1);
+        if (need <= 0) continue;
+
+        const id = String(item.product);
+        products.push(id);
+
+        const line = cartMap.get(id);
+        const have = Number(line?.quantity || 0);
+        complete = Math.min(complete, Math.floor(have / need));
+        oneSet += Number(line?.price || 0) * need;
+      }
+
+      if (!Number.isFinite(complete) || complete < 1) continue;
+      sets = complete;
+      setValue = oneSet * sets;
     }
 
-    if (!Number.isFinite(sets) || sets < 1) continue;
-
-    const percent = deal.discountType === "percent";
-    const raw = percent
-      ? (setValue * sets * Number(deal.discount || 0)) / 100
-      : Number(deal.discount || 0) * sets;
+    let raw;
+    if (deal.discountType === "percent") {
+      raw = (setValue * Number(deal.discount || 0)) / 100;
+    } else if (deal.discountType === "setPrice") {
+      // `discount` holds what the set costs, so the reduction is whatever the
+      // goods were worth above it. A set already cheaper than the offer price
+      // yields nothing — a deal must never make the basket dearer.
+      raw = setValue - Number(deal.discount || 0) * sets;
+    } else {
+      raw = Number(deal.discount || 0) * sets;
+    }
 
     // A deal can never hand back more than the deal's own goods are worth.
-    const amount = round2(Math.min(raw, setValue * sets));
+    const amount = round2(Math.max(0, Math.min(raw, setValue)));
     if (amount <= 0) continue;
 
     applied.push({
