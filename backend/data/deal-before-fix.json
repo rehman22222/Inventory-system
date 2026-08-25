@@ -1,0 +1,109 @@
+{
+  "_id": "6a8db9be1785b29238ec43ea",
+  "name": "Elf Bar ELFLIQ Nic Salt 10mg",
+  "discount": 3,
+  "discountType": "amount",
+  "items": [
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2a82",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2a83",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2a86",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2a87",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2a89",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2a8a",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2a91",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2a92",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2a93",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2a95",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2a96",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2a9a",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2a9b",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2a9c",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2a9d",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2aa0",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2aa2",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2aa3",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2aa6",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2aa7",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2aa8",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2aaa",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2aac",
+      "quantity": 1
+    },
+    {
+      "product": "6a8d7374e9a5a7cb4ccd2ab0",
+      "quantity": 1
+    }
+  ],
+  "active": true,
+  "createdBy": "6a5c0b9b819d326e5e5d8c9c",
+  "createdAt": "2026-08-25T15:50:22.336Z",
+  "updatedAt": "2026-08-25T15:50:22.336Z",
+  "__v": 0
+}

@@ -6,7 +6,6 @@ import SessionExpiryGuard from "./Components/SessionExpiryGuard";
 // Public + always-needed pieces load eagerly; everything behind auth is
 // code-split so the first paint (landing/login) ships a small bundle and each
 // dashboard page is fetched only when a user actually opens it.
-import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import ProtectedRoute from "./lib/ProtectedRoute";
 
@@ -59,9 +58,13 @@ function App() {
       <VirtualKeyboard />
       <Suspense fallback={<PageFallback />}>
       <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/about" element={<ServicePage />} />
+        {/* This deployment is one shop's back office, not a product website:
+            the marketing page sat between the staff and the thing they came
+            for. Sign-in IS the front door now. /LoginPage stays a real route
+            because the session guard redirects there by path. */}
+        <Route path="/" element={<LoginPage />} />
         <Route path="/LoginPage" element={<LoginPage />} />
+        <Route path="/about" element={<ServicePage />} />
 
         {/* Standalone full-screen POS terminal — opens outside the dashboard shell */}
         <Route path="/pos" element={protect(<POSPage />, ["superadmin", "admin", "manager", "staff"])} />
