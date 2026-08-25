@@ -41,7 +41,9 @@ module.exports.getStockTransactionsByProduct = async (req, res) => {
   try {
     const { productId } = req.params;
 
-    const transactions = await StockTransaction.find({ product: productId }).populate('Supplier').sort({ transactionDate: -1 });
+    // The field is `supplier`; populating "Supplier" threw a StrictPopulateError
+    // on every call, so this route answered 500 whatever you asked it for.
+    const transactions = await StockTransaction.find({ product: productId }).populate('supplier').sort({ transactionDate: -1 });
 
     if (!transactions || transactions.length === 0) {
       return res.status(404).json({ success: false, message: "No transactions found for this product." });
