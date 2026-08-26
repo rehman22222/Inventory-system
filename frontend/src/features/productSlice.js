@@ -17,6 +17,19 @@ const initialState={
   
 }
 
+const upsertProduct = (list, product) => {
+  if (!product?._id || !Array.isArray(list)) return list;
+  const index = list.findIndex((entry) => String(entry._id) === String(product._id));
+  if (index === -1) return list;
+  list[index] = product;
+  return list;
+};
+
+const removeProductFrom = (list, productId) =>
+  Array.isArray(list)
+    ? list.filter((product) => String(product._id) !== String(productId))
+    : list;
+
 
 
 export const Addproduct=createAsyncThunk('product/addproduct',async(product,{rejectWithValue})=>{
@@ -195,7 +208,8 @@ extraReducers:(builder)=>{
     // whichever shape was dispatched, or the row silently stays on screen.
     const removedId =
       typeof action.meta.arg === "string" ? action.meta.arg : action.meta.arg?.productId;
-    state.getallproduct = state.getallproduct.filter(product => product._id !== removedId);
+    state.getallproduct = removeProductFrom(state.getallproduct, removedId);
+    state.searchdata = removeProductFrom(state.searchdata, removedId);
 
   })
   
@@ -264,12 +278,8 @@ extraReducers:(builder)=>{
    state.iseditedProduct=false 
    state.editedProduct=action.payload
    const updated = action.payload?.product || action.payload;
-   if (updated?._id && Array.isArray(state.getallproduct)) {
-     const index = state.getallproduct.findIndex(
-       (product) => String(product._id) === String(updated._id),
-     );
-     if (index !== -1) state.getallproduct[index] = updated;
-   }
+   upsertProduct(state.getallproduct, updated);
+   upsertProduct(state.searchdata, updated);
 
 
  })
