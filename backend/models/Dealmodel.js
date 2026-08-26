@@ -59,6 +59,8 @@ const DealSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+DealSchema.index({ "items.product": 1 });
+
 const Deal = mongoose.model("Deal", DealSchema);
 
 module.exports = Deal;

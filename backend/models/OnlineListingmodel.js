@@ -160,6 +160,8 @@ const OnlineListingSchema = new mongoose.Schema(
 // One listing per product per shop — a product cannot be on the site twice.
 OnlineListingSchema.index({ store: 1, product: 1 }, { unique: true });
 OnlineListingSchema.index({ store: 1, slug: 1 }, { unique: true });
+OnlineListingSchema.index({ product: 1 });
+OnlineListingSchema.index({ "variants.product": 1 });
 // The storefront's main read: what is live, in order.
 OnlineListingSchema.index({ store: 1, listed: 1, sortWeight: 1 });
 OnlineListingSchema.index({ store: 1, category: 1, listed: 1 });

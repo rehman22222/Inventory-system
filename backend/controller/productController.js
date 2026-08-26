@@ -94,7 +94,7 @@ module.exports.Addproduct=async(req,res)=>{
         await createdProduct.save();
         await createdProduct.populate('Category');
 
-       await logActivity({
+        void logActivity({
 
      action:"Add Product",
       description:`Product ${productName} was added`,
@@ -376,7 +376,7 @@ module.exports.quickAddProduct = async (req, res) => {
         }
 
         // Remove its image from Cloudinary so we don't leave orphaned assets.
-        await deleteImage(deletedProduct.image?.publicId);
+        void deleteImage(deletedProduct.image?.publicId);
 
         // What went with it belongs in the log too — "why did this vanish from
         // the website" is the question this record has to answer later.
@@ -387,7 +387,7 @@ module.exports.quickAddProduct = async (req, res) => {
           cleaned.dealsDisabled ? `${cleaned.dealsDisabled} deal(s) switched off` : null,
         ].filter(Boolean);
 
-        await logActivity({
+        void logActivity({
           action: "Delete Product",
           description: `Product "${deletedProduct.name}" was deleted${alsoRemoved.length ? `, along with ${alsoRemoved.join(", ")}` : ""}.`,
           entity: "product",
@@ -469,13 +469,13 @@ module.exports.quickAddProduct = async (req, res) => {
         if (req.file) {
           const oldPublicId = product.image?.publicId;
           product.image = await uploadImage(req.file);
-          await deleteImage(oldPublicId);
+          void deleteImage(oldPublicId);
         }
 
         await product.save();
         await product.populate("Category");
 
-        await logActivity({
+        void logActivity({
           action: "Update Product",
           description: `Product "${product.name}" was updated.`,
           entity: "product",

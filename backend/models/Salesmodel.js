@@ -60,6 +60,7 @@ SaleSchema.index({ receiptNo: 1 });
 SaleSchema.index({ status: 1, createdAt: -1 });
 SaleSchema.index({ source: 1, createdAt: -1 });
 SaleSchema.index({ dayClosing: 1 });
+SaleSchema.index({ "products.product": 1 });
 
 const Sale= mongoose.model("Sale", SaleSchema);
 

@@ -182,16 +182,11 @@ function Productpage() {
   const removeProduct = async (productId, confirm) => {
     setDeleting(true);
     try {
-      const result = await dispatch(
+      await dispatch(
         Removeproduct(confirm ? { productId, confirm } : productId),
       ).unwrap();
       setPendingDelete(null);
       toast.success(t("products.removed"));
-      // Listings and deals may have been edited on the way out; the storefront
-      // side of the screen is stale until it is asked again.
-      if (result?.cleaned?.listingsDeleted || result?.cleaned?.dealsEdited) {
-        dispatch(gettingallproducts());
-      }
     } catch (error) {
       if (error?.needsConfirmation) {
         setPendingDelete({ ...error, productId });

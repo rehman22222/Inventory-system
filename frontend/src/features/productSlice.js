@@ -263,6 +263,13 @@ extraReducers:(builder)=>{
  .addCase(EditProduct.fulfilled,(state,action)=>{
    state.iseditedProduct=false 
    state.editedProduct=action.payload
+   const updated = action.payload?.product || action.payload;
+   if (updated?._id && Array.isArray(state.getallproduct)) {
+     const index = state.getallproduct.findIndex(
+       (product) => String(product._id) === String(updated._id),
+     );
+     if (index !== -1) state.getallproduct[index] = updated;
+   }
 
 
  })
