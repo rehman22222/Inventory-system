@@ -175,6 +175,11 @@
 
   #receipt .r-qrwrap {
     margin-top: 10px;
+    text-align: center;
+  }
+  #receipt .r-qrwrap svg {
+    display: block;
+    margin: 0 auto;
   }
   #receipt .r-qrcap {
     margin-top: 2px;

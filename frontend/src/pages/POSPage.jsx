@@ -1404,7 +1404,6 @@ function POSPage() {
               <tr>
                 <th className="r-qty">{t("pos.table.qty")}</th>
                 <th className="r-prod">{t("pos.table.product")}</th>
-                <th className="r-num">{t("pos.table.rate")}</th>
                 <th className="r-num">{t("pos.receiptDoc.price")}</th>
               </tr>
             </thead>
@@ -1413,7 +1412,6 @@ function POSPage() {
                 <tr key={String(item.product)}>
                   <td className="r-qty">{item.quantity}</td>
                   <td className="r-prod">{item.name}</td>
-                  <td className="r-num">{currency(item.price)}</td>
                   <td className="r-num">{currency(item.lineTotal)}</td>
                 </tr>
               ))}
@@ -1510,7 +1508,6 @@ function POSPage() {
           <div className="r-center r-footer">
             {SHOP?.footer || t("pos.receiptDoc.thanksShopping", "Thank you for shopping with us")}
           </div>
-          <div className="r-center r-footer">{t("pos.ageVerification")}</div>
           <div className="r-center r-tail">• • •</div>
         </div>
       )}

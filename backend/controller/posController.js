@@ -167,11 +167,15 @@ module.exports.checkout = async (req, res) => {
     // same data — and every check below still runs in the same order, so a bad
     // cart still fails on exactly the message it failed on before.
     const [foundProducts, prefetchedVoucher, activeDeals] = await Promise.all([
-      Product.find({ _id: { $in: basketIds } }),
+      Product.find({ _id: { $in: basketIds } })
+        .select("name Price quantity")
+        .lean(),
       voucherCode
         ? Voucher.findOne({ code: String(voucherCode).trim().toUpperCase() })
         : null,
-      Deal.find({ active: true }).lean(),
+      Deal.find({ active: true })
+        .select("name items mode groupQuantity discountType discount active")
+        .lean(),
     ]);
 
     const productsById = new Map(
@@ -359,7 +363,9 @@ module.exports.checkout = async (req, res) => {
             { _id: line.product._id, quantity: { $gte: line.quantity } },
             { $inc: { quantity: -line.quantity } },
             { new: true, ...opts(session) },
-          );
+          )
+            .select("name barcode quantity supplier lowStockThreshold")
+            .lean();
 
           if (!updated) {
             throw Object.assign(
