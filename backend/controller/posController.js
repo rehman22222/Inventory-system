@@ -41,13 +41,14 @@ const ownOpenScope = (user) => ({ cashier: user._id, dayClosing: null });
 // Who sees whose day-closing batches, up the chain:
 //   staff closing   → manager + admin + superadmin
 //   manager closing → admin + superadmin
-// So a manager sees their staff's closings and their own, but never another
-// manager's or the admin's. Owner side sees everything. Uses cashierRole, which
-// is snapshotted on every DayClosing.
+// So a manager's tab is only for staff handovers. Once the manager closes their
+// own day, that batch moves up to admin/superadmin and disappears from the
+// manager view. Owner side sees everything. Uses cashierRole, which is
+// snapshotted on every DayClosing.
 const closingScope = (user) => {
   if (seesAllSales(user)) return {};
   if (user?.role === "manager") {
-    return { $or: [{ cashierRole: "staff" }, { cashier: user._id }] };
+    return { cashierRole: "staff" };
   }
   return { cashier: user?._id };
 };
@@ -57,7 +58,7 @@ const closingScope = (user) => {
 const canSeeClosing = (user, closing) => {
   if (seesAllSales(user)) return true;
   const isOwn = String(closing.cashier) === String(user?._id);
-  if (user?.role === "manager") return isOwn || closing.cashierRole === "staff";
+  if (user?.role === "manager") return closing.cashierRole === "staff";
   return isOwn;
 };
 

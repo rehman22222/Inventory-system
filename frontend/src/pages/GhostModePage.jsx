@@ -5,12 +5,7 @@ import { FiChevronLeft, FiChevronRight, FiEye } from "react-icons/fi";
 import toast from "react-hot-toast";
 import axiosInstance from "../lib/axios";
 import ReportButton from "../Components/ReportButton";
-
-const money = (value) =>
-  Number(value || 0).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+import { currency } from "../Components/pos/posUtils";
 
 const STATUS_TONE = {
   completed: "bg-emerald-100 text-emerald-700",
@@ -157,7 +152,7 @@ function GhostModePage() {
           >
             <h2 className="text-sm font-semibold text-white/70">{stat.label}</h2>
             <p className="mt-2 text-2xl font-bold tabular-nums">
-              {stat.plain ? stat.value : `$${money(stat.value)}`}
+              {stat.plain ? stat.value : currency(stat.value)}
             </p>
           </div>
         ))}
@@ -186,7 +181,7 @@ function GhostModePage() {
               >
                 <p className="text-sm font-semibold">{entry.name}</p>
                 <p className="text-xs text-base-content/60">
-                  {entry.count} · ${money(entry.net)}
+                  {entry.count} · {currency(entry.net)}
                 </p>
               </button>
             ))}
@@ -302,7 +297,7 @@ function GhostModePage() {
                   : t("ghost.tax.receipts", { count: netPreview.receipts || 0 })}
               </span>
               <span className="font-mono text-lg font-bold text-blue-950">
-                ${money(netPreview.existingNet || 0)}
+                {currency(netPreview.existingNet || 0)}
               </span>
             </div>
           </div>
@@ -434,7 +429,7 @@ function GhostModePage() {
                       </span>
                     </td>
                     <td className="border px-3 py-2 text-right font-semibold tabular-nums">
-                      ${money(receipt.total)}
+                      {currency(receipt.total)}
                     </td>
                   </tr>
                 ))}
