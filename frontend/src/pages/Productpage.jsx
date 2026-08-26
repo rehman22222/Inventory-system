@@ -182,11 +182,23 @@ function Productpage() {
   const removeProduct = async (productId, confirm) => {
     setDeleting(true);
     try {
-      await dispatch(
+      const result = await dispatch(
         Removeproduct(confirm ? { productId, confirm } : productId),
       ).unwrap();
       setPendingDelete(null);
       toast.success(t("products.removed"));
+      // Deleting a master product takes its whole shop page with it, so any
+      // OTHER product that was only a flavour on that page stops being sold
+      // online too. Those rows are still on screen under the "Online" lens —
+      // which is built from the listings themselves, not from the products —
+      // so that one lens has to ask again. The others show the same rows
+      // either way, and the deleted row is already gone from the store.
+      if (
+        channel === "online" &&
+        (result?.cleaned?.listingsDeleted || result?.cleaned?.variantsPulled)
+      ) {
+        dispatch(gettingallproducts({ channel }));
+      }
     } catch (error) {
       if (error?.needsConfirmation) {
         setPendingDelete({ ...error, productId });
