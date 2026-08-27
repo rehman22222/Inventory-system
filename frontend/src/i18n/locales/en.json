@@ -501,7 +501,9 @@
       "failed": "Refund failed",
       "selectSomething": "Choose at least one item to refund",
       "reasonPlaceholder": "Reason (optional)",
-      "status": "Status"
+      "status": "Status",
+      "chooseItems": "Choose what the customer brought back",
+      "selectAll": "Select all"
     },
     "void": {
       "confirm": "Void receipt {{receiptNo}}? Stock will be returned.",

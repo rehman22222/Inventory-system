@@ -37,11 +37,11 @@ function RefundModal({ initialReceiptNo = "", onDone, onClose }) {
         const response = await axiosInstance.get(`pos/receipt/${value.toUpperCase()}`);
         const loaded = response.data.receipt;
         setReceipt(loaded);
-        setQuantities(
-          Object.fromEntries(
-            loaded.items.map((item) => [String(item.product), outstandingOf(loaded, item)])
-          )
-        );
+        // Nothing is selected until the cashier picks it. Starting with the whole
+        // receipt selected means one stray tap on Confirm sends back a basket the
+        // customer never returned, and a partial return is the ordinary case —
+        // "one of these five", not "all of it". Select all covers the rest.
+        setQuantities({});
       } catch (error) {
         setReceipt(null);
         toast.error(error.response?.data?.message || t("pos.refund.notFound"));
@@ -62,6 +62,21 @@ function RefundModal({ initialReceiptNo = "", onDone, onClose }) {
       [productId]: Math.max(0, Math.min(Number(next) || 0, max)),
     }));
   };
+
+  // Voiding a whole receipt is still one tap, now that nothing starts selected.
+  const selectAll = () => {
+    if (!receipt) return;
+    setQuantities(
+      Object.fromEntries(
+        receipt.items.map((item) => [String(item.product), outstandingOf(receipt, item)])
+      )
+    );
+  };
+
+  const selectedCount = Object.values(quantities).reduce(
+    (sum, value) => sum + Number(value || 0),
+    0
+  );
 
   const refundTotal = receipt
     ? receipt.items.reduce((sum, item) => {
@@ -125,7 +140,7 @@ function RefundModal({ initialReceiptNo = "", onDone, onClose }) {
             <button
               type="button"
               onClick={submit}
-              disabled={busy}
+              disabled={busy || selectedCount === 0}
               className="bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50"
             >
               {busy ? t("pos.processing") : t("pos.refund.confirm")}
@@ -175,6 +190,19 @@ function RefundModal({ initialReceiptNo = "", onDone, onClose }) {
               {t("pos.refund.status")}:{" "}
               <span className="text-amber-400">{receipt.status}</span>
             </span>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-slate-500">
+              {t("pos.refund.chooseItems", "Choose what the customer brought back")}
+            </span>
+            <button
+              type="button"
+              onClick={selectAll}
+              className="border border-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-300 hover:border-slate-500 hover:text-slate-100"
+            >
+              {t("pos.refund.selectAll", "Select all")}
+            </button>
           </div>
 
           <div className="space-y-1">
