@@ -62,6 +62,11 @@ const resources = {
         shopAllProducts: "Shop all\nproducts",
         browseCatalogue: "Browse catalogue",
       },
+      sale: {
+        // Headline for a sale with no measurable markdown - a product flagged
+        // on sale but carrying no regular price to discount against.
+        heading: "ON SALE.",
+      },
       footer: {
         newsletter: "Subscribe to our newsletters",
         emailLabel: "Email address",
@@ -230,6 +235,9 @@ const resources = {
         everything: "Gach rud",
         shopAllProducts: "Siopa gach\ntáirge",
         browseCatalogue: "Brabhsáil catalóg",
+      },
+      sale: {
+        heading: "AR DÍOL.",
       },
       footer: {
         newsletter: "Cláraigh don nuachtlitir",

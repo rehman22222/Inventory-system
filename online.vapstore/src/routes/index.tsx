@@ -7,6 +7,7 @@ import { CategoryTile } from "@/components/CategoryTile";
 import { ProductCard } from "@/components/ProductCard";
 import {
   bestSellers,
+  maxSalePercent,
   saleProducts,
   topLevelCategories,
   type Category,
@@ -185,14 +186,7 @@ function Home() {
   const best = bestSellers(products, settings.bestSellers?.limit || 8);
   const sale = saleProducts(products).slice(0, settings.deals.limit);
   const eventItems = eventDeckItems(settings.events?.items || [], products, categories);
-  const maxDealPercent = sale.reduce((highest, product) => {
-    const dealPrice = Number(product.qtyDeal?.price ?? product.price);
-    const regular = Number(
-      product.qtyDeal?.regularPrice || product.regularPrice || product.compareAt || 0,
-    );
-    if (regular <= 0 || dealPrice >= regular) return highest;
-    return Math.max(highest, Math.round(((regular - dealPrice) / regular) * 100));
-  }, 0);
+  const maxDealPercent = maxSalePercent(products);
 
   // The deals headline is owner-editable, so whatever is in settings wins — but
   // a settings record that has never been edited is still carrying an old

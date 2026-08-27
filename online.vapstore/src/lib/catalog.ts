@@ -276,6 +276,26 @@ export const childCategories = (categories: Category[], parentSlug: CategorySlug
 export const saleProducts = (products: Product[]) =>
   products.filter((product) => product.sale || Boolean(product.qtyDeal));
 
+/**
+ * The deepest discount on offer, as a whole percent — the number behind every
+ * "UP TO -X% OFF" headline.
+ *
+ * It runs over the full sale list on purpose. Both the home deals block and the
+ * sale page make the same claim, so they have to count the same products; when
+ * the home rail was capped at its display limit the two pages advertised
+ * different percentages off the same catalogue. A configured Buy N+ price wins
+ * over the plain compare-at, matching what the cards themselves show.
+ */
+export const maxSalePercent = (products: Product[]) =>
+  saleProducts(products).reduce((highest, product) => {
+    const dealPrice = Number(product.qtyDeal?.price ?? product.price);
+    const regular = Number(
+      product.qtyDeal?.regularPrice || product.regularPrice || product.compareAt || 0,
+    );
+    if (regular <= 0 || dealPrice >= regular) return highest;
+    return Math.max(highest, Math.round(((regular - dealPrice) / regular) * 100));
+  }, 0);
+
 export const newArrivals = (products: Product[], limit = 8) =>
   // Fully admin-curated: publishing a product does not put it in this rail.
   // Only products explicitly added through Admin -> Online Store are shown.
