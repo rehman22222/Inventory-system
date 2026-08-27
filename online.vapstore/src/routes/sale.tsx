@@ -51,9 +51,6 @@ function SalePage() {
               t("sale.heading")
             )}
           </h1>
-          <p className="mt-6 max-w-lg text-primary-foreground/70">
-            {list.length} products marked down. Limited stock, no rain-checks.
-          </p>
         </div>
       </section>
       <section className="container-x py-12 md:py-16">
