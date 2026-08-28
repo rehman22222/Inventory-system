@@ -455,3 +455,31 @@ describe("a set the cashier has given stays on the items it was given on", () =>
     expect(named).toBeLessThanOrEqual(free);
   });
 });
+
+describe("holding a set does not freeze what the basket qualifies for", () => {
+  const deal = [
+    mixDeal({
+      items: ["A", "B", "C", "D", "E"].map((product) => ({ product })),
+    }),
+  ];
+  const chosen = ["D1"];
+
+  test("scanning enough for a second set still offers the second set", () => {
+    // Given on A×2 + B×1, then more is rung up: eight eligible units in all.
+    const cart = [
+      { productId: "A", quantity: 2, price: 7 },
+      { productId: "B", quantity: 2, price: 7 },
+      { productId: "C", quantity: 2, price: 7 },
+      { productId: "D", quantity: 1, price: 7 },
+      { productId: "E", quantity: 1, price: 7 },
+    ];
+    const lock = { D1: { A: 2, B: 1 } };
+
+    const [held] = applicableDeals(cart, deal, chosen, undefined, undefined, lock).applied;
+    // One set given, on the units it was given on...
+    expect(held.sets).toBe(1);
+    expect(held.allocation).toEqual({ A: 2, B: 1 });
+    // ...but the basket plainly holds two, and the till has to be able to say so.
+    expect(held.maxSets).toBe(2);
+  });
+});

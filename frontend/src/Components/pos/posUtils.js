@@ -250,7 +250,15 @@ export const applicableDeals = (cart, deals, chosenIds, overrides, setCounts, lo
         if (held.length < need) return;
 
         held.sort((a, b) => b.price - a.price);
-        sets = capSets(Math.floor(held.length / need));
+
+        // What is GIVEN comes from the set that was given. What the basket
+        // QUALIFIES for is still the whole basket — holding a set still must
+        // not also freeze the offer at one.
+        capSets(Math.floor(units.length / need));
+        sets = Math.min(
+          Math.floor(held.length / need),
+          Number.isFinite(askedFor) && askedFor > 0 ? askedFor : Infinity,
+        );
         const inSets = held.slice(0, sets * need);
         setValue = inSets.reduce((sum, unit) => sum + unit.price, 0);
         for (const unit of inSets) {
