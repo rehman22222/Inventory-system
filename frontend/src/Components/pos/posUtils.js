@@ -194,18 +194,27 @@ export const applicableDeals = (cart, deals, chosenIds, overrides, setCounts) =>
       if (need < 2) return;
 
       // Each unit remembers which line it came from, so the till can say "3 of
-      // these 5 are in the offer" instead of badging the whole line.
-      const units = [];
+      // these 5 are in the offer" instead of badging the whole line. Walked in
+      // BASKET order, not in the order the deal lists its products: with
+      // everything at one price the cashier expects the first three they rang
+      // up to be the set, not three from the middle.
+      const eligible = new Set();
       items.forEach((item) => {
         const pid = itemProductId(item);
+        eligible.add(pid);
         products.push(pid);
-        const line = cartMap.get(pid);
+      });
+
+      const units = [];
+      cartMap.forEach((line, id) => {
+        if (!eligible.has(id)) return;
         const have = Math.floor(Number(line?.quantity || 0));
-        for (let i = 0; i < have; i += 1) units.push({ id: pid, price: Number(line?.price || 0) });
+        for (let i = 0; i < have; i += 1) units.push({ id, price: Number(line?.price || 0) });
       });
 
       if (units.length < need) return;
 
+      // Dearest first; the sort is stable, so equal prices keep basket order.
       units.sort((a, b) => b.price - a.price);
 
       let inSets;

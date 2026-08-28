@@ -102,11 +102,21 @@ function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts) {
       // these 5 are in the offer" instead of badging the whole line. Five items
       // on a 3-for deal is three at the deal and two at shelf price, and a
       // customer reading the receipt has to be able to see that.
-      const units = [];
+      //
+      // Walked in BASKET order, not in the order the deal happens to list its
+      // products. With everything at one price — which is the ordinary case for
+      // these offers — that is what decides which units are in the set, and the
+      // cashier expects the first three they rang up, not three from the middle.
+      const eligible = new Set();
       for (const item of items) {
         const id = String(item.product);
+        eligible.add(id);
         products.push(id);
-        const line = cartMap.get(id);
+      }
+
+      const units = [];
+      for (const [id, line] of cartMap) {
+        if (!eligible.has(id)) continue;
         const have = Math.floor(Number(line?.quantity || 0));
         for (let i = 0; i < have; i += 1) units.push({ id, price: Number(line?.price || 0) });
       }
@@ -115,7 +125,8 @@ function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts) {
 
       // Dearest first. A shopper who bought a EUR 9 and a EUR 5 of the same
       // offer expects the deal on the EUR 9 — the other way round reads as a
-      // short-change and is the complaint every mix-and-match till gets.
+      // short-change and is the complaint every mix-and-match till gets. The
+      // sort is stable, so equal prices keep the basket order above.
       units.sort((a, b) => b.price - a.price);
 
       let inSets;

@@ -361,3 +361,38 @@ describe("the cashier decides how many sets to give", () => {
     expect(units(6) - applicableDeals(cartOf(6), deals, chosen).total).toBe(36);
   });
 });
+
+describe("which units land in the set", () => {
+  test("at one price it is the order they were rung up, not the deal's list", () => {
+    // The deal lists these in a different order from the basket.
+    const deal = [
+      mixDeal({
+        items: [{ product: "C" }, { product: "D" }, { product: "E" }, { product: "A" }, { product: "B" }],
+      }),
+    ];
+    const cart = ["A", "B", "C", "D", "E"].map((id) => ({
+      productId: id,
+      quantity: 1,
+      price: 7,
+    }));
+
+    const [offer] = applicableDeals(cart, deal, ["D1"]).applied;
+    expect(offer.allocation).toEqual({ A: 1, B: 1, C: 1 });
+  });
+
+  test("mixed prices still take the dearest — the shopper's side of it", () => {
+    const deal = [
+      mixDeal({ items: [{ product: "A" }, { product: "B" }, { product: "C" }, { product: "D" }] }),
+    ];
+    const cart = [
+      { productId: "A", quantity: 1, price: 5 },
+      { productId: "B", quantity: 1, price: 9 },
+      { productId: "C", quantity: 1, price: 7 },
+      { productId: "D", quantity: 1, price: 6 },
+    ];
+
+    const [offer] = applicableDeals(cart, deal, ["D1"]).applied;
+    expect(offer.allocation).toEqual({ B: 1, C: 1, D: 1 });
+    expect(offer.normal).toBe(22);
+  });
+});
