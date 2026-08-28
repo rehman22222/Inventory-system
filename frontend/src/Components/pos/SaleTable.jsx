@@ -38,21 +38,39 @@ function SaleTable({
             <p className="text-sm font-medium text-slate-600">{t("pos.scanOrSelect")}</p>
           </div>
         ) : (
-          cart.map((item) => {
+          // A line that is partly in an offer is shown as two: the units the
+          // deal covers, boxed and badged, and the rest underneath at shelf
+          // price. Scanning a fourth of something whose first three are in a
+          // 3-for set should put that fourth somewhere the cashier can see it
+          // is being charged in full, not fold it into the discounted row.
+          cart
+            .flatMap((item) => {
+              // `line` is what the basket actually holds. The +/− and the cross
+              // always act on that, whichever half they are pressed from —
+              // splitting a line is a way of showing it, not of splitting what
+              // the customer is buying.
+              const covered = dealUnits?.get(String(item.productId)) || 0;
+              const line = item.quantity;
+              if (covered <= 0) return [{ ...item, line, part: "plain" }];
+              if (covered >= line) return [{ ...item, line, part: "deal" }];
+              return [
+                { ...item, quantity: covered, line, part: "deal" },
+                { ...item, quantity: line - covered, line, part: "rest" },
+              ];
+            })
+            .map((item) => {
             const active = selectedId === item.productId;
-            // How many of this line the offer actually covers — nothing else
-            // decides the badge. Being ELIGIBLE for a deal is not being in one:
-            // a 3-for offer across seven eligible lines covers three of them,
-            // and badging all seven tells the customer they are all discounted.
-            const covered = dealUnits?.get(String(item.productId)) || 0;
-            const inDeal = covered > 0;
-            const partly = covered < item.quantity;
+            const inDeal = item.part === "deal";
 
             return (
               <div
-                key={item.productId}
+                key={`${item.productId}-${item.part}`}
                 onClick={() => onSelect(item.productId)}
-                className={`grid ${COLS} cursor-pointer items-center gap-1.5 border-b border-slate-900 px-3 py-2.5 text-sm transition ${
+                className={`grid ${COLS} cursor-pointer items-center gap-1.5 border-b px-3 py-2.5 text-sm transition ${
+                  inDeal
+                    ? "border-b-fuchsia-900/40 border-s-2 border-s-fuchsia-600 bg-fuchsia-950/20"
+                    : "border-slate-900"
+                } ${
                   active
                     ? "bg-cyan-950/50 shadow-[inset_3px_0_0_0_theme(colors.cyan.500)]"
                     : "hover:bg-slate-900/60"
@@ -69,9 +87,7 @@ function SaleTable({
                     {inDeal && (
                       <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 bg-fuchsia-950 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-fuchsia-300 ring-1 ring-fuchsia-800">
                         <FiTag className="h-2.5 w-2.5" />
-                        {partly
-                          ? t("pos.dealTagPartial", { n: covered })
-                          : t("pos.dealTag")}
+                        {t("pos.dealTag")}
                       </span>
                     )}
                   </p>
@@ -86,7 +102,7 @@ function SaleTable({
                     type="button"
                     onClick={(event) => {
                       event.stopPropagation();
-                      onQuantityChange(item.productId, item.quantity - 1);
+                      onQuantityChange(item.productId, item.line - 1);
                     }}
                     className="bg-slate-800 p-1.5 text-slate-400 transition hover:bg-slate-700 hover:text-slate-100 active:scale-90"
                     aria-label={t("pos.table.decrease")}
@@ -100,7 +116,7 @@ function SaleTable({
                     type="button"
                     onClick={(event) => {
                       event.stopPropagation();
-                      onQuantityChange(item.productId, item.quantity + 1);
+                      onQuantityChange(item.productId, item.line + 1);
                     }}
                     className="bg-slate-800 p-1.5 text-slate-400 transition hover:bg-slate-700 hover:text-slate-100 active:scale-90"
                     aria-label={t("pos.table.increase")}

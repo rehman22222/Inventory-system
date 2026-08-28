@@ -738,3 +738,64 @@ body.osk-open .admin-drawer {
 .slip-edge-bottom {
   transform: rotate(180deg);
 }
+
+/* ── Till feedback ─────────────────────────────────────────────────────────
+   A till is used at speed, often on a resistive touchscreen, by someone not
+   looking at the screen while they reach for the next item. A press that
+   leaves no mark gets pressed again, and a double-rung item is a real
+   complaint at a real counter.
+
+   So everything clickable in the POS answers: a lift on hover, an outline on
+   the way in, and a visible push down under the finger. Scoped to .pos-root so
+   the admin side keeps its own quieter styling. */
+.pos-root button:not(:disabled),
+.pos-root [role="button"]:not([aria-disabled="true"]) {
+  transition:
+    transform 90ms ease-out,
+    box-shadow 90ms ease-out,
+    filter 90ms ease-out;
+}
+
+.pos-root button:not(:disabled):hover,
+.pos-root [role="button"]:not([aria-disabled="true"]):hover {
+  filter: brightness(1.12);
+  box-shadow: inset 0 0 0 1px rgb(148 163 184 / 0.45);
+}
+
+/* The press itself. Scale is what reads as "it went down" on a screen with no
+   travel, and it must be fast enough to land before the finger lifts. */
+.pos-root button:not(:disabled):active,
+.pos-root [role="button"]:not([aria-disabled="true"]):active {
+  transform: scale(0.97);
+  filter: brightness(0.92);
+  box-shadow: inset 0 0 0 2px rgb(34 211 238 / 0.7);
+}
+
+/* Keyboard and scanner users get the same outline, since a till is often
+   driven without a mouse at all. */
+.pos-root button:not(:disabled):focus-visible,
+.pos-root [role="button"]:focus-visible,
+.pos-root input:focus-visible,
+.pos-root select:focus-visible {
+  outline: 2px solid rgb(34 211 238 / 0.8);
+  outline-offset: 1px;
+}
+
+/* Product and category tiles are the two things pressed all day, so they get a
+   little more of it — they are big targets and a subtle change is lost on them. */
+.pos-root .tile-press:active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pos-root button,
+  .pos-root [role="button"],
+  .pos-root .tile-press {
+    transition: none;
+  }
+  .pos-root button:not(:disabled):active,
+  .pos-root [role="button"]:active,
+  .pos-root .tile-press:active {
+    transform: none;
+  }
+}

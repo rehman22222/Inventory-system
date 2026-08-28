@@ -443,6 +443,15 @@ function POSPage() {
     return map;
   }, [dealMatch]);
 
+  // Change how many sets an applied offer gives, in place. Clamped here as well
+  // as in the matcher so the number on screen can never be one the basket
+  // cannot back up.
+  const setDealSetCount = (dealId, next) =>
+    setDealSets((current) => ({
+      ...current,
+      [String(dealId)]: Math.max(1, Math.floor(Number(next) || 1)),
+    }));
+
   const applyDeal = (dealId) =>
     setAppliedDealIds((current) =>
       current.includes(String(dealId)) ? current : [...current, String(dealId)]
@@ -1143,7 +1152,7 @@ function POSPage() {
   ];
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
+    <div className="pos-root flex h-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
       {/* Top chrome */}
       <header className="no-print flex items-center justify-between gap-4 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 px-4 py-2">
         <div className="flex min-w-0 items-center gap-3">
@@ -1318,43 +1327,93 @@ function POSPage() {
                     </span>
                   </button>
                 ))}
-                {dealMatch.applied.map((entry) => (
-                  <div
-                    key={String(entry.dealId)}
-                    className="flex justify-between gap-8 text-fuchsia-400"
-                  >
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      <FiTag className="h-3 w-3 shrink-0" />
-                      {/* The name is the way in to re-pricing it: a till has no
-                          room for a button per action, and the row itself is
-                          what the cashier is already pointing at. */}
-                      <button
-                        type="button"
-                        onClick={() => setEditingDeal(entry)}
-                        title={t("pos.deal.editTitle", "Change the deal price")}
-                        className="truncate text-start text-xs underline decoration-dotted underline-offset-2 hover:text-fuchsia-300"
-                      >
-                        {entry.name}
-                        {entry.sets > 1 ? ` ×${entry.sets}` : ""}
-                      </button>
-                      {entry.edited && (
-                        <span className="shrink-0 bg-amber-900/60 px-1 text-[9px] font-bold uppercase text-amber-300">
-                          {t("pos.deal.editedBadge", "edited")}
+                {dealMatch.applied.map((entry) => {
+                  const id = String(entry.dealId);
+                  const given = dealSets[id] ?? entry.sets;
+
+                  return (
+                    <div
+                      key={id}
+                      className="border border-fuchsia-900/60 bg-fuchsia-950/20 px-2 py-1.5 text-fuchsia-400"
+                    >
+                      <div className="flex justify-between gap-4">
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <FiTag className="h-3 w-3 shrink-0" />
+                          {/* The name is the way in to re-pricing it: a till has
+                              no room for a button per action, and the row itself
+                              is what the cashier is already pointing at. */}
+                          <button
+                            type="button"
+                            onClick={() => setEditingDeal(entry)}
+                            title={t("pos.deal.editTitle", "Change the deal price")}
+                            className="truncate text-start text-xs underline decoration-dotted underline-offset-2 hover:text-fuchsia-300"
+                          >
+                            {entry.name}
+                          </button>
+                          {entry.edited && (
+                            <span className="shrink-0 bg-amber-900/60 px-1 text-[9px] font-bold uppercase text-amber-300">
+                              {t("pos.deal.editedBadge", "edited")}
+                            </span>
+                          )}
                         </span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => removeDeal(entry.dealId, entry.name)}
-                        title={t("pos.deal.remove")}
-                        aria-label={t("pos.deal.remove")}
-                        className="shrink-0 px-1 text-slate-500 hover:text-red-400"
-                      >
-                        <FiX className="h-3 w-3" />
-                      </button>
-                    </span>
-                    <span className="tabular-nums">-{currency(entry.amount)}</span>
-                  </div>
-                ))}
+                        <span className="flex shrink-0 items-center gap-2">
+                          <span className="tabular-nums">-{currency(entry.amount)}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeDeal(entry.dealId, entry.name)}
+                            title={t("pos.deal.remove")}
+                            aria-label={t("pos.deal.remove")}
+                            className="px-1 text-slate-500 hover:text-red-400"
+                          >
+                            <FiX className="h-3 w-3" />
+                          </button>
+                        </span>
+                      </div>
+
+                      {/* Sets are changed in place. Wanting a second set used to
+                          mean taking the whole offer off and giving it again,
+                          which is two taps and a moment where the total is wrong
+                          in front of the customer. */}
+                      <div className="mt-1 flex items-center gap-1.5 text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => setDealSetCount(id, given - 1)}
+                          disabled={given <= 1}
+                          className="bg-fuchsia-900/50 px-1.5 leading-5 text-fuchsia-200 hover:bg-fuchsia-800 disabled:opacity-30"
+                          aria-label={t("pos.deal.fewerSets", "One set fewer")}
+                        >
+                          −
+                        </button>
+                        <span className="tabular-nums text-slate-300">
+                          {t("pos.deal.setsGiven", "{{given}} of {{max}} sets", {
+                            given,
+                            max: entry.maxSets,
+                          })}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setDealSetCount(id, given + 1)}
+                          disabled={given >= entry.maxSets}
+                          className="bg-fuchsia-900/50 px-1.5 leading-5 text-fuchsia-200 hover:bg-fuchsia-800 disabled:opacity-30"
+                          aria-label={t("pos.deal.moreSets", "One set more")}
+                        >
+                          +
+                        </button>
+                        {given < entry.maxSets && (
+                          <button
+                            type="button"
+                            onClick={() => setDealSetCount(id, entry.maxSets)}
+                            className="ms-auto bg-fuchsia-700 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white hover:bg-fuchsia-600"
+                          >
+                            {t("pos.deal.applyRest", "Apply all {{n}}", {
+                              n: entry.maxSets,
+                            })}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
                 {manualDiscount > 0 && (
                   <div className="flex justify-between gap-8 text-slate-500">
                     <span>{t("pos.discount")}</span>

@@ -702,7 +702,11 @@
       "applied": "Deal applied",
       "setsToGive": "Sets to give",
       "setsAvailable": "of {{n}} the basket qualifies for",
-      "itemsCovered": "Items in the offer"
+      "itemsCovered": "Items in the offer",
+      "setsGiven": "{{given}} of {{max}} sets",
+      "applyRest": "Apply all {{n}}",
+      "fewerSets": "One set fewer",
+      "moreSets": "One set more"
     },
     "exchange": {
       "title": "Exchange for",
@@ -725,8 +729,7 @@
       "send": "Send",
       "emailed": "Receipt sent to {{email}}",
       "emailFailed": "Could not send the receipt"
-    },
-    "dealTagPartial": "Deal ×{{n}}"
+    }
   },
   "sales": {
     "reportTitle": "Sales Report",
