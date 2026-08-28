@@ -523,7 +523,8 @@
       "slipRef": "Refund",
       "returned": "Returned",
       "exchangeNote": "Rung up on its own receipt",
-      "close": "Close"
+      "close": "Close",
+      "clearAll": "Clear"
     },
     "void": {
       "confirm": "Void receipt {{receiptNo}}? Stock will be returned.",

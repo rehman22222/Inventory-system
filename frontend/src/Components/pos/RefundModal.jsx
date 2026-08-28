@@ -97,10 +97,18 @@ function RefundSlipView({ slip, shop, t }) {
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-center bg-white p-4">
-        <div className="slip">{body}</div>
+    <div className="py-2">
+      {/* Shown as a piece of paper rather than a panel: the counter is checking
+          this against what is about to come out of the printer, and a roll has
+          a torn top and bottom edge. */}
+      <div className="mx-auto w-fit">
+        <div className="slip-edge" />
+        <div className="bg-white px-4 py-5 shadow-xl">
+          <div className="slip">{body}</div>
+        </div>
+        <div className="slip-edge slip-edge-bottom" />
       </div>
+
       <div id="refund-slip-print" className="slip hidden">
         {body}
       </div>
@@ -167,11 +175,15 @@ function RefundModal({
         const response = await axiosInstance.get(`pos/receipt/${value.toUpperCase()}`);
         const loaded = response.data.receipt;
         setReceipt(loaded);
-        // Nothing is selected until the cashier picks it. Starting with the whole
-        // receipt selected means one stray tap on Confirm sends back a basket the
-        // customer never returned, and a partial return is the ordinary case —
-        // "one of these five", not "all of it". Select all covers the rest.
-        setQuantities({});
+        // Every line starts at what is still refundable on it, so the cashier
+        // counts DOWN to what the customer actually brought back rather than up
+        // from nothing. The plus button is capped at the same figure, so this
+        // can only ever be reduced — nobody can hand back more than was sold.
+        setQuantities(
+          Object.fromEntries(
+            loaded.items.map((item) => [String(item.product), outstandingOf(loaded, item)])
+          )
+        );
       } catch (error) {
         setReceipt(null);
         toast.error(error.response?.data?.message || t("pos.refund.notFound"));
@@ -242,7 +254,8 @@ function RefundModal({
     }));
   };
 
-  // Voiding a whole receipt is still one tap, now that nothing starts selected.
+  // One tap either way: back to the whole receipt, or down to nothing so a
+  // single returned item can be counted up on its own line.
   const selectAll = () => {
     if (!receipt) return;
     setQuantities(
@@ -251,6 +264,8 @@ function RefundModal({
       )
     );
   };
+
+  const clearAll = () => setQuantities({});
 
   const selectedCount = Object.values(quantities).reduce(
     (sum, value) => sum + Number(value || 0),
@@ -385,7 +400,6 @@ function RefundModal({
           </>
         )
       }
-    >
     >
       {done ? (
         <RefundSlipView slip={done} shop={SHOP} t={t} />
@@ -538,10 +552,12 @@ function RefundModal({
             </span>
             <button
               type="button"
-              onClick={selectAll}
+              onClick={selectedCount > 0 ? clearAll : selectAll}
               className="border border-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-300 hover:border-slate-500 hover:text-slate-100"
             >
-              {t("pos.refund.selectAll", "Select all")}
+              {selectedCount > 0
+                ? t("pos.refund.clearAll", "Clear")
+                : t("pos.refund.selectAll", "Select all")}
             </button>
           </div>
 

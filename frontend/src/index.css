@@ -712,3 +712,22 @@ body.osk-open .admin-drawer {
   font-weight: 700;
   text-transform: uppercase;
 }
+
+/* A till roll is torn off, not cut square. The zig-zag is the cheapest signal
+   that what is on screen is a piece of paper and not another panel — the
+   counter is comparing it against what the printer is about to produce. */
+.slip-edge {
+  height: 6px;
+  background: #fff;
+  --tooth: 8px;
+  -webkit-mask-image: radial-gradient(var(--tooth) at 50% 0, #0000 98%, #000);
+  mask-image: radial-gradient(var(--tooth) at 50% 0, #0000 98%, #000);
+  -webkit-mask-size: calc(var(--tooth) * 2) 100%;
+  mask-size: calc(var(--tooth) * 2) 100%;
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
+}
+
+.slip-edge-bottom {
+  transform: rotate(180deg);
+}
