@@ -443,12 +443,6 @@ function POSPage() {
     return map;
   }, [dealMatch]);
 
-  const dealProductIds = useMemo(() => {
-    const set = new Set();
-    dealMatch.applied.forEach((entry) => entry.products.forEach((id) => set.add(String(id))));
-    return set;
-  }, [dealMatch]);
-
   const applyDeal = (dealId) =>
     setAppliedDealIds((current) =>
       current.includes(String(dealId)) ? current : [...current, String(dealId)]
@@ -1230,7 +1224,6 @@ function POSPage() {
           <SaleTable
             cart={cart}
             selectedId={selectedLine}
-            dealProductIds={dealProductIds}
             dealUnits={dealUnits}
             onSelect={setSelectedLine}
             onQuantityChange={updateQuantity}

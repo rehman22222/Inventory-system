@@ -13,7 +13,6 @@ const COLS = "grid-cols-[1fr_56px_84px_76px] sm:grid-cols-[1fr_64px_88px_84px]";
 function SaleTable({
   cart,
   selectedId,
-  dealProductIds,
   dealUnits,
   onSelect,
   onQuantityChange,
@@ -41,12 +40,13 @@ function SaleTable({
         ) : (
           cart.map((item) => {
             const active = selectedId === item.productId;
-            // How many of this line the offer actually covers. The rest are at
-            // shelf price and the badge has to say so, or a 3-for deal on five
-            // items reads as five discounted.
+            // How many of this line the offer actually covers — nothing else
+            // decides the badge. Being ELIGIBLE for a deal is not being in one:
+            // a 3-for offer across seven eligible lines covers three of them,
+            // and badging all seven tells the customer they are all discounted.
             const covered = dealUnits?.get(String(item.productId)) || 0;
-            const inDeal = covered > 0 || dealProductIds?.has(String(item.productId));
-            const partly = covered > 0 && covered < item.quantity;
+            const inDeal = covered > 0;
+            const partly = covered < item.quantity;
 
             return (
               <div
