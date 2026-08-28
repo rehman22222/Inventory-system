@@ -1640,14 +1640,15 @@ function POSPage() {
                       type="button"
                       onClick={() => tapProduct(product)}
                       disabled={stock <= 0}
-                      className="group relative flex flex-col gap-2 border border-slate-800 bg-gradient-to-b from-slate-800 to-slate-900 p-2.5 text-start transition hover:border-cyan-700 hover:from-slate-700 active:scale-[0.98] disabled:opacity-40"
+                      className="group relative flex flex-col gap-2 overflow-hidden border border-slate-800 bg-gradient-to-b from-slate-800 to-slate-900 p-2.5 text-start transition hover:border-cyan-700 hover:from-slate-700 active:scale-[0.98] disabled:opacity-40"
                     >
-                      {/* Said in words across the tile, not left to a dimmed
-                          card and a red zero. A cashier reaching for something
-                          that is not there needs to know why the tap did
-                          nothing before they tap it again. */}
+                      {/* Struck across the tile on the diagonal, the way a
+                          shelf label gets crossed out — it reads as "not this
+                          one" at a glance, which a horizontal band did not.
+                          Widened past the edges so the rotation still reaches
+                          both corners; the tile clips it. */}
                       {stock <= 0 && (
-                        <span className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 bg-red-900/80 py-1 text-center text-[10px] font-bold uppercase tracking-widest text-red-100">
+                        <span className="pointer-events-none absolute inset-x-[-25%] top-1/2 -translate-y-1/2 -rotate-[20deg] bg-red-900/85 py-1 text-center text-[10px] font-bold uppercase tracking-widest text-red-100 shadow-lg">
                           {t("pos.tile.outOfStock", "Out of stock")}
                         </span>
                       )}
