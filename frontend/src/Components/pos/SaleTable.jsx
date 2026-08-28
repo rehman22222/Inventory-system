@@ -14,6 +14,7 @@ function SaleTable({
   cart,
   selectedId,
   dealProductIds,
+  dealUnits,
   onSelect,
   onQuantityChange,
   onRemove,
@@ -40,7 +41,12 @@ function SaleTable({
         ) : (
           cart.map((item) => {
             const active = selectedId === item.productId;
-            const inDeal = dealProductIds?.has(String(item.productId));
+            // How many of this line the offer actually covers. The rest are at
+            // shelf price and the badge has to say so, or a 3-for deal on five
+            // items reads as five discounted.
+            const covered = dealUnits?.get(String(item.productId)) || 0;
+            const inDeal = covered > 0 || dealProductIds?.has(String(item.productId));
+            const partly = covered > 0 && covered < item.quantity;
 
             return (
               <div
@@ -63,7 +69,9 @@ function SaleTable({
                     {inDeal && (
                       <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 bg-fuchsia-950 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-fuchsia-300 ring-1 ring-fuchsia-800">
                         <FiTag className="h-2.5 w-2.5" />
-                        {t("pos.dealTag")}
+                        {partly
+                          ? t("pos.dealTagPartial", { n: covered })
+                          : t("pos.dealTag")}
                       </span>
                     )}
                   </p>

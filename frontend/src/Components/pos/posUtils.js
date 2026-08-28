@@ -138,7 +138,7 @@ const withinWindow = (deal, now) => {
 // cart: [{ productId, quantity, price }]; deals: redux deal docs.
 // Returns { applied: [{ dealId, name, sets, normal, amount, products }], total }
 // where `normal` is the shelf value of the units inside the sets.
-export const applicableDeals = (cart, deals, chosenIds, overrides) => {
+export const applicableDeals = (cart, deals, chosenIds, overrides, setCounts) => {
   const cartMap = new Map();
   (cart || []).forEach((item) => {
     const key = String(item.productId);
@@ -152,6 +152,11 @@ export const applicableDeals = (cart, deals, chosenIds, overrides) => {
   const chosen = new Set((chosenIds || []).map(String));
   const typed = new Map(
     Object.entries(overrides || {}).map(([id, price]) => [String(id), Number(price)]),
+  );
+  // How many complete sets the cashier chose to give. A basket can qualify for
+  // two and the counter still only want to give one.
+  const wanted = new Map(
+    Object.entries(setCounts || {}).map(([id, n]) => [String(id), Math.floor(Number(n))]),
   );
   const now = Date.now();
   const applied = [];
@@ -170,34 +175,53 @@ export const applicableDeals = (cart, deals, chosenIds, overrides) => {
     let sets = 0;
     let setValue = 0;
     const products = [];
+    // How many units of each product ended up inside a complete set.
+    const allocation = {};
+
+    // What the basket qualifies for is the ceiling; what the cashier asked for
+    // is what is given. `maxSets` travels back so the till can offer the range.
+    let maxSets = 0;
+    const askedFor = wanted.get(String(deal._id));
+    const capSets = (available) => {
+      maxSets = available;
+      return Number.isFinite(askedFor) && askedFor > 0
+        ? Math.min(available, askedFor)
+        : available;
+    };
 
     if (deal.mode === "mix") {
       const need = Math.floor(Number(deal.groupQuantity || 0));
       if (need < 2) return;
 
+      // Each unit remembers which line it came from, so the till can say "3 of
+      // these 5 are in the offer" instead of badging the whole line.
       const units = [];
       items.forEach((item) => {
         const pid = itemProductId(item);
         products.push(pid);
         const line = cartMap.get(pid);
         const have = Math.floor(Number(line?.quantity || 0));
-        for (let i = 0; i < have; i += 1) units.push(Number(line?.price || 0));
+        for (let i = 0; i < have; i += 1) units.push({ id: pid, price: Number(line?.price || 0) });
       });
 
       if (units.length < need) return;
 
-      units.sort((a, b) => b - a);
+      units.sort((a, b) => b.price - a.price);
 
+      let inSets;
       if (rule === "repeat_sets") {
-        sets = Math.floor(units.length / need);
-        setValue = units.slice(0, sets * need).reduce((sum, price) => sum + price, 0);
+        sets = capSets(Math.floor(units.length / need));
+        inSets = units.slice(0, sets * need);
+        setValue = inSets.reduce((sum, unit) => sum + unit.price, 0);
       } else {
         sets = 1;
-        setValue =
-          deal.discountType === "setPrice"
-            ? units.slice(0, need).reduce((sum, price) => sum + price, 0)
-            : units.reduce((sum, price) => sum + price, 0);
+        inSets = deal.discountType === "setPrice" ? units.slice(0, need) : units;
+        setValue = inSets.reduce((sum, unit) => sum + unit.price, 0);
       }
+
+      inSets.forEach((unit) => {
+        allocation[unit.id] = (allocation[unit.id] || 0) + 1;
+      });
     } else {
       let complete = Infinity;
       let oneSet = 0;
@@ -213,8 +237,16 @@ export const applicableDeals = (cart, deals, chosenIds, overrides) => {
       });
 
       if (!Number.isFinite(complete) || complete < 1) return;
-      sets = rule === "single_set" ? 1 : complete;
+      sets = capSets(rule === "single_set" ? 1 : complete);
       setValue = oneSet * sets;
+
+      // A bundle names its contents, so the allocation is the recipe times the
+      // number of sets.
+      items.forEach((item) => {
+        const perSet = Number(item.quantity || 1);
+        if (perSet <= 0) return;
+        allocation[itemProductId(item)] = perSet * sets;
+      });
     }
 
     let raw;
@@ -245,11 +277,13 @@ export const applicableDeals = (cart, deals, chosenIds, overrides) => {
       dealId: deal._id,
       name: deal.name,
       sets,
+      maxSets,
       normal: round2(setValue),
       amount,
       configuredAmount,
       edited,
       products,
+      allocation,
     });
     total += amount;
   });

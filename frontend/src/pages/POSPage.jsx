@@ -129,6 +129,9 @@ function POSPage() {
   // Deals hand-priced at the counter: { dealId: whatThisDealPortionCosts }.
   // The server re-checks every figure against the goods, and logs the edit.
   const [dealOverrides, setDealOverrides] = useState({});
+  // How many complete sets of each offer the cashier chose to give. A basket can
+  // qualify for two and the counter still only want to hand over one.
+  const [dealSets, setDealSets] = useState({});
   const [editingDeal, setEditingDeal] = useState(null);
   const [taxEnabled, setTaxEnabled] = useState(false);
   // The tax rate is the shop's call, not ours — no hardcoded percentage. The
@@ -405,8 +408,8 @@ function POSPage() {
   // at shelf price. The server recomputes all of it at checkout — these values
   // only drive the screen.
   const dealMatch = useMemo(
-    () => applicableDeals(cart, allDeals, appliedDealIds, dealOverrides),
-    [cart, allDeals, appliedDealIds, dealOverrides]
+    () => applicableDeals(cart, allDeals, appliedDealIds, dealOverrides, dealSets),
+    [cart, allDeals, appliedDealIds, dealOverrides, dealSets]
   );
   // The same matcher asked a different question: what could this basket have?
   // Anything it finds that is not already applied is an offer to show. Asking
@@ -414,15 +417,32 @@ function POSPage() {
   // construction — a second code path would eventually disagree with the first.
   const dealOffers = useMemo(
     () =>
-      applicableDeals(cart, allDeals, allDealIds(allDeals)).applied.filter(
-        (entry) => !appliedDealIds.includes(String(entry.dealId))
-      ),
-    [cart, allDeals, appliedDealIds]
+      applicableDeals(
+        cart,
+        allDeals,
+        allDealIds(allDeals),
+        undefined,
+        dealSets
+      ).applied.filter((entry) => !appliedDealIds.includes(String(entry.dealId))),
+    [cart, allDeals, appliedDealIds, dealSets]
   );
   // Deals live in the sidebar as their own tile; see dealsCategoryId below.
   const dealRoom = Math.max(subtotal - voucherDiscount - manualDiscount, 0);
   const dealDiscount = Math.min(dealMatch.total, dealRoom);
   // Products that belong to a currently-applied deal, for the line badge.
+  // How many units of each line are actually inside a deal. Five items on a
+  // 3-for offer are three at the deal and two at shelf price, and badging the
+  // whole line said the customer was getting five of them discounted.
+  const dealUnits = useMemo(() => {
+    const map = new Map();
+    dealMatch.applied.forEach((entry) =>
+      Object.entries(entry.allocation || {}).forEach(([id, count]) =>
+        map.set(String(id), (map.get(String(id)) || 0) + count)
+      )
+    );
+    return map;
+  }, [dealMatch]);
+
   const dealProductIds = useMemo(() => {
     const set = new Set();
     dealMatch.applied.forEach((entry) => entry.products.forEach((id) => set.add(String(id))));
@@ -723,6 +743,7 @@ function POSPage() {
     setVoucher(null);
     setAppliedDealIds([]);
     setDealOverrides({});
+    setDealSets({});
     setTaxEnabled(false);
     setBuffer("");
     setMultiplier(0);
@@ -895,6 +916,8 @@ function POSPage() {
     dealIds: dealMatch.applied.map((entry) => String(entry.dealId)),
     // Hand-typed prices, if any. The server clamps and logs them.
     dealOverrides,
+    // How many complete sets of each the cashier chose to give.
+    dealSets,
     items: cart.map((item) => ({ product: item.productId, quantity: item.quantity })),
   });
 
@@ -911,6 +934,7 @@ function POSPage() {
     setVoucher(null);
     setAppliedDealIds([]);
     setDealOverrides({});
+    setDealSets({});
     setTaxEnabled(false);
   };
 
@@ -1207,6 +1231,7 @@ function POSPage() {
             cart={cart}
             selectedId={selectedLine}
             dealProductIds={dealProductIds}
+            dealUnits={dealUnits}
             onSelect={setSelectedLine}
             onQuantityChange={updateQuantity}
             onRemove={removeFromCart}
@@ -1633,13 +1658,26 @@ function POSPage() {
             <span>{currency(receipt.subtotal)}</span>
           </div>
           {(receipt.deals || []).map((entry) => (
-            <div className="r-line r-save" key={String(entry.dealId)}>
-              <span>
-                {entry.name}
-                {entry.sets > 1 ? ` ×${entry.sets}` : ""}
-              </span>
-              <span>−{currency(entry.amount)}</span>
-            </div>
+            <React.Fragment key={String(entry.dealId)}>
+              <div className="r-line r-save">
+                <span>
+                  {entry.name}
+                  {entry.sets > 1 ? ` ×${entry.sets}` : ""}
+                </span>
+                <span>−{currency(entry.amount)}</span>
+              </div>
+              {/* Which units the offer covered. Five items on a 3-for deal are
+                  three at the deal and two at shelf price — a customer checking
+                  the slip has to be able to see which were which. */}
+              {(entry.items || []).map((item) => (
+                <div className="r-line r-dealitem" key={String(item.product)}>
+                  <span>
+                    {item.quantity} × {item.name}
+                  </span>
+                  <span />
+                </div>
+              ))}
+            </React.Fragment>
           ))}
           {receipt.voucher?.code && receipt.voucher.amount > 0 && (
             <div className="r-line r-save">
@@ -1833,15 +1871,28 @@ function POSPage() {
         />
       )}
 
-      {editingDeal && (
-        <DealPriceModal
-          entry={editingDeal}
-          applied={appliedDealIds.includes(String(editingDeal.dealId))}
-          onApply={(price) => priceDeal(editingDeal, price)}
-          onReset={() => resetDealPrice(editingDeal.dealId)}
-          onClose={() => setEditingDeal(null)}
-        />
-      )}
+      {/* The dialog reads the live entry, not the one that was tapped: changing
+          how many sets to give reprices the offer underneath it. */}
+      {editingDeal &&
+        (() => {
+          const id = String(editingDeal.dealId);
+          const live =
+            dealMatch.applied.find((e) => String(e.dealId) === id) ||
+            dealOffers.find((e) => String(e.dealId) === id) ||
+            editingDeal;
+
+          return (
+            <DealPriceModal
+              entry={live}
+              applied={appliedDealIds.includes(id)}
+              sets={dealSets[id] ?? live.maxSets ?? live.sets}
+              onSets={(n) => setDealSets((current) => ({ ...current, [id]: n }))}
+              onApply={(price) => priceDeal(live, price)}
+              onReset={() => resetDealPrice(id)}
+              onClose={() => setEditingDeal(null)}
+            />
+          );
+        })()}
 
       {modal === "history" && (
         <SaleHistoryModal

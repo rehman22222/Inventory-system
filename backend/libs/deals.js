@@ -50,10 +50,16 @@ const withinWindow = (deal, now) => {
 // without doing the sum again, and `configuredAmount` is what the deal as
 // written would have given — kept apart from `amount` so a hand-priced sale can
 // be told from an ordinary one afterwards.
-function applicableDeals(cartMap, deals, chosenIds, overrides) {
+function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts) {
   const chosen = new Set((chosenIds || []).map(String));
   const typed = new Map(
     Object.entries(overrides || {}).map(([id, price]) => [String(id), Number(price)]),
+  );
+  // How many complete sets the cashier chose to give. A basket can qualify for
+  // two and the counter still only want to give one — that is the shop's call
+  // to make at the moment of sale, not the matcher's.
+  const wanted = new Map(
+    Object.entries(setCounts || {}).map(([id, n]) => [String(id), Math.floor(Number(n))]),
   );
   const now = Date.now();
   const applied = [];
@@ -74,18 +80,35 @@ function applicableDeals(cartMap, deals, chosenIds, overrides) {
     let sets = 0;
     let setValue = 0;
     const products = [];
+    // How many units of each product ended up inside a complete set.
+    const allocation = {};
+
+    // What the basket qualifies for is the ceiling; what the cashier asked for
+    // is what is given. `maxSets` travels back so the till can offer the range.
+    let maxSets = 0;
+    const askedFor = wanted.get(String(deal._id));
+    const capSets = (available) => {
+      maxSets = available;
+      return Number.isFinite(askedFor) && askedFor > 0
+        ? Math.min(available, askedFor)
+        : available;
+    };
 
     if (deal.mode === "mix") {
       const need = Math.floor(Number(deal.groupQuantity || 0));
       if (need < 2) continue;
 
+      // Each unit remembers which line it came from, so the till can say "3 of
+      // these 5 are in the offer" instead of badging the whole line. Five items
+      // on a 3-for deal is three at the deal and two at shelf price, and a
+      // customer reading the receipt has to be able to see that.
       const units = [];
       for (const item of items) {
         const id = String(item.product);
         products.push(id);
         const line = cartMap.get(id);
         const have = Math.floor(Number(line?.quantity || 0));
-        for (let i = 0; i < have; i += 1) units.push(Number(line?.price || 0));
+        for (let i = 0; i < have; i += 1) units.push({ id, price: Number(line?.price || 0) });
       }
 
       if (units.length < need) continue;
@@ -93,22 +116,27 @@ function applicableDeals(cartMap, deals, chosenIds, overrides) {
       // Dearest first. A shopper who bought a EUR 9 and a EUR 5 of the same
       // offer expects the deal on the EUR 9 — the other way round reads as a
       // short-change and is the complaint every mix-and-match till gets.
-      units.sort((a, b) => b - a);
+      units.sort((a, b) => b.price - a.price);
 
+      let inSets;
       if (rule === "repeat_sets") {
         // Every complete group, and the units that did not fill one are simply
         // outside the offer — which is what makes a leftover cost shelf price
         // without needing a rule of its own.
-        sets = Math.floor(units.length / need);
-        setValue = units.slice(0, sets * need).reduce((sum, price) => sum + price, 0);
+        sets = capSets(Math.floor(units.length / need));
+        inSets = units.slice(0, sets * need);
+        setValue = inSets.reduce((sum, unit) => sum + unit.price, 0);
       } else {
         sets = 1;
         // A set price can only price the units it names; an amount or a
         // percentage comes off everything that qualified.
-        setValue =
-          deal.discountType === "setPrice"
-            ? units.slice(0, need).reduce((sum, price) => sum + price, 0)
-            : units.reduce((sum, price) => sum + price, 0);
+        inSets =
+          deal.discountType === "setPrice" ? units.slice(0, need) : units;
+        setValue = inSets.reduce((sum, unit) => sum + unit.price, 0);
+      }
+
+      for (const unit of inSets) {
+        allocation[unit.id] = (allocation[unit.id] || 0) + 1;
       }
     } else {
       let complete = Infinity;
@@ -128,8 +156,17 @@ function applicableDeals(cartMap, deals, chosenIds, overrides) {
       }
 
       if (!Number.isFinite(complete) || complete < 1) continue;
-      sets = rule === "single_set" ? 1 : complete;
+      sets = capSets(rule === "single_set" ? 1 : complete);
       setValue = oneSet * sets;
+
+      // A bundle names its contents, so the allocation is the recipe times the
+      // number of sets — a basket with four coils on a "1 vape + 2 coils" deal
+      // has two coils in the offer and two at shelf price.
+      for (const item of items) {
+        const perSet = Number(item.quantity || 1);
+        if (perSet <= 0) continue;
+        allocation[String(item.product)] = perSet * sets;
+      }
     }
 
     let raw;
@@ -165,11 +202,16 @@ function applicableDeals(cartMap, deals, chosenIds, overrides) {
       dealId: deal._id,
       name: deal.name,
       sets,
+      maxSets,
       normal: round2(setValue),
       amount,
       configuredAmount,
       edited,
       products,
+      // Which units are actually in the offer. Five items on a 3-for deal are
+      // three at the deal and two at shelf price, and both the basket line and
+      // the receipt have to be able to say so.
+      allocation,
     });
     total += amount;
   }

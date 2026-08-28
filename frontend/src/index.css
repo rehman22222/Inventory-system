@@ -182,6 +182,13 @@
   #receipt .r-save {
     font-weight: 700;
   }
+  /* The units an offer actually covered, listed under it. Indented and a size
+     down so the eye reads them as belonging to the line above rather than as
+     more charges. */
+  #receipt .r-dealitem {
+    font-size: 10px;
+    padding-left: 8px;
+  }
   /* The number the customer checks first. */
   #receipt .r-total {
     font-size: 17px;

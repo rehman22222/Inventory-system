@@ -57,8 +57,8 @@ const ReceiptSchema = new mongoose.Schema(
     discount: { type: Number, default: 0 },
     discountType: { type: String, enum: ["amount", "percent"], default: "amount" },
 
-    // Auto-applied bundle deals detected in this basket. dealDiscount is the
-    // portion of `discount` that came from deals.
+    // The offers the cashier gave on this basket. dealDiscount is the portion
+    // of `discount` that came from them.
     dealDiscount: { type: Number, default: 0 },
     deals: [
       {
@@ -67,6 +67,17 @@ const ReceiptSchema = new mongoose.Schema(
         name: { type: String },
         sets: { type: Number, default: 1 },
         amount: { type: Number, default: 0 },
+        // Which units the offer actually covered. Five items on a 3-for deal
+        // are three at the deal and two at shelf price, and a customer reading
+        // this back has to be able to see which were which.
+        items: [
+          {
+            _id: false,
+            product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+            name: { type: String },
+            quantity: { type: Number },
+          },
+        ],
       },
     ],
     voucher: {

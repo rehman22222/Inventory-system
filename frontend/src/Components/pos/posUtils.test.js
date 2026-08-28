@@ -305,3 +305,59 @@ describe("a deal priced by hand at the till", () => {
     expect(applicableDeals(cartOf(3), deal, [], { D1: 5 }).total).toBe(0);
   });
 });
+
+describe("only the units inside a set are in the offer", () => {
+  const deals = [mixDeal()]; // any 3 for 18, shelf 7
+  const chosen = ["D1"];
+
+  test("five items are three at the deal and two at shelf price", () => {
+    const [offer] = applicableDeals(cartOf(5), deals, chosen).applied;
+    expect(offer.sets).toBe(1);
+    expect(offer.allocation).toEqual({ P1: 3 });
+    expect(units(5) - applicableDeals(cartOf(5), deals, chosen).total).toBe(32);
+  });
+
+  test("the allocation is spread across lines, dearest first", () => {
+    const cart = [
+      { productId: "P1", quantity: 2, price: 9 },
+      { productId: "P2", quantity: 2, price: 5 },
+    ];
+    const spread = [mixDeal({ items: [{ product: "P1" }, { product: "P2" }] })];
+    const [offer] = applicableDeals(cart, spread, chosen).applied;
+    // Three of the four units qualify: both €9s and one €5.
+    expect(offer.allocation).toEqual({ P1: 2, P2: 1 });
+    expect(offer.normal).toBe(23);
+  });
+
+  test("what the basket qualifies for travels back as maxSets", () => {
+    const [offer] = applicableDeals(cartOf(7), deals, chosen).applied;
+    expect(offer.maxSets).toBe(2);
+    expect(offer.sets).toBe(2);
+  });
+});
+
+describe("the cashier decides how many sets to give", () => {
+  const deals = [mixDeal()];
+  const chosen = ["D1"];
+
+  test("one set out of the two the basket qualifies for", () => {
+    const one = applicableDeals(cartOf(7), deals, chosen, undefined, { D1: 1 });
+    const [offer] = one.applied;
+    expect(offer.sets).toBe(1);
+    expect(offer.maxSets).toBe(2);
+    expect(offer.allocation).toEqual({ P1: 3 });
+    // 3 at 18, and the other four at shelf price.
+    expect(units(7) - one.total).toBe(18 + 4 * 7);
+  });
+
+  test("asking for more than the basket holds gives what it holds", () => {
+    const [offer] = applicableDeals(cartOf(7), deals, chosen, undefined, { D1: 9 }).applied;
+    expect(offer.sets).toBe(2);
+  });
+
+  test("no choice means every complete set, as before", () => {
+    const [offer] = applicableDeals(cartOf(6), deals, chosen).applied;
+    expect(offer.sets).toBe(2);
+    expect(units(6) - applicableDeals(cartOf(6), deals, chosen).total).toBe(36);
+  });
+});

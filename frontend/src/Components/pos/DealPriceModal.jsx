@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { FiMinus, FiPlus } from "react-icons/fi";
 import PosModal from "./PosModal";
 import { currency, sanitizeDecimal } from "./posUtils";
 
@@ -12,7 +13,7 @@ import { currency, sanitizeDecimal } from "./posUtils";
 // Whatever is typed is still checked by the server against the value of the
 // deal's own goods, and both figures — the deal's and the one charged — go into
 // the log with the cashier's name.
-function DealPriceModal({ entry, applied, onApply, onReset, onClose }) {
+function DealPriceModal({ entry, applied, sets, onSets, onApply, onReset, onClose }) {
   const { t } = useTranslation();
 
   // What the deal portion costs right now: shelf value less the saving in force.
@@ -20,6 +21,16 @@ function DealPriceModal({ entry, applied, onApply, onReset, onClose }) {
   const configured = Number(entry.normal) - Number(entry.configuredAmount);
 
   const [value, setValue] = useState(current.toFixed(2));
+
+  // Giving one set instead of two changes what the deal comes to, so the figure
+  // in the box follows it. Only on an actual change: reopening an already
+  // hand-priced deal must not quietly throw that price away.
+  const [lastSets, setLastSets] = useState(sets);
+  useEffect(() => {
+    if (sets === lastSets) return;
+    setLastSets(sets);
+    setValue((Number(entry.normal) - Number(entry.configuredAmount)).toFixed(2));
+  }, [sets, lastSets, entry.normal, entry.configuredAmount]);
 
   const typed = Number(value);
   const valid = value !== "" && Number.isFinite(typed) && typed >= 0;
@@ -74,6 +85,41 @@ function DealPriceModal({ entry, applied, onApply, onReset, onClose }) {
       }
     >
       <div className="space-y-4">
+        {/* A basket can qualify for two sets and the counter still only want to
+            give one. Which is the shop's call at the moment of sale, so it is
+            asked here rather than decided by the arithmetic. */}
+        {entry.maxSets > 1 && (
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t("pos.deal.setsToGive", "Sets to give")}
+            </label>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onSets(Math.max(1, sets - 1))}
+                disabled={sets <= 1}
+                className="bg-slate-800 p-2 text-slate-300 hover:bg-slate-700 disabled:opacity-30"
+              >
+                <FiMinus className="h-4 w-4" />
+              </button>
+              <span className="w-10 text-center text-lg font-bold tabular-nums">{sets}</span>
+              <button
+                type="button"
+                onClick={() => onSets(Math.min(entry.maxSets, sets + 1))}
+                disabled={sets >= entry.maxSets}
+                className="bg-slate-800 p-2 text-slate-300 hover:bg-slate-700 disabled:opacity-30"
+              >
+                <FiPlus className="h-4 w-4" />
+              </button>
+              <span className="text-xs text-slate-500">
+                {t("pos.deal.setsAvailable", "of {{n}} the basket qualifies for", {
+                  n: entry.maxSets,
+                })}
+              </span>
+            </div>
+          </div>
+        )}
+
         <dl className="space-y-1 border border-slate-800 bg-slate-950 px-3 py-2 text-sm">
           <div className="flex justify-between gap-4">
             <dt className="text-slate-500">{t("pos.deal.normal")}</dt>
@@ -83,12 +129,12 @@ function DealPriceModal({ entry, applied, onApply, onReset, onClose }) {
             <dt className="text-slate-500">{t("pos.deal.dealPrice", "Deal price")}</dt>
             <dd className="tabular-nums text-slate-300">{currency(configured)}</dd>
           </div>
-          {entry.sets > 1 && (
-            <div className="flex justify-between gap-4">
-              <dt className="text-slate-500">{t("pos.deal.sets", "Complete sets")}</dt>
-              <dd className="tabular-nums text-slate-300">{entry.sets}</dd>
-            </div>
-          )}
+          <div className="flex justify-between gap-4">
+            <dt className="text-slate-500">{t("pos.deal.itemsCovered", "Items in the offer")}</dt>
+            <dd className="tabular-nums text-slate-300">
+              {Object.values(entry.allocation || {}).reduce((sum, n) => sum + n, 0)}
+            </dd>
+          </div>
         </dl>
 
         <div>

@@ -934,6 +934,7 @@ function localStorageRouter(app) {
       // the shop will not see.
       dealIds = [],
       dealOverrides = {},
+      dealSets = {},
     } = req.body;
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -1020,6 +1021,7 @@ function localStorageRouter(app) {
       store.deals || [],
       (Array.isArray(dealIds) ? dealIds : []).map((id) => String(id)),
       dealOverrides && typeof dealOverrides === 'object' ? dealOverrides : {},
+      dealSets && typeof dealSets === 'object' ? dealSets : {},
     );
     const dealRoom = Math.max(subtotal - voucherDiscount - manualDiscount, 0);
     const dealDiscount = money(Math.min(dealResult.total, dealRoom));

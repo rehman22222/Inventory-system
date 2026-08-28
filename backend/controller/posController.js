@@ -114,6 +114,9 @@ module.exports.checkout = async (req, res) => {
       // The figure is honoured but clamped to the value of the deal's own
       // goods, and every edit is logged against the cashier below.
       dealOverrides = {},
+      // How many complete sets of each offer the cashier chose to give. The
+      // basket may qualify for more; giving fewer is the counter's call.
+      dealSets = {},
     } = req.body;
 
     // Ids only — the amounts stay this server's business.
@@ -121,6 +124,16 @@ module.exports.checkout = async (req, res) => {
       .slice(0, 50)
       .map((id) => String(id))
       .filter((id) => mongoose.isValidObjectId(id));
+
+    const chosenSetCounts = Object.fromEntries(
+      Object.entries(dealSets && typeof dealSets === "object" ? dealSets : {})
+        .slice(0, 50)
+        .filter(
+          ([id, n]) =>
+            mongoose.isValidObjectId(String(id)) && Number.isFinite(Number(n)) && Number(n) > 0,
+        )
+        .map(([id, n]) => [String(id), Math.floor(Number(n))]),
+    );
 
     const typedDealPrices = Object.fromEntries(
       Object.entries(dealOverrides && typeof dealOverrides === "object" ? dealOverrides : {})
@@ -310,6 +323,7 @@ module.exports.checkout = async (req, res) => {
       activeDeals,
       chosenDealIds,
       typedDealPrices,
+      chosenSetCounts,
     );
 
     // What this basket qualified for, whether or not it was taken. Asked of the
@@ -557,6 +571,14 @@ module.exports.checkout = async (req, res) => {
                 name: entry.name,
                 sets: entry.sets,
                 amount: entry.amount,
+                // Only the units the offer covered. The rest of the line was
+                // sold at shelf price and the receipt has to be able to say so.
+                items: Object.entries(entry.allocation || {}).map(([id, quantity]) => ({
+                  product: id,
+                  name: lines.find((line) => String(line.product._id) === String(id))
+                    ?.product.name,
+                  quantity,
+                })),
               })),
               voucher: voucher
                 ? {
