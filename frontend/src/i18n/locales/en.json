@@ -515,7 +515,15 @@
       "historySub": "What has gone back over the counter",
       "historyEmpty": "Nothing has been refunded yet",
       "historyFailed": "Could not load refunds",
-      "voided": "Void"
+      "voided": "Void",
+      "scanPlaceholder": "…or scan the item they brought back",
+      "findItem": "Find sales",
+      "noSaleForItem": "That item is not on any sale you can refund",
+      "slipTitle": "Refund",
+      "slipRef": "Refund",
+      "returned": "Returned",
+      "exchangeNote": "Rung up on its own receipt",
+      "close": "Close"
     },
     "void": {
       "confirm": "Void receipt {{receiptNo}}? Stock will be returned.",

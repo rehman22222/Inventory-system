@@ -1,10 +1,112 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
-import { FiMinus, FiPlus, FiX } from "react-icons/fi";
+import { FiMinus, FiPlus, FiPrinter, FiX } from "react-icons/fi";
 import axiosInstance from "../../lib/axios";
 import PosModal from "./PosModal";
-import { currency } from "./posUtils";
+import { currency, printSlip } from "./posUtils";
+
+// The customer's record of what went back. Rendered twice from one source: on
+// screen so the counter can read it, and hidden for the 72mm roll — a preview
+// that is not the paper is not a preview.
+//
+// On an exchange this covers only the half that has just happened; what they
+// took instead is rung up as an ordinary sale and prints its own receipt.
+function RefundSlipView({ slip, shop, t }) {
+  const body = (
+    <>
+      <div className="s-head">
+        <div className="s-shop">{shop?.name}</div>
+        {(shop?.addressLines || []).map((line) => (
+          <div key={line} className="s-addr">
+            {line}
+          </div>
+        ))}
+        <div className="s-title">{t("pos.refund.slipTitle", "Refund")}</div>
+      </div>
+
+      <div className="s-meta">
+        <span>{t("pos.refund.slipRef", "Refund")}</span>
+        <span>{slip.reference}</span>
+      </div>
+      <div className="s-meta">
+        <span>{t("pos.receipt")}</span>
+        <span>{slip.receiptNo}</span>
+      </div>
+      <div className="s-meta">
+        <span>{t("dayClosing.printedAt", "Printed")}</span>
+        <span>{new Date(slip.at).toLocaleString()}</span>
+      </div>
+      {slip.by && (
+        <div className="s-meta">
+          <span>{t("dayClosing.cashier", "Cashier")}</span>
+          <span>{slip.by}</span>
+        </div>
+      )}
+
+      <div className="s-rule" />
+      <div className="s-section">{t("pos.refund.returned", "Returned")}</div>
+      {(slip.items || []).map((item, i) => (
+        <div key={`${item.name}-${i}`} className="s-line">
+          <span>
+            {item.quantity} × {item.name}
+          </span>
+          <span>{currency(item.lineTotal)}</span>
+        </div>
+      ))}
+
+      <div className="s-rule" />
+      <div className="s-total">
+        <span>{t("dayClosing.refunded")}</span>
+        <span>-{currency(slip.amount)}</span>
+      </div>
+      {slip.method && (
+        <div className="s-line">
+          <span>{t("pos.refund.method", "Refund by")}</span>
+          <span>{t(`common.payments.${slip.method}`, slip.method)}</span>
+        </div>
+      )}
+
+      {slip.exchange?.length > 0 && (
+        <>
+          <div className="s-rule" />
+          <div className="s-section">{t("pos.exchange.title", "Exchange for")}</div>
+          {slip.exchange.map((item) => (
+            <div key={String(item.productId)} className="s-line">
+              <span>
+                {item.quantity} × {item.name}
+              </span>
+              <span>{currency(item.price * item.quantity)}</span>
+            </div>
+          ))}
+          <div className="s-line">
+            <span>
+              {slip.difference >= 0
+                ? t("pos.exchange.customerPays", "Customer pays")
+                : t("pos.exchange.customerGets", "Customer gets back")}
+            </span>
+            <span>{currency(Math.abs(slip.difference))}</span>
+          </div>
+          <div className="s-row-sub">
+            <span>{t("pos.refund.exchangeNote", "Rung up on its own receipt")}</span>
+          </div>
+        </>
+      )}
+    </>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-center bg-white p-4">
+        <div className="slip">{body}</div>
+      </div>
+      <div id="refund-slip-print" className="slip hidden">
+        {body}
+      </div>
+    </div>
+  );
+}
 
 // Refund a whole receipt or just some of its lines. Admin/manager only —
 // the backend enforces that too.
@@ -28,6 +130,7 @@ function RefundModal({
   onClose,
 }) {
   const { t } = useTranslation();
+  const { store: SHOP } = useSelector((state) => state.store);
   const [receiptNo, setReceiptNo] = useState(initialReceiptNo);
   const [receipt, setReceipt] = useState(null);
   const [quantities, setQuantities] = useState({});
@@ -40,6 +143,8 @@ function RefundModal({
   // what was rung up on it.
   const [date, setDate] = useState("");
   const [dayReceipts, setDayReceipts] = useState(null);
+  // The refund that has just gone through, held so its slip can be printed.
+  const [done, setDone] = useState(null);
 
   // How many of each line are still refundable after earlier partial refunds.
   const outstandingOf = (loaded, item) => {
@@ -81,6 +186,13 @@ function RefundModal({
     if (initialReceiptNo) lookup(initialReceiptNo);
   }, [initialReceiptNo, lookup]);
 
+  // With direct printing on the slip goes out by itself. In an effect rather
+  // than at the end of submit: the node it prints has to be in the page first,
+  // and that only happens on the render `done` causes.
+  useEffect(() => {
+    if (done && SHOP?.directPrint) printSlip("refund-slip-print");
+  }, [done, SHOP?.directPrint]);
+
   const searchDay = async (value) => {
     if (!value) return;
     setBusy(true);
@@ -90,6 +202,31 @@ function RefundModal({
       });
       setDayReceipts(response.data.receipts || []);
       setReceipt(null);
+    } catch (error) {
+      setDayReceipts([]);
+      toast.error(error.response?.data?.message || t("pos.refund.notFound"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // No slip, no date — but the customer is holding the thing. Scanning it finds
+  // the sales it was on, and the refund still hangs off the sale that actually
+  // happened: what was paid for it (a deal makes that not the shelf price) and
+  // how much of it is still outstanding live there and nowhere else.
+  const searchBarcode = async (code) => {
+    const value = String(code || "").trim();
+    if (!value) return;
+
+    setBusy(true);
+    try {
+      const response = await axiosInstance.get("pos/receipts", {
+        params: { barcode: value, limit: 50 },
+      });
+      const found = response.data.receipts || [];
+      setDayReceipts(found);
+      setReceipt(null);
+      if (found.length === 0) toast.error(t("pos.refund.noSaleForItem"));
     } catch (error) {
       setDayReceipts([]);
       toast.error(error.response?.data?.message || t("pos.refund.notFound"));
@@ -165,7 +302,15 @@ function RefundModal({
       // basket: the cashier rings them up as normal and the drawer sees the
       // difference, which is the only figure that actually changes hands.
       onDone?.(exchangeItems);
-      onClose();
+      // Hold the dialog open on the refund's own slip. The customer is owed a
+      // record of what went back — and on an exchange the till is about to
+      // print a second one for what they took instead, so the two together are
+      // the paperwork for the swap.
+      setDone({
+        ...response.data.slip,
+        exchange: exchangeItems,
+        difference,
+      });
     } catch (error) {
       toast.error(error.response?.data?.message || t("pos.refund.failed"));
     } finally {
@@ -179,6 +324,28 @@ function RefundModal({
       subtitle={t("pos.refund.subtitle")}
       onClose={onClose}
       footer={
+        done ? (
+          <>
+            <span className="me-auto text-sm text-slate-400">
+              {done.reference}
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              className="bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700"
+            >
+              {t("pos.refund.close", "Close")}
+            </button>
+            <button
+              type="button"
+              onClick={() => printSlip("refund-slip-print")}
+              className="flex items-center gap-2 bg-cyan-700 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-600"
+            >
+              <FiPrinter className="h-4 w-4" />
+              {t("dayClosing.print", "Print")}
+            </button>
+          </>
+        ) :
         receipt && (
           <>
             <span className="me-auto text-sm text-slate-400">
@@ -219,6 +386,11 @@ function RefundModal({
         )
       }
     >
+    >
+      {done ? (
+        <RefundSlipView slip={done} shop={SHOP} t={t} />
+      ) : (
+      <>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -239,6 +411,31 @@ function RefundModal({
           className="bg-cyan-700 px-5 py-2 font-semibold text-white hover:bg-cyan-600 disabled:opacity-50"
         >
           {t("pos.refund.find")}
+        </button>
+      </form>
+
+      {/* No slip and no date, but they are holding the thing: scan it. */}
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          const code = event.target.elements.scan.value;
+          searchBarcode(code);
+          event.target.reset();
+        }}
+        className="mb-3 flex gap-2"
+      >
+        <input
+          name="scan"
+          data-keyboard="numeric"
+          placeholder={t("pos.refund.scanPlaceholder", "…or scan the item they brought back")}
+          className="flex-1 border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-slate-100 outline-none focus:border-cyan-500"
+        />
+        <button
+          type="submit"
+          disabled={busy}
+          className="bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700 disabled:opacity-50"
+        >
+          {t("pos.refund.findItem", "Find sales")}
         </button>
       </form>
 
@@ -522,6 +719,8 @@ function RefundModal({
             className="w-full border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-cyan-500"
           />
         </div>
+      )}
+      </>
       )}
     </PosModal>
   );

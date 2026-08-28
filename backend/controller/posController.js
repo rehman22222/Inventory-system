@@ -881,6 +881,22 @@ const performRefund = async ({
       status: receipt.status,
       receiptId: receipt._id,
       reference: refundRef,
+      // Everything the printed refund slip needs, taken from what was just
+      // written rather than rebuilt on the client from what it hoped happened.
+      slip: {
+        reference: refundRef,
+        receiptNo: receipt.receiptNo,
+        at: new Date(),
+        by: user.name,
+        method: refundMethod || receipt.paymentMethod,
+        reason: reason || undefined,
+        amount,
+        items: lines.map((line) => ({
+          name: line.name,
+          quantity: line.quantity,
+          lineTotal: money(line.lineTotal),
+        })),
+      },
     };
   });
 
@@ -942,6 +958,7 @@ module.exports.refund = async (req, res) => {
       status: result.status,
       amount: result.amount,
       items: result.lines,
+      slip: result.slip,
     });
   } catch (error) {
     const status = error.statusCode || 500;
@@ -1005,6 +1022,31 @@ module.exports.getReceipts = async (req, res) => {
       const shop = await Store.findOne({ key: "shop" }).select("timezone").lean();
       const zone = shop?.timezone || "UTC";
       filter.createdAt = { $gte: startOfDay(day, zone), $lte: endOfDay(day, zone) };
+    }
+
+    // Searching for a sale to refund is a different job from reading your own
+    // history, and it has always had a different rule: a manager can already
+    // pull up anyone's receipt by its printed number. Date and barcode are the
+    // same lookup by another route, so they get the same reach — otherwise the
+    // ordinary case, a colleague rang the sale, simply fails.
+    const searching = Boolean(req.query.date || req.query.barcode);
+    if (searching && canLookupAnyReceipt(req.user)) {
+      delete filter.cashier;
+      delete filter.dayClosing;
+    }
+
+    // The customer has the item but no slip and no idea of the date, which is
+    // most of them. Scanning what they brought back finds the sales it was on,
+    // and the refund still hangs off the sale that actually happened: what was
+    // paid for it — a deal makes that not the shelf price — and how much of it
+    // is still outstanding both live there and nowhere else.
+    if (req.query.barcode) {
+      const code = String(req.query.barcode).trim();
+      const product = await Product.findOne({ barcode: code }).select("_id").lean();
+      if (!product) {
+        return res.status(404).json({ message: "No product has that barcode" });
+      }
+      filter["items.product"] = product._id;
     }
 
     const receipts = await Receipt.find(filter)
