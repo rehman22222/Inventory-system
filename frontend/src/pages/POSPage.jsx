@@ -1642,13 +1642,12 @@ function POSPage() {
                       disabled={stock <= 0}
                       className="group relative flex flex-col gap-2 overflow-hidden border border-slate-800 bg-gradient-to-b from-slate-800 to-slate-900 p-2.5 text-start transition hover:border-cyan-700 hover:from-slate-700 active:scale-[0.98] disabled:opacity-40"
                     >
-                      {/* Struck across the tile on the diagonal, the way a
-                          shelf label gets crossed out — it reads as "not this
-                          one" at a glance, which a horizontal band did not.
-                          Widened past the edges so the rotation still reaches
-                          both corners; the tile clips it. */}
+                      {/* A ribbon across the corner rather than a band across
+                          the middle: the corner is dead space, so the name and
+                          the price underneath stay readable while the tile is
+                          still unmistakably struck out. The tile clips the ends. */}
                       {stock <= 0 && (
-                        <span className="pointer-events-none absolute inset-x-[-25%] top-1/2 -translate-y-1/2 -rotate-[20deg] bg-red-900/85 py-1 text-center text-[10px] font-bold uppercase tracking-widest text-red-100 shadow-lg">
+                        <span className="pointer-events-none absolute -start-[38px] top-[16px] w-[130px] -rotate-45 bg-red-700 py-[3px] text-center text-[9px] font-bold uppercase tracking-wider text-white shadow-md">
                           {t("pos.tile.outOfStock", "Out of stock")}
                         </span>
                       )}
