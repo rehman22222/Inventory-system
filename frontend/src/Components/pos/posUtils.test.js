@@ -428,9 +428,12 @@ describe("a set the cashier has given stays on the items it was given on", () =>
     expect(held.allocation).toEqual({ A: 1, B: 1, C: 1 });
   });
 
-  test("the offer falls away if the set is broken up", () => {
+  test("breaking the set up re-chooses instead of dropping the offer", () => {
+    // B is taken back off the basket, so the set that was given no longer
+    // stands — but three qualifying units still do, and a cashier looking at
+    // them needs the offer to still be there.
     const lock = { D1: { A: 1, B: 1, C: 1 } };
-    const gone = applicableDeals(
+    const again = applicableDeals(
       basket(2, 0, 1),
       deal,
       chosen,
@@ -438,7 +441,21 @@ describe("a set the cashier has given stays on the items it was given on", () =>
       undefined,
       lock
     );
-    expect(gone.applied).toHaveLength(0);
+    expect(again.applied).toHaveLength(1);
+    expect(again.applied[0].allocation).toEqual({ A: 2, C: 1 });
+  });
+
+  test("but not while the set still stands", () => {
+    const lock = { D1: { A: 1, B: 1, C: 1 } };
+    const [held] = applicableDeals(
+      basket(3, 1, 1),
+      deal,
+      chosen,
+      undefined,
+      undefined,
+      lock
+    ).applied;
+    expect(held.allocation).toEqual({ A: 1, B: 1, C: 1 });
   });
 
   test("a named set can never be worth more than the one the matcher would pick", () => {

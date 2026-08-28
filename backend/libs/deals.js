@@ -144,8 +144,8 @@ function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts, locked
       // selection is worth the same or less — a locked set cannot be used to
       // enlarge a discount, only to hold one still.
       const locked = frozen.get(String(deal._id));
+      const held = [];
       if (locked) {
-        const held = [];
         for (const [id, count] of Object.entries(locked)) {
           const line = cartMap.get(String(id));
           if (!eligible.has(String(id)) || !line) continue;
@@ -157,11 +157,15 @@ function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts, locked
             held.push({ id: String(id), price: Number(line.price || 0) });
           }
         }
+      }
 
-        // Broken up since — someone took an item back off the basket — so there
-        // is no set left to honour and the offer falls away.
-        if (held.length < need) continue;
-
+      // The held set is honoured while it still stands. Once it does not —
+      // something in it was taken back off the basket — the offer does NOT go
+      // away: it is chosen again from what is left, exactly as if it had just
+      // been given. Dropping it stranded a cashier who removed one item from a
+      // box of three with six other qualifying items still on the screen and
+      // no offer at all.
+      if (held.length >= need) {
         held.sort((a, b) => b.price - a.price);
 
         // What is GIVEN comes from the set that was given. What the basket
