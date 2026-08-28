@@ -429,20 +429,6 @@ function POSPage() {
   // Deals live in the sidebar as their own tile; see dealsCategoryId below.
   const dealRoom = Math.max(subtotal - voucherDiscount - manualDiscount, 0);
   const dealDiscount = Math.min(dealMatch.total, dealRoom);
-  // Products that belong to a currently-applied deal, for the line badge.
-  // How many units of each line are actually inside a deal. Five items on a
-  // 3-for offer are three at the deal and two at shelf price, and badging the
-  // whole line said the customer was getting five of them discounted.
-  const dealUnits = useMemo(() => {
-    const map = new Map();
-    dealMatch.applied.forEach((entry) =>
-      Object.entries(entry.allocation || {}).forEach(([id, count]) =>
-        map.set(String(id), (map.get(String(id)) || 0) + count)
-      )
-    );
-    return map;
-  }, [dealMatch]);
-
   // Change how many sets an applied offer gives, in place. Clamped here as well
   // as in the matcher so the number on screen can never be one the basket
   // cannot back up.
@@ -1233,7 +1219,7 @@ function POSPage() {
           <SaleTable
             cart={cart}
             selectedId={selectedLine}
-            dealUnits={dealUnits}
+            deals={dealMatch.applied}
             onSelect={setSelectedLine}
             onQuantityChange={updateQuantity}
             onRemove={removeFromCart}

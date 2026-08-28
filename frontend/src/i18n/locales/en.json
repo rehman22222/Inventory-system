@@ -669,7 +669,6 @@
       "stock": "Stock",
       "each": "ea"
     },
-    "dealTag": "Deal",
     "dealsTile": "Deals",
     "dealMissing": "Not in the catalogue any more: {{names}}",
     "offline": {
