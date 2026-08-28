@@ -87,6 +87,9 @@ function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts, locked
     const products = [];
     // How many units of each product ended up inside a complete set.
     const allocation = {};
+    // The units in the sets, in order, so the till can lay them out set by set:
+    // the first groupQuantity of these are set one, the next are set two.
+    const picked = [];
 
     // What the basket qualifies for is the ceiling; what the cashier asked for
     // is what is given. `maxSets` travels back so the till can offer the range.
@@ -181,6 +184,7 @@ function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts, locked
         setValue = inSets.reduce((sum, unit) => sum + unit.price, 0);
         for (const unit of inSets) {
           allocation[unit.id] = (allocation[unit.id] || 0) + 1;
+          picked.push(unit.id);
         }
       } else {
         let inSets;
@@ -201,6 +205,7 @@ function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts, locked
 
         for (const unit of inSets) {
           allocation[unit.id] = (allocation[unit.id] || 0) + 1;
+          picked.push(unit.id);
         }
       }
     } else {
@@ -231,6 +236,12 @@ function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts, locked
         const perSet = Number(item.quantity || 1);
         if (perSet <= 0) continue;
         allocation[String(item.product)] = perSet * sets;
+      }
+      for (let set = 0; set < sets; set += 1) {
+        for (const item of items) {
+          const perSet = Number(item.quantity || 1);
+          for (let i = 0; i < perSet; i += 1) picked.push(String(item.product));
+        }
       }
     }
 
@@ -273,6 +284,7 @@ function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts, locked
       configuredAmount,
       edited,
       products,
+      picked,
       // Which units are actually in the offer. Five items on a 3-for deal are
       // three at the deal and two at shelf price, and both the basket line and
       // the receipt have to be able to say so.

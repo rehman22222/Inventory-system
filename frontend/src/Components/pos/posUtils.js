@@ -181,6 +181,8 @@ export const applicableDeals = (cart, deals, chosenIds, overrides, setCounts, lo
     const products = [];
     // How many units of each product ended up inside a complete set.
     const allocation = {};
+    // The units in the sets, in order, so the till can lay them out set by set.
+    const picked = [];
 
     // What the basket qualifies for is the ceiling; what the cashier asked for
     // is what is given. `maxSets` travels back so the till can offer the range.
@@ -268,6 +270,7 @@ export const applicableDeals = (cart, deals, chosenIds, overrides, setCounts, lo
         setValue = inSets.reduce((sum, unit) => sum + unit.price, 0);
         for (const unit of inSets) {
           allocation[unit.id] = (allocation[unit.id] || 0) + 1;
+          picked.push(unit.id);
         }
       } else {
         let inSets;
@@ -283,6 +286,7 @@ export const applicableDeals = (cart, deals, chosenIds, overrides, setCounts, lo
 
         inSets.forEach((unit) => {
           allocation[unit.id] = (allocation[unit.id] || 0) + 1;
+          picked.push(unit.id);
         });
       }
     } else {
@@ -310,6 +314,12 @@ export const applicableDeals = (cart, deals, chosenIds, overrides, setCounts, lo
         if (perSet <= 0) return;
         allocation[itemProductId(item)] = perSet * sets;
       });
+      for (let set = 0; set < sets; set += 1) {
+        items.forEach((item) => {
+          const perSet = Number(item.quantity || 1);
+          for (let i = 0; i < perSet; i += 1) picked.push(itemProductId(item));
+        });
+      }
     }
 
     let raw;
@@ -346,6 +356,7 @@ export const applicableDeals = (cart, deals, chosenIds, overrides, setCounts, lo
       configuredAmount,
       edited,
       products,
+      picked,
       allocation,
     });
     total += amount;

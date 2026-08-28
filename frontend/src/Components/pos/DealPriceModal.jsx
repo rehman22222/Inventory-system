@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FiMinus, FiPlus } from "react-icons/fi";
 import PosModal from "./PosModal";
 import { currency, sanitizeDecimal } from "./posUtils";
 
@@ -13,7 +12,19 @@ import { currency, sanitizeDecimal } from "./posUtils";
 // Whatever is typed is still checked by the server against the value of the
 // deal's own goods, and both figures — the deal's and the one charged — go into
 // the log with the cashier's name.
-function DealPriceModal({ entry, applied, sets, onSets, onApply, onReset, onClose }) {
+function DealPriceModal({
+  entry,
+  applied,
+  sets,
+  onSets,
+  // Every set the basket holds, each as a list of what is in it. Built by the
+  // page from a match at the full count, because the entry on screen only knows
+  // about the sets currently being given.
+  setPreview = [],
+  onApply,
+  onReset,
+  onClose,
+}) {
   const { t } = useTranslation();
 
   // What the deal portion costs right now: shelf value less the saving in force.
@@ -85,38 +96,59 @@ function DealPriceModal({ entry, applied, sets, onSets, onApply, onReset, onClos
       }
     >
       <div className="space-y-4">
-        {/* A basket can qualify for two sets and the counter still only want to
-            give one. Which is the shop's call at the moment of sale, so it is
-            asked here rather than decided by the arithmetic. */}
-        {entry.maxSets > 1 && (
+        {/* Each set the basket holds, laid out with what is in it. A number on
+            its own says nothing about which items the customer is getting the
+            offer on; these cards do, and tapping one gives that many.
+            Cumulative on purpose — a set is filled before the next is started,
+            so taking set two means taking set one with it. */}
+        {setPreview.length > 1 && (
           <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
               {t("pos.deal.setsToGive", "Sets to give")}
             </label>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => onSets(Math.max(1, sets - 1))}
-                disabled={sets <= 1}
-                className="bg-slate-800 p-2 text-slate-300 hover:bg-slate-700 disabled:opacity-30"
-              >
-                <FiMinus className="h-4 w-4" />
-              </button>
-              <span className="w-10 text-center text-lg font-bold tabular-nums">{sets}</span>
-              <button
-                type="button"
-                onClick={() => onSets(Math.min(entry.maxSets, sets + 1))}
-                disabled={sets >= entry.maxSets}
-                className="bg-slate-800 p-2 text-slate-300 hover:bg-slate-700 disabled:opacity-30"
-              >
-                <FiPlus className="h-4 w-4" />
-              </button>
-              <span className="text-xs text-slate-500">
-                {t("pos.deal.setsAvailable", "of {{n}} the basket qualifies for", {
-                  n: entry.maxSets,
-                })}
-              </span>
+            <div className="flex flex-wrap gap-2">
+              {setPreview.map((set, index) => {
+                const number = index + 1;
+                const on = number <= sets;
+
+                return (
+                  <button
+                    key={number}
+                    type="button"
+                    onClick={() => onSets(on && number === sets ? number - 1 || 1 : number)}
+                    className={`min-w-[7.5rem] flex-1 border p-2 text-start transition ${
+                      on
+                        ? "border-fuchsia-500 bg-fuchsia-950/50"
+                        : "border-slate-700 bg-slate-950 hover:border-slate-500"
+                    }`}
+                  >
+                    <span
+                      className={`block text-[10px] font-bold uppercase tracking-wide ${
+                        on ? "text-fuchsia-300" : "text-slate-500"
+                      }`}
+                    >
+                      {t("pos.deal.setNumber", "Set {{n}}", { n: number })}
+                    </span>
+                    <span className="mt-1 block space-y-0.5">
+                      {set.map((line, i) => (
+                        <span
+                          key={`${line}-${i}`}
+                          className="block truncate text-[11px] leading-snug text-slate-300"
+                        >
+                          {line}
+                        </span>
+                      ))}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
+            <p className="mt-1 text-xs text-slate-500">
+              {t("pos.deal.setsChosen", "{{given}} of {{max}} — the rest stay at their normal price", {
+                given: sets,
+                max: entry.maxSets,
+              })}
+            </p>
           </div>
         )}
 

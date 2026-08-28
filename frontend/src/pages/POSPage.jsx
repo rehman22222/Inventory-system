@@ -1957,12 +1957,31 @@ function POSPage() {
             dealOffers.find((e) => String(e.dealId) === id) ||
             editingDeal;
 
+          // Every set the basket holds, each as the names in it. Asked at the
+          // full count and with no lock, because the entry on screen only knows
+          // about the sets currently being given — the dialog has to show the
+          // ones on offer as well as the ones taken.
+          const need = Math.max(
+            2,
+            Math.floor(
+              Number(allDeals.find((d) => String(d._id) === id)?.groupQuantity || 0)
+            )
+          );
+          const full = applicableDeals(cart, allDeals, [id]).applied[0];
+          const nameOf = (productId) =>
+            cart.find((line) => String(line.productId) === String(productId))?.name ||
+            productId;
+          const setPreview = Array.from({ length: full?.sets || 0 }, (_, i) =>
+            (full.picked || []).slice(i * need, (i + 1) * need).map(nameOf)
+          );
+
           return (
             <DealPriceModal
               entry={live}
               applied={appliedDealIds.includes(id)}
-              sets={dealSets[id] ?? live.maxSets ?? live.sets}
-              onSets={(n) => setDealSets((current) => ({ ...current, [id]: n }))}
+              sets={dealSets[id] ?? live.sets}
+              setPreview={setPreview}
+              onSets={(n) => setDealSetCount(id, n)}
               onApply={(price) => priceDeal(live, price)}
               onReset={() => resetDealPrice(id)}
               onClose={() => setEditingDeal(null)}
