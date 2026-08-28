@@ -21,8 +21,31 @@
   #receipt,
   #receipt *,
   #barcode-sheet,
-  #barcode-sheet * {
+  #barcode-sheet *,
+  .slip.is-printing,
+  .slip.is-printing * {
     visibility: visible;
+  }
+
+  /* One slip per print run. A finished receipt often sits behind whichever
+     dialog is printing, and both surfaces are printable — without this the
+     cashier gets the customer receipt stapled to the shift report. The slip
+     being printed is marked by printSlip() in posUtils; the rest stay off the
+     page because they are never marked. */
+  .slip {
+    display: none !important;
+  }
+
+  .slip.is-printing {
+    display: block !important;
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0;
+  }
+
+  body.printing-slip #receipt {
+    display: none !important;
+    visibility: hidden !important;
   }
 
   /* ── Customer receipt (80mm thermal roll) ──────────────────────────────
@@ -115,14 +138,22 @@
     letter-spacing: 0.06em;
     padding-bottom: 3px;
     border-bottom: 1.5px solid #000;
+    color: #000;
   }
+  /* The items are the part a customer actually reads back, so they carry the
+     same weight as the totals. This block used to leave them at normal weight
+     over a #bbb hairline — the one place the receipt broke its own rule about
+     grey and thin strokes, and the reason the list looked washed out beside
+     everything under it. A thermal head renders #bbb as nothing at all. */
   #receipt .r-table td {
     padding: 3px 0;
     vertical-align: top;
     font-size: 12px;
+    font-weight: 600;
+    color: #000;
   }
   #receipt .r-table tbody tr + tr td {
-    border-top: 1px dotted #bbb;
+    border-top: 1px dotted #000;
   }
   #receipt .r-qty {
     width: 24px;
@@ -586,4 +617,98 @@ body.osk-open .pos-modal-panel .unknown-barcode-summary {
  * which is why no markup had to change. */
 body.osk-open .admin-drawer {
   height: calc(100dvh - var(--osk-height, 0px));
+}
+
+/* ── Till slips (day closing, refund history, sale history) ────────────────
+   One layout, defined once and outside @media print so the on-screen preview
+   IS the paper rather than an impression of it. The print block only positions
+   it and turns it on; nothing about the type is restated there.
+
+   Same rules as the receipt: 72mm, monospace, solid black, no hairlines and no
+   light weights — a 203dpi thermal head renders grey as nothing at all. */
+.slip {
+  width: 72mm;
+  margin: 0 auto;
+  color: #000;
+  background: #fff;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.slip .s-head {
+  text-align: center;
+  margin-bottom: 3mm;
+}
+
+.slip .s-shop {
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.slip .s-addr {
+  font-size: 10px;
+}
+
+.slip .s-title {
+  margin-top: 2mm;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.slip .s-meta,
+.slip .s-line,
+.slip .s-row-top,
+.slip .s-row-sub {
+  display: flex;
+  justify-content: space-between;
+  gap: 4mm;
+}
+
+.slip .s-rule {
+  border-top: 1px dashed #000;
+  margin: 2mm 0;
+}
+
+.slip .s-section {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 1mm;
+}
+
+/* A row is two lines: what it is and what it came to, then the detail beneath.
+   A reference, a time and a total do not fit across 72mm without one of them
+   being cut. */
+.slip .s-row {
+  margin-bottom: 1.5mm;
+}
+
+.slip .s-row-top {
+  font-weight: 700;
+}
+
+.slip .s-row-sub {
+  font-size: 10px;
+}
+
+.slip .s-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 4mm;
+  font-size: 10px;
+  padding-left: 3mm;
+}
+
+.slip .s-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 4mm;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
 }

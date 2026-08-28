@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { FiPlus, FiTrash2, FiX, FiTag } from "react-icons/fi";
@@ -39,16 +39,31 @@ function DealsModal({ onClose }) {
 
   const [name, setName] = useState("");
   const [discount, setDiscount] = useState("");
-  // "amount" = € off the bundle; "percent" = % off the deal's own products.
-  const [discountType, setDiscountType] = useState("amount");
-  // "bundle" = a recipe (1 vape + 2 coils). "mix" = pick any N from the chosen
-  // products, which is what a pod with fifteen flavours actually needs.
-  const [mode, setMode] = useState("bundle");
+  // The pricing IS the deal type here: "setPrice" is a multi-buy ("any 3 for
+  // €12"), anything else is a festive discount off the same set of products.
+  const [discountType, setDiscountType] = useState("setPrice");
+  const dealKind = discountType === "setPrice" ? "multibuy" : "festive";
+
+  // Every deal this form builds is a pick-any-N that repeats for each complete
+  // set. The engine still supports recipe bundles and once-per-sale offers, and
+  // the deals already using them keep working — but they are not choices worth
+  // putting in front of someone building the shop's everyday offer.
+  const mode = "mix";
+  const quantityRule = "repeat_sets";
   const [groupQuantity, setGroupQuantity] = useState("3");
+  const [startsAt, setStartsAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
   const [picked, setPicked] = useState([]); // [{ productId, name, price, quantity }]
   const [query, setQuery] = useState("");
   // "" = all categories; otherwise a category _id to browse.
   const [categoryId, setCategoryId] = useState("");
+  // Only products the till can actually scan. See allMatches for why.
+  const [tillOnly, setTillOnly] = useState(true);
+  // The deal being edited, or null while building a new one. The form above is
+  // the same form either way — a second one would be the same fields with the
+  // same rules and its own bugs.
+  const [editingId, setEditingId] = useState(null);
+  const scrollRef = useRef(null);
 
   useEffect(() => {
     dispatch(gettingallDeals());
@@ -71,6 +86,13 @@ function DealsModal({ onClose }) {
     const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
 
     return products.filter((product) => {
+      // A deal is rung up at the till, and the till only loads products it can
+      // scan (getProduct's "pos" view drops anything without a barcode). An
+      // unbarcoded row can never reach a basket, so putting one in a deal
+      // builds an offer that can never fire — which is exactly what the shop's
+      // existing deals did. Off by default, but reachable: a shop mid-way
+      // through barcoding its stock still needs to see the rest.
+      if (tillOnly && !String(product.barcode || "").trim()) return false;
       if (categoryId && String(product.Category?._id) !== String(categoryId)) return false;
       if (!terms.length) return true;
 
@@ -85,7 +107,7 @@ function DealsModal({ onClose }) {
           name.includes(term) || barcode.includes(term) || squashed.includes(squash(term)),
       );
     });
-  }, [products, query, categoryId]);
+  }, [products, query, categoryId, tillOnly]);
 
   const matches = useMemo(() => allMatches.slice(0, 100), [allMatches]);
 
@@ -160,11 +182,13 @@ function DealsModal({ onClose }) {
   const resetForm = () => {
     setName("");
     setDiscount("");
-    setDiscountType("amount");
-    setMode("bundle");
+    setDiscountType("setPrice");
     setGroupQuantity("3");
+    setStartsAt("");
+    setEndsAt("");
     setPicked([]);
     setQuery("");
+    setEditingId(null);
   };
 
   // What the deal is actually worth against the picked products, so the form can
@@ -211,12 +235,10 @@ function DealsModal({ onClose }) {
         toast.error(t("deals.mixMin", "Set the number to buy — at least 2"));
         return;
       }
-      if (need > pickedUnitCount) {
-        toast.error(
-          t("deals.mixTooFew", "Pick more products — the set is bigger than the list"),
-        );
-        return;
-      }
+      // No check that the set is no bigger than the list. Units come from cart
+      // QUANTITY, not from how many different products were picked, so "2 of
+      // this one flavour for €12" and "any 3 across these two" are both real
+      // deals the matcher handles — they were refused here for years.
     } else if (pickedUnitCount < 2) {
       toast.error(t("deals.minProducts"));
       return;
@@ -229,6 +251,10 @@ function DealsModal({ onClose }) {
       mode,
       // Only meaningful for mix; the server ignores it on a bundle.
       groupQuantity: mode === "mix" ? need : 0,
+      quantityRule,
+      // Empty means no limit at that end, which is what most deals want.
+      startsAt: startsAt || null,
+      endsAt: endsAt || null,
       // In mix mode every chosen product is simply eligible — the per-product
       // quantity is not a requirement, so it is pinned to 1.
       items: picked.map((entry) => ({
@@ -236,6 +262,24 @@ function DealsModal({ onClose }) {
         quantity: mode === "mix" ? 1 : entry.quantity,
       })),
     };
+
+    // Editing an existing deal goes straight through: the route is admin and
+    // manager, because someone has to be able to correct or stop a live offer
+    // without waiting for an approval. Only CREATING one needs the owner.
+    if (editingId) {
+      const saved = await dispatch(
+        UpdateDeal({ dealId: editingId, changes: payload })
+      );
+
+      if (saved.error) {
+        toast.error(saved.payload || t("deals.updateFailed", "Could not save the deal"));
+        return;
+      }
+
+      toast.success(t("deals.updated", "Deal saved"));
+      cancelEdit();
+      return;
+    }
 
     // A deal gives money away, so it is the owner's call. Everyone else sends it
     // for approval — approving is what creates it.
@@ -262,6 +306,40 @@ function DealsModal({ onClose }) {
     }
 
     toast.success(t("deals.created"));
+    resetForm();
+  };
+
+  // Load a saved deal back into the form. Prices come from the catalogue rather
+  // than from the deal, because what a set is worth is today's shelf price, not
+  // whatever it was when the deal was written.
+  const editDeal = (deal) => {
+    setEditingId(deal._id);
+    setName(deal.name || "");
+    setDiscount(String(deal.discount ?? ""));
+    setDiscountType(deal.discountType || "setPrice");
+    setGroupQuantity(String(deal.groupQuantity || 3));
+    setStartsAt(deal.startsAt ? String(deal.startsAt).slice(0, 10) : "");
+    setEndsAt(deal.endsAt ? String(deal.endsAt).slice(0, 10) : "");
+    setPicked(
+      (deal.items || []).map((item) => {
+        const id = String(item.product?._id || item.product);
+        const live = products.find((entry) => entry._id === id);
+        return {
+          productId: id,
+          name: live?.name || item.product?.name || "",
+          price: Number(live?.Price ?? item.product?.Price ?? 0),
+          quantity: Number(item.quantity || 1),
+        };
+      })
+    );
+    setQuery("");
+    // The form is at the top of a scrolling panel; editing from the list at the
+    // bottom is otherwise a change nobody can see.
+    scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
     resetForm();
   };
 
@@ -299,70 +377,163 @@ function DealsModal({ onClose }) {
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           {/* Create form */}
-          <form onSubmit={submit} className="space-y-4 rounded-xl border border-base-300 bg-base-200/40 p-4">
+          <form
+            onSubmit={submit}
+            className={`space-y-4 rounded-xl border bg-base-200/40 p-4 ${
+              editingId ? "border-blue-800 ring-1 ring-blue-800" : "border-base-300"
+            }`}
+          >
+            {/* The form is the same one that builds a new deal, so say which
+                deal it is holding — otherwise a save quietly overwrites one the
+                person has stopped thinking about. */}
+            {editingId && (
+              <div className="flex items-center justify-between gap-3 rounded-lg bg-blue-800/10 px-3 py-2">
+                <span className="text-sm font-semibold text-blue-800">
+                  {t("deals.editingName", 'Editing "{{name}}"', { name })}
+                </span>
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="text-xs font-semibold underline"
+                >
+                  {t("deals.newInstead", "New deal instead")}
+                </button>
+              </div>
+            )}
+
             <div className="grid gap-4 sm:grid-cols-2">
+              {/* Two kinds of deal, and only two. The engine can still express
+                  bundles and once-per-sale, and the deals already using them
+                  keep working — but building a NEW one out of three independent
+                  choices meant twelve combinations, most of which nobody wants
+                  and one of which is the offer the shop actually runs. */}
               <div className="sm:col-span-2">
                 <label className="mb-1 block text-xs font-semibold uppercase text-base-content/60">
-                  {t("deals.mode", "Deal type")}
+                  {t("deals.kind", "Deal type")}
                 </label>
-                <div className="flex gap-2">
+                <div className="grid gap-2 sm:grid-cols-2">
                   {[
                     {
-                      key: "bundle",
-                      title: t("deals.modeBundle", "Bundle"),
-                      hint: t("deals.modeBundleHint", "1 vape + 2 coils — all of them"),
+                      key: "multibuy",
+                      title: t("deals.kindMultibuy", "Multi-buy"),
+                      hint: t(
+                        "deals.kindMultibuyHint",
+                        "Any 3 for €12. Every complete set of 3 is €12; anything left over is at its normal price.",
+                      ),
                     },
                     {
-                      key: "mix",
-                      title: t("deals.modeMix", "Pick any"),
-                      hint: t("deals.modeMixHint", "Any 3 from the list, mix freely"),
+                      key: "festive",
+                      title: t("deals.kindFestive", "Festive discount"),
+                      hint: t(
+                        "deals.kindFestiveHint",
+                        "A straight amount or percentage off, once for every complete set.",
+                      ),
                     },
                   ].map((option) => (
                     <button
                       key={option.key}
                       type="button"
-                      onClick={() => setMode(option.key)}
-                      className={`flex-1 rounded-lg border-2 px-3 py-2 text-start transition ${
-                        mode === option.key
-                          ? "border-blue-800 bg-blue-800/10"
-                          : "border-base-300 hover:bg-base-200"
+                      onClick={() =>
+                        setDiscountType(option.key === "multibuy" ? "setPrice" : "amount")
+                      }
+                      className={`rounded-lg border-2 p-3 text-start transition ${
+                        dealKind === option.key
+                          ? "border-primary bg-primary/10"
+                          : "border-base-300 hover:border-base-content/30"
                       }`}
                     >
-                      <span className="block text-sm font-semibold">{option.title}</span>
-                      <span className="block text-xs text-base-content/60">{option.hint}</span>
+                      <p className="text-sm font-semibold">{option.title}</p>
+                      <p className="mt-0.5 text-xs text-base-content/60">{option.hint}</p>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {mode === "mix" && (
-                <div className="sm:col-span-2">
-                  <label className="mb-1 block text-xs font-semibold uppercase text-base-content/60">
-                    {t("deals.groupQuantity", "How many to buy")}
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="number"
-                      min="2"
-                      step="1"
-                      value={groupQuantity}
-                      onChange={(e) => setGroupQuantity(e.target.value)}
-                      className="h-10 w-24 rounded-lg border-2 border-base-300 bg-base-100 px-3 text-center"
-                    />
-                    <p className="text-xs text-base-content/60">
-                      {t(
-                        "deals.groupQuantityHint",
-                        "Any {{n}} from the products below — the shopper mixes flavours however they like.",
-                        { n: need >= 2 ? need : "…" },
-                      )}
-                    </p>
-                  </div>
-                </div>
-              )}
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase text-base-content/60">
+                  {t("deals.perSet", "Products per set")}
+                </label>
+                <input
+                  type="number"
+                  min="2"
+                  step="1"
+                  value={groupQuantity}
+                  onChange={(e) => setGroupQuantity(e.target.value)}
+                  className="h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3"
+                />
+                <p className="mt-1 text-xs text-base-content/50">
+                  {t(
+                    "deals.perSetHint",
+                    "Any {{n}} from the products below — the shopper mixes them however they like, same flavour or not.",
+                    { n: need >= 2 ? need : "…" },
+                  )}
+                </p>
+              </div>
 
               <div>
+                <label className="mb-1 block text-xs font-semibold uppercase text-base-content/60">
+                  {dealKind === "multibuy"
+                    ? t("deals.setPrice", "Price per set")
+                    : t("deals.discount")}
+                </label>
+                <div className="flex">
+                  <div className="flex shrink-0 overflow-hidden rounded-s-lg border-2 border-e-0 border-base-300">
+                    {dealKind === "multibuy" ? (
+                      <span className="flex items-center bg-blue-800 px-3 text-sm font-bold text-white">
+                        {t("deals.payEuro", "Pay €")}
+                      </span>
+                    ) : (
+                      [
+                        { key: "amount", label: "€ off" },
+                        { key: "percent", label: "% off" },
+                      ].map((option) => (
+                        <button
+                          key={option.key}
+                          type="button"
+                          onClick={() => setDiscountType(option.key)}
+                          className={`whitespace-nowrap px-2.5 text-sm font-bold transition ${
+                            discountType === option.key
+                              ? "bg-blue-800 text-white"
+                              : "bg-base-200 text-base-content/60 hover:bg-base-300"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    max={discountType === "percent" ? "100" : undefined}
+                    step="0.01"
+                    value={discount}
+                    onChange={(e) => setDiscount(e.target.value)}
+                    placeholder={
+                      discountType === "percent"
+                        ? "10"
+                        : discountType === "setPrice"
+                          ? "12.00"
+                          : "3.00"
+                    }
+                    className="h-10 w-full rounded-e-lg border-2 border-base-300 bg-base-100 px-3"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-base-content/50">
+                  {dealKind === "multibuy"
+                    ? t(
+                        "deals.setPriceHint",
+                        "Every complete set costs this. 6 items = 2 sets; anything left over stays at its normal price.",
+                      )
+                    : discountType === "percent"
+                      ? t("deals.percentHint")
+                      : t("deals.amountHint")}
+                </p>
+              </div>
+
+              <div className="sm:col-span-2">
                 <label className="mb-1 block text-xs font-semibold uppercase text-base-content/60">
                   {t("deals.name")}
                 </label>
@@ -373,51 +544,28 @@ function DealsModal({ onClose }) {
                   className="h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3"
                 />
               </div>
+
               <div>
                 <label className="mb-1 block text-xs font-semibold uppercase text-base-content/60">
-                  {t("deals.discount")}
+                  {t("deals.startsAt", "Starts (optional)")}
                 </label>
-                <div className="flex">
-                  {/* Amount vs percent — a percent deal comes off the deal's own
-                      products, not the whole basket. */}
-                  <div className="flex shrink-0 overflow-hidden rounded-s-lg border-2 border-e-0 border-base-300">
-                    {[
-                      { key: "amount", label: "€" },
-                      { key: "percent", label: "%" },
-                      { key: "setPrice", label: "=€" },
-                    ].map((option) => (
-                      <button
-                        key={option.key}
-                        type="button"
-                        onClick={() => setDiscountType(option.key)}
-                        className={`w-10 text-sm font-bold transition ${
-                          discountType === option.key
-                            ? "bg-blue-800 text-white"
-                            : "bg-base-200 text-base-content/60 hover:bg-base-300"
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                  <input
-                    type="number"
-                    min="0"
-                    max={discountType === "percent" ? "100" : undefined}
-                    step="0.01"
-                    value={discount}
-                    onChange={(e) => setDiscount(e.target.value)}
-                    placeholder={discountType === "percent" ? "10" : "3.00"}
-                    className="h-10 w-full rounded-e-lg border-2 border-base-300 bg-base-100 px-3"
-                  />
-                </div>
-                <p className="mt-1 text-xs text-base-content/50">
-                  {discountType === "percent"
-                    ? t("deals.percentHint")
-                    : discountType === "setPrice"
-                      ? t("deals.setPriceHint", "The whole set costs this much")
-                      : t("deals.amountHint")}
-                </p>
+                <input
+                  type="date"
+                  value={startsAt}
+                  onChange={(e) => setStartsAt(e.target.value)}
+                  className="h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase text-base-content/60">
+                  {t("deals.endsAt", "Ends (optional)")}
+                </label>
+                <input
+                  type="date"
+                  value={endsAt}
+                  onChange={(e) => setEndsAt(e.target.value)}
+                  className="h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3"
+                />
               </div>
             </div>
 
@@ -454,6 +602,19 @@ function DealsModal({ onClose }) {
                   {t("deals.addAll", "Add all")} {allMatches.length ? `(${allMatches.length})` : ""}
                 </button>
               </div>
+
+              <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-base-content/60">
+                <input
+                  type="checkbox"
+                  checked={tillOnly}
+                  onChange={(e) => setTillOnly(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-blue-800"
+                />
+                {t(
+                  "deals.tillOnly",
+                  "Only products the till can scan — a product without a barcode never reaches a basket, so a deal on one can never apply.",
+                )}
+              </label>
 
               <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-base-300 bg-base-100">
                 {matches.length === 0 ? (
@@ -560,10 +721,22 @@ function DealsModal({ onClose }) {
             >
               {iscreating
                 ? t("deals.saving")
+                : editingId
+                ? t("deals.saveChanges", "Save changes")
                 : canCreateDirectly
                 ? t("deals.create")
                 : t("deals.sendForApproval")}
             </button>
+
+            {editingId && (
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="h-11 w-full rounded-lg border-2 border-base-300 font-semibold transition hover:bg-base-200"
+              >
+                {t("deals.cancelEdit", "Cancel")}
+              </button>
+            )}
           </form>
 
           {/* Existing deals */}
@@ -613,6 +786,17 @@ function DealsModal({ onClose }) {
                             ? `−${Number(deal.discount || 0)}%`
                             : `−$${Number(deal.discount || 0).toFixed(2)}`}
                         </span>
+                        <button
+                          type="button"
+                          onClick={() => editDeal(deal)}
+                          className={`rounded-md border px-2.5 py-1 text-xs font-semibold ${
+                            editingId === deal._id
+                              ? "border-blue-800 bg-blue-800 text-white"
+                              : "border-base-300 hover:bg-base-200"
+                          }`}
+                        >
+                          {t("deals.edit", "Edit")}
+                        </button>
                         <button
                           type="button"
                           onClick={() => toggleActive(deal)}

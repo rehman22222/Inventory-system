@@ -1,4 +1,6 @@
 import {
+  allDealIds,
+  applicableDeals,
   currency,
   getCurrencyCode,
   sanitizeDecimal,
@@ -89,5 +91,217 @@ describe("till number fields", () => {
     expect(sanitizeInteger("1.5")).toBe("15");
     expect(sanitizeInteger("-7")).toBe("7");
     expect(sanitizeInteger("3 boxes")).toBe("3");
+  });
+});
+
+// The till detects and prices offers; the cashier decides. These pin both
+// halves — what an offer is worth, and that it is worth nothing until asked
+// for — plus the behaviour of every deal already in the shop's database, which
+// this matcher must not reprice.
+
+const cartOf = (quantity, price = 7, productId = "P1") => [
+  { productId, quantity, price },
+];
+
+const mixDeal = (overrides = {}) => ({
+  _id: "D1",
+  name: "3 e-liquids for 18",
+  mode: "mix",
+  groupQuantity: 3,
+  discountType: "setPrice",
+  discount: 18,
+  quantityRule: "repeat_sets",
+  active: true,
+  items: [{ product: "P1" }],
+  ...overrides,
+});
+
+const units = (n) => n * 7;
+
+const paid = (units, deals, chosen) =>
+  units * 7 - applicableDeals(cartOf(units), deals, chosen).total;
+
+describe("a multibuy offer repeats and leaves the remainder at shelf price", () => {
+  const deals = [mixDeal()];
+  const chosen = ["D1"];
+
+  test.each([
+    [1, 7],
+    [2, 14],
+    [3, 18],
+    [4, 25],
+    [5, 32],
+    [6, 36],
+    [7, 43],
+    [9, 54],
+  ])("%i eligible units cost %i", (units, expected) => {
+    expect(paid(units, deals, chosen)).toBe(expected);
+  });
+
+  test("the till can show normal, deal and saving without doing the sum again", () => {
+    const [offer] = applicableDeals(cartOf(6), deals, chosen).applied;
+    expect(offer.sets).toBe(2);
+    expect(offer.normal).toBe(42);
+    expect(offer.amount).toBe(6);
+    expect(offer.normal - offer.amount).toBe(36);
+  });
+
+  test("two of one flavour is a deal — units come from quantity, not variety", () => {
+    const pair = [mixDeal({ groupQuantity: 2, discount: 12 })];
+    expect(paid(2, pair, chosen)).toBe(12);
+    expect(paid(3, pair, chosen)).toBe(19);
+    expect(paid(4, pair, chosen)).toBe(24);
+  });
+});
+
+describe("nothing is given away that the cashier did not ask for", () => {
+  const deals = [mixDeal()];
+
+  test("an offer the basket qualifies for is worth nothing until applied", () => {
+    expect(applicableDeals(cartOf(3), deals, []).total).toBe(0);
+    expect(applicableDeals(cartOf(3), deals, ["D1"]).total).toBe(3);
+  });
+
+  test("a caller that passes no choice at all gets no discount", () => {
+    expect(applicableDeals(cartOf(3), deals).total).toBe(0);
+  });
+
+  test("allDealIds asks the same matcher what the basket could have", () => {
+    const offers = applicableDeals(cartOf(3), deals, allDealIds(deals));
+    expect(offers.applied).toHaveLength(1);
+    expect(offers.total).toBe(3);
+  });
+
+  test("an inactive deal is not even an offer", () => {
+    const off = [mixDeal({ active: false })];
+    expect(applicableDeals(cartOf(3), off, allDealIds(off)).total).toBe(0);
+  });
+});
+
+describe("deals written before quantityRule existed charge exactly what they did", () => {
+  test("a mix deal with no rule still lands once", () => {
+    const legacy = [mixDeal({ quantityRule: undefined })];
+    expect(paid(3, legacy, ["D1"])).toBe(18);
+    expect(paid(6, legacy, ["D1"])).toBe(39); // 18 + three at shelf price
+  });
+
+  test("a bundle deal with no rule still repeats", () => {
+    const legacy = [
+      {
+        _id: "D2",
+        name: "2 for 3 off",
+        discountType: "amount",
+        discount: 3,
+        active: true,
+        items: [{ product: "P1", quantity: 2 }],
+      },
+    ];
+    expect(paid(2, legacy, ["D2"])).toBe(11);
+    expect(paid(4, legacy, ["D2"])).toBe(22);
+  });
+
+  test("single_set caps a bundle that would otherwise repeat", () => {
+    const capped = [
+      {
+        _id: "D3",
+        name: "2 for 3 off, once",
+        discountType: "amount",
+        discount: 3,
+        quantityRule: "single_set",
+        active: true,
+        items: [{ product: "P1", quantity: 2 }],
+      },
+    ];
+    expect(paid(4, capped, ["D3"])).toBe(25);
+  });
+});
+
+describe("a deal outside its dates is not offered", () => {
+  const day = 24 * 60 * 60 * 1000;
+  const chosen = ["D1"];
+
+  test("before it starts", () => {
+    const future = [mixDeal({ startsAt: new Date(Date.now() + day).toISOString() })];
+    expect(applicableDeals(cartOf(3), future, chosen).total).toBe(0);
+  });
+
+  test("after it ends", () => {
+    const past = [mixDeal({ endsAt: new Date(Date.now() - day).toISOString() })];
+    expect(applicableDeals(cartOf(3), past, chosen).total).toBe(0);
+  });
+
+  test("inside the window", () => {
+    const live = [
+      mixDeal({
+        startsAt: new Date(Date.now() - day).toISOString(),
+        endsAt: new Date(Date.now() + day).toISOString(),
+      }),
+    ];
+    expect(applicableDeals(cartOf(3), live, chosen).total).toBe(3);
+  });
+});
+
+describe("a deal never makes the basket dearer", () => {
+  test("a set price above shelf value yields nothing", () => {
+    const bad = [mixDeal({ discount: 25 })]; // 3 x 7 = 21, offered at 25
+    expect(applicableDeals(cartOf(3), bad, ["D1"]).total).toBe(0);
+  });
+
+  test("the dearest units go into the set", () => {
+    const cart = [
+      { productId: "P1", quantity: 2, price: 9 },
+      { productId: "P2", quantity: 2, price: 5 },
+    ];
+    const deal = [mixDeal({ groupQuantity: 2, discount: 12, items: [{ product: "P1" }, { product: "P2" }] })];
+    const [offer] = applicableDeals(cart, deal, ["D1"]).applied;
+    expect(offer.sets).toBe(2);
+    expect(offer.normal).toBe(28); // 9 + 9 + 5 + 5, both pairs complete
+  });
+});
+
+describe("a deal priced by hand at the till", () => {
+  const deal = [mixDeal()]; // 3 for 18, shelf 7 each, normal 21
+  const chosen = ["D1"];
+  const priced = (units, price) =>
+    applicableDeals(cartOf(units), deal, chosen, price === undefined ? undefined : { D1: price });
+
+  test("the typed figure is what the deal portion costs", () => {
+    expect(units(3) - priced(3, 17).total).toBe(17);
+    expect(units(3) - priced(3, 12).total).toBe(12);
+  });
+
+  test("it is capped at the normal price — an edit never makes the basket dearer", () => {
+    expect(units(3) - priced(3, 999).total).toBe(21);
+  });
+
+  test("a negative figure is ignored and the deal price stands", () => {
+    expect(units(3) - priced(3, -5).total).toBe(18);
+  });
+
+  test("a deliberate zero gives the goods away rather than being dropped", () => {
+    const [entry] = priced(3, 0).applied;
+    expect(units(3) - priced(3, 0).total).toBe(0);
+    expect(entry.edited).toBe(true);
+  });
+
+  test("it covers every complete set, not one of them", () => {
+    expect(units(6) - priced(6, 30).total).toBe(30);
+  });
+
+  test("what the deal would have given is kept beside what was charged", () => {
+    const [entry] = priced(3, 17).applied;
+    expect(entry.configuredAmount).toBe(3); // the shop's 3-for-18
+    expect(entry.amount).toBe(4); // what the cashier gave
+    expect(entry.edited).toBe(true);
+  });
+
+  test("an untouched deal is not marked as edited", () => {
+    const [entry] = priced(3).applied;
+    expect(entry.edited).toBe(false);
+    expect(entry.amount).toBe(entry.configuredAmount);
+  });
+
+  test("an override for a deal that was never applied does nothing", () => {
+    expect(applicableDeals(cartOf(3), deal, [], { D1: 5 }).total).toBe(0);
   });
 });

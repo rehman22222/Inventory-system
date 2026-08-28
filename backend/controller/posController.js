@@ -16,6 +16,8 @@ const { startOfDay, endOfDay } = require("../libs/time");
 const { raiseReorderForProduct } = require("./reorderController");
 const logActivity = require("../libs/logger");
 const { emitStockChanged } = require('../libs/stockEvents');
+const { symbolFor } = require('../libs/money');
+const { isMailConfigured, sendMail, brandedHtml, esc } = require('../libs/mailer');
 
 const DEFAULT_LOW_STOCK = 10;
 
@@ -105,7 +107,30 @@ module.exports.checkout = async (req, res) => {
       taxEnabled = false,
       voucherCode,
       amountTendered,
+      // Which offers the cashier actually pressed Apply on. Deals never land on
+      // their own, so an absent list means this basket takes none of them.
+      dealIds = [],
+      // A deal hand-priced at the till: { dealId: whatTheDealPortionCosts }.
+      // The figure is honoured but clamped to the value of the deal's own
+      // goods, and every edit is logged against the cashier below.
+      dealOverrides = {},
     } = req.body;
+
+    // Ids only — the amounts stay this server's business.
+    const chosenDealIds = (Array.isArray(dealIds) ? dealIds : [])
+      .slice(0, 50)
+      .map((id) => String(id))
+      .filter((id) => mongoose.isValidObjectId(id));
+
+    const typedDealPrices = Object.fromEntries(
+      Object.entries(dealOverrides && typeof dealOverrides === "object" ? dealOverrides : {})
+        .slice(0, 50)
+        .filter(
+          ([id, price]) =>
+            mongoose.isValidObjectId(String(id)) && Number.isFinite(Number(price)),
+        )
+        .map(([id, price]) => [String(id), Number(price)]),
+    );
 
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: "Cart is empty" });
@@ -174,7 +199,13 @@ module.exports.checkout = async (req, res) => {
         ? Voucher.findOne({ code: String(voucherCode).trim().toUpperCase() })
         : null,
       Deal.find({ active: true })
-        .select("name items mode groupQuantity discountType discount active")
+        // Every field the matcher reads. A missing `quantityRule` does not
+        // fail loudly — it reads as "whatever this mode always did", so leaving
+        // it out of the projection silently prices a repeating offer as a
+        // single set and the till and the server disagree by the difference.
+        .select(
+          "name items mode groupQuantity quantityRule startsAt endsAt discountType discount active",
+        )
         .lean(),
     ]);
 
@@ -258,9 +289,10 @@ module.exports.checkout = async (req, res) => {
       Math.max(0, Math.min(rawManual, afterVoucher)),
     );
 
-    // --- Deals: automatic bundle discounts. Computed server-side from the
-    // active deals (never trusted from the client) and applied against whatever
-    // balance is left, so voucher/manual math stays exactly as before.
+    // --- Deals: priced server-side from the active deals (never trusted from
+    // the client) and applied against whatever balance is left, so
+    // voucher/manual math stays exactly as before. The till sends only WHICH
+    // offers the cashier pressed Apply on — never how much they are worth.
     // Quantity and price both matter: a percentage deal is a percentage of its
     // own products' value.
     const cartMap = new Map();
@@ -273,7 +305,22 @@ module.exports.checkout = async (req, res) => {
       });
     }
 
-    const dealResult = applicableDeals(cartMap, activeDeals);
+    const dealResult = applicableDeals(
+      cartMap,
+      activeDeals,
+      chosenDealIds,
+      typedDealPrices,
+    );
+
+    // What this basket qualified for, whether or not it was taken. Asked of the
+    // server rather than reported by the till, because "staff waved a discount
+    // away" is exactly the claim a till should not be trusted to make about
+    // itself. The difference is logged after the sale lands.
+    const declinedDeals = applicableDeals(
+      cartMap,
+      activeDeals,
+      activeDeals.map((deal) => String(deal._id)),
+    ).applied.filter((entry) => !chosenDealIds.includes(String(entry.dealId)));
 
     const dealRoom = Math.max(subtotal - voucherDiscount - manualDiscount, 0);
     const dealDiscount = money(Math.min(dealResult.total, dealRoom));
@@ -573,6 +620,46 @@ module.exports.checkout = async (req, res) => {
       ipAddress: req.ip,
     }).catch((error) => console.error("Activity log failed:", error.message));
 
+    // A deal the basket qualified for that the customer did not get. Its own
+    // log line, because "why was this sale not discounted" is a question about
+    // the sale, and a checkout entry that only ever says "completed" cannot
+    // answer it.
+    if (declinedDeals.length) {
+      logActivity({
+        action: "POS Deal Not Applied",
+        description: `Receipt ${receipt.receiptNo}: ${declinedDeals
+          .map((entry) => `"${entry.name}" (${money(entry.amount)} not given)`)
+          .join(", ")}.`,
+        entity: "order",
+        entityId: receipt._id,
+        userId: cashierId,
+        ipAddress: req.ip,
+      }).catch((error) => console.error("Activity log failed:", error.message));
+    }
+
+    // A deal priced by hand at the till. The shop set a figure and someone
+    // charged a different one, so both belong in the log — a line that only
+    // recorded what was charged could never answer "who changed it, and by how
+    // much". Written from the server's own numbers, not the till's claim.
+    const editedDeals = dealResult.applied.filter((entry) => entry.edited);
+    if (editedDeals.length) {
+      logActivity({
+        action: "POS Deal Price Edited",
+        description: `Receipt ${receipt.receiptNo}: ${editedDeals
+          .map(
+            (entry) =>
+              `"${entry.name}" set to ${money(entry.normal - entry.amount)} ` +
+              `(deal price ${money(entry.normal - entry.configuredAmount)}, ` +
+              `${money(entry.amount - entry.configuredAmount)} extra given)`,
+          )
+          .join(", ")}.`,
+        entity: "order",
+        entityId: receipt._id,
+        userId: cashierId,
+        ipAddress: req.ip,
+      }).catch((error) => console.error("Activity log failed:", error.message));
+    }
+
     return res.status(201).json({
       success: true,
       message: "POS checkout completed",
@@ -678,6 +765,7 @@ const performRefund = async ({
   receiptNo,
   requested,
   reason,
+  refundMethod,
   user,
   ip,
   isVoid,
@@ -756,11 +844,19 @@ const performRefund = async ({
       );
     }
 
+    // Its own number, inside the transaction so a retry cannot mint two.
+    const refundSeq = await nextSequence("refund", session);
+    const refundRef = `RFD-${String(refundSeq).padStart(6, "0")}`;
+
     receipt.refunds.push({
+      reference: refundRef,
       at: new Date(),
       by: user._id,
       byName: user.name,
       reason: reason || (isVoid ? "void" : "refund"),
+      // How it went back. Unstated means it went back the way it came in,
+      // which is what a void does and what the old rows all assumed.
+      method: refundMethod || receipt.paymentMethod,
       amount,
       items: lines,
     });
@@ -779,7 +875,13 @@ const performRefund = async ({
 
     await receipt.save(opts(session));
 
-    return { amount, lines, status: receipt.status, receiptId: receipt._id };
+    return {
+      amount,
+      lines,
+      status: receipt.status,
+      receiptId: receipt._id,
+      reference: refundRef,
+    };
   });
 
   await logActivity({
@@ -796,10 +898,18 @@ const performRefund = async ({
 
 module.exports.refund = async (req, res) => {
   try {
-    const { receiptNo, items = [], reason } = req.body;
+    const { receiptNo, items = [], reason, method } = req.body;
 
     if (!receiptNo) {
       return res.status(400).json({ message: "Receipt number is required" });
+    }
+
+    // Money can go back a different way than it came in — a card sale handed
+    // back in cash is ordinary at a counter. Unstated means "the way it came".
+    if (method !== undefined && !PAYMENT_METHODS.includes(method)) {
+      return res.status(400).json({
+        message: `This till does not refund by ${method} — refresh the page and try again`,
+      });
     }
 
     const bad = (Array.isArray(items) ? items : []).find(
@@ -818,6 +928,7 @@ module.exports.refund = async (req, res) => {
       receiptNo: reference,
       requested: Array.isArray(items) ? items : [],
       reason,
+      refundMethod: method,
       user: req.user,
       ip: req.ip,
       isVoid: false,
@@ -827,6 +938,7 @@ module.exports.refund = async (req, res) => {
       success: true,
       message: `Refunded ${result.amount}`,
       receiptNo: reference,
+      reference: result.reference,
       status: result.status,
       amount: result.amount,
       items: result.lines,
@@ -882,6 +994,19 @@ module.exports.getReceipts = async (req, res) => {
       filter.cashier = req.query.cashier;
     }
 
+    // A day's takings, for finding a receipt the customer no longer has. The
+    // shop's own timezone decides where the day starts — a sale at 00:30 in
+    // Dublin belongs to that date, not to the one UTC would give it.
+    if (req.query.date) {
+      const day = String(req.query.date).trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+        return res.status(400).json({ message: "Date must be YYYY-MM-DD" });
+      }
+      const shop = await Store.findOne({ key: "shop" }).select("timezone").lean();
+      const zone = shop?.timezone || "UTC";
+      filter.createdAt = { $gte: startOfDay(day, zone), $lte: endOfDay(day, zone) };
+    }
+
     const receipts = await Receipt.find(filter)
       .sort({ createdAt: -1 })
       .limit(limit);
@@ -891,6 +1016,55 @@ module.exports.getReceipts = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Error fetching receipts", error: error.message });
+  }
+};
+
+// Every refund that has been put through, newest first — the counter's own
+// record of what went back out. Built from the receipts because that is where a
+// refund lives: it belongs to the sale it reverses, and a separate collection
+// would be a second copy of the same fact waiting to disagree with the first.
+module.exports.getRefunds = async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit || 50), 200);
+
+    // Same scope as the sale history: a cashier sees their own open takings,
+    // the owner side sees everything.
+    const filter = seesAllSales(req.user) ? {} : ownOpenScope(req.user);
+    filter["refunds.0"] = { $exists: true };
+
+    const receipts = await Receipt.find(filter)
+      .select("receiptNo customerName total refunds offline")
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    const refunds = receipts
+      .flatMap((receipt) =>
+        (receipt.refunds || []).map((entry) => ({
+          reference: entry.reference || null,
+          receiptNo: receipt.receiptNo,
+          offlineRef: receipt.offline?.ref || null,
+          customerName: receipt.customerName,
+          at: entry.at,
+          by: entry.byName,
+          reason: entry.reason,
+          method: entry.method || null,
+          amount: money(entry.amount),
+          items: (entry.items || []).map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            lineTotal: money(item.lineTotal),
+          })),
+        })),
+      )
+      .sort((a, b) => new Date(b.at) - new Date(a.at))
+      .slice(0, limit);
+
+    return res.status(200).json({ refunds });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Error fetching refunds", error: error.message });
   }
 };
 
@@ -1013,6 +1187,113 @@ module.exports.getReceipt = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Error fetching receipt", error: error.message });
+  }
+};
+
+// Email a receipt to the customer instead of printing it.
+//
+// The address is typed at the counter and used for this one message: it is not
+// stored, and nothing is signed up to. A shop offering "no paper" should not be
+// quietly building a mailing list out of it.
+module.exports.emailReceipt = async (req, res) => {
+  try {
+    const to = String(req.body?.email || "").trim();
+    // Deliberately loose. The customer is standing there and the cashier is
+    // typing what they said — the real check is whether it arrives.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) {
+      return res.status(400).json({ message: "Enter a valid email address" });
+    }
+
+    if (!isMailConfigured()) {
+      return res
+        .status(503)
+        .json({ message: "Email is not set up on this server — print instead" });
+    }
+
+    const reference = String(req.params.receiptNo).trim().toUpperCase();
+    const filter = {
+      $or: [{ receiptNo: reference }, { "offline.ref": reference }],
+    };
+    if (!canLookupAnyReceipt(req.user)) filter.cashier = req.user._id;
+
+    const receipt = await Receipt.findOne(filter);
+    if (!receipt) return res.status(404).json({ message: "Receipt not found" });
+
+    const shop = await Store.findOne({ key: "shop" });
+    const symbol = symbolFor(shop?.currency);
+    const cash = (value) => `${symbol}${money(value).toFixed(2)}`;
+
+    const rows = (receipt.items || [])
+      .map(
+        (item) => `<tr>
+          <td style="padding:6px 0;">${esc(item.name)}</td>
+          <td style="padding:6px 0;text-align:center;">${Number(item.quantity || 0)}</td>
+          <td style="padding:6px 0;text-align:right;">${cash(item.lineTotal ?? item.price * item.quantity)}</td>
+        </tr>`,
+      )
+      .join("");
+
+    const line = (label, value, strong = false) =>
+      `<tr>
+        <td colspan="2" style="padding:4px 0;${strong ? "font-weight:bold;font-size:16px;" : ""}">${esc(label)}</td>
+        <td style="padding:4px 0;text-align:right;${strong ? "font-weight:bold;font-size:16px;" : ""}">${value}</td>
+      </tr>`;
+
+    const html = brandedHtml(
+      shop,
+      `<p style="margin:0 0 4px;">Thanks for shopping with us.</p>
+       <p style="margin:0 0 20px;color:#6b7280;font-size:12px;">
+         Receipt <strong>${esc(receipt.receiptNo)}</strong> ·
+         ${new Date(receipt.createdAt).toLocaleString()}
+       </p>
+       <table style="width:100%;border-collapse:collapse;font-size:14px;">
+         <thead>
+           <tr style="border-bottom:2px solid #111827;">
+             <th style="text-align:left;padding-bottom:6px;">Item</th>
+             <th style="text-align:center;padding-bottom:6px;">Qty</th>
+             <th style="text-align:right;padding-bottom:6px;">Total</th>
+           </tr>
+         </thead>
+         <tbody>${rows}</tbody>
+         <tfoot style="border-top:2px solid #111827;">
+           ${line("Subtotal", cash(receipt.subtotal))}
+           ${Number(receipt.discount) > 0 ? line("Discount", `-${cash(receipt.discount)}`) : ""}
+           ${Number(receipt.tax) > 0 ? line("Tax", cash(receipt.tax)) : ""}
+           ${line("Total", cash(receipt.total), true)}
+         </tfoot>
+       </table>
+       ${shop?.footer ? `<p style="margin:24px 0 0;text-align:center;">${esc(shop.footer)}</p>` : ""}`,
+    );
+
+    const sent = await sendMail({
+      to,
+      subject: `Your receipt ${receipt.receiptNo}`,
+      html,
+      fromName: shop?.name,
+      // The customer-facing identity, the same one order confirmations use.
+      account: "store",
+    });
+
+    if (!sent.ok) {
+      return res
+        .status(502)
+        .json({ message: "Could not send the receipt — print it instead" });
+    }
+
+    void logActivity({
+      action: "POS Receipt Emailed",
+      description: `Receipt ${receipt.receiptNo} emailed to ${to}.`,
+      entity: "order",
+      entityId: receipt._id,
+      userId: req.user?._id,
+      ipAddress: req.ip,
+    });
+
+    return res.status(200).json({ message: "Receipt sent" });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Error emailing receipt", error: error.message });
   }
 };
 
@@ -1568,7 +1849,32 @@ module.exports.dayClosingSummary = async (req, res) => {
     });
 
     return res.status(200).json({
-      summary: summarise(receipts),
+      summary: {
+        ...summarise(receipts),
+        // Every sale behind the totals, so the printed slip can be reconciled
+        // against the drawer line by line. Kept out of `summarise` itself —
+        // that also builds the stored DayClosing document, which has no need
+        // to carry a copy of what its receipts already say.
+        sales: receipts.map((receipt) => ({
+          receiptNo: receipt.receiptNo,
+          at: receipt.createdAt,
+          method:
+            Array.isArray(receipt.payments) && receipt.payments.length > 1
+              ? "split"
+              : receipt.paymentMethod,
+          items: (receipt.items || []).reduce(
+            (sum, item) => sum + Number(item.quantity || 0),
+            0,
+          ),
+          total: money(receipt.total),
+          refunded: money(
+            (receipt.refunds || []).reduce(
+              (sum, entry) => sum + Number(entry.amount || 0),
+              0,
+            ),
+          ),
+        })),
+      },
       cashierName: req.user?.name,
     });
   } catch (error) {

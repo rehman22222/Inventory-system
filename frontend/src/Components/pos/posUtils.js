@@ -113,16 +113,32 @@ const round2 = (value) => Math.round(Number(value || 0) * 100) / 100;
 const itemProductId = (item) =>
   String(item?.product?._id || item?.product || "");
 
-// Detect which active deals are fully present in the cart. Mirrors the server's
-// libs/deals.js so the till preview matches what checkout will charge — keep the
-// two in step.
+// Deals written before `quantityRule` existed have no such field and must keep
+// charging what they charged yesterday. Mirrors resolveQuantityRule in the
+// server's libs/deals.js — keep the two in step.
+export const resolveQuantityRule = (deal) =>
+  deal.quantityRule || (deal.mode === "mix" ? "single_set" : "repeat_sets");
+
+const withinWindow = (deal, now) => {
+  if (deal.startsAt && now < new Date(deal.startsAt).getTime()) return false;
+  if (deal.endsAt && now > new Date(deal.endsAt).getTime()) return false;
+  return true;
+};
+
+// Price the deals the cashier has applied. Mirrors the server's libs/deals.js so
+// the till shows exactly what checkout will charge — keep the two in step.
+//
+// NOTHING APPLIES ON ITS OWN: a deal counts only when its id is in `chosenIds`.
+// To ask "what could this basket have?" — which is what puts an offer on screen
+// — call it with every deal id and compare.
 //
 // A percentage deal is a percentage of the DEAL'S OWN products, not of the whole
 // basket, so prices travel alongside the quantities.
 //
 // cart: [{ productId, quantity, price }]; deals: redux deal docs.
-// Returns { applied: [{ dealId, name, sets, amount, products:[ids] }], total }.
-export const applicableDeals = (cart, deals) => {
+// Returns { applied: [{ dealId, name, sets, normal, amount, products }], total }
+// where `normal` is the shelf value of the units inside the sets.
+export const applicableDeals = (cart, deals, chosenIds, overrides) => {
   const cartMap = new Map();
   (cart || []).forEach((item) => {
     const key = String(item.productId);
@@ -133,20 +149,29 @@ export const applicableDeals = (cart, deals) => {
     });
   });
 
+  const chosen = new Set((chosenIds || []).map(String));
+  const typed = new Map(
+    Object.entries(overrides || {}).map(([id, price]) => [String(id), Number(price)]),
+  );
+  const now = Date.now();
   const applied = [];
   let total = 0;
 
   (deals || []).forEach((deal) => {
     if (deal.active === false) return;
+    if (!chosen.has(String(deal._id))) return;
+    if (!withinWindow(deal, now)) return;
+
     const items = Array.isArray(deal.items) ? deal.items : [];
     if (items.length === 0) return;
+
+    const rule = resolveQuantityRule(deal);
 
     let sets = 0;
     let setValue = 0;
     const products = [];
 
     if (deal.mode === "mix") {
-      // Pick-any-N is a THRESHOLD, not a repeating set — see libs/deals.js.
       const need = Math.floor(Number(deal.groupQuantity || 0));
       if (need < 2) return;
 
@@ -160,13 +185,19 @@ export const applicableDeals = (cart, deals) => {
       });
 
       if (units.length < need) return;
-      sets = 1;
 
       units.sort((a, b) => b - a);
-      setValue =
-        deal.discountType === "setPrice"
-          ? units.slice(0, need).reduce((sum, price) => sum + price, 0)
-          : units.reduce((sum, price) => sum + price, 0);
+
+      if (rule === "repeat_sets") {
+        sets = Math.floor(units.length / need);
+        setValue = units.slice(0, sets * need).reduce((sum, price) => sum + price, 0);
+      } else {
+        sets = 1;
+        setValue =
+          deal.discountType === "setPrice"
+            ? units.slice(0, need).reduce((sum, price) => sum + price, 0)
+            : units.reduce((sum, price) => sum + price, 0);
+      }
     } else {
       let complete = Infinity;
       let oneSet = 0;
@@ -182,7 +213,7 @@ export const applicableDeals = (cart, deals) => {
       });
 
       if (!Number.isFinite(complete) || complete < 1) return;
-      sets = complete;
+      sets = rule === "single_set" ? 1 : complete;
       setValue = oneSet * sets;
     }
 
@@ -197,12 +228,53 @@ export const applicableDeals = (cart, deals) => {
 
     // Never give back more than the deal's own goods are worth, and never make
     // the basket dearer than it already was.
-    const amount = round2(Math.max(0, Math.min(raw, setValue)));
-    if (amount <= 0) return;
+    const configuredAmount = round2(Math.max(0, Math.min(raw, setValue)));
 
-    applied.push({ dealId: deal._id, name: deal.name, sets, amount, products });
+    // A price typed at the till replaces the reduction, under the same ceiling.
+    const override = typed.get(String(deal._id));
+    const edited = Number.isFinite(override) && override >= 0;
+    const amount = edited
+      ? round2(Math.max(0, Math.min(setValue - override, setValue)))
+      : configuredAmount;
+
+    // A zero the cashier typed on purpose is kept; a zero the deal worked out
+    // on its own means there is no offer here.
+    if (amount <= 0 && !edited) return;
+
+    applied.push({
+      dealId: deal._id,
+      name: deal.name,
+      sets,
+      normal: round2(setValue),
+      amount,
+      configuredAmount,
+      edited,
+      products,
+    });
     total += amount;
   });
 
   return { applied, total: round2(total) };
+};
+
+// Every deal id, for the "what could this basket have?" pass that puts an offer
+// on screen. The cashier's own choices are a subset of this.
+export const allDealIds = (deals) =>
+  (deals || []).map((deal) => String(deal._id));
+
+// Print one till slip. Every slip lives hidden in the page and the print
+// stylesheet turns on whichever one is marked, so a finished receipt sitting
+// behind the dialog does not come out stapled to the shift report.
+export const printSlip = (id) => {
+  const node = typeof document !== "undefined" && document.getElementById(id);
+  if (!node) return;
+
+  document.body.classList.add("printing-slip");
+  node.classList.add("is-printing");
+  try {
+    window.print();
+  } finally {
+    node.classList.remove("is-printing");
+    document.body.classList.remove("printing-slip");
+  }
 };

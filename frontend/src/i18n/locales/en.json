@@ -463,7 +463,9 @@
       "saleHistory": "Sale History",
       "enterCode": "Enter Code",
       "send": "Held",
-      "dayClosing": "Day Closing"
+      "dayClosing": "Day Closing",
+      "refundHistory": "Refund history",
+      "deals": "Deals"
     },
     "table": {
       "product": "Product",
@@ -503,7 +505,17 @@
       "reasonPlaceholder": "Reason (optional)",
       "status": "Status",
       "chooseItems": "Choose what the customer brought back",
-      "selectAll": "Select all"
+      "selectAll": "Select all",
+      "orByDate": "or by date",
+      "clearDate": "Clear",
+      "noneThatDay": "Nothing was rung up on that day",
+      "method": "Refund by",
+      "sameAsSale": "Same as sale",
+      "history": "Refund history",
+      "historySub": "What has gone back over the counter",
+      "historyEmpty": "Nothing has been refunded yet",
+      "historyFailed": "Could not load refunds",
+      "voided": "Void"
     },
     "void": {
       "confirm": "Void receipt {{receiptNo}}? Stock will be returned.",
@@ -607,7 +619,7 @@
       "remaining": "Remaining",
       "complete": "Complete sale",
       "removeTender": "Remove this payment",
-      "hint": "Tap a method to settle the balance on it. Type an amount first only to split.",
+      "hint": "Tap a method to settle the balance on it. Type the cash they handed over first, then tap how they are paying the rest.",
       "giveChange": "Give {{amount}} change",
       "roundOff": "Round off",
       "roundOffHint": "cash"
@@ -661,6 +673,46 @@
       "heldLocally": "No connection — sale suspended on this till",
       "heldOnThisTill": "Suspended while offline — only this till can resume it",
       "thisTill": "This till"
+    },
+    "deal": {
+      "apply": "Apply",
+      "remove": "Remove deal",
+      "normal": "Normal",
+      "saving": "Saving",
+      "editTitle": "Change the deal price",
+      "dealPrice": "Deal price",
+      "sets": "Complete sets",
+      "chargeInstead": "Charge instead",
+      "editHint": "What the customer pays for these items.",
+      "editHintSets": "For all {{n}} sets together, not one of them.",
+      "resetPrice": "Back to the deal price",
+      "cappedAtNormal": "capped at the normal price",
+      "editedBadge": "edited",
+      "applyTitle": "Apply this deal",
+      "removed": "{{name}} removed — normal price applied",
+      "applied": "Deal applied"
+    },
+    "exchange": {
+      "title": "Exchange for",
+      "add": "+ Add product",
+      "empty": "Nothing yet — add a product and this becomes an exchange.",
+      "remove": "Remove",
+      "customerPays": "Customer pays",
+      "customerGets": "Customer gets back",
+      "confirm": "Refund & exchange"
+    },
+    "dealMixHint": "Scan any {{n}} of these and the offer appears.",
+    "dealMixItems": "Any {{n}} of {{count}} products",
+    "complete": {
+      "title": "Sale complete",
+      "tendered": "Amount tendered",
+      "noReceipt": "No receipt",
+      "goGreen": "Go green",
+      "print": "Print receipt",
+      "customerEmail": "Customer email",
+      "send": "Send",
+      "emailed": "Receipt sent to {{email}}",
+      "emailFailed": "Could not send the receipt"
     }
   },
   "sales": {
@@ -1045,8 +1097,8 @@
   },
   "deals": {
     "button": "Deals",
-    "title": "Bundle deals",
-    "sub": "Group products together for an automatic discount at the till.",
+    "title": "Deals",
+    "sub": "Deals the till spots on its own and offers to the cashier, who decides whether to give them.",
     "close": "Close",
     "name": "Deal name",
     "namePlaceholder": "e.g. Starter Kit",
@@ -1075,13 +1127,31 @@
     "confirmDelete": "Delete the deal \"{{name}}\"?",
     "allCategories": "All categories",
     "noMatches": "No products found",
-    "amountHint": "Fixed amount off the bundle.",
+    "amountHint": "Fixed amount off, once per complete set.",
     "percentHint": "Percent off this deal's products only — not the whole basket.",
     "percentMax": "A percentage deal cannot exceed 100%",
     "needsApproval": "Creating a deal needs the super admin's approval. Fill this in and it will be sent to them.",
     "sendForApproval": "Send for approval",
     "requested": "Sent for approval {{ref}}",
-    "requestFailed": "Could not send the request"
+    "requestFailed": "Could not send the request",
+    "setPriceHint": "Every complete set costs this. 6 items = 2 sets; anything left over stays at its normal price.",
+    "payEuro": "Pay €",
+    "tillOnly": "Only products the till can scan — a product without a barcode never reaches a basket, so a deal on one can never apply.",
+    "kind": "Deal type",
+    "kindMultibuy": "Multi-buy",
+    "kindMultibuyHint": "Any 3 for €12. Every complete set of 3 is €12; anything left over is at its normal price.",
+    "kindFestive": "Festive discount",
+    "kindFestiveHint": "A straight amount or percentage off, once for every complete set.",
+    "perSet": "Products per set",
+    "perSetHint": "Any {{n}} from the products below — the shopper mixes them however they like, same flavour or not.",
+    "setPrice": "Price per set",
+    "edit": "Edit",
+    "saveChanges": "Save changes",
+    "cancelEdit": "Cancel",
+    "updated": "Deal saved",
+    "updateFailed": "Could not save the deal",
+    "editingName": "Editing \"{{name}}\"",
+    "newInstead": "New deal instead"
   },
   "dayClosing": {
     "title": "Day closing",
@@ -1098,7 +1168,13 @@
     "closed": "Day closed — {{reference}}",
     "closeFailed": "Could not close the day",
     "summaryFailed": "Could not load the day summary",
-    "nothingToClose": "No open sales to close."
+    "nothingToClose": "No open sales to close.",
+    "print": "Print",
+    "cashier": "Cashier",
+    "from": "From",
+    "printedAt": "Printed",
+    "salesOfDay": "Sales",
+    "itemCount": "{{n}} items"
   },
   "dayClosings": {
     "title": "Day closings",
@@ -1159,7 +1235,9 @@
     "approvalNotice": "Your changes need the owner's approval before they take effect.",
     "exchangeRates": "Supplier exchange rates",
     "exchangeRatesHint": "What one unit of each is worth in {{currency}}. Costs entered in these currencies are converted before they are stored. Use your bank's rate, not an estimate.",
-    "exchangeRatesUpdated": "Last updated {{date}}"
+    "exchangeRatesUpdated": "Last updated {{date}}",
+    "directPrint": "Print without checking first",
+    "directPrintHint": "On, a slip goes straight to the printer. Off, the till shows it first and waits. This does not remove the browser's own print dialog — that needs the --kiosk-printing launch flag."
   },
   "reorders": {
     "title": "Reorders",

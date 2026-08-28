@@ -55,6 +55,17 @@ const StoreSchema = new mongoose.Schema(
     // What the receipt QR encodes. {ref} is swapped for the receipt number.
     qrTemplate: { type: String, trim: true, default: "{ref}" },
 
+    // Skip the on-screen check and send a slip straight to print.
+    //
+    // The browser's own print dialog cannot be suppressed from a page — that
+    // takes the --kiosk-printing launch flag, and no setting here can stand in
+    // for it. What this decides is whether the till pauses to SHOW the slip
+    // first: off, a preview opens and printing is a second, deliberate tap;
+    // on, the print fires immediately. Paired with kiosk printing, "on" is a
+    // till that prints on one tap and "off" is one that lets you read the slip
+    // before it does.
+    directPrint: { type: Boolean, default: false },
+
     // Where automatic reminders go (e.g. "low stock — approve a reorder"). If
     // blank, the system falls back to the owner's (superadmin's) login email.
     notificationsEmail: { type: String, trim: true, default: "" },

@@ -55,11 +55,44 @@ function PaymentModal({ total, methods, onConfirm, onClose, busy }) {
     if (covered && !owesChange) onConfirm(next);
   };
 
-  // Tap a method to settle on it. Whatever is in the amount box wins; empty
-  // means "the rest of the bill", which is what the second tap of a split is.
+  const typed = Number(amount);
+  const hasTyped = Number.isFinite(typed) && typed > 0;
+  // A figure in the box is cash already on the counter — the customer put notes
+  // down and is settling the rest another way. Only a figure SHORT of the
+  // balance can mean that; anything at or over it is a single tender on
+  // whichever method is tapped, which is how change gets handed back.
+  const splitting = hasTyped && typed < remaining - 0.001;
+
+  // What each button will actually put through, so nothing has to be guessed.
+  const takesFor = (payMethod) => {
+    if (!hasTyped) return remaining;
+    if (!splitting) return Math.round(typed * 100) / 100;
+    // Cash-and-cash is not a split; it is the whole balance in cash.
+    return payMethod === "cash" ? remaining : Math.round((remaining - typed) * 100) / 100;
+  };
+
+  // Tap a method to settle on it. With cash already counted into the box, that
+  // one tap finishes the sale — a split is not worth two.
   const takePayment = (payMethod) => {
-    const typed = Number(amount);
-    addPayment(Number.isFinite(typed) && typed > 0 ? typed : remaining, payMethod);
+    if (busy) return;
+
+    if (splitting && payMethod !== "cash") {
+      const cash = Math.round(typed * 100) / 100;
+      const rest = Math.round((remaining - cash) * 100) / 100;
+      const next = [
+        ...payments,
+        { method: "cash", amount: cash },
+        { method: payMethod, amount: rest },
+      ];
+      setPayments(next);
+      setAmount("");
+      // The two together are the balance exactly, so there is no change to read
+      // and nothing left to ask.
+      onConfirm(next);
+      return;
+    }
+
+    addPayment(hasTyped && !splitting ? typed : remaining, payMethod);
   };
 
   const removePayment = (index) =>
@@ -177,8 +210,7 @@ function PaymentModal({ total, methods, onConfirm, onClose, busy }) {
                 put through, so there is no guessing. */}
             <div className="grid grid-cols-3 gap-1.5">
               {methods.map((entry) => {
-                const takes =
-                  Number(amount) > 0 ? Math.round(Number(amount) * 100) / 100 : remaining;
+                const takes = takesFor(entry.value);
 
                 return (
                   <button

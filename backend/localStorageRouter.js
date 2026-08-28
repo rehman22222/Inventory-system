@@ -929,6 +929,11 @@ function localStorageRouter(app) {
       amountTendered,
       taxRate = 0,
       taxEnabled = false,
+      // Which offers the cashier pressed Apply on. Ghost mode has to price a
+      // basket the same way the real till does, or the demo teaches a total
+      // the shop will not see.
+      dealIds = [],
+      dealOverrides = {},
     } = req.body;
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -1002,15 +1007,20 @@ function localStorageRouter(app) {
         : Number(discount || 0);
     const manualDiscount = money(Math.max(0, Math.min(rawManual, afterVoucher)));
 
-    // Deals: automatic bundle discounts, computed from the active deals and
-    // applied against whatever balance is left.
+    // Deals: priced from the active deals and applied against whatever balance
+    // is left. Nothing lands on its own — only what the cashier applied.
     const cartMap = new Map();
     for (const line of lines) {
       const key = String(line.product._id);
       const seen = cartMap.get(key);
       cartMap.set(key, { quantity: (seen?.quantity || 0) + line.quantity, price: line.price });
     }
-    const dealResult = applicableDeals(cartMap, store.deals || []);
+    const dealResult = applicableDeals(
+      cartMap,
+      store.deals || [],
+      (Array.isArray(dealIds) ? dealIds : []).map((id) => String(id)),
+      dealOverrides && typeof dealOverrides === 'object' ? dealOverrides : {},
+    );
     const dealRoom = Math.max(subtotal - voucherDiscount - manualDiscount, 0);
     const dealDiscount = money(Math.min(dealResult.total, dealRoom));
 

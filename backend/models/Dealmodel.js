@@ -28,6 +28,25 @@ const DealSchema = new mongoose.Schema(
     // mix only: how many units, across all the chosen products, make one set.
     groupQuantity: { type: Number, default: 0, min: 0 },
 
+    // How many times one deal can land in a single basket.
+    //
+    //   repeat_sets — every complete set counts. "3 for 18" charges 36 for six
+    //                 and 18 + one at shelf price for four. This is what a
+    //                 multibuy offer means to a shopper, and to the shop.
+    //   single_set  — the offer lands once however far past the threshold they
+    //                 go; everything after the first set is at shelf price.
+    //
+    // Deliberately without a schema default: the deals already in the database
+    // have no such field, and absence has to keep meaning what that mode did
+    // before this existed — see resolveQuantityRule in libs/deals.js. New deals
+    // are given a value explicitly by the deal builder.
+    quantityRule: { type: String, enum: ["repeat_sets", "single_set"] },
+
+    // Optional window. Outside it the deal is not offered at the till, without
+    // anyone having to remember to switch it off.
+    startsAt: { type: Date },
+    endsAt: { type: Date },
+
     // How much comes off per complete set present: a fixed amount in the shop's
     // currency, a percentage of the deal's own products, or `setPrice` — the
     // whole set for one figure ("any 3 for €10"), where `discount` holds that

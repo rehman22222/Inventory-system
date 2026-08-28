@@ -48,6 +48,7 @@ function StorePage() {
     notificationsEmail: "",
     footer: "",
     qrTemplate: "",
+    directPrint: false,
     // { GBP: "1.17", ... } — what one unit of each is worth in the shop's own
     // currency. Held as strings so a half-typed "1." doesn't fight the input.
     exchangeRates: {},
@@ -69,6 +70,7 @@ function StorePage() {
       notificationsEmail: store.notificationsEmail || "",
       footer: store.footer || "",
       qrTemplate: store.qrTemplate || "{ref}",
+      directPrint: Boolean(store.directPrint),
       exchangeRates: Object.fromEntries(
         Object.entries(store.exchangeRates || {}).map(([code, rate]) => [code, String(rate)])
       ),
@@ -101,6 +103,7 @@ function StorePage() {
       notificationsEmail: form.notificationsEmail,
       footer: form.footer,
       qrTemplate: form.qrTemplate,
+      directPrint: form.directPrint,
       // Blank boxes mean "no rate for this one"; the server drops them.
       exchangeRates: Object.fromEntries(
         Object.entries(form.exchangeRates).filter(([, rate]) => String(rate).trim() !== "")
@@ -289,6 +292,30 @@ function StorePage() {
               className="h-11 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3 font-mono text-sm"
             />
             <p className="mt-1 text-xs text-base-content/50">{t("store.qrHint")}</p>
+          </div>
+
+          <div className="rounded-lg border-2 border-base-300 p-3">
+            <label className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                checked={form.directPrint}
+                onChange={(event) =>
+                  setForm({ ...form, directPrint: event.target.checked })
+                }
+                className="mt-0.5 h-4 w-4 accent-blue-800"
+              />
+              <span>
+                <span className="block text-sm font-medium">
+                  {t("store.directPrint", "Print without checking first")}
+                </span>
+                <span className="mt-0.5 block text-xs text-base-content/50">
+                  {t(
+                    "store.directPrintHint",
+                    "On, a slip goes straight to the printer. Off, the till shows it first and waits. This does not remove the browser's own print dialog — that needs the --kiosk-printing launch flag.",
+                  )}
+                </span>
+              </span>
+            </label>
           </div>
 
           <button

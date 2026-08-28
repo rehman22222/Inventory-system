@@ -1,20 +1,45 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
-import { FiMinus, FiPlus } from "react-icons/fi";
+import { FiMinus, FiPlus, FiX } from "react-icons/fi";
 import axiosInstance from "../../lib/axios";
 import PosModal from "./PosModal";
 import { currency } from "./posUtils";
 
 // Refund a whole receipt or just some of its lines. Admin/manager only —
 // the backend enforces that too.
-function RefundModal({ initialReceiptNo = "", onDone, onClose }) {
+//
+// An exchange is built out of the same parts rather than being its own kind of
+// transaction: what comes back is refunded here, and what the customer takes
+// instead goes into the basket to be rung up as an ordinary sale. Two honest
+// records the reports already understand, and the drawer nets to the
+// difference — which is all that actually crosses the counter.
+//
+// `exchangeItems` and its handlers live in POSPage because picking a
+// replacement opens the product search over this dialog, and this one has to
+// keep its own half-filled state while that happens.
+function RefundModal({
+  initialReceiptNo = "",
+  exchangeItems = [],
+  onPickExchange,
+  onSetExchangeQty,
+  onRemoveExchange,
+  onDone,
+  onClose,
+}) {
   const { t } = useTranslation();
   const [receiptNo, setReceiptNo] = useState(initialReceiptNo);
   const [receipt, setReceipt] = useState(null);
   const [quantities, setQuantities] = useState({});
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  // How the money goes back. Blank means "the way it came in", which is what a
+  // refund did before this was a choice and is still the right default.
+  const [method, setMethod] = useState("");
+  // Finding a receipt the customer no longer has: pick the day and choose from
+  // what was rung up on it.
+  const [date, setDate] = useState("");
+  const [dayReceipts, setDayReceipts] = useState(null);
 
   // How many of each line are still refundable after earlier partial refunds.
   const outstandingOf = (loaded, item) => {
@@ -56,6 +81,23 @@ function RefundModal({ initialReceiptNo = "", onDone, onClose }) {
     if (initialReceiptNo) lookup(initialReceiptNo);
   }, [initialReceiptNo, lookup]);
 
+  const searchDay = async (value) => {
+    if (!value) return;
+    setBusy(true);
+    try {
+      const response = await axiosInstance.get("pos/receipts", {
+        params: { date: value, limit: 100 },
+      });
+      setDayReceipts(response.data.receipts || []);
+      setReceipt(null);
+    } catch (error) {
+      setDayReceipts([]);
+      toast.error(error.response?.data?.message || t("pos.refund.notFound"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const setQuantity = (productId, next, max) => {
     setQuantities((current) => ({
       ...current,
@@ -86,6 +128,14 @@ function RefundModal({ initialReceiptNo = "", onDone, onClose }) {
       }, 0)
     : 0;
 
+  // What the replacements come to at today's shelf price, and what the customer
+  // is left owing (or owed) once the refund is set against them.
+  const exchangeTotal = exchangeItems.reduce(
+    (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
+    0
+  );
+  const difference = exchangeTotal - refundTotal;
+
   const submit = async () => {
     const items = receipt.items
       .map((item) => ({
@@ -105,11 +155,16 @@ function RefundModal({ initialReceiptNo = "", onDone, onClose }) {
         receiptNo: receipt.receiptNo,
         items,
         reason: reason.trim() || undefined,
+        method: method || undefined,
       });
       toast.success(
         t("pos.refund.done", { amount: currency(response.data.amount) })
       );
-      onDone?.();
+      // An exchange is the refund plus a fresh sale, and the refund is the half
+      // that has just happened. Hand the replacements back so they land in the
+      // basket: the cashier rings them up as normal and the drawer sees the
+      // difference, which is the only figure that actually changes hands.
+      onDone?.(exchangeItems);
       onClose();
     } catch (error) {
       toast.error(error.response?.data?.message || t("pos.refund.failed"));
@@ -129,6 +184,17 @@ function RefundModal({ initialReceiptNo = "", onDone, onClose }) {
             <span className="me-auto text-sm text-slate-400">
               {t("pos.refund.refunding")}:{" "}
               <span className="font-semibold text-slate-100">{currency(refundTotal)}</span>
+              {exchangeItems.length > 0 && (
+                <>
+                  {" · "}
+                  {difference >= 0
+                    ? t("pos.exchange.customerPays", "Customer pays")
+                    : t("pos.exchange.customerGets", "Customer gets back")}{" "}
+                  <span className="font-semibold text-slate-100">
+                    {currency(Math.abs(difference))}
+                  </span>
+                </>
+              )}
             </span>
             <button
               type="button"
@@ -143,7 +209,11 @@ function RefundModal({ initialReceiptNo = "", onDone, onClose }) {
               disabled={busy || selectedCount === 0}
               className="bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50"
             >
-              {busy ? t("pos.processing") : t("pos.refund.confirm")}
+              {busy
+                ? t("pos.processing")
+                : exchangeItems.length > 0
+                  ? t("pos.exchange.confirm", "Refund & exchange")
+                  : t("pos.refund.confirm")}
             </button>
           </>
         )
@@ -172,6 +242,75 @@ function RefundModal({ initialReceiptNo = "", onDone, onClose }) {
         </button>
       </form>
 
+      {/* The other way in: the customer has lost the slip but knows the day. */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className="text-xs uppercase tracking-wide text-slate-600">
+          {t("pos.refund.orByDate", "or by date")}
+        </span>
+        <input
+          type="date"
+          value={date}
+          onChange={(event) => {
+            setDate(event.target.value);
+            searchDay(event.target.value);
+          }}
+          className="border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-100 outline-none focus:border-cyan-500"
+        />
+        {dayReceipts && (
+          <button
+            type="button"
+            onClick={() => {
+              setDate("");
+              setDayReceipts(null);
+            }}
+            className="text-xs font-semibold text-slate-500 hover:text-slate-300"
+          >
+            {t("pos.refund.clearDate", "Clear")}
+          </button>
+        )}
+      </div>
+
+      {dayReceipts && !receipt && (
+        <div className="mb-4 max-h-52 space-y-1 overflow-y-auto">
+          {dayReceipts.length === 0 ? (
+            <p className="py-4 text-center text-sm text-slate-600">
+              {t("pos.refund.noneThatDay", "Nothing was rung up on that day")}
+            </p>
+          ) : (
+            dayReceipts.map((entry) => (
+              <button
+                key={entry.receiptNo}
+                type="button"
+                onClick={() => {
+                  setReceiptNo(entry.receiptNo);
+                  lookup(entry.receiptNo);
+                }}
+                className="flex w-full items-center justify-between gap-3 border border-slate-800 bg-slate-950 px-3 py-2 text-start transition hover:border-cyan-700"
+              >
+                <span className="min-w-0">
+                  <span className="block font-mono text-sm text-slate-200">
+                    {entry.receiptNo}
+                  </span>
+                  <span className="block truncate text-xs text-slate-500">
+                    {new Date(entry.createdAt).toLocaleTimeString(undefined, {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}{" "}
+                    · {entry.customerName}
+                    {entry.status && entry.status !== "completed"
+                      ? ` · ${entry.status}`
+                      : ""}
+                  </span>
+                </span>
+                <span className="shrink-0 font-semibold tabular-nums text-slate-300">
+                  {currency(entry.total)}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+
       {receipt && (
         <div className="space-y-3">
           <div className="flex flex-wrap gap-x-6 gap-y-1 border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-400">
@@ -180,7 +319,11 @@ function RefundModal({ initialReceiptNo = "", onDone, onClose }) {
               <span className="text-slate-200">{receipt.customerName}</span>
             </span>
             <span>
-              {t("pos.cashier")}: <span className="text-slate-200">{receipt.cashierName}</span>
+              {/* The key already reads "Cashier: {{name}}" — appending the name
+                  again printed the placeholder itself back at the cashier. */}
+              <span className="text-slate-200">
+                {t("pos.cashier", { name: receipt.cashierName })}
+              </span>
             </span>
             <span>
               {t("pos.total")}:{" "}
@@ -254,6 +397,122 @@ function RefundModal({ initialReceiptNo = "", onDone, onClose }) {
                 </div>
               );
             })}
+          </div>
+
+          {/* How the money goes back. A card sale handed back in cash is an
+              ordinary thing at a counter, and the drawer needs to know which
+              it was — so this is asked rather than assumed. */}
+          <div className="border-t border-slate-800 pt-3">
+            <span className="mb-2 block text-xs font-semibold uppercase text-slate-500">
+              {t("pos.refund.method", "Refund by")}
+            </span>
+            <div className="grid grid-cols-4 gap-1.5">
+              {[
+                { key: "", label: t("pos.refund.sameAsSale", "Same as sale") },
+                { key: "cash", label: t("common.payments.cash", "Cash") },
+                { key: "creditcard", label: t("common.payments.creditcard", "Card") },
+                { key: "wallet", label: t("common.payments.wallet", "Wallet") },
+              ].map((option) => (
+                <button
+                  key={option.key || "same"}
+                  type="button"
+                  onClick={() => setMethod(option.key)}
+                  className={`px-2 py-2 text-xs font-bold uppercase tracking-wide transition ${
+                    method === option.key
+                      ? "bg-cyan-800 text-white ring-1 ring-cyan-600"
+                      : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* What the customer takes instead. Optional — leave it empty and
+              this is an ordinary refund. */}
+          <div className="border-t border-slate-800 pt-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-semibold uppercase text-slate-500">
+                {t("pos.exchange.title", "Exchange for")}
+              </span>
+              <button
+                type="button"
+                onClick={onPickExchange}
+                className="border border-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-300 hover:border-cyan-500 hover:text-cyan-300"
+              >
+                {t("pos.exchange.add", "+ Add product")}
+              </button>
+            </div>
+
+            {exchangeItems.length === 0 ? (
+              <p className="mt-2 text-xs text-slate-600">
+                {t(
+                  "pos.exchange.empty",
+                  "Nothing yet — add a product and this becomes an exchange.",
+                )}
+              </p>
+            ) : (
+              <div className="mt-2 space-y-1">
+                {exchangeItems.map((item) => (
+                  <div
+                    key={String(item.productId)}
+                    className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 border border-cyan-900 bg-slate-950 px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{item.name}</p>
+                      <p className="text-xs text-slate-500">{currency(item.price)}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => onSetExchangeQty(item.productId, item.quantity - 1)}
+                        className="bg-slate-800 p-1.5 text-slate-300 hover:bg-slate-700"
+                      >
+                        <FiMinus className="h-3 w-3" />
+                      </button>
+                      <span className="w-8 text-center font-semibold tabular-nums">
+                        {item.quantity}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onSetExchangeQty(item.productId, item.quantity + 1)}
+                        className="bg-slate-800 p-1.5 text-slate-300 hover:bg-slate-700"
+                      >
+                        <FiPlus className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <span className="w-20 text-end text-sm font-semibold tabular-nums">
+                      {currency(item.price * item.quantity)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveExchange(item.productId)}
+                      aria-label={t("pos.exchange.remove", "Remove")}
+                      className="p-1 text-slate-500 hover:text-red-400"
+                    >
+                      <FiX className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* The only figure that actually crosses the counter. */}
+                <div className="flex justify-between gap-4 border-t border-slate-800 pt-2 text-sm">
+                  <span className="text-slate-500">
+                    {difference >= 0
+                      ? t("pos.exchange.customerPays", "Customer pays")
+                      : t("pos.exchange.customerGets", "Customer gets back")}
+                  </span>
+                  <span
+                    className={`font-semibold tabular-nums ${
+                      difference >= 0 ? "text-emerald-400" : "text-amber-400"
+                    }`}
+                  >
+                    {currency(Math.abs(difference))}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           <input

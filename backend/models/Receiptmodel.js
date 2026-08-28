@@ -17,10 +17,19 @@ const ReceiptItemSchema = new mongoose.Schema(
 
 const RefundEntrySchema = new mongoose.Schema(
   {
+    // The refund's own number, quoted the way a receipt number is. Sequential
+    // and independent of the receipt, because one receipt can be refunded more
+    // than once and "the refund on POS-000036" stops identifying anything the
+    // second time it happens.
+    reference: { type: String },
     at: { type: Date, default: Date.now },
     by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     byName: { type: String },
     reason: { type: String },
+    // How the money actually went back. Not always how it came in: a card sale
+    // handed back in cash is an ordinary thing at a counter, and the drawer
+    // needs to know which it was.
+    method: { type: String, enum: ["cash", "creditcard", "wallet"] },
     amount: { type: Number, default: 0 },
     items: [
       {

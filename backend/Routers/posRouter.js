@@ -6,6 +6,8 @@ const {
   getReceipts,
   getAllSales,
   getReceipt,
+  emailReceipt,
+  getRefunds,
   changePaymentMethod,
   syncOfflineSales,
   dayClosingSummary,
@@ -33,12 +35,19 @@ router.post("/sync", authmiddleware, syncOfflineSales);
 
 // Money back over the counter is an elevated action.
 router.post("/refund", authmiddleware, adminOrManager, refund);
+// The counter own record of what went back out. Same scope rule as the sale
+// history: a cashier sees their own, the owner side sees everything.
+router.get("/refunds", authmiddleware, adminOrManager, getRefunds);
 router.post("/void/:receiptNo", authmiddleware, adminOrManager, voidSale);
 
 router.get("/receipts", authmiddleware, getReceipts);
 // Ghost mode: the whole shop's sales, unscoped. Owner only.
 router.get("/all-sales", authmiddleware, superadminmiddleware, getAllSales);
 router.get("/receipt/:receiptNo", authmiddleware, getReceipt);
+// Emailing a receipt is the paperless version of printing it, so it is open to
+// whoever can ring up the sale — the same scope rule inside decides which
+// receipts they are allowed to reach.
+router.post("/receipt/:receiptNo/email", authmiddleware, emailReceipt);
 // Correcting a mis-tapped tender (cash -> card) on a still-open sale. Ownership
 // and the day-closing lock are enforced in the controller.
 router.patch("/receipt/:receiptNo/payment", authmiddleware, changePaymentMethod);

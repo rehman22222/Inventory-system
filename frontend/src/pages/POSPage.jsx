@@ -16,6 +16,7 @@ import {
   FiSearch,
   FiSlash,
   FiTag,
+  FiX,
 } from "react-icons/fi";
 import axiosInstance from "../lib/axios";
 import { isDemoMode } from "../lib/demoMode";
@@ -38,6 +39,10 @@ import UnknownBarcodeModal from "../Components/pos/UnknownBarcodeModal";
 import SaleHistoryModal from "../Components/pos/SaleHistoryModal";
 import HeldSalesModal from "../Components/pos/HeldSalesModal";
 import PaymentModal from "../Components/pos/PaymentModal";
+import DealPriceModal from "../Components/pos/DealPriceModal";
+import SaleCompleteModal from "../Components/pos/SaleCompleteModal";
+import RefundHistoryModal from "../Components/pos/RefundHistoryModal";
+import DealsModal from "../Components/DealsModal";
 import ProductSearchModal from "../Components/pos/ProductSearchModal";
 import DayClosingModal from "../Components/pos/DayClosingModal";
 import {
@@ -45,6 +50,7 @@ import {
   currency,
   setCurrencyCode,
   applicableDeals,
+  allDealIds,
   sanitizeDecimal,
   MISC_CATEGORY,
 } from "../Components/pos/posUtils";
@@ -116,6 +122,14 @@ function POSPage() {
   const [discount, setDiscount] = useState(0);
   const [discountType, setDiscountType] = useState("amount");
   const [voucher, setVoucher] = useState(null);
+  // The offers the cashier has pressed Apply on. An offer the basket no longer
+  // satisfies needs no tidying up — the matcher simply stops finding it, and
+  // the id sits harmlessly until the sale ends.
+  const [appliedDealIds, setAppliedDealIds] = useState([]);
+  // Deals hand-priced at the counter: { dealId: whatThisDealPortionCosts }.
+  // The server re-checks every figure against the goods, and logs the edit.
+  const [dealOverrides, setDealOverrides] = useState({});
+  const [editingDeal, setEditingDeal] = useState(null);
   const [taxEnabled, setTaxEnabled] = useState(false);
   // The tax rate is the shop's call, not ours — no hardcoded percentage. The
   // last rate the cashier used is remembered on this till.
@@ -123,6 +137,10 @@ function POSPage() {
   const [currencyCode, setCurrency] = useState("EUR");
 
   const [receipt, setReceipt] = useState(null);
+  // The just-finished sale, held only while the counter decides what to do with
+  // the receipt. Kept apart from `receipt`, which stays put after this is
+  // dismissed so the slip can still be reprinted from the bar.
+  const [justSold, setJustSold] = useState(null);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   // Keypad: digits accumulate in `buffer`; "X" turns the buffer into a pending
@@ -139,6 +157,12 @@ function POSPage() {
   const [modal, setModal] = useState(null); // refund | voucher | discount | history | held | code
   const [unknownBarcode, setUnknownBarcode] = useState(null);
   const [refundReceiptNo, setRefundReceiptNo] = useState("");
+  // What the customer is taking instead of what they brought back. Held here
+  // rather than inside the refund dialog because picking one opens the product
+  // search over the top, and the refund dialog has to keep its half-filled
+  // state — which lines, which quantities — while that happens.
+  const [exchangeItems, setExchangeItems] = useState([]);
+  const [pickingExchange, setPickingExchange] = useState(false);
 
   // Anything the till rang up while the line was down.
   const [offlineCache, setOfflineCache] = useState(null);
@@ -249,8 +273,16 @@ function POSPage() {
     return offlineCache?.deals || [];
   }, [allDeals, offlineCache]);
 
+  // The Deals tile is a place to browse festive offers — a flat amount or
+  // percentage off. Multi-buy deals are deliberately not here: they are found
+  // by scanning, and they announce themselves above the total the moment the
+  // basket qualifies. Putting them in the grid too would mean two places
+  // showing the same offer, one of which cannot apply it.
   const activeDeals = useMemo(
-    () => dealSource.filter((deal) => deal.active !== false),
+    () =>
+      dealSource.filter(
+        (deal) => deal.active !== false && deal.discountType !== "setPrice"
+      ),
     [dealSource]
   );
 
@@ -367,11 +399,25 @@ function POSPage() {
     discountType === "percent" ? (afterVoucher * Number(discount || 0)) / 100 : Number(discount || 0);
   const manualDiscount = Math.max(0, Math.min(rawManual, afterVoucher));
 
-  // Bundle deals are detected automatically as items land in the basket. The
-  // server recomputes this at checkout — these values just drive the preview.
+  // Deals are detected as items land in the basket, but never taken on the
+  // shop's behalf: the till works out what the basket qualifies for and what it
+  // would save, and the cashier decides. Until Apply is pressed the basket is
+  // at shelf price. The server recomputes all of it at checkout — these values
+  // only drive the screen.
   const dealMatch = useMemo(
-    () => applicableDeals(cart, allDeals),
-    [cart, allDeals]
+    () => applicableDeals(cart, allDeals, appliedDealIds, dealOverrides),
+    [cart, allDeals, appliedDealIds, dealOverrides]
+  );
+  // The same matcher asked a different question: what could this basket have?
+  // Anything it finds that is not already applied is an offer to show. Asking
+  // the one function twice keeps the offer and the charge in step by
+  // construction — a second code path would eventually disagree with the first.
+  const dealOffers = useMemo(
+    () =>
+      applicableDeals(cart, allDeals, allDealIds(allDeals)).applied.filter(
+        (entry) => !appliedDealIds.includes(String(entry.dealId))
+      ),
+    [cart, allDeals, appliedDealIds]
   );
   // Deals live in the sidebar as their own tile; see dealsCategoryId below.
   const dealRoom = Math.max(subtotal - voucherDiscount - manualDiscount, 0);
@@ -382,6 +428,91 @@ function POSPage() {
     dealMatch.applied.forEach((entry) => entry.products.forEach((id) => set.add(String(id))));
     return set;
   }, [dealMatch]);
+
+  const applyDeal = (dealId) =>
+    setAppliedDealIds((current) =>
+      current.includes(String(dealId)) ? current : [...current, String(dealId)]
+    );
+
+  const removeDeal = (dealId, dealName) => {
+    setAppliedDealIds((current) => current.filter((id) => id !== String(dealId)));
+    // Taking a discount away is the kind of change that has to be seen: the
+    // total moves up, and a cashier who tapped by accident needs to know the
+    // customer is now on shelf price before the card goes in.
+    toast(t("pos.deal.removed", { name: dealName || "" }), {
+      icon: "🏷",
+    });
+    // Taking the offer off drops the hand-typed price with it, so putting it
+    // back on later starts from the shop's figure rather than the last edit.
+    setDealOverrides((current) => {
+      const { [String(dealId)]: _removed, ...rest } = current;
+      return rest;
+    });
+  };
+
+  // Taking an offer and pricing it are one action from the cashier's side: the
+  // popup is where they see the figure, and they either accept it or type
+  // another. So Apply on an offer opens this rather than committing outright.
+  const priceDeal = (entry, price) => {
+    const dealId = String(entry.dealId);
+    const dealPrice = Number(entry.normal) - Number(entry.configuredAmount);
+
+    applyDeal(dealId);
+    setDealOverrides((current) => {
+      const { [dealId]: _previous, ...rest } = current;
+      // Accepting the shop's own figure is not an edit and must not be logged
+      // as one — half a cent of float noise is not a decision.
+      return Math.abs(price - dealPrice) < 0.005 ? rest : { ...rest, [dealId]: price };
+    });
+    setEditingDeal(null);
+  };
+
+  const addExchangeItem = (product) =>
+    setExchangeItems((current) => {
+      const existing = current.find((item) => item.productId === product._id);
+      if (existing) {
+        return current.map((item) =>
+          item.productId === product._id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+      return [
+        ...current,
+        {
+          productId: product._id,
+          name: product.name,
+          barcode: product.barcode,
+          price: Number(product.Price || 0),
+          quantity: 1,
+        },
+      ];
+    });
+
+  const setExchangeQty = (productId, quantity) =>
+    setExchangeItems((current) =>
+      current
+        .map((item) =>
+          item.productId === productId
+            ? { ...item, quantity: Math.max(0, Math.floor(quantity)) }
+            : item
+        )
+        .filter((item) => item.quantity > 0)
+    );
+
+  const removeExchangeItem = (productId) =>
+    setExchangeItems((current) =>
+      current.filter((item) => item.productId !== productId)
+    );
+
+  const resetDealPrice = (dealId) => {
+    applyDeal(String(dealId));
+    setDealOverrides((current) => {
+      const { [String(dealId)]: _removed, ...rest } = current;
+      return rest;
+    });
+    setEditingDeal(null);
+  };
 
   const totalDiscount = voucherDiscount + manualDiscount + dealDiscount;
   const taxable = Math.max(subtotal - totalDiscount, 0);
@@ -459,6 +590,19 @@ function POSPage() {
   // dropping the items in the basket is enough, because the deal matcher (and
   // the server at checkout) detects the complete set on its own.
   const tapDeal = (deal) => {
+    // A bundle names its contents, so tapping it can fill the basket. A
+    // pick-any-N does not — its "contents" are every eligible product, and
+    // dropping a hundred flavours into the sale is not what anyone meant by
+    // tapping the card. Say what to do instead.
+    if (deal.mode === "mix") {
+      toast(
+        t("pos.dealMixHint", "Scan any {{n}} of these and the offer appears.", {
+          n: Math.max(2, Math.floor(Number(deal.groupQuantity || 0))),
+        })
+      );
+      return;
+    }
+
     const missing = [];
 
     (deal.items || []).forEach((item) => {
@@ -484,12 +628,28 @@ function POSPage() {
   // What a deal is worth, for the tile. Mirrors the matcher's rule: a percentage
   // is off the deal's own products.
   const dealPricing = (deal) => {
-    const normal = (deal.items || []).reduce((sum, item) => {
+    const priceOf = (item) => {
       const productId = String(item.product?._id || item.product);
       const product = products.find((entry) => entry._id === productId);
-      const price = Number(product?.Price ?? item.product?.Price ?? 0);
-      return sum + price * Number(item.quantity || 1);
-    }, 0);
+      return Number(product?.Price ?? item.product?.Price ?? 0);
+    };
+
+    // A bundle is a recipe, so its price is the recipe. A pick-any-N has no
+    // fixed contents — one set is whichever N the shopper brings, and the
+    // matcher takes the dearest, so that is what a set is worth here too.
+    // Adding up all 137 eligible flavours is what produced the "€941 / €959"
+    // on the tile: a figure for a basket nobody would ever buy.
+    const normal =
+      deal.mode === "mix"
+        ? (deal.items || [])
+            .map(priceOf)
+            .sort((a, b) => b - a)
+            .slice(0, Math.max(2, Math.floor(Number(deal.groupQuantity || 0))))
+            .reduce((sum, price) => sum + price, 0)
+        : (deal.items || []).reduce(
+            (sum, item) => sum + priceOf(item) * Number(item.quantity || 1),
+            0
+          );
 
     const raw =
       deal.discountType === "percent"
@@ -561,6 +721,8 @@ function POSPage() {
     setDiscount(0);
     setDiscountType("amount");
     setVoucher(null);
+    setAppliedDealIds([]);
+    setDealOverrides({});
     setTaxEnabled(false);
     setBuffer("");
     setMultiplier(0);
@@ -727,11 +889,18 @@ function POSPage() {
     voucherCode: voucher?.code,
     taxEnabled,
     taxRate: taxFraction,
+    // Which offers the cashier pressed Apply on. Ids only — the server prices
+    // them itself, so a till can choose an offer but never its value. An
+    // offline sale carries the same list and is priced the same way at sync.
+    dealIds: dealMatch.applied.map((entry) => String(entry.dealId)),
+    // Hand-typed prices, if any. The server clamps and logs them.
+    dealOverrides,
     items: cart.map((item) => ({ product: item.productId, quantity: item.quantity })),
   });
 
   const finishSale = (completed) => {
     setReceipt(completed);
+    setJustSold(completed);
     setModal(null);
     // On narrow screens the receipt (with Print / New Sale) lives in the sale
     // pane — show it, or the cashier is left staring at the product grid.
@@ -740,6 +909,8 @@ function POSPage() {
     setSelectedLine(null);
     setDiscount(0);
     setVoucher(null);
+    setAppliedDealIds([]);
+    setDealOverrides({});
     setTaxEnabled(false);
   };
 
@@ -926,6 +1097,25 @@ function POSPage() {
       onClick: () => setModal("code"),
     },
     {
+      id: "refundHistory",
+      label: "pos.rail.refundHistory",
+      tone: "rose",
+      icon: FiRotateCcw,
+      disabled: !isElevated,
+      onClick: () => setModal("refundHistory"),
+    },
+    {
+      // Building an offer is the same job here as it is on the Products page,
+      // so it is the same dialog — the till is simply where the person who
+      // decides the offer is standing.
+      id: "deals",
+      label: "pos.rail.deals",
+      tone: "fuchsia",
+      icon: FiTag,
+      disabled: !isElevated,
+      onClick: () => setModal("deals"),
+    },
+    {
       id: "dayClosing",
       label: "pos.rail.dayClosing",
       tone: "teal",
@@ -1022,47 +1212,6 @@ function POSPage() {
             onRemove={removeFromCart}
           />
 
-          {receipt && (
-            <div
-              className={`border-t px-3 py-2 text-sm ${
-                receipt.offlinePending
-                  ? "border-amber-800 bg-amber-900/20"
-                  : "border-emerald-800 bg-emerald-900/20"
-              }`}
-            >
-              <span
-                className={`font-semibold ${
-                  receipt.offlinePending ? "text-amber-400" : "text-emerald-400"
-                }`}
-              >
-                {t("pos.receipt")} {receipt.receiptNo}
-              </span>{" "}
-              <span className="text-slate-300">
-                {currency(receipt.total)}
-                {receipt.changeDue ? ` · ${t("pos.changeDue")} ${currency(receipt.changeDue)}` : ""}
-              </span>
-              {receipt.offlinePending && (
-                <span className="ms-2 bg-amber-950 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-300 ring-1 ring-amber-800">
-                  {t("pos.offline.notSynced")}
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={newSale}
-                className="ms-3 bg-slate-800 px-3 py-1 text-xs font-semibold hover:bg-slate-700"
-              >
-                {t("pos.newSale")}
-              </button>
-              <button
-                type="button"
-                onClick={printReceipt}
-                className="ms-2 bg-slate-800 px-3 py-1 text-xs font-semibold hover:bg-slate-700"
-              >
-                {t("pos.print")}
-              </button>
-            </div>
-          )}
-
           {/* Totals + tender */}
           <div className="space-y-2.5 border-t border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950 p-3">
             <div className="flex flex-wrap gap-2">
@@ -1120,17 +1269,70 @@ function POSPage() {
                     <span className="tabular-nums">-{currency(voucherDiscount)}</span>
                   </div>
                 )}
+                {/* An offer the basket qualifies for, priced but NOT taken. The
+                    total above it does not move until the cashier says so. */}
+                {dealOffers.map((entry) => (
+                  <button
+                    key={`offer-${String(entry.dealId)}`}
+                    type="button"
+                    onClick={() => setEditingDeal(entry)}
+                    className="flex w-full items-center justify-between gap-3 border border-dashed border-fuchsia-800 px-2 py-1.5 text-start transition hover:border-fuchsia-500 hover:bg-fuchsia-950/40"
+                  >
+                    <span className="min-w-0">
+                      <span className="flex items-center gap-1.5 text-fuchsia-300">
+                        <FiTag className="h-3 w-3 shrink-0" />
+                        <span className="truncate text-xs font-semibold">
+                          {entry.name}
+                          {entry.sets > 1 ? ` ×${entry.sets}` : ""}
+                        </span>
+                      </span>
+                      <span className="mt-0.5 block text-[10px] text-slate-500">
+                        {t("pos.deal.normal")} {currency(entry.normal)} →{" "}
+                        <span className="text-slate-300">
+                          {currency(entry.normal - entry.amount)}
+                        </span>
+                        {" · "}
+                        {t("pos.deal.saving")} {currency(entry.amount)}
+                      </span>
+                    </span>
+                    <span className="shrink-0 bg-fuchsia-700 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+                      {t("pos.deal.apply")}
+                    </span>
+                  </button>
+                ))}
                 {dealMatch.applied.map((entry) => (
                   <div
                     key={String(entry.dealId)}
                     className="flex justify-between gap-8 text-fuchsia-400"
                   >
-                    <span className="flex items-center gap-1.5">
-                      <FiTag className="h-3 w-3" />
-                      <span className="text-xs">
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <FiTag className="h-3 w-3 shrink-0" />
+                      {/* The name is the way in to re-pricing it: a till has no
+                          room for a button per action, and the row itself is
+                          what the cashier is already pointing at. */}
+                      <button
+                        type="button"
+                        onClick={() => setEditingDeal(entry)}
+                        title={t("pos.deal.editTitle", "Change the deal price")}
+                        className="truncate text-start text-xs underline decoration-dotted underline-offset-2 hover:text-fuchsia-300"
+                      >
                         {entry.name}
                         {entry.sets > 1 ? ` ×${entry.sets}` : ""}
-                      </span>
+                      </button>
+                      {entry.edited && (
+                        <span className="shrink-0 bg-amber-900/60 px-1 text-[9px] font-bold uppercase text-amber-300">
+                          {t("pos.deal.editedBadge", "edited")}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeDeal(entry.dealId, entry.name)}
+                        title={t("pos.deal.remove")}
+                        aria-label={t("pos.deal.remove")}
+                        className="shrink-0 px-1 text-slate-500 hover:text-red-400"
+                      >
+                        <FiX className="h-3 w-3" />
+                      </button>
                     </span>
                     <span className="tabular-nums">-{currency(entry.amount)}</span>
                   </div>
@@ -1251,14 +1453,19 @@ function POSPage() {
                       </div>
 
                       <p className="line-clamp-2 text-[11px] leading-snug text-slate-400">
-                        {(deal.items || [])
-                          .map(
-                            (item) =>
-                              `${item.quantity > 1 ? `${item.quantity}× ` : ""}${
-                                item.product?.name || "?"
-                              }`
-                          )
-                          .join(" + ")}
+                        {deal.mode === "mix"
+                          ? t("pos.dealMixItems", "Any {{n}} of {{count}} products", {
+                              n: Math.max(2, Math.floor(Number(deal.groupQuantity || 0))),
+                              count: (deal.items || []).length,
+                            })
+                          : (deal.items || [])
+                              .map(
+                                (item) =>
+                                  `${item.quantity > 1 ? `${item.quantity}× ` : ""}${
+                                    item.product?.name || "?"
+                                  }`
+                              )
+                              .join(" + ")}
                       </p>
 
                       <div className="mt-auto flex items-baseline justify-between gap-2">
@@ -1544,8 +1751,26 @@ function POSPage() {
       {modal === "refund" && (
         <RefundModal
           initialReceiptNo={refundReceiptNo}
-          onDone={() => dispatch(gettingallproducts({ view: "pos" }))}
-          onClose={() => setModal(null)}
+          exchangeItems={exchangeItems}
+          onPickExchange={() => setPickingExchange(true)}
+          onSetExchangeQty={setExchangeQty}
+          onRemoveExchange={removeExchangeItem}
+          onDone={(replacements) => {
+            dispatch(gettingallproducts({ view: "pos" }));
+            // The refund has gone through; the other half of the exchange is an
+            // ordinary sale, so the replacements go into the basket and the
+            // cashier charges for them the way they charge for anything else.
+            (replacements || []).forEach((item) => {
+              const product = products.find((entry) => entry._id === item.productId);
+              if (product) addToCart(product, item.quantity);
+            });
+            if (replacements?.length) setPane("sale");
+            setExchangeItems([]);
+          }}
+          onClose={() => {
+            setModal(null);
+            setExchangeItems([]);
+          }}
         />
       )}
 
@@ -1570,6 +1795,51 @@ function POSPage() {
             setDiscountType(type);
           }}
           onClose={() => setModal(null)}
+        />
+      )}
+
+      {/* Stacked over the refund dialog, which stays mounted underneath so the
+          lines and quantities the cashier already chose are still there. */}
+      {pickingExchange && (
+        <ProductSearchModal
+          products={products}
+          categories={categories}
+          canEdit={false}
+          onPick={(product) => addExchangeItem(product)}
+          onClose={() => setPickingExchange(false)}
+        />
+      )}
+
+      {modal === "refundHistory" && (
+        <RefundHistoryModal onClose={() => setModal(null)} />
+      )}
+
+      {modal === "deals" && (
+        <DealsModal
+          onClose={() => {
+            setModal(null);
+            // A new or edited offer has to reach the basket that is open right
+            // now, not the next one.
+            dispatch(gettingallDeals());
+          }}
+        />
+      )}
+
+      {justSold && (
+        <SaleCompleteModal
+          receipt={justSold}
+          onPrint={printReceipt}
+          onClose={() => setJustSold(null)}
+        />
+      )}
+
+      {editingDeal && (
+        <DealPriceModal
+          entry={editingDeal}
+          applied={appliedDealIds.includes(String(editingDeal.dealId))}
+          onApply={(price) => priceDeal(editingDeal, price)}
+          onReset={() => resetDealPrice(editingDeal.dealId)}
+          onClose={() => setEditingDeal(null)}
         />
       )}
 

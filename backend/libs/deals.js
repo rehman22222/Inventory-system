@@ -1,48 +1,81 @@
 // Deal matching — shared by the POS checkout controller and the demo-mode
 // router so both apply exactly the same discount as the till previews.
 //
-// A deal is a set of products and a discount that applies once for every
-// complete set present in the basket: a "Vape + Coil = €3 off" deal with two
-// vapes and two coils applies twice.
-//
-// Two shapes of set:
+// A deal is a set of products and a discount. Two shapes of set:
 //   bundle — a recipe. Each product at its own quantity, all of them present.
 //   mix    — pick-any-N across the chosen products. Fifteen flavours of one pod
 //            and an offer of "any 3 for €10": the shopper mixes them however
 //            they like and only the total count decides.
 //
-// The discount is either a fixed amount per set, or a percentage OFF THE DEAL'S
-// OWN PRODUCTS — not off the whole basket. A "10% off Vape + Coil" deal must not
-// discount the crisps the customer also bought; that is what a voucher is for.
+// How many times one deal can land in a basket is the deal's own
+// `quantityRule` — see resolveQuantityRule below.
+//
+// The discount is either a fixed amount per set, a percentage OFF THE DEAL'S
+// OWN PRODUCTS — not off the whole basket — or `setPrice`, where `discount`
+// holds what one set costs rather than what comes off it.
+//
+// NOTHING APPLIES ON ITS OWN. A deal counts only when the till passes its id in
+// `chosenIds`: the cashier is shown what is available and presses Apply. This
+// function is what detects and prices the offer; it never decides to give it.
 
 const round2 = (value) => Math.round(Number(value || 0) * 100) / 100;
 
-// cartMap: Map<productId(string), { quantity, price }>
-// deals:   array of deal docs/objects
-//          ({ _id, name, discount, discountType, active, items:[{product, quantity}] })
-// Returns { applied: [{ dealId, name, sets, amount, products:[ids] }], total }
-function applicableDeals(cartMap, deals) {
+// Deals written before `quantityRule` existed have no such field, and must keep
+// charging exactly what they charged yesterday. Absence therefore means "what
+// this mode always did": bundle repeated for every complete set, mix landed
+// once past its threshold.
+const resolveQuantityRule = (deal) =>
+  deal.quantityRule || (deal.mode === "mix" ? "single_set" : "repeat_sets");
+
+// An optional run of dates, so a seasonal offer stops on its own.
+const withinWindow = (deal, now) => {
+  if (deal.startsAt && now < new Date(deal.startsAt).getTime()) return false;
+  if (deal.endsAt && now > new Date(deal.endsAt).getTime()) return false;
+  return true;
+};
+
+// cartMap:   Map<productId(string), { quantity, price }>
+// deals:     array of deal docs/objects
+// chosenIds: the deal ids the cashier applied. Nothing is priced without it —
+//            pass every id to ask "what could this basket have?" instead.
+// overrides: { dealId: priceTheCashierTyped } for offers hand-priced at the
+//            till. The typed figure is what the DEAL PORTION costs, all sets
+//            together — the number on the screen, not a per-set rate. It is
+//            clamped to what the goods are worth either way, so the worst a
+//            till can do is give the shop's own stock away, never mint money.
+//
+// Returns { applied: [{ dealId, name, sets, normal, amount, configuredAmount,
+// edited, products }], total } where `normal` is what the units inside the sets
+// cost at shelf price, so the till can show "Normal 21 / Deal 18 / Saving 3"
+// without doing the sum again, and `configuredAmount` is what the deal as
+// written would have given — kept apart from `amount` so a hand-priced sale can
+// be told from an ordinary one afterwards.
+function applicableDeals(cartMap, deals, chosenIds, overrides) {
+  const chosen = new Set((chosenIds || []).map(String));
+  const typed = new Map(
+    Object.entries(overrides || {}).map(([id, price]) => [String(id), Number(price)]),
+  );
+  const now = Date.now();
   const applied = [];
   let total = 0;
 
   for (const deal of deals || []) {
     if (deal.active === false) continue;
+    if (!chosen.has(String(deal._id))) continue;
+    if (!withinWindow(deal, now)) continue;
 
     const items = Array.isArray(deal.items) ? deal.items : [];
     if (items.length === 0) continue;
 
+    const rule = resolveQuantityRule(deal);
+
     // How many complete sets are in the basket, and what those sets are worth
-    // at shelf price. `setValue` covers EVERY set found, not one of them.
+    // at shelf price. `setValue` covers EVERY set counted, not one of them.
     let sets = 0;
     let setValue = 0;
     const products = [];
 
     if (deal.mode === "mix") {
-      // Pick-any-N is a THRESHOLD, not a repeating set. Once the basket holds
-      // enough of the chosen products the offer is on, and everything after
-      // that stays in it — a tenth item falling back to full price because it
-      // did not complete another group of three is exactly what a shopper
-      // reads as the till cheating them.
       const need = Math.floor(Number(deal.groupQuantity || 0));
       if (need < 2) continue;
 
@@ -56,19 +89,27 @@ function applicableDeals(cartMap, deals) {
       }
 
       if (units.length < need) continue;
-      sets = 1; // the offer lands once, however far past the threshold they go
 
       // Dearest first. A shopper who bought a EUR 9 and a EUR 5 of the same
       // offer expects the deal on the EUR 9 — the other way round reads as a
       // short-change and is the complaint every mix-and-match till gets.
       units.sort((a, b) => b - a);
 
-      // A set price can only price the units it names; an amount or a
-      // percentage comes off everything that qualified.
-      setValue =
-        deal.discountType === "setPrice"
-          ? units.slice(0, need).reduce((sum, price) => sum + price, 0)
-          : units.reduce((sum, price) => sum + price, 0);
+      if (rule === "repeat_sets") {
+        // Every complete group, and the units that did not fill one are simply
+        // outside the offer — which is what makes a leftover cost shelf price
+        // without needing a rule of its own.
+        sets = Math.floor(units.length / need);
+        setValue = units.slice(0, sets * need).reduce((sum, price) => sum + price, 0);
+      } else {
+        sets = 1;
+        // A set price can only price the units it names; an amount or a
+        // percentage comes off everything that qualified.
+        setValue =
+          deal.discountType === "setPrice"
+            ? units.slice(0, need).reduce((sum, price) => sum + price, 0)
+            : units.reduce((sum, price) => sum + price, 0);
+      }
     } else {
       let complete = Infinity;
       let oneSet = 0;
@@ -87,7 +128,7 @@ function applicableDeals(cartMap, deals) {
       }
 
       if (!Number.isFinite(complete) || complete < 1) continue;
-      sets = complete;
+      sets = rule === "single_set" ? 1 : complete;
       setValue = oneSet * sets;
     }
 
@@ -95,7 +136,7 @@ function applicableDeals(cartMap, deals) {
     if (deal.discountType === "percent") {
       raw = (setValue * Number(deal.discount || 0)) / 100;
     } else if (deal.discountType === "setPrice") {
-      // `discount` holds what the set costs, so the reduction is whatever the
+      // `discount` holds what one set costs, so the reduction is whatever the
       // goods were worth above it. A set already cheaper than the offer price
       // yields nothing — a deal must never make the basket dearer.
       raw = setValue - Number(deal.discount || 0) * sets;
@@ -104,14 +145,30 @@ function applicableDeals(cartMap, deals) {
     }
 
     // A deal can never hand back more than the deal's own goods are worth.
-    const amount = round2(Math.max(0, Math.min(raw, setValue)));
-    if (amount <= 0) continue;
+    const configuredAmount = round2(Math.max(0, Math.min(raw, setValue)));
+
+    // A price typed at the till replaces the reduction, under the same ceiling:
+    // the discount still cannot exceed the value of the deal's own goods, so an
+    // edit can only ever move money within this sale.
+    const override = typed.get(String(deal._id));
+    const edited = Number.isFinite(override) && override >= 0;
+    const amount = edited
+      ? round2(Math.max(0, Math.min(setValue - override, setValue)))
+      : configuredAmount;
+
+    // An offer worth nothing is not an offer — but a cashier who deliberately
+    // priced a set at its shelf value has said something, so a zero they typed
+    // is kept rather than silently dropped.
+    if (amount <= 0 && !edited) continue;
 
     applied.push({
       dealId: deal._id,
       name: deal.name,
       sets,
+      normal: round2(setValue),
       amount,
+      configuredAmount,
+      edited,
       products,
     });
     total += amount;
@@ -120,4 +177,4 @@ function applicableDeals(cartMap, deals) {
   return { applied, total: round2(total) };
 }
 
-module.exports = { applicableDeals };
+module.exports = { applicableDeals, resolveQuantityRule };

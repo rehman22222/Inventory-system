@@ -3,7 +3,11 @@ import { useTranslation } from "react-i18next";
 import { FiMinus, FiPlus, FiShoppingBag, FiTag, FiX } from "react-icons/fi";
 import { currency } from "./posUtils";
 
-const COLS = "grid-cols-[1fr_60px_92px_88px] sm:grid-cols-[1fr_92px_104px_110px]";
+// Rate, qty and total are held to what their contents actually need — a price,
+// three small controls, a price and a cross — so everything left over goes to
+// the name. They used to reserve 306px between them, which left the product
+// column about 120px on a narrow panel and broke names one word to a line.
+const COLS = "grid-cols-[1fr_56px_84px_76px] sm:grid-cols-[1fr_64px_88px_84px]";
 
 // The middle sale panel: the running list of lines on this transaction.
 function SaleTable({
@@ -19,7 +23,7 @@ function SaleTable({
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-slate-950">
       <div
-        className={`grid ${COLS} gap-2 border-b border-slate-800 bg-slate-900/80 px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500`}
+        className={`grid ${COLS} gap-1.5 border-b border-slate-800 bg-slate-900/80 px-3 py-2.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500`}
       >
         <span>{t("pos.table.product")}</span>
         <span className="text-end">{t("pos.table.rate")}</span>
@@ -42,24 +46,26 @@ function SaleTable({
               <div
                 key={item.productId}
                 onClick={() => onSelect(item.productId)}
-                className={`grid ${COLS} cursor-pointer items-center gap-2 border-b border-slate-900 px-4 py-2.5 text-sm transition ${
+                className={`grid ${COLS} cursor-pointer items-center gap-1.5 border-b border-slate-900 px-3 py-2.5 text-sm transition ${
                   active
                     ? "bg-cyan-950/50 shadow-[inset_3px_0_0_0_theme(colors.cyan.500)]"
                     : "hover:bg-slate-900/60"
                 }`}
               >
+                {/* The whole name, wrapped rather than cut off. A cashier
+                    checking a basket against what is on the counter reads the
+                    flavour and the strength — "Mentos M…" identifies nothing,
+                    and this catalogue puts what distinguishes two lines at the
+                    END of the name. Smaller type is the cheaper trade. */}
                 <div className="min-w-0">
-                  <p className="flex items-center gap-1.5 truncate font-medium text-slate-100">
-                    <span className="truncate">{item.name}</span>
+                  <p className="flex items-start gap-1.5 text-[13px] font-medium leading-snug text-slate-100">
+                    <span className="min-w-0 break-words">{item.name}</span>
                     {inDeal && (
-                      <span className="inline-flex shrink-0 items-center gap-1 bg-fuchsia-950 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-fuchsia-300 ring-1 ring-fuchsia-800">
+                      <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 bg-fuchsia-950 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-fuchsia-300 ring-1 ring-fuchsia-800">
                         <FiTag className="h-2.5 w-2.5" />
                         {t("pos.dealTag")}
                       </span>
                     )}
-                  </p>
-                  <p className="truncate font-mono text-[11px] text-slate-600">
-                    {item.barcode || item.category || t("pos.uncategorized")}
                   </p>
                 </div>
 
@@ -95,7 +101,7 @@ function SaleTable({
                   </button>
                 </div>
 
-                <div className="flex items-center justify-end gap-2">
+                <div className="flex items-center justify-end gap-0.5">
                   <span className="font-semibold tabular-nums text-slate-100">
                     {currency(item.price * item.quantity)}
                   </span>

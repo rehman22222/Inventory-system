@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { FiLock, FiRefreshCw } from "react-icons/fi";
+import { FiLock, FiPrinter, FiRefreshCw } from "react-icons/fi";
 import toast from "react-hot-toast";
 import axiosInstance from "../../lib/axios";
 import PosModal from "./PosModal";
-import { currency } from "./posUtils";
+import { currency, printSlip } from "./posUtils";
 
 const STATUS_TONE = {
   completed: "text-emerald-400",
@@ -22,6 +23,7 @@ const METHOD_TONE = {
 
 function SaleHistoryModal({ canRefund, onRefund, onReprint, onClose }) {
   const { t } = useTranslation();
+  const { store: SHOP } = useSelector((state) => state.store);
   const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null); // receipt being toggled
@@ -68,11 +70,34 @@ function SaleHistoryModal({ canRefund, onRefund, onReprint, onClose }) {
     }
   };
 
+  // What this list came to. Voided and refunded rows still carry their original
+  // total, so this is what was rung up rather than what was kept — the slip says
+  // so beside each row.
+  const takings = receipts.reduce((sum, entry) => sum + Number(entry.total || 0), 0);
+
   return (
     <PosModal
       title={t("pos.history.title")}
       subtitle={t("pos.history.subtitle")}
       onClose={onClose}
+      footer={
+        receipts.length > 0 && (
+          <>
+            <span className="me-auto text-sm text-slate-400">
+              {receipts.length} ·{" "}
+              <span className="font-semibold text-slate-100">{currency(takings)}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => printSlip("sale-history-print")}
+              className="flex items-center gap-2 bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700"
+            >
+              <FiPrinter className="h-4 w-4" />
+              {t("dayClosing.print", "Print")}
+            </button>
+          </>
+        )
+      }
     >
       {loading ? (
         <p className="py-8 text-center text-sm text-slate-500">{t("pos.processing")}</p>
@@ -152,6 +177,50 @@ function SaleHistoryModal({ canRefund, onRefund, onReprint, onClose }) {
               </div>
             );
           })}
+
+          {/* The same list on the 72mm roll. */}
+          <div id="sale-history-print" className="slip hidden">
+            <div className="s-head">
+              <div className="s-shop">{SHOP?.name}</div>
+              <div className="s-title">{t("pos.history.title")}</div>
+            </div>
+            <div className="s-meta">
+              <span>{t("dayClosing.printedAt", "Printed")}</span>
+              <span>{new Date().toLocaleString()}</span>
+            </div>
+            <div className="s-rule" />
+
+            {receipts.map((entry) => (
+              <div key={`slip-${entry.receiptNo}`} className="s-row">
+                <div className="s-row-top">
+                  <span>{entry.receiptNo}</span>
+                  <span>{currency(entry.total)}</span>
+                </div>
+                <div className="s-row-sub">
+                  <span>
+                    {new Date(entry.createdAt).toLocaleTimeString(undefined, {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}{" "}
+                    · {t(`common.payments.${entry.paymentMethod}`, entry.paymentMethod)}
+                  </span>
+                  {/* A voided or refunded row still shows its original total,
+                      so the state has to travel with it or the column lies. */}
+                  <span>{entry.status !== "completed" ? entry.status : ""}</span>
+                </div>
+              </div>
+            ))}
+
+            <div className="s-rule" />
+            <div className="s-total">
+              <span>{t("pos.total")}</span>
+              <span>{currency(takings)}</span>
+            </div>
+            <div className="s-line">
+              <span>{t("dayClosing.salesCount")}</span>
+              <span>{receipts.length}</span>
+            </div>
+          </div>
         </div>
       )}
     </PosModal>

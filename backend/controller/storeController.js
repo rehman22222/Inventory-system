@@ -39,8 +39,20 @@ module.exports.getStore = async (req, res) => {
 // direct owner edit and the approved-admin-request path, so both routes agree
 // on what's allowed. Returns { ok, message?, status? } and does NOT save.
 const applyStoreChanges = (store, changes = {}) => {
-  const { name, addressLines, phone, footer, qrTemplate, currency, timezone, notificationsEmail, exchangeRates } =
-    changes;
+  const {
+    name,
+    addressLines,
+    phone,
+    footer,
+    qrTemplate,
+    currency,
+    timezone,
+    notificationsEmail,
+    exchangeRates,
+    directPrint,
+  } = changes;
+
+  if (directPrint !== undefined) store.directPrint = Boolean(directPrint);
 
   if (name !== undefined) {
     const clean = String(name).trim();

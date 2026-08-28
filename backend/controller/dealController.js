@@ -44,10 +44,35 @@ const validateDiscount = (discount, discountType) => {
   return null;
 };
 
+const QUANTITY_RULES = ["repeat_sets", "single_set"];
+
+// An unrecognised rule becomes absent rather than wrong: the matcher reads
+// absence as "whatever this mode always did", which is the safe answer.
+const normaliseRule = (value) =>
+  QUANTITY_RULES.includes(value) ? value : undefined;
+
+// Blank clears the date; anything unparseable is treated as not set rather than
+// stored as an Invalid Date that would silently switch the deal off.
+const parseDate = (value) => {
+  if (value === null || value === undefined || value === "") return undefined;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+};
+
 // Shared creation logic. Both the direct endpoint and the approval executor go
 // through here, so an approved deal is identical to a directly-created one.
 module.exports.createDealRecord = async (
-  { name, discount, discountType = "amount", items, mode = "bundle", groupQuantity = 0 },
+  {
+    name,
+    discount,
+    discountType = "amount",
+    items,
+    mode = "bundle",
+    groupQuantity = 0,
+    quantityRule,
+    startsAt,
+    endsAt,
+  },
   actor = {}
 ) => {
   if (!name || !String(name).trim()) {
@@ -89,6 +114,9 @@ module.exports.createDealRecord = async (
     discountType,
     mode: dealMode,
     groupQuantity: dealMode === "mix" ? groupSize : 0,
+    quantityRule: normaliseRule(quantityRule),
+    startsAt: parseDate(startsAt),
+    endsAt: parseDate(endsAt),
     items: cleanItems,
     createdBy: actor._id,
   });
@@ -148,7 +176,21 @@ module.exports.updateDeal = async (req, res) => {
       return res.status(404).json({ message: "Deal not found" });
     }
 
-    const { name, discount, discountType, items, active } = req.body;
+    const {
+      name,
+      discount,
+      discountType,
+      items,
+      active,
+      // `mode` and `groupQuantity` used to be dropped here, so a deal's type
+      // could never be edited once created — the only way to turn a bundle into
+      // a pick-any-N was to delete it and start again.
+      mode,
+      groupQuantity,
+      quantityRule,
+      startsAt,
+      endsAt,
+    } = req.body;
 
     if (name !== undefined) {
       if (!String(name).trim()) {
@@ -172,12 +214,50 @@ module.exports.updateDeal = async (req, res) => {
       deal.discountType = nextType;
     }
 
-    if (items !== undefined) {
-      const cleanItems = normaliseItems(items);
-      if (dealUnitCount(cleanItems) < 2) {
-        return res.status(400).json({ message: "Pick at least two units or products for the deal" });
+    // Mode, list and group size decide each other's validity, so they are
+    // resolved together against whatever the deal already holds and checked as
+    // one — editing only the mode must not leave a mix deal with no number, and
+    // editing only the list must not be judged by the wrong mode's rule.
+    const nextMode =
+      mode === undefined ? deal.mode : mode === "mix" ? "mix" : "bundle";
+    const nextItems = items === undefined ? deal.items : normaliseItems(items);
+    const nextGroup =
+      groupQuantity === undefined
+        ? Number(deal.groupQuantity || 0)
+        : Math.floor(Number(groupQuantity || 0));
+
+    if (nextMode === "mix") {
+      if (!nextItems.length) {
+        return res.status(400).json({ message: "Pick at least one product for the deal" });
       }
-      deal.items = cleanItems;
+      if (!Number.isFinite(nextGroup) || nextGroup < 2) {
+        return res.status(400).json({ message: "Set how many to buy — at least two" });
+      }
+    } else if (dealUnitCount(nextItems) < 2) {
+      return res.status(400).json({ message: "Pick at least two units or products for the deal" });
+    }
+
+    if (items !== undefined) {
+      const found = await Product.countDocuments({
+        _id: { $in: nextItems.map((item) => item.product) },
+      });
+      if (found !== nextItems.length) {
+        return res.status(400).json({ message: "One or more products no longer exist" });
+      }
+      deal.items = nextItems;
+    }
+
+    deal.mode = nextMode;
+    deal.groupQuantity = nextMode === "mix" ? nextGroup : 0;
+
+    if (quantityRule !== undefined) {
+      deal.quantityRule = normaliseRule(quantityRule);
+    }
+    if (startsAt !== undefined) {
+      deal.startsAt = parseDate(startsAt) || null;
+    }
+    if (endsAt !== undefined) {
+      deal.endsAt = parseDate(endsAt) || null;
     }
 
     if (active !== undefined) {
