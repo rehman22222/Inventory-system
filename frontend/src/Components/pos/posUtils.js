@@ -138,7 +138,7 @@ const withinWindow = (deal, now) => {
 // cart: [{ productId, quantity, price }]; deals: redux deal docs.
 // Returns { applied: [{ dealId, name, sets, normal, amount, products }], total }
 // where `normal` is the shelf value of the units inside the sets.
-export const applicableDeals = (cart, deals, chosenIds, overrides, setCounts) => {
+export const applicableDeals = (cart, deals, chosenIds, overrides, setCounts, lockedSets) => {
   const cartMap = new Map();
   (cart || []).forEach((item) => {
     const key = String(item.productId);
@@ -157,6 +157,10 @@ export const applicableDeals = (cart, deals, chosenIds, overrides, setCounts) =>
   // two and the counter still only want to give one.
   const wanted = new Map(
     Object.entries(setCounts || {}).map(([id, n]) => [String(id), Math.floor(Number(n))]),
+  );
+  // Sets already given, held to the units they were given on.
+  const frozen = new Map(
+    Object.entries(lockedSets || {}).map(([id, alloc]) => [String(id), alloc]),
   );
   const now = Date.now();
   const applied = [];
@@ -217,20 +221,57 @@ export const applicableDeals = (cart, deals, chosenIds, overrides, setCounts) =>
       // Dearest first; the sort is stable, so equal prices keep basket order.
       units.sort((a, b) => b.price - a.price);
 
-      let inSets;
-      if (rule === "repeat_sets") {
-        sets = capSets(Math.floor(units.length / need));
-        inSets = units.slice(0, sets * need);
-        setValue = inSets.reduce((sum, unit) => sum + unit.price, 0);
-      } else {
-        sets = 1;
-        inSets = deal.discountType === "setPrice" ? units.slice(0, need) : units;
-        setValue = inSets.reduce((sum, unit) => sum + unit.price, 0);
-      }
+      // A set the cashier has already given is not re-chosen. Once "these three
+      // for €18" is on the screen it stays on those three: scanning another of
+      // one of them adds a unit at shelf price rather than quietly shuffling
+      // which items are in the offer while the customer is watching.
+      //
+      // Safe to take from the till because it can only ever narrow the offer.
+      // Left to itself this picks the dearest qualifying units, so any other
+      // selection is worth the same or less — a locked set cannot be used to
+      // enlarge a discount, only to hold one still.
+      const locked = frozen.get(String(deal._id));
+      if (locked) {
+        const held = [];
+        for (const [id, count] of Object.entries(locked)) {
+          const line = cartMap.get(String(id));
+          if (!eligible.has(String(id)) || !line) continue;
+          const take = Math.min(
+            Math.floor(Number(count) || 0),
+            Math.floor(Number(line.quantity || 0)),
+          );
+          for (let i = 0; i < take; i += 1) {
+            held.push({ id: String(id), price: Number(line.price || 0) });
+          }
+        }
 
-      inSets.forEach((unit) => {
-        allocation[unit.id] = (allocation[unit.id] || 0) + 1;
-      });
+        // Broken up since — someone took an item back off the basket — so there
+        // is no set left to honour and the offer falls away.
+        if (held.length < need) return;
+
+        held.sort((a, b) => b.price - a.price);
+        sets = capSets(Math.floor(held.length / need));
+        const inSets = held.slice(0, sets * need);
+        setValue = inSets.reduce((sum, unit) => sum + unit.price, 0);
+        for (const unit of inSets) {
+          allocation[unit.id] = (allocation[unit.id] || 0) + 1;
+        }
+        } else {
+        let inSets;
+        if (rule === "repeat_sets") {
+          sets = capSets(Math.floor(units.length / need));
+          inSets = units.slice(0, sets * need);
+          setValue = inSets.reduce((sum, unit) => sum + unit.price, 0);
+        } else {
+          sets = 1;
+          inSets = deal.discountType === "setPrice" ? units.slice(0, need) : units;
+          setValue = inSets.reduce((sum, unit) => sum + unit.price, 0);
+        }
+
+        inSets.forEach((unit) => {
+          allocation[unit.id] = (allocation[unit.id] || 0) + 1;
+        });
+      }
     } else {
       let complete = Infinity;
       let oneSet = 0;

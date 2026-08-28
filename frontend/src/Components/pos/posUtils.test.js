@@ -396,3 +396,62 @@ describe("which units land in the set", () => {
     expect(offer.normal).toBe(22);
   });
 });
+
+describe("a set the cashier has given stays on the items it was given on", () => {
+  const deal = [
+    mixDeal({ items: [{ product: "A" }, { product: "B" }, { product: "C" }] }),
+  ];
+  const chosen = ["D1"];
+  const basket = (a, b, c) =>
+    [
+      { productId: "A", quantity: a, price: 7 },
+      { productId: "B", quantity: b, price: 7 },
+      { productId: "C", quantity: c, price: 7 },
+    ].filter((line) => line.quantity > 0);
+
+  test("scanning another of something already in the set leaves the set alone", () => {
+    const [given] = applicableDeals(basket(1, 1, 1), deal, chosen).applied;
+    const lock = { D1: given.allocation };
+
+    // Without the lock the matcher would re-pick and push C out for a second A.
+    const [loose] = applicableDeals(basket(2, 1, 1), deal, chosen).applied;
+    expect(loose.allocation).toEqual({ A: 2, B: 1 });
+
+    const [held] = applicableDeals(
+      basket(2, 1, 1),
+      deal,
+      chosen,
+      undefined,
+      undefined,
+      lock
+    ).applied;
+    expect(held.allocation).toEqual({ A: 1, B: 1, C: 1 });
+  });
+
+  test("the offer falls away if the set is broken up", () => {
+    const lock = { D1: { A: 1, B: 1, C: 1 } };
+    const gone = applicableDeals(
+      basket(2, 0, 1),
+      deal,
+      chosen,
+      undefined,
+      undefined,
+      lock
+    );
+    expect(gone.applied).toHaveLength(0);
+  });
+
+  test("a named set can never be worth more than the one the matcher would pick", () => {
+    const cart = [
+      { productId: "A", quantity: 1, price: 9 },
+      { productId: "B", quantity: 1, price: 7 },
+      { productId: "C", quantity: 1, price: 5 },
+    ];
+    const free = applicableDeals(cart, deal, chosen).total;
+    // Naming the cheapest units cannot buy a bigger discount than the default.
+    const named = applicableDeals(cart, deal, chosen, undefined, undefined, {
+      D1: { C: 1, B: 1, A: 1 },
+    }).total;
+    expect(named).toBeLessThanOrEqual(free);
+  });
+});

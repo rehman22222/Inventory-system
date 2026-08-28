@@ -132,6 +132,9 @@ function POSPage() {
   // How many complete sets of each offer the cashier chose to give. A basket can
   // qualify for two and the counter still only want to hand over one.
   const [dealSets, setDealSets] = useState({});
+  // The units each applied offer is being given on, fixed at the moment it was
+  // given. See applyDeal.
+  const [dealLocks, setDealLocks] = useState({});
   const [editingDeal, setEditingDeal] = useState(null);
   const [taxEnabled, setTaxEnabled] = useState(false);
   // The tax rate is the shop's call, not ours — no hardcoded percentage. The
@@ -408,8 +411,8 @@ function POSPage() {
   // at shelf price. The server recomputes all of it at checkout — these values
   // only drive the screen.
   const dealMatch = useMemo(
-    () => applicableDeals(cart, allDeals, appliedDealIds, dealOverrides, dealSets),
-    [cart, allDeals, appliedDealIds, dealOverrides, dealSets]
+    () => applicableDeals(cart, allDeals, appliedDealIds, dealOverrides, dealSets, dealLocks),
+    [cart, allDeals, appliedDealIds, dealOverrides, dealSets, dealLocks]
   );
   // The same matcher asked a different question: what could this basket have?
   // Anything it finds that is not already applied is an offer to show. Asking
@@ -429,19 +432,45 @@ function POSPage() {
   // Deals live in the sidebar as their own tile; see dealsCategoryId below.
   const dealRoom = Math.max(subtotal - voucherDiscount - manualDiscount, 0);
   const dealDiscount = Math.min(dealMatch.total, dealRoom);
-  // Change how many sets an applied offer gives, in place. Clamped here as well
-  // as in the matcher so the number on screen can never be one the basket
-  // cannot back up.
-  const setDealSetCount = (dealId, next) =>
-    setDealSets((current) => ({
-      ...current,
-      [String(dealId)]: Math.max(1, Math.floor(Number(next) || 1)),
-    }));
+  // Which units an offer is being given on, worked out fresh and then held.
+  // Asked of the matcher with the lock deliberately absent, because this is the
+  // moment the set is chosen — everything after this holds it still.
+  const chooseSet = (dealId, sets) => {
+    const id = String(dealId);
+    const picked = applicableDeals(
+      cart,
+      allDeals,
+      [id],
+      undefined,
+      sets ? { [id]: sets } : undefined
+    ).applied[0];
+    return picked?.allocation || null;
+  };
 
-  const applyDeal = (dealId) =>
+  // Change how many sets an applied offer gives, in place. The set is chosen
+  // again at the new count: going from one to two has to reach further into the
+  // basket, and the old lock only names enough units for one.
+  const setDealSetCount = (dealId, next) => {
+    const id = String(dealId);
+    const wanted = Math.max(1, Math.floor(Number(next) || 1));
+    setDealSets((current) => ({ ...current, [id]: wanted }));
+    const picked = chooseSet(id, wanted);
+    setDealLocks((current) => ({ ...current, [id]: picked }));
+  };
+
+  const applyDeal = (dealId) => {
+    const id = String(dealId);
     setAppliedDealIds((current) =>
-      current.includes(String(dealId)) ? current : [...current, String(dealId)]
+      current.includes(id) ? current : [...current, id]
     );
+    // Fix the offer to the units it is being given on. From here, scanning
+    // another of something already in the set adds it at shelf price rather
+    // than quietly reshuffling which items are in the offer — the box on
+    // screen is a promise the cashier has already made out loud.
+    setDealLocks((current) =>
+      current[id] ? current : { ...current, [id]: chooseSet(id, dealSets[id]) }
+    );
+  };
 
   const removeDeal = (dealId, dealName) => {
     setAppliedDealIds((current) => current.filter((id) => id !== String(dealId)));
@@ -455,6 +484,11 @@ function POSPage() {
     // back on later starts from the shop's figure rather than the last edit.
     setDealOverrides((current) => {
       const { [String(dealId)]: _removed, ...rest } = current;
+      return rest;
+    });
+    // And forgets which units it was on, so giving it again chooses afresh.
+    setDealLocks((current) => {
+      const { [String(dealId)]: _dropped, ...rest } = current;
       return rest;
     });
   };
@@ -733,6 +767,7 @@ function POSPage() {
     setAppliedDealIds([]);
     setDealOverrides({});
     setDealSets({});
+    setDealLocks({});
     setTaxEnabled(false);
     setBuffer("");
     setMultiplier(0);
@@ -905,8 +940,10 @@ function POSPage() {
     dealIds: dealMatch.applied.map((entry) => String(entry.dealId)),
     // Hand-typed prices, if any. The server clamps and logs them.
     dealOverrides,
-    // How many complete sets of each the cashier chose to give.
+    // How many complete sets of each the cashier chose to give, and the units
+    // each was given on.
     dealSets,
+    dealLocks,
     items: cart.map((item) => ({ product: item.productId, quantity: item.quantity })),
   });
 
@@ -924,6 +961,7 @@ function POSPage() {
     setAppliedDealIds([]);
     setDealOverrides({});
     setDealSets({});
+    setDealLocks({});
     setTaxEnabled(false);
   };
 

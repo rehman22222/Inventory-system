@@ -117,6 +117,10 @@ module.exports.checkout = async (req, res) => {
       // How many complete sets of each offer the cashier chose to give. The
       // basket may qualify for more; giving fewer is the counter's call.
       dealSets = {},
+      // Which units each applied offer was given on. Honoured but never
+      // trusted to enlarge anything: left to itself the matcher picks the
+      // dearest qualifying units, so a named set is worth the same or less.
+      dealLocks = {},
     } = req.body;
 
     // Ids only — the amounts stay this server's business.
@@ -133,6 +137,26 @@ module.exports.checkout = async (req, res) => {
             mongoose.isValidObjectId(String(id)) && Number.isFinite(Number(n)) && Number(n) > 0,
         )
         .map(([id, n]) => [String(id), Math.floor(Number(n))]),
+    );
+
+    const lockedDealSets = Object.fromEntries(
+      Object.entries(dealLocks && typeof dealLocks === "object" ? dealLocks : {})
+        .slice(0, 50)
+        .filter(([id, alloc]) => mongoose.isValidObjectId(String(id)) && alloc && typeof alloc === "object")
+        .map(([id, alloc]) => [
+          String(id),
+          Object.fromEntries(
+            Object.entries(alloc)
+              .slice(0, 200)
+              .filter(
+                ([pid, n]) =>
+                  mongoose.isValidObjectId(String(pid)) &&
+                  Number.isFinite(Number(n)) &&
+                  Number(n) > 0,
+              )
+              .map(([pid, n]) => [String(pid), Math.floor(Number(n))]),
+          ),
+        ]),
     );
 
     const typedDealPrices = Object.fromEntries(
@@ -324,6 +348,7 @@ module.exports.checkout = async (req, res) => {
       chosenDealIds,
       typedDealPrices,
       chosenSetCounts,
+      lockedDealSets,
     );
 
     // What this basket qualified for, whether or not it was taken. Asked of the

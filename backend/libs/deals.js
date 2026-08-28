@@ -50,7 +50,7 @@ const withinWindow = (deal, now) => {
 // without doing the sum again, and `configuredAmount` is what the deal as
 // written would have given — kept apart from `amount` so a hand-priced sale can
 // be told from an ordinary one afterwards.
-function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts) {
+function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts, lockedSets) {
   const chosen = new Set((chosenIds || []).map(String));
   const typed = new Map(
     Object.entries(overrides || {}).map(([id, price]) => [String(id), Number(price)]),
@@ -60,6 +60,11 @@ function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts) {
   // to make at the moment of sale, not the matcher's.
   const wanted = new Map(
     Object.entries(setCounts || {}).map(([id, n]) => [String(id), Math.floor(Number(n))]),
+  );
+  // Sets already given, held to the units they were given on. See the mix
+  // branch: this can only ever narrow an offer, never widen one.
+  const frozen = new Map(
+    Object.entries(lockedSets || {}).map(([id, alloc]) => [String(id), alloc]),
   );
   const now = Date.now();
   const applied = [];
@@ -129,25 +134,61 @@ function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts) {
       // sort is stable, so equal prices keep the basket order above.
       units.sort((a, b) => b.price - a.price);
 
-      let inSets;
-      if (rule === "repeat_sets") {
-        // Every complete group, and the units that did not fill one are simply
-        // outside the offer — which is what makes a leftover cost shelf price
-        // without needing a rule of its own.
-        sets = capSets(Math.floor(units.length / need));
-        inSets = units.slice(0, sets * need);
-        setValue = inSets.reduce((sum, unit) => sum + unit.price, 0);
-      } else {
-        sets = 1;
-        // A set price can only price the units it names; an amount or a
-        // percentage comes off everything that qualified.
-        inSets =
-          deal.discountType === "setPrice" ? units.slice(0, need) : units;
-        setValue = inSets.reduce((sum, unit) => sum + unit.price, 0);
-      }
+      // A set the cashier has already given is not re-chosen. Once "these three
+      // for €18" is on the screen it stays on those three: scanning another of
+      // one of them adds a unit at shelf price rather than quietly shuffling
+      // which items are in the offer while the customer is watching.
+      //
+      // Safe to take from the till because it can only ever narrow the offer.
+      // Left to itself this picks the dearest qualifying units, so any other
+      // selection is worth the same or less — a locked set cannot be used to
+      // enlarge a discount, only to hold one still.
+      const locked = frozen.get(String(deal._id));
+      if (locked) {
+        const held = [];
+        for (const [id, count] of Object.entries(locked)) {
+          const line = cartMap.get(String(id));
+          if (!eligible.has(String(id)) || !line) continue;
+          const take = Math.min(
+            Math.floor(Number(count) || 0),
+            Math.floor(Number(line.quantity || 0)),
+          );
+          for (let i = 0; i < take; i += 1) {
+            held.push({ id: String(id), price: Number(line.price || 0) });
+          }
+        }
 
-      for (const unit of inSets) {
-        allocation[unit.id] = (allocation[unit.id] || 0) + 1;
+        // Broken up since — someone took an item back off the basket — so there
+        // is no set left to honour and the offer falls away.
+        if (held.length < need) continue;
+
+        held.sort((a, b) => b.price - a.price);
+        sets = capSets(Math.floor(held.length / need));
+        const inSets = held.slice(0, sets * need);
+        setValue = inSets.reduce((sum, unit) => sum + unit.price, 0);
+        for (const unit of inSets) {
+          allocation[unit.id] = (allocation[unit.id] || 0) + 1;
+        }
+      } else {
+        let inSets;
+        if (rule === "repeat_sets") {
+          // Every complete group, and the units that did not fill one are
+          // simply outside the offer — which is what makes a leftover cost
+          // shelf price without needing a rule of its own.
+          sets = capSets(Math.floor(units.length / need));
+          inSets = units.slice(0, sets * need);
+          setValue = inSets.reduce((sum, unit) => sum + unit.price, 0);
+        } else {
+          sets = 1;
+          // A set price can only price the units it names; an amount or a
+          // percentage comes off everything that qualified.
+          inSets = deal.discountType === "setPrice" ? units.slice(0, need) : units;
+          setValue = inSets.reduce((sum, unit) => sum + unit.price, 0);
+        }
+
+        for (const unit of inSets) {
+          allocation[unit.id] = (allocation[unit.id] || 0) + 1;
+        }
       }
     } else {
       let complete = Infinity;
