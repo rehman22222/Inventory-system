@@ -186,7 +186,8 @@
     "payments": {
       "cash": "Cash",
       "creditcard": "Card",
-      "wallet": "Wallet"
+      "wallet": "Wallet",
+      "credit": "Credit"
     },
     "phone": "Phone",
     "address": "Address"
@@ -645,7 +646,9 @@
       "thanks": "Thank you!",
       "thanksShopping": "Thank you for shopping with us",
       "keepReceipt": "Keep this receipt for returns or exchanges",
-      "qrCaption": "Scan for receipt {{ref}}"
+      "qrCaption": "Scan for receipt {{ref}}",
+      "paid": "PAID",
+      "unpaid": "ON ACCOUNT"
     },
     "productSearch": {
       "title": "Product search",
@@ -728,7 +731,14 @@
       "customerEmail": "Customer email",
       "send": "Send",
       "emailed": "Receipt sent to {{email}}",
-      "emailFailed": "Could not send the receipt"
+      "emailFailed": "Could not send the receipt",
+      "paidBy": "Paid by",
+      "onAccount": "On account — not yet paid",
+      "emailOptional": "Email (optional)",
+      "proceed": "Proceed"
+    },
+    "tile": {
+      "outOfStock": "Out of stock"
     }
   },
   "sales": {

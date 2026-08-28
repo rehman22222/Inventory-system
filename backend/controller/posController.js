@@ -23,7 +23,14 @@ const DEFAULT_LOW_STOCK = 10;
 
 // What the shop takes. Kept in step with the Receipt/Sale schema enums — a till
 // running an old page after a deploy must get a clear 400, not a schema 500.
-const PAYMENT_METHODS = ["cash", "creditcard", "wallet"];
+// "credit" is a sale on account: the goods have gone, the money has not. It is
+// a tender so the till can settle a basket with it, but it is the one that
+// leaves nothing in the drawer — the receipt says so, and day closing counts it
+// on its own line rather than as takings.
+//
+// "wallet" stays in the list even though the till no longer offers it: receipts
+// already written with it have to keep reading back.
+const PAYMENT_METHODS = ["cash", "creditcard", "credit", "wallet"];
 
 const money = (value) => Math.round(Number(value || 0) * 100) / 100;
 

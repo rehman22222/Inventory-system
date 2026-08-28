@@ -77,12 +77,15 @@ const dashboardByRole = {
   staff: "/StaffDashboard",
 };
 
-// What the shop actually takes over the counter. "wallet" is the digital/online
-// tender (Apple Pay, Google Pay, Revolut).
+// What the shop takes over the counter. "wallet" is gone from the buttons but
+// stays valid in the models, so receipts already written with it still read.
 const paymentMethods = [
   { label: "Cash", value: "cash" },
   { label: "Card", value: "creditcard" },
-  { label: "Wallet", value: "wallet" },
+  // Sold on account: the goods go, the money does not. Kept as a tender so the
+  // basket can be settled with it, but nothing lands in the drawer and the
+  // receipt says so rather than stamping itself paid.
+  { label: "Credit", value: "credit" },
 ];
 
 const TILL = "TERMINAL-MAIN";
@@ -1637,8 +1640,17 @@ function POSPage() {
                       type="button"
                       onClick={() => tapProduct(product)}
                       disabled={stock <= 0}
-                      className="group flex flex-col gap-2 border border-slate-800 bg-gradient-to-b from-slate-800 to-slate-900 p-2.5 text-start transition hover:border-cyan-700 hover:from-slate-700 active:scale-[0.98] disabled:opacity-40"
+                      className="group relative flex flex-col gap-2 border border-slate-800 bg-gradient-to-b from-slate-800 to-slate-900 p-2.5 text-start transition hover:border-cyan-700 hover:from-slate-700 active:scale-[0.98] disabled:opacity-40"
                     >
+                      {/* Said in words across the tile, not left to a dimmed
+                          card and a red zero. A cashier reaching for something
+                          that is not there needs to know why the tap did
+                          nothing before they tap it again. */}
+                      {stock <= 0 && (
+                        <span className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 bg-red-900/80 py-1 text-center text-[10px] font-bold uppercase tracking-widest text-red-100">
+                          {t("pos.tile.outOfStock", "Out of stock")}
+                        </span>
+                      )}
                       <div className="flex items-start gap-2">
                         {product.image?.url ? (
                           <img
@@ -1717,6 +1729,16 @@ function POSPage() {
       {/* Printable receipt — everything else is hidden by the print stylesheet. */}
       {receipt && (
         <div id="receipt" className="hidden">
+          {/* Stamped across the slip, the way a paid invoice is. A sale on
+              account is the one that must not carry it — the customer is
+              walking out owing the shop money, and a slip saying PAID is the
+              thing that gets argued about later. */}
+          <div className="r-stamp">
+            {(receipt.payments || []).some((entry) => entry.method === "credit")
+              ? t("pos.receiptDoc.unpaid", "ON ACCOUNT")
+              : t("pos.receiptDoc.paid", "PAID")}
+          </div>
+
           {/* Header */}
           <div className="r-head">
             <div className="r-shop">{SHOP?.name}</div>

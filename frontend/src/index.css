@@ -66,6 +66,45 @@
     line-height: 1.5;
   }
 
+  /* The stamp, laid across the slip the way it is on a paid invoice. Outline
+     rather than solid, and angled, so it reads as a stamp and still leaves the
+     figures under it legible — a thermal head prints this as a hollow shape,
+     which is exactly what a rubber stamp looks like on paper.
+
+     Sits behind the content because nothing on a receipt is worth obscuring. */
+  #receipt .r-stamp {
+    position: absolute;
+    top: 38%;
+    inset-inline-start: 0;
+    width: 100%;
+    text-align: center;
+    transform: rotate(-18deg);
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: transparent;
+    -webkit-text-stroke: 1.5px #000;
+    opacity: 0.28;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* Everything else sits over it. */
+  #receipt .r-head,
+  #receipt .r-meta,
+  #receipt .r-rule,
+  #receipt .r-table,
+  #receipt .r-line,
+  #receipt .r-total,
+  #receipt .r-savedbox,
+  #receipt .r-qrwrap,
+  #receipt .r-thanks,
+  #receipt .r-footer,
+  #receipt .r-tail {
+    position: relative;
+    z-index: 1;
+  }
+
   #receipt .r-center {
     text-align: center;
   }

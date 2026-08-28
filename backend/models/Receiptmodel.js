@@ -29,7 +29,7 @@ const RefundEntrySchema = new mongoose.Schema(
     // How the money actually went back. Not always how it came in: a card sale
     // handed back in cash is an ordinary thing at a counter, and the drawer
     // needs to know which it was.
-    method: { type: String, enum: ["cash", "creditcard", "wallet"] },
+    method: { type: String, enum: ["cash", "creditcard", "credit", "wallet"] },
     amount: { type: Number, default: 0 },
     items: [
       {
@@ -100,7 +100,7 @@ const ReceiptSchema = new mongoose.Schema(
         method: {
           type: String,
           // "wallet" covers digital/online tenders (Apple Pay, Google Pay, Revolut).
-          enum: ["cash", "creditcard", "wallet"],
+          enum: ["cash", "creditcard", "credit", "wallet"],
           required: true,
         },
         amount: { type: Number, required: true },
@@ -108,7 +108,7 @@ const ReceiptSchema = new mongoose.Schema(
     ],
     paymentMethod: {
       type: String,
-      enum: ["cash", "creditcard", "wallet", "split"],
+      enum: ["cash", "creditcard", "credit", "wallet", "split"],
       required: true,
     },
     amountTendered: { type: Number },
