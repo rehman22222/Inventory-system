@@ -1853,6 +1853,28 @@ function POSPage() {
             <span>{currency(receipt.total)}</span>
           </div>
 
+          {/* VAT breakdown. Printed even at 0%, because a receipt that shows
+              its rate and its value is the one a customer can hand to their own
+              accountant — and "no VAT on this" is itself a thing worth saying
+              in writing. The rate this shop charges is the only band it has, so
+              this is one row rather than a table of them. */}
+          <div className="r-rule" />
+          <div className="r-center r-strong">
+            {t("pos.receiptDoc.vatBreakdown", "VAT breakdown")}
+          </div>
+          <div className="r-line r-vathead">
+            <span>{t("pos.receiptDoc.vatRate", "VAT")}</span>
+            <span>{t("pos.total")}</span>
+            <span>{t("pos.receiptDoc.vatValue", "VAT value")}</span>
+          </div>
+          <div className="r-line r-vatrow">
+            <span>
+              {(Math.round(Number(receipt.taxRate || 0) * 10000) / 100).toFixed(2)}%
+            </span>
+            <span>{currency(receipt.total - (receipt.tax || 0))}</span>
+            <span>{currency(receipt.tax || 0)}</span>
+          </div>
+
           {/* Payments */}
           <div className="r-rule" />
           <div className="r-strong">{t("pos.receiptDoc.payments")}</div>
@@ -1871,6 +1893,20 @@ function POSPage() {
               <span>{currency(receipt.changeDue)}</span>
             </div>
           )}
+
+          {/* What is still owed. Zero on an ordinary sale, and the whole total
+              on one sold on account — which is the line that makes a credit
+              slip worth handing over at all. */}
+          <div className="r-line r-strong">
+            <span>{t("pos.receiptDoc.totalDue", "Total due")}</span>
+            <span>
+              {currency(
+                (receipt.payments || []).some((entry) => entry.method === "credit")
+                  ? receipt.total
+                  : 0
+              )}
+            </span>
+          </div>
 
           {/* The line customers actually look for. Worth its own box. */}
           {receipt.discount > 0 && (

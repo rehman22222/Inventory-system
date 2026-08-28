@@ -95,6 +95,8 @@
   #receipt .r-rule,
   #receipt .r-table,
   #receipt .r-line,
+  #receipt .r-vathead,
+  #receipt .r-vatrow,
   #receipt .r-total,
   #receipt .r-savedbox,
   #receipt .r-qrwrap,
@@ -220,6 +222,34 @@
   }
   #receipt .r-save {
     font-weight: 700;
+  }
+
+  /* The VAT block is three columns, not the two every other line here is, so
+     it gets its own rule rather than fighting the flex default. */
+  #receipt .r-vathead,
+  #receipt .r-vatrow {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 4px;
+  }
+  #receipt .r-vathead span:nth-child(2),
+  #receipt .r-vatrow span:nth-child(2) {
+    text-align: center;
+  }
+  #receipt .r-vathead span:last-child,
+  #receipt .r-vatrow span:last-child {
+    text-align: right;
+  }
+  #receipt .r-vathead {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid #000;
+    padding-bottom: 2px;
+  }
+  #receipt .r-vatrow {
+    padding-top: 2px;
   }
   /* The units an offer actually covered, listed under it. Indented and a size
      down so the eye reads them as belonging to the line above rather than as

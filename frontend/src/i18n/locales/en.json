@@ -648,7 +648,11 @@
       "keepReceipt": "Keep this receipt for returns or exchanges",
       "qrCaption": "Scan for receipt {{ref}}",
       "paid": "PAID",
-      "unpaid": "ON ACCOUNT"
+      "unpaid": "ON ACCOUNT",
+      "vatBreakdown": "VAT breakdown",
+      "vatRate": "VAT",
+      "vatValue": "VAT value",
+      "totalDue": "Total due"
     },
     "productSearch": {
       "title": "Product search",
