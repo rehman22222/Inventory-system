@@ -121,6 +121,11 @@ module.exports.checkout = async (req, res) => {
       // trusted to enlarge anything: left to itself the matcher picks the
       // dearest qualifying units, so a named set is worth the same or less.
       dealLocks = {},
+      // One entry per unit, in the order it was rung up. Only ever breaks ties:
+      // the matcher still takes the dearest qualifying units first, so this
+      // decides which of several equally priced ones fall into a set — which is
+      // what makes the sets land the way the customer put them on the counter.
+      scanOrder = [],
     } = req.body;
 
     // Ids only — the amounts stay this server's business.
@@ -158,6 +163,11 @@ module.exports.checkout = async (req, res) => {
           ),
         ]),
     );
+
+    const scannedOrder = (Array.isArray(scanOrder) ? scanOrder : [])
+      .slice(0, 500)
+      .map((id) => String(id))
+      .filter((id) => mongoose.isValidObjectId(id));
 
     const typedDealPrices = Object.fromEntries(
       Object.entries(dealOverrides && typeof dealOverrides === "object" ? dealOverrides : {})
@@ -349,6 +359,7 @@ module.exports.checkout = async (req, res) => {
       typedDealPrices,
       chosenSetCounts,
       lockedDealSets,
+      scannedOrder,
     );
 
     // What this basket qualified for, whether or not it was taken. Asked of the

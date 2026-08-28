@@ -500,3 +500,80 @@ describe("holding a set does not freeze what the basket qualifies for", () => {
     expect(held.maxSets).toBe(2);
   });
 });
+
+describe("sets fall the way the customer put them on the counter", () => {
+  const deal = [
+    mixDeal({
+      items: ["a", "b", "c", "d", "e"].map((product) => ({ product })),
+    }),
+  ];
+  const chosen = ["D1"];
+  // The basket merges these onto five lines; the order is lost with it.
+  const cart = [
+    { productId: "a", quantity: 3, price: 7 },
+    { productId: "b", quantity: 3, price: 7 },
+    { productId: "c", quantity: 1, price: 7 },
+    { productId: "d", quantity: 1, price: 7 },
+    { productId: "e", quantity: 1, price: 7 },
+  ];
+
+  test("a,b,c then a,b,d then a,b,e makes exactly those three sets", () => {
+    const scanned = ["a", "b", "c", "a", "b", "d", "a", "b", "e"];
+    const [offer] = applicableDeals(
+      cart,
+      deal,
+      chosen,
+      undefined,
+      undefined,
+      undefined,
+      scanned
+    ).applied;
+
+    expect(offer.sets).toBe(3);
+    expect(offer.picked.slice(0, 3)).toEqual(["a", "b", "c"]);
+    expect(offer.picked.slice(3, 6)).toEqual(["a", "b", "d"]);
+    expect(offer.picked.slice(6, 9)).toEqual(["a", "b", "e"]);
+  });
+
+  test("without the order the basket's own grouping shows through", () => {
+    const [offer] = applicableDeals(cart, deal, chosen).applied;
+    expect(offer.picked.slice(0, 3)).toEqual(["a", "a", "a"]);
+  });
+
+  test("a log that has drifted cannot invent or lose a unit", () => {
+    // Names something no longer in the basket, and misses two that are.
+    const drifted = ["zz", "a", "b"];
+    const [offer] = applicableDeals(
+      cart,
+      deal,
+      chosen,
+      undefined,
+      undefined,
+      undefined,
+      drifted
+    ).applied;
+
+    expect(offer.picked).toHaveLength(9);
+    expect(offer.picked.slice(0, 2)).toEqual(["a", "b"]);
+  });
+
+  test("price still comes first — order only breaks ties", () => {
+    const mixed = [
+      { productId: "a", quantity: 1, price: 5 },
+      { productId: "b", quantity: 1, price: 9 },
+      { productId: "c", quantity: 1, price: 7 },
+      { productId: "d", quantity: 1, price: 6 },
+    ];
+    const [offer] = applicableDeals(
+      mixed,
+      deal,
+      chosen,
+      undefined,
+      undefined,
+      undefined,
+      ["a", "b", "c", "d"]
+    ).applied;
+    // Scanned first, but the €5 is still the one left out of a 3-for set.
+    expect(offer.allocation).toEqual({ b: 1, c: 1, d: 1 });
+  });
+});

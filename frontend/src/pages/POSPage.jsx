@@ -116,6 +116,10 @@ function POSPage() {
   // first one once the list loads.
   const [category, setCategory] = useState(null);
   const [cart, setCart] = useState([]);
+  // One entry per unit, in the order it was rung up. The basket merges three of
+  // a flavour onto one line, which loses the order the customer put them on the
+  // counter — and that order is what decides how the deal sets fall.
+  const [scanOrder, setScanOrder] = useState([]);
   const [selectedLine, setSelectedLine] = useState(null);
 
   const [customerName, setCustomerName] = useState(t("pos.walkIn"));
@@ -411,8 +415,9 @@ function POSPage() {
   // at shelf price. The server recomputes all of it at checkout — these values
   // only drive the screen.
   const dealMatch = useMemo(
-    () => applicableDeals(cart, allDeals, appliedDealIds, dealOverrides, dealSets, dealLocks),
-    [cart, allDeals, appliedDealIds, dealOverrides, dealSets, dealLocks]
+    () =>
+      applicableDeals(cart, allDeals, appliedDealIds, dealOverrides, dealSets, dealLocks, scanOrder),
+    [cart, allDeals, appliedDealIds, dealOverrides, dealSets, dealLocks, scanOrder]
   );
   // The same matcher asked a different question: what could this basket have?
   // Anything it finds that is not already applied is an offer to show. Asking
@@ -425,9 +430,11 @@ function POSPage() {
         allDeals,
         allDealIds(allDeals),
         undefined,
-        dealSets
+        dealSets,
+        undefined,
+        scanOrder
       ).applied.filter((entry) => !appliedDealIds.includes(String(entry.dealId))),
-    [cart, allDeals, appliedDealIds, dealSets]
+    [cart, allDeals, appliedDealIds, dealSets, scanOrder]
   );
   // Deals live in the sidebar as their own tile; see dealsCategoryId below.
   const dealRoom = Math.max(subtotal - voucherDiscount - manualDiscount, 0);
@@ -442,7 +449,9 @@ function POSPage() {
       allDeals,
       [id],
       undefined,
-      sets ? { [id]: sets } : undefined
+      sets ? { [id]: sets } : undefined,
+      undefined,
+      scanOrder
     ).applied[0];
     return picked?.allocation || null;
   };
@@ -573,6 +582,13 @@ function POSPage() {
       }
 
       setReceipt(null);
+      // Log the units as they are rung up. The matcher reconciles this against
+      // the basket, so an optimistic entry that stock later trims is skipped
+      // rather than counted — the log can lag, it cannot lie.
+      setScanOrder((current) => [
+        ...current,
+        ...Array.from({ length: Math.max(1, quantity) }, () => product._id),
+      ]);
       setCart((current) => {
         const existing = current.find((item) => item.productId === product._id);
         const wanted = (existing?.quantity || 0) + quantity;
@@ -743,22 +759,44 @@ function POSPage() {
   useBarcodeScanner((code) => handleScanCode(code), { enabled: scannerEnabled });
 
   const updateQuantity = (productId, next) => {
-    setCart((current) =>
-      current
-        .map((item) =>
-          item.productId === productId
-            ? { ...item, quantity: Math.max(0, Math.min(next, item.stock)) }
-            : item
-        )
-        .filter((item) => item.quantity > 0)
-    );
+    setCart((current) => {
+      const line = current.find((item) => item.productId === productId);
+      const wanted = Math.max(0, Math.min(next, line?.stock ?? next));
+      const delta = wanted - (line?.quantity || 0);
+
+      // Keep the scan log in step: going up appends, going down takes the most
+      // recently rung units off first, which is the one the cashier just added.
+      if (delta > 0) {
+        setScanOrder((log) => [
+          ...log,
+          ...Array.from({ length: delta }, () => productId),
+        ]);
+      } else if (delta < 0) {
+        setScanOrder((log) => {
+          const trimmed = [...log];
+          for (let i = 0; i < -delta; i += 1) {
+            const at = trimmed.lastIndexOf(productId);
+            if (at === -1) break;
+            trimmed.splice(at, 1);
+          }
+          return trimmed;
+        });
+      }
+
+      return current
+        .map((item) => (item.productId === productId ? { ...item, quantity: wanted } : item))
+        .filter((item) => item.quantity > 0);
+    });
   };
 
-  const removeFromCart = (productId) =>
+  const removeFromCart = (productId) => {
     setCart((current) => current.filter((item) => item.productId !== productId));
+    setScanOrder((log) => log.filter((id) => id !== productId));
+  };
 
   const resetSale = () => {
     setCart([]);
+    setScanOrder([]);
     setSelectedLine(null);
     setCustomerName(t("pos.walkIn"));
     setDiscount(0);
@@ -944,6 +982,8 @@ function POSPage() {
     // each was given on.
     dealSets,
     dealLocks,
+    // The order things were rung up, so the server forms the same sets.
+    scanOrder,
     items: cart.map((item) => ({ product: item.productId, quantity: item.quantity })),
   });
 
@@ -955,6 +995,7 @@ function POSPage() {
     // pane — show it, or the cashier is left staring at the product grid.
     setPane("sale");
     setCart([]);
+    setScanOrder([]);
     setSelectedLine(null);
     setDiscount(0);
     setVoucher(null);
@@ -1967,7 +2008,15 @@ function POSPage() {
               Number(allDeals.find((d) => String(d._id) === id)?.groupQuantity || 0)
             )
           );
-          const full = applicableDeals(cart, allDeals, [id]).applied[0];
+          const full = applicableDeals(
+            cart,
+            allDeals,
+            [id],
+            undefined,
+            undefined,
+            undefined,
+            scanOrder
+          ).applied[0];
           const nameOf = (productId) =>
             cart.find((line) => String(line.productId) === String(productId))?.name ||
             productId;

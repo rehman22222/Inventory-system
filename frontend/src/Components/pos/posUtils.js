@@ -138,7 +138,7 @@ const withinWindow = (deal, now) => {
 // cart: [{ productId, quantity, price }]; deals: redux deal docs.
 // Returns { applied: [{ dealId, name, sets, normal, amount, products }], total }
 // where `normal` is the shelf value of the units inside the sets.
-export const applicableDeals = (cart, deals, chosenIds, overrides, setCounts, lockedSets) => {
+export const applicableDeals = (cart, deals, chosenIds, overrides, setCounts, lockedSets, scanOrder) => {
   const cartMap = new Map();
   (cart || []).forEach((item) => {
     const key = String(item.productId);
@@ -162,6 +162,26 @@ export const applicableDeals = (cart, deals, chosenIds, overrides, setCounts, lo
   const frozen = new Map(
     Object.entries(lockedSets || {}).map(([id, alloc]) => [String(id), alloc]),
   );
+
+  // One entry per unit, in the order it was rung up, reconciled against what
+  // the basket actually holds: an entry for something no longer there is
+  // skipped, and anything the log missed keeps basket order at the end. That
+  // way a drifted log can never invent or lose a unit — the worst it can do is
+  // order them the way the basket lists them, which is where this started.
+  const scanned = [];
+  if (Array.isArray(scanOrder) && scanOrder.length) {
+    const left = new Map([...cartMap].map(([id, line]) => [id, Math.floor(Number(line?.quantity || 0))]));
+    for (const raw of scanOrder) {
+      const id = String(raw);
+      const have = left.get(id) || 0;
+      if (have <= 0) continue;
+      left.set(id, have - 1);
+      scanned.push(id);
+    }
+    for (const [id, have] of left) {
+      for (let i = 0; i < have; i += 1) scanned.push(id);
+    }
+  }
   const now = Date.now();
   const applied = [];
   let total = 0;
@@ -211,12 +231,19 @@ export const applicableDeals = (cart, deals, chosenIds, overrides, setCounts, lo
         products.push(pid);
       });
 
+      // Walked in the order things were actually scanned, which is not the same
+      // as the order the basket lists them: the basket merges three of one
+      // flavour onto one line, and the sets have to fall the way the customer
+      // put them on the counter — a, b, c then a, b, d then a, b, e.
       const units = [];
-      cartMap.forEach((line, id) => {
-        if (!eligible.has(id)) return;
-        const have = Math.floor(Number(line?.quantity || 0));
-        for (let i = 0; i < have; i += 1) units.push({ id, price: Number(line?.price || 0) });
-      });
+      for (const id of scanned.length ? scanned : [...cartMap.keys()]) {
+        if (!eligible.has(id)) continue;
+        const line = cartMap.get(id);
+        if (!line) continue;
+        // `scanned` already holds one entry per unit; a bare key list does not.
+        const have = scanned.length ? 1 : Math.floor(Number(line.quantity || 0));
+        for (let i = 0; i < have; i += 1) units.push({ id, price: Number(line.price || 0) });
+      }
 
       if (units.length < need) return;
 

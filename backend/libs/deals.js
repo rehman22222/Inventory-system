@@ -50,7 +50,7 @@ const withinWindow = (deal, now) => {
 // without doing the sum again, and `configuredAmount` is what the deal as
 // written would have given — kept apart from `amount` so a hand-priced sale can
 // be told from an ordinary one afterwards.
-function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts, lockedSets) {
+function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts, lockedSets, scanOrder) {
   const chosen = new Set((chosenIds || []).map(String));
   const typed = new Map(
     Object.entries(overrides || {}).map(([id, price]) => [String(id), Number(price)]),
@@ -66,6 +66,26 @@ function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts, locked
   const frozen = new Map(
     Object.entries(lockedSets || {}).map(([id, alloc]) => [String(id), alloc]),
   );
+
+  // One entry per unit, in the order it was rung up, reconciled against what
+  // the basket actually holds: an entry for something no longer there is
+  // skipped, and anything the log missed keeps basket order at the end. That
+  // way a drifted log can never invent or lose a unit — the worst it can do is
+  // order them the way the basket lists them, which is where this started.
+  const scanned = [];
+  if (Array.isArray(scanOrder) && scanOrder.length) {
+    const left = new Map([...cartMap].map(([id, line]) => [id, Math.floor(Number(line?.quantity || 0))]));
+    for (const raw of scanOrder) {
+      const id = String(raw);
+      const have = left.get(id) || 0;
+      if (have <= 0) continue;
+      left.set(id, have - 1);
+      scanned.push(id);
+    }
+    for (const [id, have] of left) {
+      for (let i = 0; i < have; i += 1) scanned.push(id);
+    }
+  }
   const now = Date.now();
   const applied = [];
   let total = 0;
@@ -110,11 +130,6 @@ function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts, locked
       // these 5 are in the offer" instead of badging the whole line. Five items
       // on a 3-for deal is three at the deal and two at shelf price, and a
       // customer reading the receipt has to be able to see that.
-      //
-      // Walked in BASKET order, not in the order the deal happens to list its
-      // products. With everything at one price — which is the ordinary case for
-      // these offers — that is what decides which units are in the set, and the
-      // cashier expects the first three they rang up, not three from the middle.
       const eligible = new Set();
       for (const item of items) {
         const id = String(item.product);
@@ -122,11 +137,18 @@ function applicableDeals(cartMap, deals, chosenIds, overrides, setCounts, locked
         products.push(id);
       }
 
+      // Walked in the order things were actually scanned, which is not the same
+      // as the order the basket lists them: the basket merges three of one
+      // flavour onto one line, and the sets have to fall the way the customer
+      // put them on the counter — a, b, c then a, b, d then a, b, e.
       const units = [];
-      for (const [id, line] of cartMap) {
+      for (const id of scanned.length ? scanned : [...cartMap.keys()]) {
         if (!eligible.has(id)) continue;
-        const have = Math.floor(Number(line?.quantity || 0));
-        for (let i = 0; i < have; i += 1) units.push({ id, price: Number(line?.price || 0) });
+        const line = cartMap.get(id);
+        if (!line) continue;
+        // `scanned` already holds one entry per unit; a bare key list does not.
+        const have = scanned.length ? 1 : Math.floor(Number(line.quantity || 0));
+        for (let i = 0; i < have; i += 1) units.push({ id, price: Number(line.price || 0) });
       }
 
       if (units.length < need) continue;
