@@ -33,12 +33,38 @@ const DayClosingSchema = new mongoose.Schema(
     // handed back. Cash actually out of the drawer is refunded minus this.
     exchangeCredit: { type: Number, default: 0 },
 
+    // Three different questions, three different answers. `net` above is the
+    // sales total BEFORE refunds and always has been — it was being read as
+    // "what was handed over", which overstated a shift with any refund in it.
+    //
+    // grossSales   what the sales were worth
+    // netSales     what the shop kept: grossSales - refundAmount
+    // expectedCash what should physically be in the drawer
+    // expectedCard what the terminal should show
+    //
+    // No default: absent means a closing from before these were recorded, and
+    // a stored zero would read as "handed over nothing" rather than "not
+    // measured". The screens fall back to the old fields when they are missing.
+    grossSales: { type: Number },
+    refundAmount: { type: Number },
+    netSales: { type: Number },
+    // What actually crossed the counter, as opposed to what was refunded on
+    // paper: refundAmount minus the part spent on exchanges.
+    cashHandedBack: { type: Number },
+    expectedCash: { type: Number },
+    expectedCard: { type: Number },
+
     byMethod: [
       {
         _id: false,
         method: { type: String },
+        // Taken in on this method. Unchanged meaning.
         amount: { type: Number, default: 0 },
         count: { type: Number, default: 0 },
+        // Handed back on it, and what should be left. A card sale refunded in
+        // cash moves this method's `refunded`, not the card's.
+        refunded: { type: Number },
+        expected: { type: Number },
       },
     ],
   },

@@ -362,12 +362,32 @@ async function buildDayClosing(req) {
     ["Discounts", money(closing.discount)],
     ["Tax", money(closing.tax)],
     ["Refunded", money(closing.refunded)],
-    ["Net handed over", money(closing.net)],
+    // `net` on a stored closing is the sales total BEFORE refunds, so printing
+    // it under this heading overstated every shift that had a refund in it.
+    // Older batches, written before netSales was recorded, get the subtraction
+    // this line always claimed to be doing.
+    ["Gross sales", money(closing.net)],
+    [
+      "Net kept",
+      money(
+        closing.netSales ??
+          Number(closing.net || 0) - Number(closing.refunded || 0),
+      ),
+    ],
   ];
 
-  // The drawer/terminal split — the figure the admin actually reconciles against.
+  // The drawer/terminal split — the figure the admin actually reconciles
+  // against. `expected` is what should have been there after refunds went back
+  // out; batches closed before that was recorded carry only what came in.
   (closing.byMethod || []).forEach((entry) => {
-    summary.push([`  ${entry.method}`, `${money(entry.amount)} (${entry.count})`]);
+    const expected = entry.expected ?? entry.amount;
+    const back = Number(entry.refunded || 0);
+    summary.push([
+      `  ${entry.method}`,
+      back > 0
+        ? `${money(expected)} (${entry.count}, in ${money(entry.amount)} / back ${money(back)})`
+        : `${money(expected)} (${entry.count})`,
+    ]);
   });
 
   return {

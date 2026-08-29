@@ -39,7 +39,16 @@ function DayClosingsPage() {
     dispatch(clearSelectedClosing());
   };
 
-  const totalHandedOver = closings.reduce((sum, entry) => sum + Number(entry.net || 0), 0);
+  // What the shop kept, not what it rang up. `net` on a stored closing is the
+  // sales total BEFORE refunds — summing it under a heading that says "handed
+  // over" reports a shift with a €30 refund in it as €30 richer than it was.
+  //
+  // Closings written before netSales existed fall back to the arithmetic the
+  // old screen looked like it was doing but never did.
+  const keptOf = (entry) =>
+    Number(entry.netSales ?? Number(entry.net || 0) - Number(entry.refunded || 0));
+
+  const totalHandedOver = closings.reduce((sum, entry) => sum + keptOf(entry), 0);
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
@@ -102,7 +111,13 @@ function DayClosingsPage() {
                     {closing.receiptCount}
                   </td>
                   <td className="border px-3 py-2 text-right font-semibold tabular-nums">
-                    {money(closing.net)}
+                    {money(keptOf(closing))}
+                    {/* Only worth showing where the two differ. */}
+                    {Number(closing.refunded || 0) > 0 && (
+                      <span className="block text-[11px] font-normal text-base-content/50">
+                        {t("dayClosings.gross")} {money(closing.net)}
+                      </span>
+                    )}
                   </td>
                   <td className="border px-3 py-2">
                     <div className="flex items-center justify-end gap-2">
@@ -185,8 +200,9 @@ function DayClosingsPage() {
                     {[
                       { label: t("dayClosings.gross"), value: selected.gross },
                       { label: t("dayClosings.discount"), value: selected.discount },
-                      { label: t("dayClosings.tax"), value: selected.tax },
-                      { label: t("dayClosings.net"), value: selected.net },
+                      { label: t("dayClosings.refunded"), value: selected.refunded },
+                      // Sales minus refunds — what this shift actually kept.
+                      { label: t("dayClosings.net"), value: keptOf(selected) },
                     ].map((stat) => (
                       <div
                         key={stat.label}
@@ -207,11 +223,27 @@ function DayClosingsPage() {
                     </h3>
                     <div className="space-y-1.5 rounded-lg border border-base-300 p-3">
                       {(selected.byMethod || []).map((entry) => (
-                        <div key={entry.method} className="flex justify-between text-sm">
-                          <span className="text-base-content/70">
-                            {t(`common.payments.${entry.method}`, entry.method)}
-                          </span>
-                          <span className="tabular-nums font-medium">{money(entry.amount)}</span>
+                        <div key={entry.method}>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-base-content/70">
+                              {t(`common.payments.${entry.method}`, entry.method)}
+                            </span>
+                            {/* What should have been there at handover. Older
+                                batches recorded only what was taken in. */}
+                            <span className="tabular-nums font-medium">
+                              {money(entry.expected ?? entry.amount)}
+                            </span>
+                          </div>
+                          {Number(entry.refunded || 0) > 0 && (
+                            <div className="flex justify-between text-[11px] text-base-content/50">
+                              <span>
+                                {t("dayClosing.takenIn", "Taken")} {money(entry.amount)}
+                              </span>
+                              <span>
+                                {t("dayClosing.handedBackShort", "Back")} -{money(entry.refunded)}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

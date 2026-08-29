@@ -1221,7 +1221,16 @@
     "salesOfDay": "Sales",
     "itemCount": "{{n}} items",
     "exchangeCredit": "Spent on exchanges",
-    "handedBack": "Handed back"
+    "handedBack": "Handed back",
+    "grossSales": "Gross sales",
+    "netSales": "Net sales",
+    "expectedDrawer": "Count the drawer",
+    "expectedCash": "Cash to hand over",
+    "expectedCard": "Card (terminal)",
+    "takenIn": "Taken",
+    "handedBackShort": "Back",
+    "shouldHold": "Should hold",
+    "notTakings": "not takings"
   },
   "dayClosings": {
     "title": "Day closings",
@@ -1232,7 +1241,7 @@
     "cashier": "Cashier",
     "closedAt": "Closed at",
     "sales": "Sales",
-    "net": "Net",
+    "net": "Net kept",
     "gross": "Gross",
     "discount": "Discount",
     "tax": "Tax",
@@ -1241,7 +1250,8 @@
     "loading": "Loading…",
     "empty": "No day closings yet.",
     "receipts": "Receipts ({{count}})",
-    "report": "Report"
+    "report": "Report",
+    "refunded": "Refunded"
   },
   "reports": {
     "download": "Download Report",

@@ -7,6 +7,11 @@ import axiosInstance from "../../lib/axios";
 import PosModal from "./PosModal";
 import { currency, printSlip } from "./posUtils";
 
+// Tenders that are money on a receipt and nothing in a drawer: a sale on
+// account, and credit from a return being spent on the replacement. Mirrors
+// NON_CASH_TENDERS in backend/libs/dayClosing.js.
+const NON_TAKINGS = new Set(["credit", "refund"]);
+
 const stamp = (value) =>
   value
     ? new Date(value).toLocaleString(undefined, {
@@ -29,6 +34,31 @@ const clock = (value) =>
 // End of shift: show the cashier exactly what they are about to hand over, then
 // close. Once closed the batch belongs to the admin and leaves this till's
 // history — so the confirm step is deliberate and spells that out.
+// A summary written before the takings were split into three figures still has
+// to render. `net` was the sales total before refunds, so gross falls back to
+// it and net sales falls back to net-minus-refunds — the arithmetic the screen
+// was showing the shape of but never actually doing.
+const figures = (summary) => {
+  const grossSales = Number(summary.grossSales ?? summary.net ?? 0);
+  const refundAmount = Number(summary.refundAmount ?? summary.refunded ?? 0);
+
+  return {
+    grossSales,
+    refundAmount,
+    exchangeCredit: Number(summary.exchangeCredit || 0),
+    netSales: Number(summary.netSales ?? grossSales - refundAmount),
+    cashHandedBack: Number(
+      summary.cashHandedBack ?? refundAmount - Number(summary.exchangeCredit || 0),
+    ),
+    // Older rows have no per-method refunds, so the best that can be said is
+    // what was taken in. Marked as such rather than passed off as a count.
+    drawer: (summary.byMethod || []).map((entry) => ({
+      ...entry,
+      expected: entry.expected ?? null,
+    })),
+  };
+};
+
 function DayClosingModal({ onClosed, onClose }) {
   const { t } = useTranslation();
   const { store: SHOP } = useSelector((state) => state.store);
@@ -92,6 +122,8 @@ function DayClosingModal({ onClosed, onClose }) {
   // One slip, rendered twice: once hidden for the printer, once on screen
   // when the shop has asked to see it first. Two copies of the markup would
   // drift, and the whole point of a preview is that it is what prints.
+  const money = summary && figures(summary);
+
   const slip = summary && (
     <>
         <div className="s-head">
@@ -152,10 +184,34 @@ function DayClosingModal({ onClosed, onClose }) {
 
         <div className="s-rule" />
         <div className="s-section">{t("dayClosing.byMethod")}</div>
-        {summary.byMethod.map((entry) => (
-          <div key={entry.method} className="s-line">
-            <span>{t(`common.payments.${entry.method}`, entry.method)}</span>
-            <span>{currency(entry.amount)}</span>
+        {/* Taken in, handed back, and what should be there — per method, on one
+            line each, because that is what the person counting the drawer is
+            doing. A card sale refunded in cash moves the cash row, not the
+            card row, and no other layout makes that visible. */}
+        {money.drawer.map((entry) => (
+          <div key={entry.method} className="s-row">
+            <div className="s-row-top">
+              <span>{t(`common.payments.${entry.method}`, entry.method)}</span>
+              <span>
+                {entry.expected === null ? currency(entry.amount) : currency(entry.expected)}
+              </span>
+            </div>
+            {entry.expected !== null && entry.refunded > 0 && (
+              <div className="s-row-sub">
+                <span>
+                  {t("dayClosing.takenIn", "Taken")} {currency(entry.amount)}
+                </span>
+                <span>
+                  {t("dayClosing.handedBackShort", "Back")} -{currency(entry.refunded)}
+                </span>
+              </div>
+            )}
+            {NON_TAKINGS.has(entry.method) && (
+              <div className="s-row-sub">
+                <span>{t("dayClosing.notTakings", "not takings")}</span>
+                <span>{currency(entry.amount)}</span>
+              </div>
+            )}
           </div>
         ))}
 
@@ -176,34 +232,32 @@ function DayClosingModal({ onClosed, onClose }) {
             <span>{currency(summary.tax)}</span>
           </div>
         )}
-        {summary.refunded > 0 && (
+        <div className="s-line">
+          <span>{t("dayClosing.grossSales", "Gross sales")}</span>
+          <span>{currency(money.grossSales)}</span>
+        </div>
+        {money.refundAmount > 0 && (
           <div className="s-line">
             <span>{t("dayClosing.refunded")}</span>
-            <span>-{currency(summary.refunded)}</span>
+            <span>-{currency(money.refundAmount)}</span>
           </div>
         )}
         {/* Refunded value and cash out of the drawer stopped being the same
             number the day exchanges existed. What was spent on a replacement
             never left the till, so the count comes up short by exactly this
             much unless the slip says so. */}
-        {summary.exchangeCredit > 0 && (
-          <>
-            <div className="s-line">
-              <span>{t("dayClosing.exchangeCredit", "Spent on exchanges")}</span>
-              <span>{currency(summary.exchangeCredit)}</span>
-            </div>
-            <div className="s-line">
-              <span>{t("dayClosing.handedBack", "Handed back")}</span>
-              <span>
-                -{currency(Number(summary.refunded) - Number(summary.exchangeCredit))}
-              </span>
-            </div>
-          </>
+        {money.exchangeCredit > 0 && (
+          <div className="s-row-sub">
+            <span>{t("dayClosing.exchangeCredit", "Spent on exchanges")}</span>
+            <span>{currency(money.exchangeCredit)}</span>
+          </div>
         )}
         <div className="s-rule" />
+        {/* What the shop kept. The old slip printed the sales total here, under
+            a line that said the refunds had been taken off — they had not. */}
         <div className="s-total">
-          <span>{t("dayClosing.total")}</span>
-          <span>{currency(summary.net)}</span>
+          <span>{t("dayClosing.netSales", "Net sales")}</span>
+          <span>{currency(money.netSales)}</span>
         </div>
         <div className="s-line">
           <span>{t("dayClosing.salesCount")}</span>
@@ -280,18 +334,50 @@ function DayClosingModal({ onClosed, onClose }) {
             </span>
           </div>
 
-          {/* Payment breakdown — what should physically be in the drawer/terminal. */}
+          {/* What should physically be there, per method. The headline figure
+              is what is left after refunds went back out — counting a drawer
+              against what was taken IN is how a shift comes up short with
+              nobody able to say why. */}
           <div className="border border-slate-800 bg-black/40 px-4 py-3">
             <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
-              {t("dayClosing.byMethod")}
+              {t("dayClosing.expectedDrawer", "Count the drawer")}
             </p>
-            <div className="space-y-1.5 text-sm">
-              {summary.byMethod.map((entry) => (
-                <div key={entry.method} className="flex justify-between gap-6">
-                  <span className="text-slate-400">
-                    {t(`common.payments.${entry.method}`, entry.method)}
-                  </span>
-                  <span className="tabular-nums text-slate-200">{currency(entry.amount)}</span>
+            <div className="space-y-2 text-sm">
+              {money.drawer.map((entry) => (
+                <div key={entry.method}>
+                  <div className="flex justify-between gap-6">
+                    <span className="text-slate-400">
+                      {t(`common.payments.${entry.method}`, entry.method)}
+                    </span>
+                    <span
+                      className={`tabular-nums ${
+                        NON_TAKINGS.has(entry.method) ? "text-slate-500" : "text-slate-100"
+                      }`}
+                    >
+                      {entry.expected === null
+                        ? currency(entry.amount)
+                        : currency(NON_TAKINGS.has(entry.method) ? entry.amount : entry.expected)}
+                    </span>
+                  </div>
+
+                  {/* Only where the two figures differ. On an ordinary method
+                      with no refunds there is nothing to explain. */}
+                  {entry.expected !== null && entry.refunded > 0 && (
+                    <div className="flex justify-between gap-6 text-[11px] text-slate-600">
+                      <span>
+                        {t("dayClosing.takenIn", "Taken")} {currency(entry.amount)}
+                      </span>
+                      <span className="text-red-400">
+                        {t("dayClosing.handedBackShort", "Back")} -{currency(entry.refunded)}
+                      </span>
+                    </div>
+                  )}
+
+                  {NON_TAKINGS.has(entry.method) && (
+                    <p className="text-[11px] text-slate-600">
+                      {t("dayClosing.notTakings", "not takings")}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -315,18 +401,31 @@ function DayClosingModal({ onClosed, onClose }) {
                 <span className="tabular-nums text-slate-300">{currency(summary.tax)}</span>
               </div>
             )}
-            {summary.refunded > 0 && (
+            <div className="flex justify-between gap-6 text-slate-500">
+              <span>{t("dayClosing.grossSales", "Gross sales")}</span>
+              <span className="tabular-nums text-slate-300">{currency(money.grossSales)}</span>
+            </div>
+            {money.refundAmount > 0 && (
               <div className="flex justify-between gap-6 text-slate-500">
                 <span>{t("dayClosing.refunded")}</span>
-                <span className="tabular-nums text-red-400">-{currency(summary.refunded)}</span>
+                <span className="tabular-nums text-red-400">-{currency(money.refundAmount)}</span>
               </div>
             )}
+            {money.exchangeCredit > 0 && (
+              <div className="flex justify-between gap-6 text-[11px] text-slate-600">
+                <span>{t("dayClosing.exchangeCredit", "Spent on exchanges")}</span>
+                <span className="tabular-nums">{currency(money.exchangeCredit)}</span>
+              </div>
+            )}
+            {/* What the shop kept. This line used to print the sales total
+                directly beneath "Refunded -30" — the layout read as arithmetic
+                that was never done. */}
             <div className="mt-2 flex justify-between gap-6 border-t border-slate-800 pt-2">
               <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                {t("dayClosing.total")}
+                {t("dayClosing.netSales", "Net sales")}
               </span>
               <span className="font-display text-2xl font-bold tabular-nums text-cyan-400">
-                {currency(summary.net)}
+                {currency(money.netSales)}
               </span>
             </div>
           </div>

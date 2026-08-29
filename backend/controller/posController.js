@@ -16,6 +16,7 @@ const { startOfDay, endOfDay } = require("../libs/time");
 const { raiseReorderForProduct } = require("./reorderController");
 const logActivity = require("../libs/logger");
 const { restocksOnRefund } = require("../libs/refundReasons");
+const { summariseTakings } = require("../libs/dayClosing");
 const { emitStockChanged } = require('../libs/stockEvents');
 const { symbolFor } = require('../libs/money');
 const { isMailConfigured, sendMail, brandedHtml, esc } = require('../libs/mailer');
@@ -2068,76 +2069,11 @@ module.exports.changePaymentMethod = async (req, res) => {
 
 // --- Day closing -----------------------------------------------------------
 
-// Roll a batch of receipts up into the figures the admin reviews.
-const summarise = (receipts) => {
-  const methods = new Map();
-  let gross = 0;
-  let discount = 0;
-  let tax = 0;
-  let net = 0;
-  let refunded = 0;
-  let exchangeCredit = 0;
-
-  for (const receipt of receipts) {
-    gross += Number(receipt.subtotal || 0);
-    discount += Number(receipt.discount || 0);
-    tax += Number(receipt.tax || 0);
-    net += Number(receipt.total || 0);
-    refunded += (receipt.refunds || []).reduce(
-      (sum, entry) => sum + Number(entry.amount || 0),
-      0,
-    );
-    // Refunded value and cash out of the drawer are not the same number once
-    // exchanges exist. This is the difference between them.
-    exchangeCredit += (receipt.refunds || []).reduce(
-      (sum, entry) => sum + Number(entry.exchangeCredit || 0),
-      0,
-    );
-
-    // A split sale carries its breakdown in payments[]; a single-tender sale
-    // does not, so fall back to the settled method for the whole total.
-    const hasTenders =
-      Array.isArray(receipt.payments) && receipt.payments.length > 0;
-    const tenders = hasTenders
-      ? receipt.payments.map((tender) => ({
-          method: tender.method,
-          amount: Number(tender.amount || 0),
-        }))
-      : [{ method: receipt.paymentMethod, amount: Number(receipt.total || 0) }];
-
-    // What was tendered is not what was kept: change goes back out of the
-    // drawer. €50 handed over for a €10 sale leaves €10, not €50. Change is
-    // always given in cash, so take it off the cash tender.
-    const change = hasTenders ? Number(receipt.changeDue || 0) : 0;
-    if (change > 0) {
-      const drawer = tenders.find((tender) => tender.method === "cash") || tenders[0];
-      if (drawer) drawer.amount = Math.max(0, drawer.amount - change);
-    }
-
-    for (const tender of tenders) {
-      const key = tender.method || "unknown";
-      const current = methods.get(key) || { method: key, amount: 0, count: 0 };
-      current.amount += Number(tender.amount || 0);
-      current.count += 1;
-      methods.set(key, current);
-    }
-  }
-
-  return {
-    receiptCount: receipts.length,
-    gross: money(gross),
-    discount: money(discount),
-    tax: money(tax),
-    net: money(net),
-    refunded: money(refunded),
-    exchangeCredit: money(exchangeCredit),
-    byMethod: [...methods.values()].map((entry) => ({
-      ...entry,
-      amount: money(entry.amount),
-    })),
-    openedAt: receipts.length ? receipts[0].createdAt : null,
-  };
-};
+// Roll a batch of receipts up into the figures the admin reviews — all of them
+// derived from receipts that are never altered. Lives in libs/dayClosing.js so
+// it can be tested on its own: what a cashier hands over should not be a
+// function nobody can run in isolation.
+const summarise = summariseTakings;
 
 // What the cashier is about to hand over. Read-only preview.
 module.exports.dayClosingSummary = async (req, res) => {
@@ -2234,6 +2170,17 @@ module.exports.closeDay = async (req, res) => {
             net: summary.net,
             refunded: summary.refunded,
             exchangeCredit: summary.exchangeCredit,
+            // Stored as well as derived, because a closing is the record of a
+            // shift that has been handed over: recomputing it later from
+            // today's rules would quietly restate what somebody already signed
+            // for. `net` above is sales BEFORE refunds and always was — these
+            // are the figures that answer "what did they hand over".
+            grossSales: summary.grossSales,
+            refundAmount: summary.refundAmount,
+            netSales: summary.netSales,
+            cashHandedBack: summary.cashHandedBack,
+            expectedCash: summary.expectedCash,
+            expectedCard: summary.expectedCard,
             byMethod: summary.byMethod,
           },
         ],
