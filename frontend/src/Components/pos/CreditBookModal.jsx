@@ -92,16 +92,30 @@ function CreditBookModal({ onClose }) {
       onClose={onClose}
       width="max-w-3xl"
       footer={
-        book && (
-          <span className="me-auto text-sm text-slate-400">
-            {t("pos.credit.outstandingTotal", "Outstanding")}{" "}
-            <span className="font-semibold text-amber-300">{currency(book.outstanding)}</span>
-            {book.overdue > 0 && (
-              <span className="ms-3 text-red-400">
-                {t("pos.credit.overdueTotal", "Overdue")} {currency(book.overdue)}
-              </span>
-            )}
-          </span>
+        book &&
+        !receipt && (
+          <>
+            <span className="me-auto text-sm text-slate-400">
+              {t("pos.credit.outstandingTotal", "Outstanding")}{" "}
+              <span className="font-semibold text-amber-300">{currency(book.outstanding)}</span>
+              {book.overdue > 0 && (
+                <span className="ms-3 text-red-400">
+                  {t("pos.credit.overdueTotal", "Overdue")} {currency(book.overdue)}
+                </span>
+              )}
+            </span>
+            {/* The whole book on paper — what the shop is owed, to read away
+                from the till or hand to whoever is chasing it. */}
+            <button
+              type="button"
+              onClick={() => printSlip("credit-book-print")}
+              disabled={rows.length === 0}
+              className="flex items-center gap-2 bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700 disabled:opacity-40"
+            >
+              <FiPrinter className="h-4 w-4" />
+              {t("dayClosing.print", "Print")}
+            </button>
+          </>
         )
       }
     >
@@ -226,6 +240,18 @@ function CreditBookModal({ onClose }) {
                       >
                         {t("pos.credit.take", "Take Payment")}
                       </button>
+                      {/* This one account on paper — what they bought, what
+                          they have paid, what is left. A customer disputing a
+                          balance wants to see the working, not a figure. */}
+                      <button
+                        type="button"
+                        onClick={() => printSlip(`credit-statement-${row.receiptNo}`)}
+                        title={t("pos.credit.printOne", "Print this statement")}
+                        aria-label={t("pos.credit.printOne", "Print this statement")}
+                        className="flex h-8 w-8 items-center justify-center border border-slate-700 text-slate-400 transition hover:border-cyan-600 hover:bg-slate-800 hover:text-cyan-300"
+                      >
+                        <FiPrinter className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
 
@@ -274,13 +300,148 @@ function CreditBookModal({ onClose }) {
                       </button>
                     </div>
                   )}
+
+                  {/* Hidden until it is the one being printed. Every row
+                      carries its own, so the button above has a target. */}
+                  <div id={`credit-statement-${row.receiptNo}`} className="slip hidden">
+                    <CreditStatement account={row} shop={SHOP} t={t} />
+                  </div>
                 </div>
               ))}
+
+              {/* The whole book on the 72mm roll. */}
+              <div id="credit-book-print" className="slip hidden">
+                <div className="s-head">
+                  <div className="s-shop">{SHOP?.name}</div>
+                  <div className="s-title">{t("pos.credit.title", "Credit Book")}</div>
+                </div>
+                <div className="s-meta">
+                  <span>{t("dayClosing.printedAt", "Printed")}</span>
+                  <span>{new Date().toLocaleString()}</span>
+                </div>
+                <div className="s-rule" />
+
+                {rows.map((row) => (
+                  <div key={`book-${row.receiptNo}`} className="s-row">
+                    <div className="s-row-top">
+                      <span>{row.customerName}</span>
+                      <span>{currency(row.outstanding)}</span>
+                    </div>
+                    <div className="s-row-sub">
+                      <span>
+                        {row.receiptNo}
+                        {row.email || row.phone ? ` · ${row.email || row.phone}` : ""}
+                      </span>
+                      <span>
+                        {row.dueAt
+                          ? `${t("pos.credit.due", "Due")} ${new Date(
+                              row.dueAt,
+                            ).toLocaleDateString()}`
+                          : ""}
+                        {row.overdue ? ` · ${t("pos.credit.overdue", "Overdue")}` : ""}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+
+                <div className="s-rule" />
+                <div className="s-total">
+                  <span>{t("pos.credit.outstandingTotal", "Outstanding")}</span>
+                  <span>{currency(book.outstanding)}</span>
+                </div>
+                {book.overdue > 0 && (
+                  <div className="s-line">
+                    <span>{t("pos.credit.overdueTotal", "Overdue")}</span>
+                    <span>{currency(book.overdue)}</span>
+                  </div>
+                )}
+                <div className="s-line">
+                  <span>{t("pos.credit.accounts", "Accounts")}</span>
+                  <span>{rows.length}</span>
+                </div>
+              </div>
             </div>
           )}
         </div>
       )}
     </PosModal>
+  );
+}
+
+// One account, with its working shown: what was bought, what has been paid
+// since, and what is left. A customer disputing a balance wants the working.
+function CreditStatement({ account, shop, t }) {
+  return (
+    <>
+      <div className="s-head">
+        <div className="s-shop">{shop?.name}</div>
+        <div className="s-title">{t("pos.credit.statement", "Account Statement")}</div>
+      </div>
+
+      <div className="s-meta">
+        <span>{t("pos.receipt")}</span>
+        <span>{account.receiptNo}</span>
+      </div>
+      <div className="s-meta">
+        <span>{t("pos.customer", "Customer")}</span>
+        <span>{account.customerName}</span>
+      </div>
+      {(account.email || account.phone) && (
+        <div className="s-meta">
+          <span>{t("pos.credit.contact", "Contact")}</span>
+          <span>{account.email || account.phone}</span>
+        </div>
+      )}
+      {account.dueAt && (
+        <div className="s-meta">
+          <span>{t("pos.credit.due", "Due")}</span>
+          <span>{new Date(account.dueAt).toLocaleDateString()}</span>
+        </div>
+      )}
+
+      <div className="s-rule" />
+      <div className="s-section">{t("pos.credit.bought", "Bought")}</div>
+      {(account.items || []).map((item, index) => (
+        <div key={`${item.name}-${index}`} className="s-item">
+          <span>
+            {item.quantity} × {item.name}
+          </span>
+          <span>{currency(item.lineTotal)}</span>
+        </div>
+      ))}
+
+      <div className="s-rule" />
+      <div className="s-line">
+        <span>{t("pos.credit.wasOwed", "Was owed")}</span>
+        <span>{currency(account.amount)}</span>
+      </div>
+
+      {(account.payments || []).length > 0 && (
+        <>
+          <div className="s-section">{t("pos.credit.paymentsMade", "Paid so far")}</div>
+          {account.payments.map((entry, index) => (
+            <div key={`${entry.reference || index}`} className="s-item">
+              <span>
+                {new Date(entry.at).toLocaleDateString()}
+                {entry.method
+                  ? ` · ${t(`common.payments.${entry.method}`, entry.method)}`
+                  : ""}
+              </span>
+              <span>-{currency(entry.amount)}</span>
+            </div>
+          ))}
+        </>
+      )}
+
+      <div className="s-rule" />
+      <div className="s-total">
+        <span>{t("pos.credit.stillOwed", "Still owed")}</span>
+        <span>{currency(account.outstanding)}</span>
+      </div>
+      {account.settledAt && (
+        <div className="s-section">{t("pos.credit.settled", "Settled in full")}</div>
+      )}
+    </>
   );
 }
 

@@ -796,7 +796,13 @@
       "received": "Received",
       "wasOwed": "Was owed",
       "stillOwed": "Still owed",
-      "settled": "Settled in full"
+      "settled": "Settled in full",
+      "printOne": "Print This Statement",
+      "statement": "Account Statement",
+      "contact": "Contact",
+      "bought": "Bought",
+      "paymentsMade": "Paid So Far",
+      "accounts": "Accounts"
     }
   },
   "sales": {
