@@ -732,7 +732,10 @@
       "customerGets": "Customer gets back",
       "confirm": "Refund & exchange",
       "credit": "Refund credit",
-      "needsNetwork": "This exchange needs the connection back before it can be rung up"
+      "needsNetwork": "This exchange needs the connection back before it can be rung up",
+      "releaseConfirm": "{{amount}} of refund {{reference}} has not been spent. Hand it back to the customer in cash?",
+      "released": "{{amount}} handed back",
+      "releaseFailed": "Could not hand the refund credit back"
     },
     "dealMixHint": "Scan any {{n}} of these and the offer appears.",
     "dealMixItems": "Any {{n}} of {{count}} products",

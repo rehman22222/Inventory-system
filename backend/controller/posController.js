@@ -17,6 +17,7 @@ const { raiseReorderForProduct } = require("./reorderController");
 const logActivity = require("../libs/logger");
 const { restocksOnRefund } = require("../libs/refundReasons");
 const { summariseTakings } = require("../libs/dayClosing");
+const { paidByLine } = require("../libs/refundValue");
 const { emitStockChanged } = require('../libs/stockEvents');
 const { symbolFor } = require('../libs/money');
 const { isMailConfigured, sendMail, brandedHtml, esc } = require('../libs/mailer');
@@ -904,6 +905,11 @@ const refundedSoFar = (receipt) => {
 const planRefund = (receipt, requested) => {
   const already = refundedSoFar(receipt);
 
+  // What each line actually cost, with any deal charged to the units it
+  // covered rather than smeared across the whole basket. An item sold at its
+  // shelf price beside a discounted one comes back at its shelf price.
+  const paid = paidByLine(receipt);
+
   // An empty item list means "refund everything still outstanding".
   const lines = [];
 
@@ -935,12 +941,8 @@ const planRefund = (receipt, requested) => {
       name: item.name,
       quantity,
       price: item.price,
-      // Refund at the price actually paid, i.e. net of the share of the
-      // discount and tax that this line carried.
-      lineTotal: money(
-        (receipt.total / (receipt.subtotal || 1)) *
-          money(item.price * quantity),
-      ),
+      // What was paid for these units, not what the shelf says.
+      lineTotal: money((paid.get(key)?.perUnit || 0) * quantity),
     });
   }
 
@@ -1065,7 +1067,12 @@ const performRefund = async ({
               price: line.price,
             },
             totalAmount: -line.lineTotal,
-            paymentMethod: receipt.paymentMethod,
+            // How the money actually went back, not how the sale was paid for.
+            // A card sale handed back in cash is an ordinary thing at a
+            // counter, and a report grouped by method has to be able to say
+            // which drawer it came out of. Falls back to the sale's own method
+            // for a void, which returns it the way it came in.
+            paymentMethod: refundMethod || receipt.paymentMethod,
             paymentStatus: "paid",
             status: "cancelled",
             source: "refund",
@@ -1219,6 +1226,71 @@ module.exports.refund = async (req, res) => {
     return res
       .status(status)
       .json({ message: status === 500 ? "Refund failed" : error.message });
+  }
+};
+
+// The exchange that did not happen.
+//
+// Choosing a replacement holds that much of the refund back as credit, so the
+// slip says the customer was handed less than the refund was worth. If the
+// replacement is then never rung up — the cashier clears the basket, the
+// customer changes their mind at the counter — that difference is the shop
+// holding money it has no claim to, and nothing in the till would ever say so.
+//
+// This gives it back: the credit becomes zero, the whole refund counts as
+// handed over, and the day's expected cash drops to match what actually left
+// the drawer. Only ever for credit that has not already paid for something.
+module.exports.releaseRefundCredit = async (req, res) => {
+  try {
+    const reference = String(req.params.reference || "").trim().toUpperCase();
+
+    // Both conditions in one filter: the entry must still be unspent at the
+    // moment of the write, so a sale claiming it at the same instant wins and
+    // this refuses rather than handing the money over twice.
+    const claimed = await Receipt.findOneAndUpdate(
+      {
+        refunds: {
+          $elemMatch: {
+            reference,
+            creditReceiptNo: null,
+            exchangeCredit: { $gt: 0 },
+          },
+        },
+      },
+      { $set: { "refunds.$.exchangeCredit": 0 } },
+      { new: false },
+    );
+
+    if (!claimed) {
+      return res.status(400).json({
+        message: `Refund ${reference} has no unspent credit to hand back`,
+      });
+    }
+
+    const entry = (claimed.refunds || []).find(
+      (refund) => refund.reference === reference,
+    );
+    const released = money(entry?.exchangeCredit || 0);
+
+    await logActivity({
+      action: "POS Refund Credit Released",
+      description: `Refund ${reference}: ${released} handed back — the exchange was not completed.`,
+      entity: "order",
+      entityId: claimed._id,
+      userId: req.user?._id,
+      ipAddress: req.ip,
+    });
+
+    return res.status(200).json({
+      success: true,
+      reference,
+      released,
+      message: `Handed back ${released}`,
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Could not hand the refund credit back" });
   }
 };
 

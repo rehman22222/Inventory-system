@@ -8,6 +8,7 @@ const {
   getReceipt,
   emailReceipt,
   getRefunds,
+  releaseRefundCredit,
   changePaymentMethod,
   syncOfflineSales,
   dayClosingSummary,
@@ -39,6 +40,14 @@ router.post("/refund", authmiddleware, tillUser, refund);
 // history: a cashier sees their own, the owner side sees everything.
 router.get("/refunds", authmiddleware, tillUser, getRefunds);
 router.post("/void/:receiptNo", authmiddleware, tillUser, voidSale);
+// An exchange that was never rung up: give the customer the money the refund
+// held back for it.
+router.post(
+  "/refund/:reference/release",
+  authmiddleware,
+  tillUser,
+  releaseRefundCredit,
+);
 
 router.get("/receipts", authmiddleware, getReceipts);
 // Ghost mode: the whole shop's sales, unscoped. Owner only.

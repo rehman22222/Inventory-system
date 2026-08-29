@@ -817,6 +817,45 @@ function POSPage() {
     setScanOrder((log) => log.filter((id) => id !== productId));
   };
 
+  // Clearing a basket that is holding refund credit would leave the customer
+  // with neither their goods nor their money: the refund has already gone
+  // through, and it handed over less than it was worth because a replacement
+  // was coming. So the till asks, and hands the difference back if the answer
+  // is that the exchange is not happening.
+  //
+  // Awaited before anything is cleared — if the server refuses (the credit was
+  // spent by another till in the meantime) the basket stays put rather than
+  // quietly losing the reference.
+  const releaseCreditIfHeld = async () => {
+    if (!refundCredit || creditApplied <= 0) return true;
+
+    const amount = currency(Number(refundCredit.amount || 0));
+    if (
+      !window.confirm(
+        t("pos.exchange.releaseConfirm", {
+          amount,
+          reference: refundCredit.reference,
+          defaultValue:
+            "{{amount}} of refund {{reference}} has not been spent. Hand it back to the customer in cash?",
+        })
+      )
+    ) {
+      return false;
+    }
+
+    try {
+      await axiosInstance.post(`pos/refund/${refundCredit.reference}/release`);
+      toast.success(t("pos.exchange.released", { amount, defaultValue: "{{amount}} handed back" }));
+      return true;
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message ||
+          t("pos.exchange.releaseFailed", "Could not hand the refund credit back")
+      );
+      return false;
+    }
+  };
+
   const resetSale = () => {
     setCart([]);
     setScanOrder([]);
@@ -835,7 +874,8 @@ function POSPage() {
     setMultiplier(0);
   };
 
-  const newSale = () => {
+  const newSale = async () => {
+    if (!(await releaseCreditIfHeld())) return;
     setReceipt(null);
     resetSale();
   };
@@ -963,6 +1003,7 @@ function POSPage() {
     }
 
     if (cart.length === 0) return;
+    if (!(await releaseCreditIfHeld())) return;
     resetSale();
     toast.success(t("pos.cartCleared"));
   };
