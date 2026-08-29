@@ -1339,6 +1339,11 @@ module.exports.getRefunds = async (req, res) => {
           // history reads as "nothing to say" rather than as "not restocked".
           restocked: entry.restocked,
           amount: money(entry.amount),
+          // Reprinting a refund from the history has to produce the same slip
+          // that came out at the counter, so it needs the same two halves: what
+          // was spent on a replacement, and what actually went back.
+          exchangeCredit: money(entry.exchangeCredit),
+          cashBack: money(Number(entry.amount || 0) - Number(entry.exchangeCredit || 0)),
           items: (entry.items || []).map((item) => ({
             name: item.name,
             quantity: item.quantity,

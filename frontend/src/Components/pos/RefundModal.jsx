@@ -5,140 +5,28 @@ import toast from "react-hot-toast";
 import { FiMinus, FiPlus, FiPrinter, FiX } from "react-icons/fi";
 import axiosInstance from "../../lib/axios";
 import PosModal from "./PosModal";
+import RefundSlipBody from "./RefundSlip";
 import {
   currency,
   printSlip,
   REFUND_REASONS,
-  refundReasonLabel,
   restocksOnRefund,
 } from "./posUtils";
 
-// The customer's record of what went back. Rendered twice from one source: on
-// screen so the counter can read it, and hidden for the 72mm roll — a preview
-// that is not the paper is not a preview.
-//
-// On an exchange this covers only the half that has just happened; what they
-// took instead is rung up as an ordinary sale and prints its own receipt.
+// The refund that has just gone through, shown as a piece of paper: the counter
+// is checking it against what is about to come out of the printer, so the
+// preview IS the print. One definition of what it says lives in RefundSlip.jsx
+// and is shared with the refund history.
 function RefundSlipView({ slip, shop, t }) {
-  const body = (
-    <>
-      <div className="s-head">
-        <div className="s-shop">{shop?.name}</div>
-        {(shop?.addressLines || []).map((line) => (
-          <div key={line} className="s-addr">
-            {line}
-          </div>
-        ))}
-        <div className="s-title">{t("pos.refund.slipTitle", "Refund")}</div>
-      </div>
-
-      <div className="s-meta">
-        <span>{t("pos.refund.slipRef", "Refund")}</span>
-        <span>{slip.reference}</span>
-      </div>
-      <div className="s-meta">
-        <span>{t("pos.receipt")}</span>
-        <span>{slip.receiptNo}</span>
-      </div>
-      <div className="s-meta">
-        <span>{t("dayClosing.printedAt", "Printed")}</span>
-        <span>{new Date(slip.at).toLocaleString()}</span>
-      </div>
-      {slip.by && (
-        <div className="s-meta">
-          <span>{t("dayClosing.cashier", "Cashier")}</span>
-          <span>{slip.by}</span>
-        </div>
-      )}
-
-      <div className="s-rule" />
-      <div className="s-section">{t("pos.refund.returned", "Returned")}</div>
-      {(slip.items || []).map((item, i) => (
-        <div key={`${item.name}-${i}`} className="s-line">
-          <span>
-            {item.quantity} × {item.name}
-          </span>
-          <span>{currency(item.lineTotal)}</span>
-        </div>
-      ))}
-
-      <div className="s-rule" />
-      <div className="s-total">
-        <span>{t("dayClosing.refunded")}</span>
-        <span>-{currency(slip.amount)}</span>
-      </div>
-      {/* What was actually spent on the replacement rather than handed over.
-          The customer's copy has to show both halves, or the figures on it do
-          not add up to the refund above them. */}
-      {slip.exchangeCredit > 0 && (
-        <div className="s-line">
-          <span>{t("pos.exchange.credit", "Refund credit")}</span>
-          <span>{currency(slip.exchangeCredit)}</span>
-        </div>
-      )}
-      {/* Only when money genuinely crossed the counter. An exchange that used
-          the whole refund handed nothing back, and saying "Refund by: Cash"
-          under it would be describing a payment that never happened. */}
-      {slip.method && slip.cashBack !== 0 && (
-        <div className="s-line">
-          <span>{t("pos.refund.method", "Refund by")}</span>
-          <span>
-            {t(`common.payments.${slip.method}`, slip.method)}
-            {slip.cashBack > 0 && slip.exchangeCredit > 0
-              ? ` ${currency(slip.cashBack)}`
-              : ""}
-          </span>
-        </div>
-      )}
-      {/* On the paper too, so the copy in the shop's folder says why without
-          anyone having to remember. "refund" is the bare default the button
-          sends when nothing was chosen and is not worth a line. */}
-      {slip.reason && slip.reason !== "refund" && (
-        <div className="s-line">
-          <span>{t("pos.refund.why", "Why it came back")}</span>
-          <span>{refundReasonLabel(t, slip.reason)}</span>
-        </div>
-      )}
-
-      {slip.exchange?.length > 0 && (
-        <>
-          <div className="s-rule" />
-          <div className="s-section">{t("pos.exchange.title", "Exchange for")}</div>
-          {slip.exchange.map((item) => (
-            <div key={String(item.productId)} className="s-line">
-              <span>
-                {item.quantity} × {item.name}
-              </span>
-              <span>{currency(item.price * item.quantity)}</span>
-            </div>
-          ))}
-          <div className="s-line">
-            <span>
-              {slip.difference >= 0
-                ? t("pos.exchange.customerPays", "Customer pays")
-                : t("pos.exchange.customerGets", "Customer gets back")}
-            </span>
-            <span>{currency(Math.abs(slip.difference))}</span>
-          </div>
-          <div className="s-row-sub">
-            <span>{t("pos.refund.exchangeNote", "Rung up on its own receipt")}</span>
-          </div>
-        </>
-      )}
-    </>
-  );
+  const body = <RefundSlipBody slip={slip} shop={shop} t={t} />;
 
   return (
     <div className="py-2">
-      {/* Shown as a piece of paper rather than a panel: the counter is checking
-          this against what is about to come out of the printer, and a roll has
-          a torn top and bottom edge. */}
       <div className="mx-auto w-fit">
         <div className="slip-edge" />
         <div className="bg-white px-4 py-5 shadow-xl">
           <div className="slip">{body}</div>
         </div>
-        <div className="slip-edge slip-edge-bottom" />
       </div>
 
       <div id="refund-slip-print" className="slip hidden">

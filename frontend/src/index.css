@@ -784,6 +784,20 @@ body.osk-open .admin-drawer {
   margin-bottom: 1mm;
 }
 
+/* The code at the foot of a slip. Centred, with the number under it in plain
+   type: a scanner that will not read a smudged thermal print still leaves
+   somebody able to type it in. */
+.slip .s-qr {
+  margin-top: 3mm;
+  text-align: center;
+}
+
+.slip .s-qrcaption {
+  margin-top: 1mm;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
 /* A row is two lines: what it is and what it came to, then the detail beneath.
    A reference, a time and a total do not fit across 72mm without one of them
    being cut. */
@@ -845,6 +859,9 @@ body.osk-open .admin-drawer {
   mask-repeat: repeat-x;
 }
 
+/* The bottom edge is gone from the refund preview: with the QR block now at the
+   foot of the slip, a second row of teeth under it read as a stray line rather
+   than as paper. Kept defined for anything that still wants both edges. */
 .slip-edge-bottom {
   transform: rotate(180deg);
 }

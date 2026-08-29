@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { FiPrinter, FiRotateCcw } from "react-icons/fi";
 import axiosInstance from "../../lib/axios";
 import PosModal from "./PosModal";
+import RefundSlipBody from "./RefundSlip";
 import {
   currency,
   printSlip,
@@ -15,6 +16,11 @@ import {
 // What has gone back out over the counter. Built from the receipts rather than
 // from a table of its own: a refund belongs to the sale it reverses, and a
 // second copy of the same fact is a second thing to keep in step.
+// Every row needs a print target of its own, and a refund put through before
+// references existed has no number to name it by — so the index backs it up.
+const slipId = (entry, index) =>
+  `refund-slip-${entry.reference || entry.receiptNo || "row"}-${index}`;
+
 function RefundHistoryModal({ onClose }) {
   const { t } = useTranslation();
   const { store: SHOP } = useSelector((state) => state.store);
@@ -119,9 +125,29 @@ function RefundHistoryModal({ onClose }) {
                     {entry.by ? ` · ${entry.by}` : ""}
                   </p>
                 </div>
-                <span className="shrink-0 font-semibold tabular-nums text-red-400">
-                  -{currency(entry.amount)}
-                </span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="font-semibold tabular-nums text-red-400">
+                    -{currency(entry.amount)}
+                  </span>
+                  {/* This one refund's own slip. A customer asking for a second
+                      copy of theirs should not mean printing the whole day's
+                      returns and handing them the page it happens to be on. */}
+                  <button
+                    type="button"
+                    onClick={() => printSlip(slipId(entry, index))}
+                    title={t("dayClosing.print", "Print")}
+                    aria-label={t("pos.refund.printOne", "Print this refund")}
+                    className="flex h-8 w-8 items-center justify-center border border-slate-700 text-slate-400 transition hover:border-cyan-600 hover:bg-slate-800 hover:text-cyan-300"
+                  >
+                    <FiPrinter className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Hidden until it is the one being printed. Every row carries
+                  its own, so the button above has something to name. */}
+              <div id={slipId(entry, index)} className="slip hidden">
+                <RefundSlipBody slip={entry} shop={SHOP} t={t} />
               </div>
 
               {entry.items?.length > 0 && (
