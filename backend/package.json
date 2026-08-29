@@ -13,7 +13,8 @@
     "dev": "nodemon server",
     "seed": "node scripts/seedUsers.js",
     "import-shopify-store": "node scripts/importShopifyStorefront.js",
-    "create-superadmin": "node scripts/createSuperAdmin.js"
+    "create-superadmin": "node scripts/createSuperAdmin.js",
+    "diagnose-login": "node scripts/diagnoseLogin.js"
   },
   "author": "",
   "license": "ISC",

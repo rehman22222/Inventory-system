@@ -148,12 +148,39 @@ module.exports.login=async(req,res)=>{
 
 
       if(!passwordCheck.valid && !localDevPasswordOk){
+            // The account exists and the password did not verify in either form
+            // — with the pepper or without it. On a shop that runs the same
+            // database from more than one place, that usually means the two
+            // PASSWORD_PEPPER values differ rather than that anyone typed
+            // anything wrong, and "Email or password is incorrect" sends
+            // whoever is looking after the shop hunting for the wrong bug.
+            //
+            // Server log only, and it names nothing secret: the reader has the
+            // env already. `npm run diagnose-login` says which side is which.
+            console.warn(
+              `[auth] password did not verify for an existing account (${normalizedEmail}). ` +
+                `PASSWORD_PEPPER is ${process.env.PASSWORD_PEPPER ? "set" : "NOT set"} here — ` +
+                `if this account works on another deployment, the two peppers differ. ` +
+                `Run: npm run diagnose-login -- ${normalizedEmail}`,
+            );
+
             // Named plainly: this is a staff till, not a public sign-up, so the
             // cashier needs to know it is the password and not the email.
             return res.status(400).json({ message: "Email or password is incorrect" })
         }
 
         if (passwordCheck.valid && passwordCheck.needsUpgrade) {
+          // Re-hashing here also re-peppers: a legacy hash signed into from a
+          // machine with a pepper is rewritten under THAT machine's pepper, and
+          // any other deployment holding a different one is locked out from
+          // this moment. Loud on purpose — it is a one-way door.
+          if (process.env.PASSWORD_PEPPER) {
+            console.warn(
+              `[auth] re-hashing ${normalizedEmail} under this deployment's PASSWORD_PEPPER. ` +
+                `Any other deployment sharing this database must use the same value.`,
+            );
+          }
+
           duplicatedUser.password = await hashPassword(password);
           await duplicatedUser.save();
         }
