@@ -5283,7 +5283,7 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
   );
 }
 
-// One-click happy path. A COD shop fulfils in a single step, so a processing
+// One-click happy path. A Pick & Pay shop fulfils in a single step, so a processing
 // order goes straight to "delivered" (which is also what triggers the customer's
 // review email). "shipped" remains a valid status for already-shipped orders.
 const NEXT_STATUS = {
@@ -5396,7 +5396,7 @@ function Orders({ orders, isActing }) {
               <td>
                 <div className="font-medium">
                   {order.payment?.method === "cash_on_delivery"
-                    ? "Cash on delivery"
+                    ? "Pick & Pay"
                     : order.payment?.provider || "Manual"}
                 </div>
                 <div className="text-xs capitalize text-base-content/50">

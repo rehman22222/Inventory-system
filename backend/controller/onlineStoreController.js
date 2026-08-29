@@ -2626,7 +2626,7 @@ module.exports.updateOrderStatus = async (req, res) => {
       const transitions = {
         pending_payment: ["paid", "cancelled"],
         paid: ["processing", "cancelled", "refunded"],
-        // A small COD shop fulfils in one step, so processing can go straight to
+        // A small Pick & Pay shop fulfils in one step, so processing can go straight to
         // delivered; "shipped" stays available for anyone who tracks that leg.
         processing: ["shipped", "delivered", "cancelled", "refunded"],
         shipped: ["delivered", "refunded"],
@@ -2783,7 +2783,7 @@ module.exports.updateOrderStatus = async (req, res) => {
     }
     emit(req, "onlineOrderChanged", { orderNo: order.orderNo, status });
     // Once delivered, invite the customer to review what they bought. Fires for
-    // ANY payment method (COD today, online payment later) — delivery, not
+    // ANY payment method (Pick & Pay today, online payment later) — delivery, not
     // payment, is what makes a review meaningful. Best effort: a mail hiccup
     // must never fail the status change, and the guard sends it at most once.
     if (status === "delivered" && !order.reviewRequestedAt) {
@@ -4090,7 +4090,7 @@ const professionalOrderEmail = (order, settings) => {
                   <div style="font-size:12px;font-weight:700;color:${INK};margin-bottom:7px;">Estimated Delivery</div>
                   <div style="font-size:14px;line-height:1.6;color:${MUTED};">${estDelivery}</div>
                   <div style="font-size:12px;font-weight:700;color:${INK};margin:14px 0 7px;">Payment</div>
-                  <div style="font-size:14px;line-height:1.6;color:${MUTED};">Cash on delivery &mdash; have <strong style="color:${INK};">&euro;${money(order.total)}</strong> ready on arrival.</div>
+                  <div style="font-size:14px;line-height:1.6;color:${MUTED};">Pick &amp; Pay &mdash; have <strong style="color:${INK};">&euro;${money(order.total)}</strong> ready on arrival.</div>
                 </td>
               </tr>
             </table>
@@ -4137,7 +4137,7 @@ const shopAlertBody = (order) => `
     <tr><td style="padding:4px 0;color:#6b7280;">Customer</td><td style="padding:4px 0;">${esc(order.customer?.name || "")}</td></tr>
     <tr><td style="padding:4px 0;color:#6b7280;">Email</td><td style="padding:4px 0;">${esc(order.customer?.email || "")}</td></tr>
     <tr><td style="padding:4px 0;color:#6b7280;">Phone</td><td style="padding:4px 0;">${esc(order.customer?.phone || "—")}</td></tr>
-    <tr><td style="padding:4px 0;color:#6b7280;">Payment</td><td style="padding:4px 0;">Cash on delivery</td></tr>
+    <tr><td style="padding:4px 0;color:#6b7280;">Payment</td><td style="padding:4px 0;">Pick &amp; Pay</td></tr>
   </table>
   ${orderItemsTable(order)}
   ${shippingAddressBlock(order)}`;
@@ -4587,7 +4587,7 @@ module.exports.placeOrder = async (req, res) => {
     }
     if (paymentMethod !== "cash_on_delivery") {
       return res.status(400).json({
-        message: "Cash on delivery is the available payment method",
+        message: "Pick & Pay is the available payment method",
       });
     }
     if (clientRef) {
@@ -4727,13 +4727,16 @@ module.exports.placeOrder = async (req, res) => {
               value: voucher.value,
             }
           : undefined,
+        // "Pick & Pay" is what the shop calls this at checkout; the stored
+        // provider/method keep their original spelling so that orders placed
+        // before the rename still read back as the same payment method.
         payment: {
           provider: "cod",
           method: "cash_on_delivery",
           reference: "",
           status: "unpaid",
         },
-        // COD is confirmed immediately for fulfilment. Revenue is posted to
+        // Pick & Pay is confirmed immediately for fulfilment. Revenue is posted to
         // the shared Sale ledger only when the order is marked delivered.
         status: "processing",
         stockDecrementedAt: new Date(),

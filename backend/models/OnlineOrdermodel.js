@@ -85,6 +85,9 @@ const OnlineOrderSchema = new mongoose.Schema(
 
     payment: {
       provider: { type: String, default: "manual" },
+      // Shown at checkout as "Pick & Pay". The stored value predates that
+      // name and is deliberately left alone: changing it would strand every
+      // order already written with it.
       method: {
         type: String,
         enum: ["", "cash_on_delivery"],
@@ -122,7 +125,8 @@ const OnlineOrderSchema = new mongoose.Schema(
     clientRef: { type: String, default: null },
 
     // The Sale ledger row written when payment is collected (on delivery for
-    // COD), so reports and the order can always be reconciled against each other.
+    // Pick & Pay), so reports and the order can always be reconciled against
+    // each other.
     sale: { type: mongoose.Schema.Types.ObjectId, ref: "Sale", default: null },
     sales: [{ type: mongoose.Schema.Types.ObjectId, ref: "Sale" }],
     refundRecordedAt: { type: Date, default: null },

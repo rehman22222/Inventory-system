@@ -187,7 +187,7 @@ async function main() {
     order.payment?.method !== "cash_on_delivery" ||
     order.payment?.status !== "unpaid"
   ) {
-    throw new Error("COD order totals, state, voucher use or shared stock did not match");
+    throw new Error("Pick & Pay order totals, state, voucher use or shared stock did not match");
   }
 
   const retryRes = response();
@@ -209,7 +209,7 @@ async function main() {
     const res = response();
     await controller.updateOrderStatus(req, res);
     if (res.result.statusCode !== 200) {
-      throw new Error(`Could not mark COD order ${status}: ${JSON.stringify(res.result.body)}`);
+      throw new Error(`Could not mark Pick & Pay order ${status}: ${JSON.stringify(res.result.body)}`);
     }
   };
 
@@ -229,7 +229,7 @@ async function main() {
     onlineSales[0].totalAmount !== order.total ||
     onlineSales[0].discount !== order.discount
   ) {
-    throw new Error("Delivered COD order was not settled exactly once in the shared Sale ledger");
+    throw new Error("Delivered Pick & Pay order was not settled exactly once in the shared Sale ledger");
   }
 
   const reportReq = request();

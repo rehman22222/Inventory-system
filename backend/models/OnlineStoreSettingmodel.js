@@ -21,7 +21,7 @@ All orders are subject to acceptance and stock availability. Prices are shown in
 
 ## Payment
 
-Payment is taken as described at checkout. Where cash on delivery is offered, payment is due in full when your order arrives.
+Payment is taken as described at checkout. Where Pick & Pay is offered, payment is due in full when your order arrives.
 
 ## Product information
 

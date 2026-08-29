@@ -185,7 +185,7 @@ function Checkout() {
             </div>
             <div className="mt-1 font-display text-3xl">{formatPrice(confirmed.total)}</div>
             <p className="mt-3 text-sm text-ink-muted">
-              {t("checkout.codSelected", { total: formatPrice(confirmed.total) })}
+              {t("checkout.pickAndPaySelected", { total: formatPrice(confirmed.total) })}
             </p>
           </div>
           <Link to="/shop" className="mt-8 inline-flex btn-primary">
@@ -320,9 +320,9 @@ function Checkout() {
                 />
                 <Banknote className="h-6 w-6 shrink-0" aria-hidden="true" />
                 <span>
-                  <span className="block font-display text-lg">{t("checkout.cashOnDelivery")}</span>
+                  <span className="block font-display text-lg">{t("checkout.pickAndPay")}</span>
                   <span className="mt-1 block text-sm text-ink-muted">
-                    {t("checkout.cashOnDeliveryCopy")}
+                    {t("checkout.pickAndPayCopy")}
                   </span>
                 </span>
               </label>
@@ -428,12 +428,12 @@ function Checkout() {
                   </>
                 ) : (
                   <>
-                    <Lock className="h-4 w-4" /> {t("checkout.placeCodOrder")}
+                    <Lock className="h-4 w-4" /> {t("checkout.placeOrder")}
                   </>
                 )}
               </button>
               <p className="mt-3 text-center font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                {t("checkout.secureCod")}
+                {t("checkout.securePickAndPay")}
               </p>
             </div>
           </aside>
