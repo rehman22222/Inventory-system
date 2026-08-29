@@ -677,7 +677,12 @@ module.exports.checkout = async (req, res) => {
               discount: lineDiscount,
               tax: lineTax,
               paymentMethod: settledWith,
-              paymentStatus: "paid",
+              // Sold on account is not paid for. Saying "Paid" on a sale the
+              // shop is still owed for is the one line in a sales list nobody
+              // would think to check, and it turns a debt into a settled sale
+              // on every screen that reads this row. It flips when the money
+              // actually arrives — see recordCreditPayment.
+              paymentStatus: creditBlock ? "pending" : "paid",
               status: "completed",
               source: "pos",
             };
@@ -2379,7 +2384,25 @@ module.exports.recordCreditPayment = async (req, res) => {
       });
 
       const left = creditOutstanding(receipt);
-      if (left <= 0) receipt.credit.settledAt = new Date();
+
+      if (left <= 0) {
+        receipt.credit.settledAt = new Date();
+
+        // The sale rows behind it were written "pending" because the shop had
+        // not been paid. It has been now, so the sales list says so — this is
+        // the moment the debt becomes an ordinary settled sale, and every
+        // screen reading those rows follows without knowing about credit.
+        //
+        // Only on full settlement: a part payment leaves the shop still owed,
+        // and "paid" is not a thing to say by halves.
+        if (receipt.saleIds?.length) {
+          await Sale.updateMany(
+            { _id: { $in: receipt.saleIds } },
+            { $set: { paymentStatus: "paid" } },
+            opts(session),
+          );
+        }
+      }
 
       await receipt.save(opts(session));
 

@@ -188,7 +188,8 @@
       "creditcard": "Card",
       "wallet": "Wallet",
       "credit": "Credit",
-      "refund": "Refund Credit"
+      "refund": "Refund Credit",
+      "split": "Split"
     },
     "phone": "Phone",
     "address": "Address"
