@@ -58,6 +58,12 @@
   .slip.is-printing {
     display: block !important;
     position: static;
+    /* Pinned to the start of the page, exactly like #receipt below. On screen
+       the slip is centred because it is being shown as a piece of paper on a
+       dark panel; on a roll there is no page to centre in — the head starts at
+       the edge — and a receipt that begins in the corner beside a refund slip
+       that begins in the middle look like two different printers. */
+    margin-inline: 0;
   }
 
   /* …unless the receipt is itself the thing being printed. */
@@ -790,6 +796,13 @@ body.osk-open .admin-drawer {
 .slip .s-qr {
   margin-top: 3mm;
   text-align: center;
+}
+
+/* The code itself has to be centred as a block: Tailwind's preflight makes
+   every svg display:block, so text-align moved the caption under it and left
+   the code sitting against the left edge. */
+.slip .s-qr svg {
+  margin-inline: auto;
 }
 
 .slip .s-qrcaption {
