@@ -1896,7 +1896,7 @@ function POSPage() {
               thing that gets argued about later. */}
           <div className="r-stamp">
             {(receipt.payments || []).some((entry) => entry.method === "credit")
-              ? t("pos.receiptDoc.unpaid", "ON ACCOUNT")
+              ? t("pos.receiptDoc.unpaid", "CREDIT")
               : t("pos.receiptDoc.paid", "PAID")}
           </div>
 

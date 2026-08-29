@@ -664,7 +664,7 @@
       "keepReceipt": "Keep this receipt for returns or exchanges",
       "qrCaption": "Scan for receipt {{ref}}",
       "paid": "PAID",
-      "unpaid": "ON ACCOUNT",
+      "unpaid": "CREDIT",
       "vatBreakdown": "VAT Breakdown",
       "vatRate": "VAT",
       "vatValue": "VAT Value",
@@ -760,7 +760,7 @@
       "emailed": "Receipt sent to {{email}}",
       "emailFailed": "Could not send the receipt",
       "paidBy": "Paid by",
-      "onAccount": "On account — not yet paid",
+      "onAccount": "Credit — not yet paid",
       "emailOptional": "Email (Optional)",
       "proceed": "Proceed"
     },
