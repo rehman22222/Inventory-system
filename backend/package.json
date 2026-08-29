@@ -14,7 +14,8 @@
     "seed": "node scripts/seedUsers.js",
     "import-shopify-store": "node scripts/importShopifyStorefront.js",
     "create-superadmin": "node scripts/createSuperAdmin.js",
-    "diagnose-login": "node scripts/diagnoseLogin.js"
+    "diagnose-login": "node scripts/diagnoseLogin.js",
+    "set-barcoded-stock": "node scripts/setBarcodedStock.js"
   },
   "author": "",
   "license": "ISC",
