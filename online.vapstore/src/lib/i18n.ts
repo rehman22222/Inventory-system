@@ -155,7 +155,7 @@ const resources = {
         orderNote: "Order note",
         payment: "Payment",
         pickAndPay: "Pick & Pay",
-        pickAndPayCopy: "Pay the full order total when your delivery arrives.",
+        pickAndPayCopy: "Pay as you collect.",
         orderSummary: "Order summary",
         qty: "Qty {{count}}",
         voucherCode: "Voucher code",
@@ -319,8 +319,7 @@ const resources = {
         orderNote: "Nóta ordaithe",
         payment: "Íocaíocht",
         pickAndPay: "Pick & Pay",
-        pickAndPayCopy:
-          "Íoc an t-iomlán ordaithe nuair a thagann do sheachadadh.",
+        pickAndPayCopy: "Íoc ar bhailiú.",
         orderSummary: "Achoimre ordaithe",
         qty: "Cainníocht {{count}}",
         voucherCode: "Cód dearbháin",
