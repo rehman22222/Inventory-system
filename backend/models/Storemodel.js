@@ -55,6 +55,11 @@ const StoreSchema = new mongoose.Schema(
     // What the receipt QR encodes. {ref} is swapped for the receipt number.
     qrTemplate: { type: String, trim: true, default: "{ref}" },
 
+    // Printed under the QR: where to find the shop when it is shut. Empty by
+    // default — a shop with no web address should not have a blank line on
+    // every receipt announcing it.
+    onlineStoreUrl: { type: String, trim: true, default: "" },
+
     // Skip the on-screen check and send a slip straight to print.
     //
     // The browser's own print dialog cannot be suppressed from a page — that

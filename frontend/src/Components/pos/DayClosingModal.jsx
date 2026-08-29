@@ -119,6 +119,14 @@ function DayClosingModal({ onClosed, onClose }) {
 
   const nothingToClose = !loading && (summary?.receiptCount || 0) === 0;
 
+  // Credit a customer is still owed. Listing it was not enough — a list above
+  // the button is a list somebody scrolls past — so closing the day has to say
+  // out loud that it is being left behind. It does not block: the cashier may
+  // genuinely be handing it to the next shift, and a till that cannot be closed
+  // is worse than one that asks.
+  const loose = summary?.unspentCredit || [];
+  const looseTotal = loose.reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
+
   // One slip, rendered twice: once hidden for the printer, once on screen
   // when the shop has asked to see it first. Two copies of the markup would
   // drift, and the whole point of a preview is that it is what prints.
@@ -476,9 +484,25 @@ function DayClosingModal({ onClosed, onClose }) {
           )}
 
           {confirming && (
-            <div className="flex gap-3 border border-amber-800 bg-amber-950/30 px-4 py-3">
-              <FiAlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
-              <p className="text-sm text-amber-200">{t("dayClosing.warning")}</p>
+            <div className="space-y-3">
+              <div className="flex gap-3 border border-amber-800 bg-amber-950/30 px-4 py-3">
+                <FiAlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+                <p className="text-sm text-amber-200">{t("dayClosing.warning")}</p>
+              </div>
+
+              {loose.length > 0 && (
+                <div className="flex gap-3 border border-red-800 bg-red-950/40 px-4 py-3">
+                  <FiAlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
+                  <p className="text-sm text-red-200">
+                    {t("dayClosing.closingWithCredit", {
+                      amount: currency(looseTotal),
+                      count: loose.length,
+                      defaultValue:
+                        "{{amount}} of refund credit across {{count}} refund(s) is still unspent. Hand it back or ring up the replacement before closing — after this it belongs to the admin.",
+                    })}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

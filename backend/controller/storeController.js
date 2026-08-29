@@ -45,6 +45,7 @@ const applyStoreChanges = (store, changes = {}) => {
     phone,
     footer,
     qrTemplate,
+    onlineStoreUrl,
     currency,
     timezone,
     notificationsEmail,
@@ -53,6 +54,10 @@ const applyStoreChanges = (store, changes = {}) => {
   } = changes;
 
   if (directPrint !== undefined) store.directPrint = Boolean(directPrint);
+
+  // Trimmed and stored as typed. It is printed, not fetched, so it does not
+  // need to be a valid URL — "Cliffsofpuff.com" is what a customer would type.
+  if (onlineStoreUrl !== undefined) store.onlineStoreUrl = String(onlineStoreUrl).trim();
 
   if (name !== undefined) {
     const clean = String(name).trim();

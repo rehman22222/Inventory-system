@@ -663,7 +663,9 @@
       "vatBreakdown": "VAT Breakdown",
       "vatRate": "VAT",
       "vatValue": "VAT Value",
-      "totalDue": "Total Due"
+      "totalDue": "Total Due",
+      "onlineStore": "Online store",
+      "cashier": "Cashier"
     },
     "productSearch": {
       "title": "Product Search",
@@ -1248,7 +1250,8 @@
     "shouldHold": "Should Hold",
     "notTakings": "not takings",
     "unspentCredit": "Refund Credit Not Spent",
-    "unspentCreditHint": "A return was taken as an exchange and the replacement was never rung up. This money is still the customer's."
+    "unspentCreditHint": "A return was taken as an exchange and the replacement was never rung up. This money is still the customer's.",
+    "closingWithCredit": "{{amount}} of refund credit across {{count}} refund(s) is still unspent. Hand it back or ring up the replacement before closing — after this it belongs to the admin."
   },
   "dayClosings": {
     "title": "Day Closings",
@@ -1312,7 +1315,9 @@
     "exchangeRatesHint": "What one unit of each is worth in {{currency}}. Costs entered in these currencies are converted before they are stored. Use your bank's rate, not an estimate.",
     "exchangeRatesUpdated": "Last updated {{date}}",
     "directPrint": "Print without checking first",
-    "directPrintHint": "On, a slip goes straight to the printer. Off, the till shows it first and waits. This does not remove the browser's own print dialog — that needs the --kiosk-printing launch flag."
+    "directPrintHint": "On, a slip goes straight to the printer. Off, the till shows it first and waits. This does not remove the browser's own print dialog — that needs the --kiosk-printing launch flag.",
+    "onlineStoreUrl": "Online Store Address",
+    "onlineStoreUrlHint": "Printed under the QR code on every receipt. Leave it empty and nothing is printed."
   },
   "reorders": {
     "title": "Reorders",

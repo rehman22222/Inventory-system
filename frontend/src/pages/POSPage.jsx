@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import {
@@ -122,6 +122,7 @@ function POSPage() {
   // that does. The server agrees: see `tillUser` in Authmiddleware.
   const isElevated = true;
   const dashboardPath = dashboardByRole[role] || "/StaffDashboard";
+  const navigate = useNavigate();
 
   const [query, setQuery] = useState("");
   // No "All" tile — the till always has one category open. It defaults to the
@@ -1364,6 +1365,17 @@ function POSPage() {
           </span>
           <Link
             to={dashboardPath}
+            // Walking away from the till with a customer's refund credit still
+            // in the basket is the one way out that nobody would notice. It
+            // asks the same question clearing the basket does, and stays put if
+            // the answer is no.
+            onClick={(event) => {
+              if (!refundCredit || creditApplied <= 0) return;
+              event.preventDefault();
+              releaseCreditIfHeld().then((done) => {
+                if (done) navigate(dashboardPath);
+              });
+            }}
             className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 text-sm font-semibold text-slate-200 ring-1 ring-slate-700 transition hover:bg-slate-700"
           >
             <FiLogOut className="h-4 w-4" />
@@ -1890,7 +1902,12 @@ function POSPage() {
           </div>
           <div className="r-meta">
             <span>{t("pos.receiptDoc.placedBy")}</span>
-            <span>{receipt.cashierName || Authuser?.name || Authuser?.role}</span>
+            {/* Whoever rang it up, by name. The last resort used to be their
+                ROLE, so a receipt could go out saying "staff" — which is not
+                anybody, and is no use to a customer asking who served them. */}
+            <span>
+              {receipt.cashierName || Authuser?.name || t("pos.receiptDoc.cashier", "Cashier")}
+            </span>
           </div>
           {receipt.customerName && receipt.customerName !== t("pos.walkIn") && (
             <div className="r-meta">
@@ -2056,6 +2073,14 @@ function POSPage() {
               level="M"
             />
           </div>
+
+          {/* Where to find the shop when it is shut. Under the code, because
+              that is the last thing a customer's eye lands on. */}
+          {SHOP?.onlineStoreUrl && (
+            <div className="r-center r-online">
+              {t("pos.receiptDoc.onlineStore", "Online store")} {SHOP.onlineStoreUrl}
+            </div>
+          )}
 
           <div className="r-center r-footer">
             {SHOP?.footer || t("pos.receiptDoc.thanksShopping", "Thank you for shopping with us")}

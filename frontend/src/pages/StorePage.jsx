@@ -48,6 +48,7 @@ function StorePage() {
     notificationsEmail: "",
     footer: "",
     qrTemplate: "",
+    onlineStoreUrl: "",
     directPrint: false,
     // { GBP: "1.17", ... } — what one unit of each is worth in the shop's own
     // currency. Held as strings so a half-typed "1." doesn't fight the input.
@@ -70,6 +71,7 @@ function StorePage() {
       notificationsEmail: store.notificationsEmail || "",
       footer: store.footer || "",
       qrTemplate: store.qrTemplate || "{ref}",
+      onlineStoreUrl: store.onlineStoreUrl || "",
       directPrint: Boolean(store.directPrint),
       exchangeRates: Object.fromEntries(
         Object.entries(store.exchangeRates || {}).map(([code, rate]) => [code, String(rate)])
@@ -103,6 +105,7 @@ function StorePage() {
       notificationsEmail: form.notificationsEmail,
       footer: form.footer,
       qrTemplate: form.qrTemplate,
+      onlineStoreUrl: form.onlineStoreUrl,
       directPrint: form.directPrint,
       // Blank boxes mean "no rate for this one"; the server drops them.
       exchangeRates: Object.fromEntries(
@@ -292,6 +295,24 @@ function StorePage() {
               className="h-11 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3 font-mono text-sm"
             />
             <p className="mt-1 text-xs text-base-content/50">{t("store.qrHint")}</p>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              {t("store.onlineStoreUrl", "Online Store Address")}
+            </label>
+            <input
+              value={form.onlineStoreUrl}
+              onChange={set("onlineStoreUrl")}
+              placeholder="cliffsofpuff.com"
+              className="h-11 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3"
+            />
+            <p className="mt-1 text-xs text-base-content/50">
+              {t(
+                "store.onlineStoreUrlHint",
+                "Printed under the QR code on every receipt. Leave it empty and nothing is printed.",
+              )}
+            </p>
           </div>
 
           <div className="rounded-lg border-2 border-base-300 p-3">
