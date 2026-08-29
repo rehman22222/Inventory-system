@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import OrderEmailPreview from "../Components/OrderEmailPreview";
 import TopNavbar from "../Components/TopNavbar";
 import { currency } from "../Components/pos/posUtils";
 import { useDispatch, useSelector } from "react-redux";
@@ -14,7 +15,6 @@ import {
   updatestatusOrder,
   gettingallOrder,
   SearchOrder,
-  SendOrder,
   ReceiveOrder,
 } from "../features/orderSlice";
 
@@ -262,17 +262,10 @@ function Orderpage() {
       });
   };
 
-  // The deliberate "send" — asks first, then emails the supplier.
-  const handleSend = async (order) => {
-    if (!window.confirm(t("orders.sendConfirm", { supplier: order.supplierName || "supplier" }))) return;
-    try {
-      await dispatch(SendOrder(order._id)).unwrap();
-      toast.success(t("orders.sent"));
-      dispatch(gettingallOrder());
-    } catch (error) {
-      toast.error(error || t("orders.sendFail"));
-    }
-  };
+  // The deliberate "send": it opens the email rather than firing it. A purchase
+  // order is the shop talking to a supplier in its own name, and a yes/no
+  // confirm never let anybody read — let alone change — what was going out.
+  const [previewing, setPreviewing] = useState(null);
 
   // The admin confirms the goods arrived — asks first, then the server adds the
   // ordered quantities into inventory. Nothing touches stock before this.
@@ -558,7 +551,7 @@ function Orderpage() {
                             </span>
                           ) : (
                             <button
-                              onClick={() => handleSend(order)}
+                              onClick={() => setPreviewing(order)}
                               disabled={!order.supplierEmail}
                               title={!order.supplierEmail ? t("orders.noEmail") : ""}
                               className="h-9 rounded-md bg-blue-700 px-3 text-sm font-semibold text-white hover:bg-blue-600 disabled:opacity-40"
@@ -614,6 +607,15 @@ function Orderpage() {
           </div>
         </div>
       </div>
+
+      {/* Nothing reaches the supplier until this is read and sent. */}
+      {previewing && (
+        <OrderEmailPreview
+          order={previewing}
+          onSent={() => dispatch(gettingallOrder())}
+          onClose={() => setPreviewing(null)}
+        />
+      )}
     </div>
   );
 }

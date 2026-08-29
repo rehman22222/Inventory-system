@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   createOrder,
   sendOrder,
+  previewOrderEmail,
   receiveOrder,
   searchOrder,
   updatestatusOrder,
@@ -17,6 +18,8 @@ const {
 
 router.use(authmiddleware, adminOrManager);
 router.post("/createorder", createOrder);
+// What the supplier will read, before anybody sends it. Read-only.
+router.get("/preview/:OrderId", previewOrderEmail);
 router.post("/sendorder/:OrderId", sendOrder);
 router.post("/receive/:OrderId", receiveOrder);
 router.get("/getorders", getOrder);

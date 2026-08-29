@@ -13,7 +13,6 @@ import {
 } from "../features/SupplierSlice";
 import { gettingallproducts } from "../features/productSlice";
 import toast from "react-hot-toast";
-import { RaiseRequest } from "../features/approvalSlice";
 import FormattedTime from "../lib/FormattedTime ";
 
 function Supplierpage() {
@@ -22,11 +21,13 @@ function Supplierpage() {
     (state) => state.supplier
   );
   const { getallproduct } = useSelector((state) => state.product);
-  const { Authuser } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
 
   // Only the owner adds a supplier outright; everyone else asks.
-  const canCreateDirectly = Authuser?.role === "superadmin";
+  // Adding a supplier used to go to the owner for approval. The person who
+  // orders the stock is the person who knows who supplies it, so admin and
+  // manager now add one outright — the approval queue still honours any
+  // create_supplier request raised before this changed.
   const [query, setQuery] = useState("");
   const [name, setName] = useState("");
   const [Phone, setPhone] = useState("");
@@ -154,23 +155,6 @@ function Supplierpage() {
       productsSupplied: products,
     };
 
-    // Adding a supplier is the owner's call. Everyone else sends the details for
-    // approval — the superadmin's approval is what actually creates it, so there
-    // is nothing left to do here afterwards.
-    if (!canCreateDirectly) {
-      dispatch(RaiseRequest({ type: "create_supplier", payload: supplierInfo }))
-        .unwrap()
-        .then((response) => {
-          toast.success(
-            t("suppliers.requested", { ref: response?.request?.reference || "" })
-          );
-          resetForm();
-          setIsFormVisible(false);
-        })
-        .catch((error) => toast.error(error || t("suppliers.requestFail")));
-      return;
-    }
-
     dispatch(CreateSupplier(supplierInfo))
       .unwrap()
       .then(() => {
@@ -235,14 +219,6 @@ function Supplierpage() {
               className="flex min-h-0 flex-1 flex-col"
             >
               <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-                {/* Say up front that this goes to the owner — finding out only after
-                    pressing the button is a nasty surprise. */}
-                {!selectedSupplier && !canCreateDirectly && (
-                  <p className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
-                    {t("suppliers.needsApproval")}
-                  </p>
-                )}
-
                 {/* Four short fields side by side so nothing runs off the screen. */}
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                   <div>
@@ -364,9 +340,7 @@ function Supplierpage() {
                 >
                   {selectedSupplier
                     ? t("suppliers.updateSupplier")
-                    : canCreateDirectly
-                    ? t("suppliers.addSupplier")
-                    : t("suppliers.sendForApproval")}
+                    : t("suppliers.addSupplier")}
                 </button>
               </div>
             </form>

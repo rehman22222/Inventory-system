@@ -4,12 +4,13 @@ const {createSupplier,searchSupplier,editSupplier,getAllSuppliers,deleteSupplier
 const {
   authmiddleware,
   adminOrManager,
-  superadminmiddleware,
 } = require("../middleware/Authmiddleware");
 
-// Adding a supplier is the owner's call. An admin raises an approval request
-// (type: create_supplier); the superadmin's approval is what creates it.
-router.post("/createsupplier", authmiddleware, superadminmiddleware, createSupplier);
+// Adding a supplier is ordinary shop admin — the person who orders the stock
+// is the person who knows who supplies it, and routing that through the owner
+// meant a delivery waiting on an approval queue. Deleting and editing one has
+// always been admin/manager; creating one now matches.
+router.post("/createsupplier", authmiddleware, adminOrManager, createSupplier);
 
 router.get("/getallsupplier", authmiddleware, adminOrManager, getAllSuppliers);
 

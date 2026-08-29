@@ -4,10 +4,17 @@ const logActivity = require("../libs/logger");
 
 const money = (value) => Math.round(Number(value || 0) * 100) / 100;
 
-// The owner side reviews every cashier's sales. A cashier (manager/staff) sees
-// only their own, and only until they hand them over at day closing — the same
-// rule the POS sale history uses.
-const seesAllSales = (user) => user?.role === "admin" || user?.role === "superadmin";
+// Who reviews the shop's sales, as opposed to their own shift's.
+//
+// A manager supervises the floor — staff hand their day over to them, and the
+// day-closing chain has always said so. Leaving them with only the sales they
+// personally rang meant the Sales page read "No sales found" on a trading day,
+// which looks like a broken screen rather than a permission.
+//
+// Staff still see their own, until they hand them over at day closing; that is
+// the same rule the POS sale history uses.
+const seesAllSales = (user) =>
+  user?.role === "admin" || user?.role === "superadmin" || user?.role === "manager";
 
 const salesScope = (user) => (seesAllSales(user) ? {} : { cashier: user?._id, dayClosing: null });
 

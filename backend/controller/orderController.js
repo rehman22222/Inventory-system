@@ -158,6 +158,94 @@ const createOrder = async (req, res) => {
 
 // The deliberate "send" step: emails the supplier the order. Kept separate from
 // creation so nothing reaches a supplier without an explicit action here.
+// What the supplier will read, split into the part the shop writes and the part
+// the order dictates.
+//
+// The lines are not editable, and should not be: an email that says one thing
+// and an order that says another is how a wrong delivery arrives with paperwork
+// backing it up. Everything around them — the greeting, the note, the sign-off
+// — is the shop's own voice and now theirs to change.
+const defaultOrderMessage = (order, shop) =>
+    [
+        `Dear ${order.supplierName || "Supplier"},`,
+        "",
+        "Please supply the following:",
+        "",
+        "[ORDER LINES]",
+        "",
+        order.Description ? order.Description : "",
+        "Kind regards,",
+        shop?.name || "The shop",
+    ].join("\n");
+
+const orderLinesHtml = (order) =>
+    (order.Products || [])
+        .map((line) => {
+            const name = line.product?.name || "Item";
+            return `<tr><td style="border:1px solid #e5e7eb;padding:8px 14px;">${esc(name)}</td>
+                        <td style="border:1px solid #e5e7eb;padding:8px 14px;text-align:right;">${line.quantity}</td></tr>`;
+        })
+        .join("");
+
+// The written message with the order table dropped in wherever the shop left
+// the [ORDER LINES] marker — and appended if they deleted it, because a
+// purchase order without its lines is not a purchase order.
+const composeOrderEmail = (order, shop, message) => {
+    const table = `
+          <table style="border-collapse:collapse;margin:8px 0;">
+            <tr><th style="border:1px solid #e5e7eb;padding:8px 14px;text-align:left;">Product</th>
+                <th style="border:1px solid #e5e7eb;padding:8px 14px;">Qty</th></tr>
+            ${orderLinesHtml(order)}
+          </table>`;
+
+    const written = String(message || "").trim() || defaultOrderMessage(order, shop);
+    const hasMarker = written.includes("[ORDER LINES]");
+
+    const html = written
+        .split(/\n{2,}/)
+        .map((block) =>
+            block.trim() === "[ORDER LINES]"
+                ? table
+                : `<p>${esc(block).replace(/\n/g, "<br/>")}</p>`,
+        )
+        .join("");
+
+    return `<p><strong>Purchase Order</strong></p>${html}${hasMarker ? "" : table}`;
+};
+
+// What the send screen shows before anything is sent. Read-only; it writes
+// nothing and does not mark the order as sent.
+const previewOrderEmail = async (req, res) => {
+    try {
+        const { OrderId } = req.params;
+        if (!mongoose.isValidObjectId(OrderId)) {
+            return res.status(400).json({ message: "Invalid order id" });
+        }
+
+        const order = await Order.findById(OrderId).populate("Products.product", "name");
+        if (!order) return res.status(404).json({ message: "Order not found" });
+
+        const shop = await Store.findOne({ key: "shop" }).lean();
+
+        return res.status(200).json({
+            to: order.supplierEmail || "",
+            supplierName: order.supplierName || "",
+            subject: `Purchase Order — ${order.supplierName || "Order"} (${shop?.name || "Order"})`,
+            message: defaultOrderMessage(order, shop),
+            // Shown beside the message so whoever is editing can see what the
+            // marker will become.
+            lines: (order.Products || []).map((line) => ({
+                name: line.product?.name || "Item",
+                quantity: line.quantity,
+            })),
+            alreadySent: Boolean(order.emailSentAt),
+            mailConfigured: isMailConfigured(),
+        });
+    } catch (error) {
+        return res.status(500).json({ message: "Could not build the email preview" });
+    }
+};
+
 const sendOrder = async (req, res) => {
     try {
         const { OrderId } = req.params;
@@ -184,29 +272,19 @@ const sendOrder = async (req, res) => {
         }
 
         const shop = await Store.findOne({ key: "shop" }).lean();
-        const rows = (order.Products || [])
-            .map((l) => {
-                const name = l.product?.name || "Item";
-                return `<tr><td style="border:1px solid #e5e7eb;padding:8px 14px;">${esc(name)}</td>
-                        <td style="border:1px solid #e5e7eb;padding:8px 14px;text-align:right;">${l.quantity}</td></tr>`;
-            })
-            .join("");
-        const body = `
-          <p><strong>Purchase Order</strong></p>
-          <p>Dear ${esc(order.supplierName || "Supplier")},</p>
-          <p>Please supply the following:</p>
-          <table style="border-collapse:collapse;margin:8px 0;">
-            <tr><th style="border:1px solid #e5e7eb;padding:8px 14px;text-align:left;">Product</th>
-                <th style="border:1px solid #e5e7eb;padding:8px 14px;">Qty</th></tr>
-            ${rows}
-          </table>
-          ${order.Description ? `<p>${esc(order.Description)}</p>` : ""}
-          <p>Kind regards,<br/>${esc(shop?.name || "The shop")}</p>`;
+
+        // Whatever the sender wrote on the preview screen, or the default if
+        // they sent it untouched. Escaped when it is rendered, so a stray
+        // angle bracket in a note cannot become markup.
+        const body = composeOrderEmail(order, shop, req.body?.message);
+        const subject =
+            String(req.body?.subject || "").trim() ||
+            `Purchase Order — ${order.supplierName || "Order"} (${shop?.name || "Order"})`;
 
         const result = await sendMail({
             to: order.supplierEmail,
             fromName: shop?.name,
-            subject: `Purchase Order — ${order.supplierName || "Order"} (${shop?.name || "Order"})`,
+            subject,
             html: brandedHtml(shop, body),
         });
 
@@ -487,6 +565,7 @@ catch (error) {
 module.exports = {
     createOrder,
     sendOrder,
+    previewOrderEmail,
     receiveOrder,
     searchOrder,
     updatestatusOrder,

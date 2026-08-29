@@ -1473,8 +1473,12 @@ function POSPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-[1fr_auto] items-end gap-6 border border-slate-800 bg-black/40 px-4 py-3">
-              <div className="space-y-1 text-sm">
+            {/* minmax(0,1fr), not 1fr: a bare 1fr is minmax(auto,1fr) and refuses
+                to shrink below its content, so an applied deal — a long product
+                name, an EDITED badge and a set stepper — pushed the total clean
+                off the edge of a narrow till. */}
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 border border-slate-800 bg-black/40 px-3 py-3 sm:gap-6 sm:px-4">
+              <div className="min-w-0 space-y-1 text-sm">
                 <div className="flex justify-between gap-8 text-slate-500">
                   <span>{t("pos.subtotal")}</span>
                   <span className="tabular-nums text-slate-300">{currency(subtotal)}</span>
@@ -1640,11 +1644,11 @@ function POSPage() {
                 )}
               </div>
 
-              <div className="text-end">
+              <div className="min-w-0 text-end">
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
                   {creditApplied > 0 ? t("pos.receiptDoc.totalDue", "Total due") : t("pos.total")}
                 </p>
-                <p className="font-display text-3xl font-bold tabular-nums text-cyan-400">
+                <p className="font-display whitespace-nowrap text-2xl font-bold tabular-nums text-cyan-400 sm:text-3xl">
                   {currency(due)}
                 </p>
                 {/* The full price stays visible: the customer is buying a
@@ -2069,7 +2073,10 @@ function POSPage() {
           <div className="r-center r-qrwrap">
             <QRCodeSVG
               value={(SHOP?.qrTemplate || "{ref}").replace("{ref}", receipt.receiptNo)}
-              size={116}
+              // Smaller with the rest of the receipt. A phone reads a 88px
+              // code across a counter without trouble; the roll is what the
+              // shop is paying for.
+              size={88}
               level="M"
             />
           </div>

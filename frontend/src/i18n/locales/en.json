@@ -854,7 +854,21 @@
     "markReceivedHint": "Adds the ordered quantities to inventory",
     "received": "Received ✓",
     "receiveConfirm": "Has this order arrived? This will add the ordered quantities to your inventory. This can't be undone.",
-    "receiveFail": "Could not add the order to inventory"
+    "receiveFail": "Could not add the order to inventory",
+    "previewTitle": "Send to Supplier",
+    "previewSub": "Read it before it goes. Nothing is sent until you press Send.",
+    "previewTo": "To",
+    "previewSubject": "Subject",
+    "previewMessage": "Message",
+    "previewLines": "Order Lines",
+    "previewMarkerHint": "[ORDER LINES] is where the table below is inserted. Delete it and the table goes at the end — a purchase order always carries its lines.",
+    "previewFailed": "Could not build the email",
+    "mailNotConfigured": "Email is not set up on the server yet, so this cannot be sent.",
+    "sendNow": "Send",
+    "sending": "Sending…",
+    "loading": "Loading…",
+    "qty": "Qty",
+    "cancel": "Cancel"
   },
   "suppliers": {
     "totalSupplier": "Total Supplier",

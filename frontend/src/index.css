@@ -95,8 +95,12 @@
     color: #000;
     background: #fff;
     font-family: "Helvetica Neue", Arial, sans-serif;
-    font-size: 12px;
-    line-height: 1.5;
+    /* Tighter than it was — the shop pays for this paper by the roll, and a
+       receipt is read once at the counter. 10px over 1.3 is roughly a third
+       less roll per sale and still comfortably above what a 203dpi head can
+       render; below about 8px the strokes start to fill in. */
+    font-size: 10px;
+    line-height: 1.3;
   }
 
   /* The stamp, laid across the slip the way it is on a paid invoice. Outline
@@ -148,42 +152,42 @@
   /* Header ------------------------------------------------------------- */
   #receipt .r-head {
     text-align: center;
-    padding-bottom: 8px;
+    padding-bottom: 4px;
   }
   #receipt .r-shop {
-    font-size: 21px;
+    font-size: 16px;
     font-weight: 800;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     line-height: 1.2;
   }
   #receipt .r-addr {
-    font-size: 11px;
-    line-height: 1.4;
+    font-size: 9px;
+    line-height: 1.25;
   }
   /* The receipt number is what a customer quotes at the counter for a
      refund, so it is the second-loudest thing on the page. */
   #receipt .r-order {
-    margin-top: 8px;
-    padding: 3px 0;
+    margin-top: 4px;
+    padding: 2px 0;
     border-top: 2px solid #000;
     border-bottom: 2px solid #000;
-    font-size: 15px;
+    font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.04em;
   }
 
   #receipt .r-rule {
     border-top: 1px dashed #000;
-    margin: 7px 0;
+    margin: 4px 0;
   }
 
   /* Meta: label left, value right — scannable, never a wrapped run-on. */
   #receipt .r-meta {
     display: flex;
     justify-content: space-between;
-    gap: 8px;
-    font-size: 11px;
+    gap: 6px;
+    font-size: 9px;
   }
   #receipt .r-meta span:first-child {
     text-transform: uppercase;
@@ -197,7 +201,7 @@
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    font-size: 11px;
+    font-size: 9px;
   }
 
   /* Items -------------------------------------------------------------- */
@@ -208,10 +212,10 @@
   #receipt .r-table th {
     text-align: left;
     font-weight: 800;
-    font-size: 10px;
+    font-size: 8px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    padding-bottom: 3px;
+    padding-bottom: 2px;
     border-bottom: 1.5px solid #000;
     color: #000;
   }
@@ -221,9 +225,9 @@
      grey and thin strokes, and the reason the list looked washed out beside
      everything under it. A thermal head renders #bbb as nothing at all. */
   #receipt .r-table td {
-    padding: 3px 0;
+    padding: 1.5px 0;
     vertical-align: top;
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 600;
     color: #000;
   }
@@ -250,9 +254,9 @@
   #receipt .r-line {
     display: flex;
     justify-content: space-between;
-    gap: 8px;
-    font-size: 12px;
-    padding: 1px 0;
+    gap: 6px;
+    font-size: 10px;
+    padding: 0;
   }
   #receipt .r-save {
     font-weight: 700;
@@ -294,28 +298,28 @@
   }
   /* The number the customer checks first. */
   #receipt .r-total {
-    font-size: 17px;
+    font-size: 14px;
     font-weight: 800;
-    margin-top: 4px;
-    padding: 4px 0;
+    margin-top: 3px;
+    padding: 2px 0;
     border-top: 2px solid #000;
     border-bottom: 2px solid #000;
     text-transform: uppercase;
   }
   /* What they saved — the one line worth a box around it. */
   #receipt .r-savedbox {
-    margin-top: 6px;
-    padding: 4px 6px;
+    margin-top: 4px;
+    padding: 2px 6px;
     border: 1.5px solid #000;
     text-align: center;
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
 
   #receipt .r-qrwrap {
-    margin-top: 10px;
+    margin-top: 5px;
     text-align: center;
   }
   #receipt .r-qrwrap svg {
@@ -329,31 +333,32 @@
     letter-spacing: 0.08em;
   }
   #receipt .r-thanks {
-    margin-top: 8px;
-    font-size: 13px;
+    margin-top: 4px;
+    font-size: 10px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
-  /* The shop's web address, under the code. Bold and full size — a customer
-     reading it later is typing it into a phone. */
+  /* The shop's web address, under the code. Kept a shade above the body type
+     even after the receipt was tightened — a customer reading it later is
+     typing it into a phone. */
   #receipt .r-online {
-    margin-top: 6px;
-    font-size: 12px;
+    margin-top: 4px;
+    font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.02em;
   }
 
   #receipt .r-footer {
-    margin-top: 4px;
-    font-size: 10px;
-    line-height: 1.4;
+    margin-top: 3px;
+    font-size: 9px;
+    line-height: 1.25;
   }
   /* Tear-off breathing room: thermal cutters eat the last few millimetres. */
   #receipt .r-tail {
-    margin-top: 10px;
-    padding-bottom: 12px;
-    font-size: 10px;
+    margin-top: 5px;
+    padding-bottom: 6px;
+    font-size: 9px;
     letter-spacing: 0.3em;
   }
 
