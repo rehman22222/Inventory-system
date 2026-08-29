@@ -203,19 +203,26 @@ module.exports.login=async(req,res)=>{
         }
 
         if (passwordCheck.valid && passwordCheck.needsUpgrade) {
-          // Re-hashing here also re-peppers: a legacy hash signed into from a
-          // machine with a pepper is rewritten under THAT machine's pepper, and
-          // any other deployment holding a different one is locked out from
-          // this moment. Loud on purpose — it is a one-way door.
-          if (process.env.PASSWORD_PEPPER) {
+          // Re-hashing also re-PEPPERS: the stored hash is rewritten under
+          // whichever PASSWORD_PEPPER this machine holds, and any other
+          // deployment holding a different one can never verify it again. A
+          // one-way door, and it swings on an ordinary sign-in.
+          //
+          // Which is how the owner locked themselves out of the live shop: a
+          // laptop pointed at the live database, one sign-in, and the account
+          // belonged to the laptop's pepper from that moment. So the upgrade is
+          // production's job only. A development machine reads the shop's
+          // accounts; it does not get to rewrite them.
+          if (process.env.NODE_ENV === "production") {
+            duplicatedUser.password = await hashPassword(password);
+            await duplicatedUser.save();
+          } else {
             console.warn(
-              `[auth] re-hashing ${normalizedEmail} under this deployment's PASSWORD_PEPPER. ` +
-                `Any other deployment sharing this database must use the same value.`,
+              `[auth] not re-hashing ${normalizedEmail}: this is not a production deployment, ` +
+                `and rewriting the hash here would tie the account to this machine's ` +
+                `PASSWORD_PEPPER and lock the live site out of it.`,
             );
           }
-
-          duplicatedUser.password = await hashPassword(password);
-          await duplicatedUser.save();
         }
 
         const { expiresAt } = await generateToken(duplicatedUser,res)

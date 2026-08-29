@@ -124,6 +124,17 @@ to it — the password was never the problem. Fix in the database:
     );
   }
 
+  if (process.env.NODE_ENV !== "production" && process.env.PASSWORD_PEPPER) {
+    console.log(`
+── warning ───────────────────────────────────────────
+This is not a production deployment, it has a PASSWORD_PEPPER, and it is
+pointed at the database above. Signing in here used to rewrite the account's
+hash under THIS machine's pepper, locking the live site out of it — which is
+exactly how the superadmin lost access. The login no longer re-hashes outside
+production, but anything else you run against this database is still the live
+shop's data.`);
+  }
+
   console.log(`
 ── reading this ──────────────────────────────────────
 A hash is written under whichever PASSWORD_PEPPER was loaded at the time, and
