@@ -867,6 +867,16 @@ module.exports.checkout = async (req, res) => {
     });
   } catch (error) {
     const status = error.statusCode || 500;
+
+    // A 500 here is a sale that did not happen with a customer standing there,
+    // and "POS checkout failed" is all the till can safely say to them. The
+    // reason has to land somewhere, though — this one was a schema enum that
+    // rejected a perfectly good sale at the last step, and it read as nothing
+    // at all in the logs.
+    if (status === 500) {
+      console.error("[pos] checkout failed:", error.message, error.stack);
+    }
+
     return res
       .status(status)
       .json({
@@ -1997,6 +2007,16 @@ module.exports.changePaymentMethod = async (req, res) => {
       return res
         .status(400)
         .json({ message: `This receipt is already ${receipt.status}` });
+    }
+
+    // A sale paid for with credit from a return cannot be relabelled. Calling
+    // it cash would invent takings that never entered the drawer, and the
+    // refund it came from is already recorded against it.
+    if ((receipt.payments || []).some((entry) => entry.method === "refund")) {
+      return res.status(400).json({
+        message:
+          "This sale was paid for with credit from a refund — its payment cannot be changed",
+      });
     }
 
     // Either a single method, or an explicit split.

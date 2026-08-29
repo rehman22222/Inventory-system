@@ -30,7 +30,16 @@ const SaleSchema = new mongoose.Schema(
     // "split" means the receipt was settled with more than one tender; the
     // breakdown lives on the Receipt.
     // "wallet" covers digital/online tenders (Apple Pay, Google Pay, Revolut).
-    paymentMethod: { type: String, enum: ["cash", "creditcard", "credit", "wallet", "split"], required: true },
+    // "refund" is credit from a return spending itself on the replacement. It
+    // is not a tender a cashier can pick, but it IS how a sale can be settled —
+    // an exchange for something the same price or cheaper is paid for entirely
+    // by the return, and leaving it out of this enum failed every one of those
+    // at the last step, after the money had already gone back.
+    paymentMethod: {
+      type: String,
+      enum: ["cash", "creditcard", "credit", "wallet", "refund", "split"],
+      required: true,
+    },
     invoiceUrl: { type: String },
     // Stamped when the cashier closes their day, mirroring Receipt.dayClosing —
     // a closed row drops off that cashier's sales view and belongs to the admin.
