@@ -36,10 +36,14 @@ function Dashboardpage() {
   const shopCurrency = useSelector((state) => state.store?.store?.currency) || "EUR";
   const money = useMemo(
     () =>
+      // To the cent. These two tiles are takings and stock value — figures
+      // somebody checks against a drawer or a stock sheet — and rounding them
+      // to the euro made €872.35 read as €872, which reconciles with nothing.
       new Intl.NumberFormat(undefined, {
         style: "currency",
         currency: shopCurrency,
-        maximumFractionDigits: 0,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
       }),
     [shopCurrency]
   );
