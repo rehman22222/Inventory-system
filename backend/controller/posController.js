@@ -15,6 +15,7 @@ const { applicableDeals } = require("../libs/deals");
 const { startOfDay, endOfDay } = require("../libs/time");
 const { raiseReorderForProduct } = require("./reorderController");
 const logActivity = require("../libs/logger");
+const { restocksOnRefund } = require("../libs/refundReasons");
 const { emitStockChanged } = require('../libs/stockEvents');
 const { symbolFor } = require('../libs/money');
 const { isMailConfigured, sendMail, brandedHtml, esc } = require('../libs/mailer');
@@ -38,10 +39,15 @@ const money = (value) => Math.round(Number(value || 0) * 100) / 100;
 // ever sees their own, and only until they close their day.
 const seesAllSales = (user) => user?.role === "admin" || user?.role === "superadmin";
 
-// Anyone who is allowed to refund must be able to pull up a receipt by its
-// printed number, including one a colleague rang. Staff get their own only.
-const canLookupAnyReceipt = (user) =>
-  seesAllSales(user) || user?.role === "manager";
+// Anyone who is allowed to refund must be able to pull up the receipt they are
+// refunding, including one a colleague rang — which is most of them, since the
+// customer comes back on whatever shift happens to be on. Every role can refund
+// now, so every role can find the sale; a till that can press the button but
+// cannot reach the receipt is a button that does not work.
+//
+// This is reach for a lookup, not for browsing: the sale history and the day's
+// takings are still scoped to the cashier who rang them.
+const canLookupAnyReceipt = () => true;
 
 // What a cashier is allowed to see in their own history: their receipts that
 // have not yet been handed over at day closing.
@@ -133,6 +139,10 @@ module.exports.checkout = async (req, res) => {
       // decides which of several equally priced ones fall into a set — which is
       // what makes the sets land the way the customer put them on the counter.
       scanOrder = [],
+      // Credit from a return being spent on the replacement:
+      // { reference: "RFD-000009", amount }. The amount is a request, not an
+      // instruction — what is actually allowed comes off the refund record.
+      refundCredit = null,
     } = req.body;
 
     // Ids only — the amounts stay this server's business.
@@ -202,7 +212,12 @@ module.exports.checkout = async (req, res) => {
             .filter((entry) => entry.amount > 0)
         : [];
 
-    if (tenders.length === 0 && !paymentMethod) {
+    // A basket paid for entirely by refund credit hands nothing over, so it
+    // arrives with no tenders at all. The credit itself becomes one further
+    // down, once the total it is measured against exists.
+    const expectsCredit = Boolean(refundCredit && refundCredit.reference);
+
+    if (tenders.length === 0 && !paymentMethod && !expectsCredit) {
       return res.status(400).json({ message: "Payment method is required" });
     }
 
@@ -220,7 +235,11 @@ module.exports.checkout = async (req, res) => {
       });
     }
 
-    if (tenders.length === 0 && !PAYMENT_METHODS.includes(paymentMethod)) {
+    if (
+      tenders.length === 0 &&
+      !expectsCredit &&
+      !PAYMENT_METHODS.includes(paymentMethod)
+    ) {
       return res.status(400).json({
         message: `This till does not take ${paymentMethod} — refresh the page and try again`,
       });
@@ -387,6 +406,60 @@ module.exports.checkout = async (req, res) => {
     const tax = money(taxEnabled ? taxable * Number(taxRate || 0) : 0);
     const total = money(taxable + tax);
 
+    // An exchange spends the refund on the replacement rather than paying it
+    // out and taking the money straight back. It is recorded as a tender, so
+    // the sale keeps its real value while the drawer sees nothing come in —
+    // netting it off the price instead would report a €3.99 bottle as €0 of
+    // sales and the full €5.99 as refunded, which is the same loss counted
+    // twice.
+    //
+    // Read from the refund record, never from the till: this is money.
+    let creditRef = null;
+    let creditApplied = 0;
+
+    if (refundCredit && refundCredit.reference) {
+      creditRef = String(refundCredit.reference).trim().toUpperCase();
+
+      const holder = await Receipt.findOne({
+        refunds: {
+          $elemMatch: {
+            reference: creditRef,
+            creditReceiptNo: null,
+            exchangeCredit: { $gt: 0 },
+          },
+        },
+      })
+        .select("refunds")
+        .lean();
+
+      const entry = (holder?.refunds || []).find(
+        (refund) => refund.reference === creditRef,
+      );
+
+      if (!entry) {
+        return res.status(400).json({
+          message: `Refund ${creditRef} has nothing left to spend`,
+        });
+      }
+
+      // Never more than the refund held, and never more than this basket costs
+      // — an exchange for something cheaper leaves the difference to be handed
+      // back at the counter, not carried forward as a balance.
+      creditApplied = money(
+        Math.min(
+          Number(refundCredit.amount || entry.exchangeCredit),
+          Number(entry.exchangeCredit || 0),
+          total,
+        ),
+      );
+
+      if (creditApplied > 0) {
+        tenders.push({ method: "refund", amount: creditApplied });
+      } else {
+        creditRef = null;
+      }
+    }
+
     // The customer must actually have covered the bill. Overpaying is fine —
     // that is change.
     const paid =
@@ -422,7 +495,13 @@ module.exports.checkout = async (req, res) => {
       // so record what we touched and undo it by hand if the sale fails
       // half-way. Without this the fallback path reintroduces the partial-sale
       // bug the transaction exists to prevent.
-      const undo = { stock: [], sales: [], stockTx: [], voucherId: null };
+      const undo = {
+        stock: [],
+        sales: [],
+        stockTx: [],
+        voucherId: null,
+        creditRef: null,
+      };
 
       const compensate = async () => {
         if (session) return;
@@ -446,6 +525,15 @@ module.exports.checkout = async (req, res) => {
                 ? Voucher.updateOne(
                     { _id: undo.voucherId },
                     { $inc: { usedCount: -1 }, $set: { status: "active" } },
+                  )
+                : null,
+              // Hand the credit back — the sale it was going to pay for did not
+              // happen, and an unspendable credit is the customer's money left
+              // in a drawer nobody can open.
+              undo.creditRef
+                ? Receipt.updateOne(
+                    { "refunds.reference": undo.creditRef },
+                    { $set: { "refunds.$.creditReceiptNo": null } },
                   )
                 : null,
             ].filter(Boolean),
@@ -545,6 +633,34 @@ module.exports.checkout = async (req, res) => {
 
         saleIds.push(...createdSales.map((doc) => doc._id));
         undo.sales.push(...createdSales.map((doc) => doc._id));
+
+        // Claim the refund credit the same way a voucher is redeemed: the
+        // filter re-checks at write time, so a credit cannot pay for two
+        // baskets even if the same till is open twice.
+        if (creditRef && creditApplied > 0) {
+          const claimed = await Receipt.updateOne(
+            {
+              refunds: {
+                $elemMatch: {
+                  reference: creditRef,
+                  creditReceiptNo: null,
+                  exchangeCredit: { $gte: creditApplied },
+                },
+              },
+            },
+            { $set: { "refunds.$.creditReceiptNo": receiptNo } },
+            opts(session),
+          );
+
+          if (!claimed.matchedCount) {
+            throw Object.assign(
+              new Error(`Refund ${creditRef} has already been spent`),
+              { statusCode: 400 },
+            );
+          }
+
+          undo.creditRef = creditRef;
+        }
 
         if (voucher) {
           // Redeem atomically: the filter re-checks the usage limit at write time,
@@ -831,6 +947,9 @@ const performRefund = async ({
   requested,
   reason,
   refundMethod,
+  // What the customer is taking instead, if anything. Priced here rather than
+  // taken from the till: the credit it turns into is money.
+  exchange,
   user,
   ip,
   isVoid,
@@ -865,24 +984,60 @@ const performRefund = async ({
     const lines = planRefund(receipt, requested);
     const amount = money(lines.reduce((sum, line) => sum + line.lineTotal, 0));
 
-    for (const line of lines) {
-      await Product.findByIdAndUpdate(
-        line.product,
-        { $inc: { quantity: line.quantity } },
-        opts(session),
+    // An exchange spends the refund rather than paying it out. Whatever the
+    // replacement is worth — up to the refund itself — is held as credit and
+    // never leaves the drawer; anything over that is genuinely handed back.
+    //
+    // Priced from the catalogue at this moment, because this figure decides how
+    // much of the next basket is already paid for.
+    let exchangeCredit = 0;
+    if (Array.isArray(exchange) && exchange.length > 0) {
+      const wanted = exchange
+        .filter((entry) => mongoose.isValidObjectId(entry?.productId))
+        .slice(0, 50);
+
+      const query = Product.find({
+        _id: { $in: wanted.map((entry) => entry.productId) },
+      }).select("Price");
+      const priced = session ? await query.session(session) : await query;
+      const priceOf = new Map(
+        priced.map((product) => [String(product._id), Number(product.Price || 0)]),
       );
 
-      await StockTransaction.create(
-        [
-          {
-            product: line.product,
-            type: "Stock-in",
-            quantity: line.quantity,
-            reference,
-          },
-        ],
-        opts(session),
-      );
+      const value = wanted.reduce((sum, entry) => {
+        const price = priceOf.get(String(entry.productId)) || 0;
+        const quantity = Math.max(0, Math.floor(Number(entry.quantity || 0)));
+        return sum + price * quantity;
+      }, 0);
+
+      exchangeCredit = money(Math.min(amount, value));
+    }
+
+    // Expired and damaged goods are refunded but not resold, so they never go
+    // back on the count. The unit was taken off at the sale and simply stays
+    // off — no movement to record, because nothing moved.
+    const restock = restocksOnRefund(reason || (isVoid ? "void" : "refund"));
+
+    for (const line of lines) {
+      if (restock) {
+        await Product.findByIdAndUpdate(
+          line.product,
+          { $inc: { quantity: line.quantity } },
+          opts(session),
+        );
+
+        await StockTransaction.create(
+          [
+            {
+              product: line.product,
+              type: "Stock-in",
+              quantity: line.quantity,
+              reference,
+            },
+          ],
+          opts(session),
+        );
+      }
 
       // A negative Sale row tagged source:"refund", so reports can net it out
       // (and reverse its cost) rather than treating it as another sale.
@@ -922,7 +1077,13 @@ const performRefund = async ({
       // How it went back. Unstated means it went back the way it came in,
       // which is what a void does and what the old rows all assumed.
       method: refundMethod || receipt.paymentMethod,
+      // Whether the goods went back on the shelf, written down at the time.
+      // Reading it back off the reason later would re-answer the question with
+      // today's rules rather than the ones that were applied.
+      restocked: restock,
       amount,
+      exchangeCredit,
+      creditReceiptNo: null,
       items: lines,
     });
 
@@ -943,6 +1104,8 @@ const performRefund = async ({
     return {
       amount,
       lines,
+      restocked: restock,
+      exchangeCredit,
       status: receipt.status,
       receiptId: receipt._id,
       reference: refundRef,
@@ -955,7 +1118,13 @@ const performRefund = async ({
         by: user.name,
         method: refundMethod || receipt.paymentMethod,
         reason: reason || undefined,
+        restocked: restock,
         amount,
+        // What is held for the replacement, and what actually goes back over
+        // the counter. On a straight refund the first is zero and the second is
+        // the whole amount.
+        exchangeCredit,
+        cashBack: money(amount - exchangeCredit),
         items: lines.map((line) => ({
           name: line.name,
           quantity: line.quantity,
@@ -967,7 +1136,11 @@ const performRefund = async ({
 
   await logActivity({
     action: isVoid ? "POS Void" : "POS Refund",
-    description: `${isVoid ? "Voided" : "Refunded"} ${result.amount} on receipt ${receiptNo}.`,
+    // Stock written off is the part of a refund somebody may have to answer
+    // for later, so the log says it rather than leaving it to be inferred.
+    description: `${isVoid ? "Voided" : "Refunded"} ${result.amount} on receipt ${receiptNo}.${
+      result.restocked ? "" : ` Goods written off (${reason}) — not restocked.`
+    }`,
     entity: "order",
     entityId: result.receiptId,
     userId: user._id,
@@ -979,7 +1152,7 @@ const performRefund = async ({
 
 module.exports.refund = async (req, res) => {
   try {
-    const { receiptNo, items = [], reason, method } = req.body;
+    const { receiptNo, items = [], reason, method, exchange = [] } = req.body;
 
     if (!receiptNo) {
       return res.status(400).json({ message: "Receipt number is required" });
@@ -1010,6 +1183,7 @@ module.exports.refund = async (req, res) => {
       requested: Array.isArray(items) ? items : [],
       reason,
       refundMethod: method,
+      exchange: Array.isArray(exchange) ? exchange : [],
       user: req.user,
       ip: req.ip,
       isVoid: false,
@@ -1022,6 +1196,10 @@ module.exports.refund = async (req, res) => {
       reference: result.reference,
       status: result.status,
       amount: result.amount,
+      // What the till may spend on the replacement. Quoted back rather than
+      // worked out there: the sale that spends it is checked against this
+      // record, not against anything the browser remembers.
+      exchangeCredit: result.exchangeCredit,
       items: result.lines,
       slip: result.slip,
     });
@@ -1156,6 +1334,9 @@ module.exports.getRefunds = async (req, res) => {
           by: entry.byName,
           reason: entry.reason,
           method: entry.method || null,
+          // Undefined on rows written before write-offs existed, which the
+          // history reads as "nothing to say" rather than as "not restocked".
+          restocked: entry.restocked,
           amount: money(entry.amount),
           items: (entry.items || []).map((item) => ({
             name: item.name,
@@ -1277,8 +1458,8 @@ module.exports.getReceipt = async (req, res) => {
       $or: [{ receiptNo: reference }, { "offline.ref": reference }],
     };
 
-    // Staff can only pull up their own. Manager and above can look up any
-    // receipt by its printed number — that is what a counter refund needs.
+    // Any till user can pull up a receipt by its printed number — that is what
+    // a counter refund needs, whoever happens to be on the shift.
     if (!canLookupAnyReceipt(req.user)) {
       filter.cashier = req.user._id;
     }
@@ -1789,7 +1970,9 @@ module.exports.changePaymentMethod = async (req, res) => {
       return res.status(404).json({ message: "Receipt not found" });
     }
 
-    // A cashier owns their own mistakes; manager and above can fix anyone's.
+    // A cashier owns their own mistakes, and anyone on the till can fix a
+    // colleague's mis-tapped tender. The day-closing lock below is the real
+    // guard here, not the role.
     const mine = String(receipt.cashier) === String(req.user._id);
     if (!mine && !canLookupAnyReceipt(req.user)) {
       return res
@@ -1893,6 +2076,7 @@ const summarise = (receipts) => {
   let tax = 0;
   let net = 0;
   let refunded = 0;
+  let exchangeCredit = 0;
 
   for (const receipt of receipts) {
     gross += Number(receipt.subtotal || 0);
@@ -1901,6 +2085,12 @@ const summarise = (receipts) => {
     net += Number(receipt.total || 0);
     refunded += (receipt.refunds || []).reduce(
       (sum, entry) => sum + Number(entry.amount || 0),
+      0,
+    );
+    // Refunded value and cash out of the drawer are not the same number once
+    // exchanges exist. This is the difference between them.
+    exchangeCredit += (receipt.refunds || []).reduce(
+      (sum, entry) => sum + Number(entry.exchangeCredit || 0),
       0,
     );
 
@@ -1940,6 +2130,7 @@ const summarise = (receipts) => {
     tax: money(tax),
     net: money(net),
     refunded: money(refunded),
+    exchangeCredit: money(exchangeCredit),
     byMethod: [...methods.values()].map((entry) => ({
       ...entry,
       amount: money(entry.amount),
@@ -1973,6 +2164,15 @@ module.exports.dayClosingSummary = async (req, res) => {
             (sum, item) => sum + Number(item.quantity || 0),
             0,
           ),
+          // What was actually sold on it. A slip that only lists receipt
+          // numbers cannot be reconciled against anything except itself — the
+          // cashier counting the drawer at midnight is looking for the sale
+          // where the wrong thing was scanned, and that is a product name.
+          lines: (receipt.items || []).map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            lineTotal: money(item.lineTotal),
+          })),
           total: money(receipt.total),
           refunded: money(
             (receipt.refunds || []).reduce(
@@ -2033,6 +2233,7 @@ module.exports.closeDay = async (req, res) => {
             tax: summary.tax,
             net: summary.net,
             refunded: summary.refunded,
+            exchangeCredit: summary.exchangeCredit,
             byMethod: summary.byMethod,
           },
         ],

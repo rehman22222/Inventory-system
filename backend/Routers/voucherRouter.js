@@ -7,12 +7,20 @@ const {
   removeVoucher,
   validateVoucher,
 } = require("../controller/voucherController");
-const { authmiddleware, adminOrManager } = require("../middleware/Authmiddleware");
+const {
+  authmiddleware,
+  adminOrManager,
+  tillUser,
+} = require("../middleware/Authmiddleware");
 
 const router = express.Router();
 
-// Managing vouchers is an admin/manager job.
-router.post("/create", authmiddleware, adminOrManager, createVoucher);
+// Writing a voucher at the counter is part of the one till every role shares —
+// a customer owed a gesture should not have to wait for a manager to walk over.
+router.post("/create", authmiddleware, tillUser, createVoucher);
+
+// Reading and revoking the whole book is still back-office work, and nothing on
+// the till needs it.
 router.get("/all", authmiddleware, adminOrManager, getVouchers);
 router.put("/:voucherId/disable", authmiddleware, adminOrManager, disableVoucher);
 router.delete("/:voucherId", authmiddleware, adminOrManager, removeVoucher);

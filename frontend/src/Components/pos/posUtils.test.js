@@ -3,6 +3,10 @@ import {
   applicableDeals,
   currency,
   getCurrencyCode,
+  printSlip,
+  REFUND_REASONS,
+  refundReasonLabel,
+  restocksOnRefund,
   sanitizeDecimal,
   sanitizeInteger,
   setCurrencyCode,
@@ -575,5 +579,102 @@ describe("sets fall the way the customer put them on the counter", () => {
     ).applied;
     // Scanned first, but the €5 is still the one left out of a 3-for set.
     expect(offer.allocation).toEqual({ b: 1, c: 1, d: 1 });
+  });
+});
+
+describe("what a refund reason does to stock", () => {
+  const { restocksOnRefund: server } = require("../../../../backend/libs/refundReasons");
+
+  test("expired and damaged goods are written off, not put back", () => {
+    expect(restocksOnRefund("expired")).toBe(false);
+    expect(restocksOnRefund("damaged")).toBe(false);
+  });
+
+  test("a customer who simply did not like it hands back sellable stock", () => {
+    expect(restocksOnRefund("unwanted")).toBe(true);
+  });
+
+  test("anything unsaid restocks — the way a refund worked before this existed", () => {
+    // A void, a typed-in reason, and a refund with no reason at all. Stock the
+    // shop actually has is worse forgotten than double-counted.
+    expect(restocksOnRefund("void")).toBe(true);
+    expect(restocksOnRefund("customer changed their mind")).toBe(true);
+    expect(restocksOnRefund("")).toBe(true);
+    expect(restocksOnRefund(undefined)).toBe(true);
+  });
+
+  test("the till and the server answer identically", () => {
+    // The till only says what is about to happen; the server decides it. They
+    // must not be able to disagree on screen.
+    for (const reason of [...REFUND_REASONS, "void", "refund", "", undefined, "broken"]) {
+      expect(restocksOnRefund(reason)).toBe(server(reason));
+    }
+  });
+
+  test("a reason nobody recognises is shown as it was written", () => {
+    const t = (key) => `translated:${key}`;
+    expect(refundReasonLabel(t, "expired")).toBe("translated:pos.refund.reasons.expired");
+    // Refunds put through before the presets existed hold free text.
+    expect(refundReasonLabel(t, "seal was broken")).toBe("seal was broken");
+  });
+});
+
+describe("printing a slip", () => {
+  let printed;
+
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div id="root">
+        <div id="dialog">
+          <span id="before">before</span>
+          <div id="day-closing-print" class="slip hidden">rows</div>
+          <span id="after">after</span>
+        </div>
+      </div>
+    `;
+    printed = null;
+    window.print = jest.fn(() => {
+      // What the browser sees at the moment of printing.
+      const node = document.getElementById("day-closing-print");
+      printed = {
+        parentId: node.parentElement.id,
+        underBody: node.parentElement.parentElement === document.body,
+        marked: node.classList.contains("is-printing"),
+        bodyMarked: document.body.classList.contains("printing-slip"),
+      };
+    });
+  });
+
+  test("the slip prints from the top of the page, not from inside the dialog", () => {
+    // Absolutely positioned content does not paginate — this is what keeps a
+    // long shift report from being clipped to one sheet.
+    printSlip("day-closing-print");
+    expect(printed).toEqual({
+      parentId: "print-root",
+      underBody: true,
+      marked: true,
+      bodyMarked: true,
+    });
+  });
+
+  test("and goes back exactly where React left it", () => {
+    printSlip("day-closing-print");
+
+    const dialog = document.getElementById("dialog");
+    expect([...dialog.children].map((child) => child.id)).toEqual([
+      "before",
+      "day-closing-print",
+      "after",
+    ]);
+    expect(document.getElementById("print-root")).toBeNull();
+    expect(document.body.classList.contains("printing-slip")).toBe(false);
+    expect(
+      document.getElementById("day-closing-print").classList.contains("is-printing")
+    ).toBe(false);
+  });
+
+  test("a slip that is not on the page prints nothing rather than throwing", () => {
+    printSlip("no-such-slip");
+    expect(window.print).not.toHaveBeenCalled();
   });
 });

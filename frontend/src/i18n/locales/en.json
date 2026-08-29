@@ -187,7 +187,8 @@
       "cash": "Cash",
       "creditcard": "Card",
       "wallet": "Wallet",
-      "credit": "Credit"
+      "credit": "Credit",
+      "refund": "Refund credit"
     },
     "phone": "Phone",
     "address": "Address"
@@ -454,7 +455,7 @@
     "closeOrder": "Charge",
     "noProducts": "No products in this category",
     "rail": {
-      "refund": "Refund Transaction",
+      "refund": "Refund & Exchange",
       "void": "Void Sale",
       "suspend": "Suspend",
       "resume": "Resume",
@@ -464,7 +465,7 @@
       "saleHistory": "Sale History",
       "enterCode": "Enter Code",
       "send": "Held",
-      "dayClosing": "Day Closing",
+      "dayClosing": "Day Roaster",
       "refundHistory": "Refund history",
       "deals": "Deals"
     },
@@ -491,7 +492,7 @@
       "offline": "Offline"
     },
     "refund": {
-      "title": "Refund transaction",
+      "title": "Refund & exchange",
       "subtitle": "Find a receipt, then choose what goes back",
       "receiptPlaceholder": "Receipt number, e.g. POS-000123",
       "find": "Find",
@@ -503,7 +504,6 @@
       "done": "Refunded {{amount}}",
       "failed": "Refund failed",
       "selectSomething": "Choose at least one item to refund",
-      "reasonPlaceholder": "Reason (optional)",
       "status": "Status",
       "chooseItems": "Choose what the customer brought back",
       "selectAll": "Select all",
@@ -525,7 +525,15 @@
       "returned": "Returned",
       "exchangeNote": "Rung up on its own receipt",
       "close": "Close",
-      "clearAll": "Clear"
+      "clearAll": "Clear",
+      "why": "Why it came back",
+      "reasons": {
+        "expired": "Expired",
+        "damaged": "Damaged / used",
+        "unwanted": "Didn't like it"
+      },
+      "restock": "Goes back on the shelf",
+      "writeOff": "Written off — stock not returned"
     },
     "void": {
       "confirm": "Void receipt {{receiptNo}}? Stock will be returned.",
@@ -605,7 +613,8 @@
       "savePayment": "Save",
       "paymentChanged": "Payment updated",
       "changeFailed": "Could not change the payment",
-      "lockedHint": "Handed over at day closing — can no longer be changed"
+      "lockedHint": "Handed over at day closing — can no longer be changed",
+      "netTakings": "Net takings"
     },
     "held": {
       "title": "Suspended sales",
@@ -722,7 +731,9 @@
       "remove": "Remove",
       "customerPays": "Customer pays",
       "customerGets": "Customer gets back",
-      "confirm": "Refund & exchange"
+      "confirm": "Refund & exchange",
+      "credit": "Refund credit",
+      "needsNetwork": "This exchange needs the connection back before it can be rung up"
     },
     "dealMixHint": "Scan any {{n}} of these and the offer appears.",
     "dealMixItems": "Any {{n}} of {{count}} products",
@@ -743,6 +754,10 @@
     },
     "tile": {
       "outOfStock": "Out of stock"
+    },
+    "roaster": {
+      "title": "Day Roaster",
+      "subtitle": "Hand your takings over to the admin."
     }
   },
   "sales": {
@@ -1204,7 +1219,9 @@
     "from": "From",
     "printedAt": "Printed",
     "salesOfDay": "Sales",
-    "itemCount": "{{n}} items"
+    "itemCount": "{{n}} items",
+    "exchangeCredit": "Spent on exchanges",
+    "handedBack": "Handed back"
   },
   "dayClosings": {
     "title": "Day closings",

@@ -10,7 +10,6 @@ import {
   RemoveDeal,
 } from "../features/dealSlice";
 import { gettingallCategory } from "../features/categorySlice";
-import { RaiseRequest } from "../features/approvalSlice";
 
 // Build and manage bundle deals: name the deal, pick the products that make it
 // up, and set the discount. The POS detects the deal automatically when those
@@ -22,10 +21,12 @@ function DealsModal({ onClose }) {
   const { getallproduct } = useSelector((state) => state.product);
   const { getallCategory } = useSelector((state) => state.category);
   const { deals, iscreating } = useSelector((state) => state.deal);
-  const { Authuser } = useSelector((state) => state.auth);
 
-  // Only the owner creates a deal outright; everyone else asks.
-  const canCreateDirectly = Authuser?.role === "superadmin";
+  // A deal used to go to the owner for approval before it existed. The shop
+  // asked for it to be made where it is used, so whoever opens this makes one
+  // outright — no role check here and none on the route. The approval queue
+  // still honours any create_deal request raised before this changed; it simply
+  // does not receive new ones.
 
   const products = useMemo(
     () => (Array.isArray(getallproduct) ? getallproduct : []),
@@ -278,23 +279,6 @@ function DealsModal({ onClose }) {
 
       toast.success(t("deals.updated", "Deal saved"));
       cancelEdit();
-      return;
-    }
-
-    // A deal gives money away, so it is the owner's call. Everyone else sends it
-    // for approval — approving is what creates it.
-    if (!canCreateDirectly) {
-      const asked = await dispatch(RaiseRequest({ type: "create_deal", payload }));
-
-      if (asked.error) {
-        toast.error(asked.payload || t("deals.requestFailed"));
-        return;
-      }
-
-      toast.success(
-        t("deals.requested", { ref: asked.payload?.request?.reference || "" })
-      );
-      resetForm();
       return;
     }
 
@@ -707,13 +691,6 @@ function DealsModal({ onClose }) {
               </div>
             )}
 
-            {/* Say up front that this goes to the owner. */}
-            {!canCreateDirectly && (
-              <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
-                {t("deals.needsApproval")}
-              </p>
-            )}
-
             <button
               type="submit"
               disabled={iscreating}
@@ -723,9 +700,7 @@ function DealsModal({ onClose }) {
                 ? t("deals.saving")
                 : editingId
                 ? t("deals.saveChanges", "Save changes")
-                : canCreateDirectly
-                ? t("deals.create")
-                : t("deals.sendForApproval")}
+                : t("deals.create")}
             </button>
 
             {editingId && (

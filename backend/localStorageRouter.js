@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { applicableDeals } = require("./libs/deals");
+const { restocksOnRefund } = require("./libs/refundReasons");
 const { buildCsv, formatDate } = require("./libs/csv");
 const { buildWorkbookBuffer } = require("./libs/excel");
 const { buildPdfBuffer } = require("./libs/pdf");
@@ -292,7 +293,7 @@ function scopeReceipts(store, req) {
 
 function summariseReceipts(receipts) {
   const methods = new Map();
-  let gross = 0, discount = 0, tax = 0, net = 0, refunded = 0;
+  let gross = 0, discount = 0, tax = 0, net = 0, refunded = 0, exchangeCredit = 0;
 
   for (const receipt of receipts) {
     gross += Number(receipt.subtotal || 0);
@@ -300,6 +301,10 @@ function summariseReceipts(receipts) {
     tax += Number(receipt.tax || 0);
     net += Number(receipt.total || 0);
     refunded += (receipt.refunds || []).reduce((sum, e) => sum + Number(e.amount || 0), 0);
+    exchangeCredit += (receipt.refunds || []).reduce(
+      (sum, e) => sum + Number(e.exchangeCredit || 0),
+      0
+    );
 
     const hasTenders = Array.isArray(receipt.payments) && receipt.payments.length > 0;
     const tenders = hasTenders
@@ -330,6 +335,7 @@ function summariseReceipts(receipts) {
     tax: money(tax),
     net: money(net),
     refunded: money(refunded),
+    exchangeCredit: money(exchangeCredit),
     byMethod: [...methods.values()].map((e) => ({ ...e, amount: money(e.amount) })),
     openedAt: receipts.length ? receipts[receipts.length - 1].createdAt : null,
   };
@@ -937,6 +943,7 @@ function localStorageRouter(app) {
       dealSets = {},
       dealLocks = {},
       scanOrder = [],
+      refundCredit = null,
     } = req.body;
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -949,7 +956,9 @@ function localStorageRouter(app) {
           .filter((entry) => entry.method && entry.amount > 0)
       : [];
 
-    if (tenders.length === 0 && !paymentMethod) {
+    // A basket covered entirely by refund credit hands nothing over, so it
+    // arrives with no tenders — same as the real till.
+    if (tenders.length === 0 && !paymentMethod && !refundCredit?.reference) {
       return res.status(400).json({ message: "Payment method is required" });
     }
 
@@ -1035,6 +1044,43 @@ function localStorageRouter(app) {
     const tax = money(taxEnabled ? taxableAmount * Number(taxRate || 0) : 0);
     const total = money(taxableAmount + tax);
 
+    // Credit from a return spending itself on the replacement, priced against
+    // the refund record the same way the real till does it.
+    let creditEntry = null;
+    let creditApplied = 0;
+    if (refundCredit && refundCredit.reference) {
+      const ref = String(refundCredit.reference).trim().toUpperCase();
+      for (const receipt of store.receipts || []) {
+        const entry = (receipt.refunds || []).find(
+          (refund) =>
+            refund.reference === ref &&
+            !refund.creditReceiptNo &&
+            Number(refund.exchangeCredit || 0) > 0
+        );
+        if (entry) {
+          creditEntry = entry;
+          break;
+        }
+      }
+
+      if (!creditEntry) {
+        return res
+          .status(400)
+          .json({ message: `Refund ${ref} has nothing left to spend` });
+      }
+
+      creditApplied = money(
+        Math.min(
+          Number(refundCredit.amount || creditEntry.exchangeCredit),
+          Number(creditEntry.exchangeCredit || 0),
+          total
+        )
+      );
+
+      if (creditApplied > 0) tenders.push({ method: "refund", amount: creditApplied });
+      else creditEntry = null;
+    }
+
     const paid = tenders.length > 0 ? money(tenders.reduce((sum, e) => sum + e.amount, 0)) : null;
 
     if (paid !== null && paid + 0.001 < total) {
@@ -1050,6 +1096,13 @@ function localStorageRouter(app) {
       tenders.length === 0 ? paymentMethod : tenders.length === 1 ? tenders[0].method : "split";
 
     const receiptNumber = nextReceiptNo(store);
+
+    // Spent once. Stamped before the sale is written, so the next basket cannot
+    // claim it again.
+    if (creditEntry && creditApplied > 0) {
+      creditEntry.creditReceiptNo = receiptNumber;
+    }
+
     const receiptItems = [];
     const saleIds = [];
 
@@ -1197,20 +1250,14 @@ function localStorageRouter(app) {
     res.json({ receipts: scopeReceipts(store, req).slice(0, limit) });
   });
 
+  // Any till user can look a receipt up by its printed number, which is what a
+  // counter refund needs — same rule as the real till, and no role check.
   router.get("/pos/receipt/:receiptNo", (req, res) => {
     const store = readStore();
-    const user = currentUser(store, req);
     const receipt = store.receipts.find(
       (record) => record.receiptNo === String(req.params.receiptNo).toUpperCase()
     );
     if (!receipt) return res.status(404).json({ message: "Receipt not found" });
-
-    // Staff only get their own; manager and above can look any receipt up by
-    // its printed number, which is what a counter refund needs.
-    const canLookupAny = !user || seesAllSales(user) || user.role === "manager";
-    if (!canLookupAny && receipt.cashier !== user._id) {
-      return res.status(404).json({ message: "Receipt not found" });
-    }
 
     res.json({ receipt });
   });
@@ -1227,8 +1274,35 @@ function localStorageRouter(app) {
   router.get("/pos/day-closing/summary", (req, res) => {
     const store = readStore();
     const user = currentUser(store, req);
+    const open = myOpenReceipts(store, req);
     res.json({
-      summary: summariseReceipts(myOpenReceipts(store, req)),
+      summary: {
+        ...summariseReceipts(open),
+        // The sales behind the totals, line by line, the same shape the real
+        // controller returns — a demo day closing that prints no products is
+        // not showing the shop the slip it will actually get.
+        sales: open.map((receipt) => ({
+          receiptNo: receipt.receiptNo,
+          at: receipt.createdAt,
+          method:
+            Array.isArray(receipt.payments) && receipt.payments.length > 1
+              ? "split"
+              : receipt.paymentMethod,
+          items: (receipt.items || []).reduce(
+            (sum, item) => sum + Number(item.quantity || 0),
+            0
+          ),
+          lines: (receipt.items || []).map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            lineTotal: money(item.lineTotal),
+          })),
+          total: money(receipt.total),
+          refunded: money(
+            (receipt.refunds || []).reduce((sum, e) => sum + Number(e.amount || 0), 0)
+          ),
+        })),
+      },
       cashierName: user?.name,
     });
   });
@@ -1317,7 +1391,7 @@ function localStorageRouter(app) {
     res.json({ closing: { ...closing, receipts } });
   });
 
-  const applyRefund = (store, receipt, requested, reason, isVoid) => {
+  const applyRefund = (store, receipt, requested, reason, isVoid, exchange = []) => {
     const already = new Map();
     receipt.refunds.forEach((refund) =>
       refund.items.forEach((item) =>
@@ -1354,24 +1428,43 @@ function localStorageRouter(app) {
 
     const amount = money(lines.reduce((sum, line) => sum + line.lineTotal, 0));
     const reference = `RFD-${receipt.receiptNo}`;
+    // Same rule as the real till: expired and damaged goods are refunded but
+    // not put back on the count.
+    const restock = restocksOnRefund(reason || (isVoid ? "void" : "refund"));
+
+    // And the same rule for the money: an exchange spends the refund on the
+    // replacement instead of paying it out.
+    const exchangeValue = (Array.isArray(exchange) ? exchange : []).reduce(
+      (sum, entry) => {
+        const product = store.products.find(
+          (record) => record._id === String(entry?.productId)
+        );
+        const quantity = Math.max(0, Math.floor(Number(entry?.quantity || 0)));
+        return sum + Number(product?.Price || 0) * quantity;
+      },
+      0
+    );
+    const exchangeCredit = money(Math.min(amount, exchangeValue));
 
     lines.forEach((line) => {
-      const product = store.products.find((record) => record._id === line.product);
-      if (product) {
-        product.quantity = Number(product.quantity) + line.quantity;
-        product.updatedAt = now();
-      }
+      if (restock) {
+        const product = store.products.find((record) => record._id === line.product);
+        if (product) {
+          product.quantity = Number(product.quantity) + line.quantity;
+          product.updatedAt = now();
+        }
 
-      store.stockTransactions.unshift({
-        _id: id(),
-        product: line.product,
-        type: "Stock-in",
-        quantity: line.quantity,
-        reference,
-        transactionDate: now(),
-        createdAt: now(),
-        updatedAt: now(),
-      });
+        store.stockTransactions.unshift({
+          _id: id(),
+          product: line.product,
+          type: "Stock-in",
+          quantity: line.quantity,
+          reference,
+          transactionDate: now(),
+          createdAt: now(),
+          updatedAt: now(),
+        });
+      }
 
       store.sales.unshift({
         _id: id(),
@@ -1391,11 +1484,25 @@ function localStorageRouter(app) {
     });
 
     receipt.refunds.push({
+      // Counted across every refund in the store, not off the receipt count:
+      // one receipt can be refunded twice, and a credit is looked up by this
+      // number, so two refunds sharing one would spend each other's money.
+      reference: `RFD-${String(
+        (store.receipts || []).reduce(
+          (sum, record) => sum + (record.refunds || []).length,
+          1
+        )
+      ).padStart(6, "0")}`,
       at: now(),
       by: receipt.cashier,
       byName: receipt.cashierName,
       reason: reason || (isVoid ? "void" : "refund"),
+      restocked: restock,
       amount,
+      // What the customer is taking instead, priced here and held back rather
+      // than paid out — same rule as the real till.
+      exchangeCredit,
+      creditReceiptNo: null,
       items: lines,
     });
 
@@ -1410,12 +1517,12 @@ function localStorageRouter(app) {
     receipt.status = isVoid ? "voided" : fully ? "refunded" : "partially-refunded";
     receipt.updatedAt = now();
 
-    return { amount, lines };
+    return { amount, lines, restocked: restock, exchangeCredit };
   };
 
   router.post("/pos/refund", (req, res) => {
     const store = readStore();
-    const { receiptNo, items = [], reason } = req.body;
+    const { receiptNo, items = [], reason, exchange = [] } = req.body;
 
     const receipt = store.receipts.find(
       (record) => record.receiptNo === String(receiptNo || "").toUpperCase()
@@ -1426,7 +1533,7 @@ function localStorageRouter(app) {
       return res.status(400).json({ message: `This receipt is already ${receipt.status}` });
     }
 
-    const result = applyRefund(store, receipt, items, reason, false);
+    const result = applyRefund(store, receipt, items, reason, false, exchange);
     if (result.error) return res.status(400).json({ message: result.error });
 
     addActivity(store, "POS Refund", `Refunded ${result.amount} on receipt ${receipt.receiptNo}.`, "order", receipt._id);
@@ -1436,8 +1543,10 @@ function localStorageRouter(app) {
       success: true,
       message: `Refunded ${result.amount}`,
       receiptNo: receipt.receiptNo,
+      reference: receipt.refunds[receipt.refunds.length - 1]?.reference,
       status: receipt.status,
       amount: result.amount,
+      exchangeCredit: result.exchangeCredit,
       items: result.lines,
     });
   });

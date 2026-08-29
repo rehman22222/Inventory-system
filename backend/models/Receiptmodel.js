@@ -30,7 +30,20 @@ const RefundEntrySchema = new mongoose.Schema(
     // handed back in cash is an ordinary thing at a counter, and the drawer
     // needs to know which it was.
     method: { type: String, enum: ["cash", "creditcard", "credit", "wallet"] },
+    // Whether the goods went back on the shelf. Expired and damaged stock is
+    // refunded and written off; anything else is resellable. No default: rows
+    // written before this existed all restocked, and saying so outright would
+    // be claiming a decision nobody made.
+    restocked: { type: Boolean },
     amount: { type: Number, default: 0 },
+    // On an exchange the money does not leave the drawer — it pays for what the
+    // customer took instead. This is how much of `amount` is being held for
+    // that, so the takings can tell "handed back" from "spent here"; `method`
+    // then describes only the rest.
+    exchangeCredit: { type: Number, default: 0 },
+    // The sale that spent it, by receipt number. Set once and checked before
+    // spending, so one refund cannot pay for two baskets.
+    creditReceiptNo: { type: String, default: null },
     items: [
       {
         _id: false,
@@ -99,8 +112,12 @@ const ReceiptSchema = new mongoose.Schema(
         _id: false,
         method: {
           type: String,
-          // "wallet" covers digital/online tenders (Apple Pay, Google Pay, Revolut).
-          enum: ["cash", "creditcard", "credit", "wallet"],
+          // "wallet" covers digital/online tenders (Apple Pay, Google Pay,
+          // Revolut). "refund" is not a tender the cashier can pick — it is
+          // credit from a return being spent on the replacement, and it is
+          // recorded as a payment so the sale keeps its real value while the
+          // drawer sees nothing come in.
+          enum: ["cash", "creditcard", "credit", "wallet", "refund"],
           required: true,
         },
         amount: { type: Number, required: true },
@@ -108,7 +125,7 @@ const ReceiptSchema = new mongoose.Schema(
     ],
     paymentMethod: {
       type: String,
-      enum: ["cash", "creditcard", "credit", "wallet", "split"],
+      enum: ["cash", "creditcard", "credit", "wallet", "refund", "split"],
       required: true,
     },
     amountTendered: { type: Number },

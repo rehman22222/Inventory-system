@@ -52,6 +52,7 @@ import {
   applicableDeals,
   allDealIds,
   sanitizeDecimal,
+  printSlip,
   MISC_CATEGORY,
 } from "../Components/pos/posUtils";
 import {
@@ -110,8 +111,16 @@ function POSPage() {
   const { Authuser } = useSelector((state) => state.auth);
 
   const role = Authuser?.role;
-  // Superadmin sits above admin, so they get the elevated till actions too.
-  const isElevated = role === "superadmin" || role === "admin" || role === "manager";
+  // One till, the same at every role. Staff, manager, admin and superadmin get
+  // the same buttons: refunds, voids, deals, vouchers and price fixes all
+  // happen with a customer standing there, and a counter that has to fetch
+  // someone with a better login is a counter that keeps people waiting.
+  //
+  // Nothing here is anonymous — each of those is written against whoever did it
+  // and reads back in the activity log, the refund history and the day's
+  // takings. That record is what makes this workable, and it is the only thing
+  // that does. The server agrees: see `tillUser` in Authmiddleware.
+  const isElevated = true;
   const dashboardPath = dashboardByRole[role] || "/StaffDashboard";
 
   const [query, setQuery] = useState("");
@@ -175,6 +184,10 @@ function POSPage() {
   // search over the top, and the refund dialog has to keep its half-filled
   // state — which lines, which quantities — while that happens.
   const [exchangeItems, setExchangeItems] = useState([]);
+  // Credit from a return that is paying for the replacement: { reference,
+  // amount }. Held here rather than folded into the price, because the sale is
+  // still worth what it is worth — this is how it was paid for.
+  const [refundCredit, setRefundCredit] = useState(null);
   const [pickingExchange, setPickingExchange] = useState(false);
 
   // Anything the till rang up while the line was down.
@@ -575,6 +588,13 @@ function POSPage() {
   const tax = taxEnabled ? taxable * taxFraction : 0;
   const total = taxable + tax;
 
+  // Never more than this basket costs. An exchange for something cheaper leaves
+  // the difference to be handed back over the counter — the refund dialog has
+  // already shown the cashier that figure — rather than becoming a balance the
+  // shop has to remember.
+  const creditApplied = Math.min(Number(refundCredit?.amount || 0), total);
+  const due = Math.max(0, total - creditApplied);
+
   const addToCart = useCallback(
     (product, quantity = 1) => {
       const stock = Number(product.quantity || 0);
@@ -805,6 +825,7 @@ function POSPage() {
     setDiscount(0);
     setDiscountType("amount");
     setVoucher(null);
+    setRefundCredit(null);
     setAppliedDealIds([]);
     setDealOverrides({});
     setDealSets({});
@@ -926,10 +947,8 @@ function POSPage() {
   // --- Void: clears an in-progress sale, or reverses the receipt just printed.
   const voidSale = async () => {
     if (receipt) {
-      if (!isElevated) {
-        toast.error(t("pos.void.notAllowed"));
-        return;
-      }
+      // Reversing a sale that has already printed is a real thing to do, so it
+      // asks once — not for permission, but for certainty.
       if (!window.confirm(t("pos.void.confirm", { receiptNo: receipt.receiptNo }))) return;
 
       try {
@@ -961,6 +980,14 @@ function POSPage() {
       return;
     }
 
+    // An exchange where the replacement costs no more than the return: there is
+    // nothing to hand over, so there is nothing to ask. The tender screen has
+    // no zero button and should not need one.
+    if (due <= 0.001 && creditApplied > 0) {
+      checkout([]);
+      return;
+    }
+
     setModal("payment");
   };
 
@@ -988,6 +1015,12 @@ function POSPage() {
     // The order things were rung up, so the server forms the same sets.
     scanOrder,
     items: cart.map((item) => ({ product: item.productId, quantity: item.quantity })),
+    // Credit from a return, spent here. The server checks it against the refund
+    // record and decides what it is actually worth; this is a request.
+    refundCredit:
+      refundCredit && creditApplied > 0
+        ? { reference: refundCredit.reference, amount: creditApplied }
+        : undefined,
   });
 
   const finishSale = (completed) => {
@@ -1002,6 +1035,7 @@ function POSPage() {
     setSelectedLine(null);
     setDiscount(0);
     setVoucher(null);
+    setRefundCredit(null);
     setAppliedDealIds([]);
     setDealOverrides({});
     setDealSets({});
@@ -1077,6 +1111,26 @@ function POSPage() {
   const checkout = async (payments) => {
     setIsCheckingOut(true);
 
+    // A refund credit is money held on a server record, and nothing offline can
+    // check whether it has already been spent. The refund that created it went
+    // through seconds ago, so the line has only just dropped — better to say so
+    // than to queue a sale that may not be payable at sync.
+    if (
+      refundCredit &&
+      creditApplied > 0 &&
+      typeof navigator !== "undefined" &&
+      navigator.onLine === false
+    ) {
+      toast.error(
+        t(
+          "pos.exchange.needsNetwork",
+          "This exchange needs the connection back before it can be rung up"
+        )
+      );
+      setIsCheckingOut(false);
+      return;
+    }
+
     // Known to be offline — don't even try, just serve the customer.
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
       try {
@@ -1112,10 +1166,21 @@ function POSPage() {
       // The line dropped mid-sale (the browser can still think it is online).
       // Fall back to the queue rather than losing the sale.
       if (isNetworkError(error)) {
-        try {
-          await checkoutOffline(payments);
-        } catch {
-          toast.error(t("pos.offline.queueFailed"));
+        if (refundCredit && creditApplied > 0) {
+          // Same reason: the credit has to be claimed against the refund
+          // record, and the queue cannot do that.
+          toast.error(
+            t(
+              "pos.exchange.needsNetwork",
+              "This exchange needs the connection back before it can be rung up"
+            )
+          );
+        } else {
+          try {
+            await checkoutOffline(payments);
+          } catch {
+            toast.error(t("pos.offline.queueFailed"));
+          }
         }
       } else {
         // A real refusal from the server — out of stock, bad voucher. The
@@ -1132,7 +1197,10 @@ function POSPage() {
       toast.error(t("pos.printFirst"));
       return;
     }
-    window.print();
+    // Through printSlip like every other printed surface: a basket long enough
+    // to run past one sheet has to paginate, and it cannot do that where it
+    // stands.
+    printSlip("receipt");
   };
 
   const actions = [
@@ -1146,6 +1214,17 @@ function POSPage() {
         setRefundReceiptNo("");
         setModal("refund");
       },
+    },
+    {
+      // Building an offer is the same job here as it is on the Products page,
+      // so it is the same dialog — the till is simply where the person who
+      // decides the offer is standing.
+      id: "deals",
+      label: "pos.rail.deals",
+      tone: "fuchsia",
+      icon: FiTag,
+      disabled: !isElevated,
+      onClick: () => setModal("deals"),
     },
     { id: "void", label: "pos.rail.void", tone: "red", icon: FiSlash, onClick: voidSale },
     { id: "suspend", label: "pos.rail.suspend", tone: "amber", icon: FiPause, onClick: holdSale },
@@ -1198,17 +1277,6 @@ function POSPage() {
       icon: FiRotateCcw,
       disabled: !isElevated,
       onClick: () => setModal("refundHistory"),
-    },
-    {
-      // Building an offer is the same job here as it is on the Products page,
-      // so it is the same dialog — the till is simply where the person who
-      // decides the offer is standing.
-      id: "deals",
-      label: "pos.rail.deals",
-      tone: "fuchsia",
-      icon: FiTag,
-      disabled: !isElevated,
-      onClick: () => setModal("deals"),
     },
     {
       id: "dayClosing",
@@ -1501,15 +1569,38 @@ function POSPage() {
                     <span className="tabular-nums text-slate-300">{currency(tax)}</span>
                   </div>
                 )}
+                {/* What the return has already paid for. Shown against the
+                    refund's own number, because it is the customer's money and
+                    they can ask which return it came from. */}
+                {creditApplied > 0 && (
+                  <div className="flex justify-between gap-8 text-slate-500">
+                    <span>
+                      {t("pos.exchange.credit", "Refund credit")}{" "}
+                      <span className="font-mono text-[10px] text-slate-600">
+                        {refundCredit.reference}
+                      </span>
+                    </span>
+                    <span className="tabular-nums text-emerald-400">
+                      -{currency(creditApplied)}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="text-end">
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
-                  {t("pos.total")}
+                  {creditApplied > 0 ? t("pos.receiptDoc.totalDue", "Total due") : t("pos.total")}
                 </p>
                 <p className="font-display text-3xl font-bold tabular-nums text-cyan-400">
-                  {currency(total)}
+                  {currency(due)}
                 </p>
+                {/* The full price stays visible: the customer is buying a
+                    €3.99 bottle, they are simply not paying €3.99 for it. */}
+                {creditApplied > 0 && (
+                  <p className="text-[11px] font-semibold text-slate-500">
+                    {t("pos.total")} {currency(total)}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1953,7 +2044,9 @@ function POSPage() {
 
       {modal === "payment" && (
         <PaymentModal
-          total={total}
+          // What is left to collect. A basket already covered by a refund
+          // credit is settled the moment it opens.
+          total={due}
           methods={paymentMethods}
           busy={isCheckingOut}
           onConfirm={checkout}
@@ -1968,8 +2061,18 @@ function POSPage() {
           onPickExchange={() => setPickingExchange(true)}
           onSetExchangeQty={setExchangeQty}
           onRemoveExchange={removeExchangeItem}
-          onDone={(replacements) => {
+          onDone={(replacements, credit) => {
             dispatch(gettingallproducts({ view: "pos" }));
+            // What the refund is holding for the replacement. The basket shows
+            // it and the sale spends it, so the customer pays the difference
+            // rather than the full price of something they have already paid
+            // for once.
+            if (credit?.reference && Number(credit.amount) > 0) {
+              setRefundCredit({
+                reference: credit.reference,
+                amount: Number(credit.amount),
+              });
+            }
             // The refund has gone through; the other half of the exchange is an
             // ordinary sale, so the replacements go into the basket and the
             // cashier charges for them the way they charge for anything else.
@@ -2102,7 +2205,9 @@ function POSPage() {
           onReprint={(entry) => {
             setReceipt(entry);
             setModal(null);
-            setTimeout(() => window.print(), 100);
+            // After the state lands, so the roll carries the reprinted sale
+            // rather than whatever was on screen before it.
+            setTimeout(() => printSlip("receipt"), 100);
           }}
           onRefund={(receiptNo) => {
             setRefundReceiptNo(receiptNo);

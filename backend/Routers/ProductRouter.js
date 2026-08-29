@@ -1,7 +1,7 @@
 const express=require("express")
 const router=express.Router()
 const {Addproduct,quickAddProduct,getTopProductsByQuantity,RemoveProduct,SearchProduct,EditProduct,getProduct,getProductById,getProductByBarcode,attachBarcode,generateRandomBarcodes}=require('../controller/productController')
-const {authmiddleware,adminmiddleware,adminOrManager,adminOrSuperadmin}=require('../middleware/Authmiddleware')
+const {authmiddleware,adminmiddleware,adminOrManager,adminOrSuperadmin,tillUser}=require('../middleware/Authmiddleware')
 const {upload}=require('../middleware/upload')
 
 
@@ -19,7 +19,10 @@ router.get("/searchproduct",authmiddleware,SearchProduct)
 router.get("/barcode/:code",authmiddleware,getProductByBarcode)
 // Linking a scanned barcode to an existing product is part of the till flow.
 router.put("/:productId/barcode",authmiddleware,attachBarcode)
-router.put("/editproduct/:productId",authmiddleware,adminOrManager,upload.single("image"),EditProduct)
+// Fixing a price or a count is done where the mistake is found, which is at the
+// counter with the item in hand. Open to every till role for that reason; the
+// edit is logged against whoever made it.
+router.put("/editproduct/:productId",authmiddleware,tillUser,upload.single("image"),EditProduct)
 router.get("/getTopProductsByQuantity",authmiddleware,getTopProductsByQuantity)
 
 // One whole product, for the till's edit form. Restricted to the same people who

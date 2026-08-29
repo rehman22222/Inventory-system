@@ -131,6 +131,24 @@ module.exports.adminOrManager = (req, res, next) => {
 
 
 
+// One till for everyone. The shop asked for a POS that behaves the same at
+// every role — staff, manager, admin, superadmin all get the same buttons — so
+// the routes behind those buttons ask only that somebody is signed in.
+//
+// What makes that safe is not the guard, it is the record: every refund, void,
+// deal and price edit is written against the person who did it and shows up in
+// the activity log and the day's takings. If the shop ever wants a till that
+// asks permission again, this is the one place to tighten.
+module.exports.tillUser = (req, res, next) => {
+  if (!req.user) {
+    return res.status(403).json({ message: "Access denied." });
+  }
+
+  next();
+};
+
+
+
 module.exports.managermiddleware=async(req,res,next)=>{
     const user=req.user
     try {

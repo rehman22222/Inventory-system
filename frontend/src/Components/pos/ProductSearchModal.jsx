@@ -175,9 +175,30 @@ function ProductSearchModal({ products, categories, canEdit = false, onPick, onE
                 const out = stock <= 0;
 
                 return (
+                  // The whole row adds the product. The arrow was the only
+                  // target before, which is a 36px square to hit on a touch
+                  // screen while a customer waits — and it looked like the row
+                  // ought to work, so a press that landed anywhere else read as
+                  // the till ignoring you.
                   <div
                     key={product._id}
-                    className="flex items-center gap-3 border border-slate-800 bg-slate-950 px-3 py-2"
+                    role="button"
+                    tabIndex={out ? -1 : 0}
+                    aria-disabled={out || undefined}
+                    onClick={() => !out && add(product)}
+                    onKeyDown={(event) => {
+                      if (out) return;
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        add(product);
+                      }
+                    }}
+                    title={out ? t("pos.productSearch.outOfStock") : t("pos.add")}
+                    className={`flex items-center gap-3 border border-slate-800 bg-slate-950 px-3 py-2 ${
+                      out
+                        ? "cursor-not-allowed opacity-60"
+                        : "cursor-pointer hover:border-cyan-700"
+                    }`}
                   >
                     {product.image?.url ? (
                       <img
@@ -216,7 +237,11 @@ function ProductSearchModal({ products, categories, canEdit = false, onPick, onE
                     {canEdit && (
                       <button
                         type="button"
-                        onClick={() => setEditing(product)}
+                        onClick={(event) => {
+                          // Editing is not adding to the basket.
+                          event.stopPropagation();
+                          setEditing(product);
+                        }}
                         title={t("pos.productEdit.title", { defaultValue: "Edit product" })}
                         aria-label={t("pos.productEdit.editNamed", {
                           defaultValue: "Edit {{name}}",
@@ -228,15 +253,16 @@ function ProductSearchModal({ products, categories, canEdit = false, onPick, onE
                       </button>
                     )}
 
-                    <button
-                      type="button"
-                      disabled={out}
-                      onClick={() => add(product)}
-                      title={out ? t("pos.productSearch.outOfStock") : t("pos.add")}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center bg-cyan-700 text-white transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-600"
+                    {/* Now a sign rather than a target — the row it sits in is
+                        what gets pressed. */}
+                    <span
+                      aria-hidden="true"
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center ${
+                        out ? "bg-slate-800 text-slate-600" : "bg-cyan-700 text-white"
+                      }`}
                     >
                       <FiArrowRight className="h-4 w-4" />
-                    </button>
+                    </span>
                   </div>
                 );
               })

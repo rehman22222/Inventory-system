@@ -36,16 +36,43 @@
     display: none !important;
   }
 
-  .slip.is-printing {
-    display: block !important;
-    position: absolute;
-    inset-inline-start: 0;
-    top: 0;
+  /* printSlip() lifts the slip out of its dialog and drops it straight under
+     <body> for the duration of the print, so it sits in the normal flow and the
+     browser can break it across as many sheets as it needs.
+
+     It used to be reached where it stood, by positioning it absolutely. An
+     absolutely positioned box does not paginate — everything past the first
+     page is silently clipped, which is how a fifty-receipt shift report came
+     out as a single sheet with the totals missing off the end.
+
+     Everything else goes display:none rather than visibility:hidden: a hidden
+     element still occupies its box and prints as blank sheets before the slip. */
+  body.printing-slip > *:not(#print-root) {
+    display: none !important;
   }
 
-  body.printing-slip #receipt {
+  #print-root {
+    display: block !important;
+  }
+
+  .slip.is-printing {
+    display: block !important;
+    position: static;
+  }
+
+  /* …unless the receipt is itself the thing being printed. */
+  body.printing-slip #receipt:not(.is-printing) {
     display: none !important;
     visibility: hidden !important;
+  }
+
+  /* A long basket is as many sheets as it takes, for the same reason. */
+  /* Relative, not static: still in the flow so a long basket breaks across
+     sheets, but still the containing block for the PAID stamp inside it. Taken
+     out of position entirely, the stamp measured itself against the page and
+     landed in the margin beside the receipt. */
+  #receipt.is-printing {
+    position: relative;
   }
 
   /* ── Customer receipt (80mm thermal roll) ──────────────────────────────
@@ -778,6 +805,20 @@ body.osk-open .admin-drawer {
   gap: 4mm;
   font-size: 10px;
   padding-left: 3mm;
+}
+
+/* Product names run long and 72mm is 72mm. The name wraps onto as many lines as
+   it needs rather than being cut, and the price is held to its own column so it
+   never gets pushed off the edge — a truncated name is the one thing on this
+   roll that makes it useless for finding a mis-scan. */
+.slip .s-item > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.slip .s-item > span:last-child {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .slip .s-total {

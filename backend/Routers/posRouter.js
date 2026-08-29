@@ -20,9 +20,8 @@ const {
 } = require("../controller/posController");
 const {
   authmiddleware,
-  adminOrManager,
-  adminOrSuperadmin,
   superadminmiddleware,
+  tillUser,
 } = require("../middleware/Authmiddleware");
 
 const router = express.Router();
@@ -33,12 +32,13 @@ router.post("/checkout", authmiddleware, checkout);
 // so a dropped connection can safely replay the whole queue.
 router.post("/sync", authmiddleware, syncOfflineSales);
 
-// Money back over the counter is an elevated action.
-router.post("/refund", authmiddleware, adminOrManager, refund);
-// The counter own record of what went back out. Same scope rule as the sale
+// Money back over the counter. Open to whoever is on the till — the shop runs
+// one POS for every role — and recorded against them by name either way.
+router.post("/refund", authmiddleware, tillUser, refund);
+// The counter's own record of what went back out. Same scope rule as the sale
 // history: a cashier sees their own, the owner side sees everything.
-router.get("/refunds", authmiddleware, adminOrManager, getRefunds);
-router.post("/void/:receiptNo", authmiddleware, adminOrManager, voidSale);
+router.get("/refunds", authmiddleware, tillUser, getRefunds);
+router.post("/void/:receiptNo", authmiddleware, tillUser, voidSale);
 
 router.get("/receipts", authmiddleware, getReceipts);
 // Ghost mode: the whole shop's sales, unscoped. Owner only.

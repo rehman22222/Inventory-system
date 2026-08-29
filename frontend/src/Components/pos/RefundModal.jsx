@@ -5,7 +5,13 @@ import toast from "react-hot-toast";
 import { FiMinus, FiPlus, FiPrinter, FiX } from "react-icons/fi";
 import axiosInstance from "../../lib/axios";
 import PosModal from "./PosModal";
-import { currency, printSlip } from "./posUtils";
+import {
+  currency,
+  printSlip,
+  REFUND_REASONS,
+  refundReasonLabel,
+  restocksOnRefund,
+} from "./posUtils";
 
 // The customer's record of what went back. Rendered twice from one source: on
 // screen so the counter can read it, and hidden for the 72mm roll — a preview
@@ -61,10 +67,36 @@ function RefundSlipView({ slip, shop, t }) {
         <span>{t("dayClosing.refunded")}</span>
         <span>-{currency(slip.amount)}</span>
       </div>
-      {slip.method && (
+      {/* What was actually spent on the replacement rather than handed over.
+          The customer's copy has to show both halves, or the figures on it do
+          not add up to the refund above them. */}
+      {slip.exchangeCredit > 0 && (
+        <div className="s-line">
+          <span>{t("pos.exchange.credit", "Refund credit")}</span>
+          <span>{currency(slip.exchangeCredit)}</span>
+        </div>
+      )}
+      {/* Only when money genuinely crossed the counter. An exchange that used
+          the whole refund handed nothing back, and saying "Refund by: Cash"
+          under it would be describing a payment that never happened. */}
+      {slip.method && slip.cashBack !== 0 && (
         <div className="s-line">
           <span>{t("pos.refund.method", "Refund by")}</span>
-          <span>{t(`common.payments.${slip.method}`, slip.method)}</span>
+          <span>
+            {t(`common.payments.${slip.method}`, slip.method)}
+            {slip.cashBack > 0 && slip.exchangeCredit > 0
+              ? ` ${currency(slip.cashBack)}`
+              : ""}
+          </span>
+        </div>
+      )}
+      {/* On the paper too, so the copy in the shop's folder says why without
+          anyone having to remember. "refund" is the bare default the button
+          sends when nothing was chosen and is not worth a line. */}
+      {slip.reason && slip.reason !== "refund" && (
+        <div className="s-line">
+          <span>{t("pos.refund.why", "Why it came back")}</span>
+          <span>{refundReasonLabel(t, slip.reason)}</span>
         </div>
       )}
 
@@ -308,6 +340,13 @@ function RefundModal({
         items,
         reason: reason.trim() || undefined,
         method: method || undefined,
+        // What the customer is taking instead. Sent so the server can price it
+        // and hold that much of the refund back as credit — the till is told
+        // what it may spend, it does not decide it.
+        exchange: exchangeItems.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        })),
       });
       toast.success(
         t("pos.refund.done", { amount: currency(response.data.amount) })
@@ -316,7 +355,10 @@ function RefundModal({
       // that has just happened. Hand the replacements back so they land in the
       // basket: the cashier rings them up as normal and the drawer sees the
       // difference, which is the only figure that actually changes hands.
-      onDone?.(exchangeItems);
+      onDone?.(exchangeItems, {
+        reference: response.data.reference,
+        amount: Number(response.data.exchangeCredit || 0),
+      });
       // Hold the dialog open on the refund's own slip. The customer is owed a
       // record of what went back — and on an exchange the till is about to
       // print a second one for what they took instead, so the two together are
@@ -624,7 +666,9 @@ function RefundModal({
                 { key: "", label: t("pos.refund.sameAsSale", "Same as sale") },
                 { key: "cash", label: t("common.payments.cash", "Cash") },
                 { key: "creditcard", label: t("common.payments.creditcard", "Card") },
-                { key: "wallet", label: t("common.payments.wallet", "Wallet") },
+                // Back onto the account for something sold on credit. Wallet is
+                // gone from here for the same reason it is gone from the till.
+                { key: "credit", label: t("common.payments.credit", "Credit") },
               ].map((option) => (
                 <button
                   key={option.key || "same"}
@@ -640,6 +684,52 @@ function RefundModal({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Why it came back. Three buttons and no text box: a shop that can
+              count expired stock against damaged stock against changed minds
+              knows something about itself, and that only works if the answer is
+              the same word every time. A free-text field is how that becomes
+              five spellings of "expired" and no figure at all — and it was
+              never filled in anyway. Old refunds still hold whatever was typed
+              at the time, so anything unrecognised is shown as it was written. */}
+          <div className="border-t border-slate-800 pt-3">
+            <span className="mb-2 block text-xs font-semibold uppercase text-slate-500">
+              {t("pos.refund.why", "Why it came back")}
+            </span>
+            <div className="grid grid-cols-3 gap-1.5">
+              {REFUND_REASONS.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setReason(reason === key ? "" : key)}
+                  className={`px-2 py-2 text-xs font-bold uppercase tracking-wide transition ${
+                    reason === key
+                      ? "bg-cyan-800 text-white ring-1 ring-cyan-600"
+                      : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  }`}
+                >
+                  {t(`pos.refund.reasons.${key}`)}
+                </button>
+              ))}
+            </div>
+
+            {/* What the reason costs the shop, said before Confirm rather than
+                discovered at the next stock take. Expired and damaged goods are
+                refunded and written off; anything else goes back on the count.
+                Only shown once a reason is chosen — there is nothing to warn
+                about while the question is still open. */}
+            {reason && (
+              <p
+                className={`mt-2 text-xs font-semibold ${
+                  restocksOnRefund(reason) ? "text-emerald-400" : "text-amber-400"
+                }`}
+              >
+                {restocksOnRefund(reason)
+                  ? t("pos.refund.restock", "Goes back on the shelf")
+                  : t("pos.refund.writeOff", "Written off — stock not returned")}
+              </p>
+            )}
           </div>
 
           {/* What the customer takes instead. Optional — leave it empty and
@@ -727,13 +817,6 @@ function RefundModal({
               </div>
             )}
           </div>
-
-          <input
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder={t("pos.refund.reasonPlaceholder")}
-            className="w-full border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-cyan-500"
-          />
         </div>
       )}
       </>

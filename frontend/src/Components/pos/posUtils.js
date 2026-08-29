@@ -401,15 +401,57 @@ export const allDealIds = (deals) =>
 // stylesheet turns on whichever one is marked, so a finished receipt sitting
 // behind the dialog does not come out stapled to the shift report.
 export const printSlip = (id) => {
-  const node = typeof document !== "undefined" && document.getElementById(id);
+  if (typeof document === "undefined") return;
+  const node = document.getElementById(id);
   if (!node) return;
+
+  // Move it to the top of <body> for the print, then put it straight back.
+  //
+  // A slip lives deep inside a scrolling dialog, and the stylesheet used to
+  // reach it where it stood. In the flow directly under <body> the browser can
+  // break it across pages, which is the difference between a shift report that
+  // prints in full and one that stops after the first sheet.
+  const anchor = document.createComment("slip");
+  const root = document.createElement("div");
+  root.id = "print-root";
+
+  node.parentNode.insertBefore(anchor, node);
+  root.appendChild(node);
+  document.body.appendChild(root);
 
   document.body.classList.add("printing-slip");
   node.classList.add("is-printing");
+
   try {
     window.print();
   } finally {
+    // Back where React left it. window.print() blocks until the dialog closes,
+    // so no render can happen while the node is somewhere else.
     node.classList.remove("is-printing");
     document.body.classList.remove("printing-slip");
+    anchor.parentNode.insertBefore(node, anchor);
+    anchor.remove();
+    root.remove();
   }
 };
+
+// Why something came back, as three fixed answers rather than free text. A shop
+// that can count expired stock against damaged stock against changed minds
+// knows something about itself, and that only works if the answer is the same
+// word every time — "expired", "Expired" and "out of date" are three strings
+// and one fact. Anything these do not cover still goes in the box beneath them.
+export const REFUND_REASONS = ["expired", "damaged", "unwanted"];
+
+// Expired and damaged goods are refunded but never resold, so they do not go
+// back on the count — the unit left when it was sold and stays gone. Anything
+// else is sealed stock that can be sold again. This mirrors
+// backend/libs/refundReasons.js so the till can say what is about to happen;
+// the server decides it for real.
+export const restocksOnRefund = (reason) =>
+  !["expired", "damaged"].includes(String(reason || ""));
+
+// Stored as the key, shown in the reader's language. Refunds put through before
+// this existed hold whatever was typed at the time, so anything unrecognised is
+// shown as it was written rather than swallowed.
+export const refundReasonLabel = (t, reason) =>
+  REFUND_REASONS.includes(reason) ? t(`pos.refund.reasons.${reason}`) : reason;

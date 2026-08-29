@@ -29,6 +29,9 @@ const DayClosingSchema = new mongoose.Schema(
     tax: { type: Number, default: 0 },
     net: { type: Number, default: 0 },
     refunded: { type: Number, default: 0 },
+    // The part of `refunded` that was spent on a replacement instead of being
+    // handed back. Cash actually out of the drawer is refunded minus this.
+    exchangeCredit: { type: Number, default: 0 },
 
     byMethod: [
       {

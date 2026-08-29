@@ -101,7 +101,10 @@ function DayClosingModal({ onClosed, onClose }) {
               {line}
             </div>
           ))}
-          <div className="s-title">{t("dayClosing.title")}</div>
+          {/* What the till calls it. The admin side still says "Day closing"
+              on the stored record and its report — same document, two counters
+              that name it differently. */}
+          <div className="s-title">{t("pos.roaster.title", "Day Roaster")}</div>
         </div>
 
         <div className="s-meta">
@@ -133,6 +136,17 @@ function DayClosingModal({ onClosed, onClose }) {
               </span>
               {sale.refunded > 0 && <span>-{currency(sale.refunded)}</span>}
             </div>
+            {/* Every line on the sale. This is what makes the roll worth
+                keeping: a receipt number and a total say a sale happened, and
+                nothing about what left the shelf. */}
+            {(sale.lines || []).map((line, index) => (
+              <div key={`${sale.receiptNo}-${index}`} className="s-item">
+                <span>
+                  {line.quantity} × {line.name}
+                </span>
+                <span>{currency(line.lineTotal)}</span>
+              </div>
+            ))}
           </div>
         ))}
 
@@ -168,6 +182,24 @@ function DayClosingModal({ onClosed, onClose }) {
             <span>-{currency(summary.refunded)}</span>
           </div>
         )}
+        {/* Refunded value and cash out of the drawer stopped being the same
+            number the day exchanges existed. What was spent on a replacement
+            never left the till, so the count comes up short by exactly this
+            much unless the slip says so. */}
+        {summary.exchangeCredit > 0 && (
+          <>
+            <div className="s-line">
+              <span>{t("dayClosing.exchangeCredit", "Spent on exchanges")}</span>
+              <span>{currency(summary.exchangeCredit)}</span>
+            </div>
+            <div className="s-line">
+              <span>{t("dayClosing.handedBack", "Handed back")}</span>
+              <span>
+                -{currency(Number(summary.refunded) - Number(summary.exchangeCredit))}
+              </span>
+            </div>
+          </>
+        )}
         <div className="s-rule" />
         <div className="s-total">
           <span>{t("dayClosing.total")}</span>
@@ -182,8 +214,8 @@ function DayClosingModal({ onClosed, onClose }) {
 
   return (
     <PosModal
-      title={t("dayClosing.title")}
-      subtitle={t("dayClosing.subtitle")}
+      title={t("pos.roaster.title", "Day Roaster")}
+      subtitle={t("pos.roaster.subtitle", "Hand your takings over to the admin.")}
       onClose={onClose}
       width="max-w-md"
       footer={

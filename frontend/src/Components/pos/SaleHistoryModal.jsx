@@ -70,10 +70,20 @@ function SaleHistoryModal({ canRefund, onRefund, onReprint, onClose }) {
     }
   };
 
-  // What this list came to. Voided and refunded rows still carry their original
-  // total, so this is what was rung up rather than what was kept — the slip says
-  // so beside each row.
-  const takings = receipts.reduce((sum, entry) => sum + Number(entry.total || 0), 0);
+  // What has gone back out on one receipt. A receipt can be refunded more than
+  // once, and a partial refund leaves the original total standing, so the only
+  // honest figure is the sum of its refunds.
+  const refundedOn = (receipt) =>
+    (receipt.refunds || []).reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
+
+  // Three figures, because they answer three different questions: what was rung
+  // up, what went back, and what the shop actually kept. A voided or refunded
+  // row still carries its original total, so a list that only added those up
+  // would report money the till does not have.
+  const round = (value) => Number(value.toFixed(2));
+  const gross = round(receipts.reduce((sum, entry) => sum + Number(entry.total || 0), 0));
+  const refunded = round(receipts.reduce((sum, entry) => sum + refundedOn(entry), 0));
+  const takings = round(gross - refunded);
 
   return (
     <PosModal
@@ -86,6 +96,12 @@ function SaleHistoryModal({ canRefund, onRefund, onReprint, onClose }) {
             <span className="me-auto text-sm text-slate-400">
               {receipts.length} ·{" "}
               <span className="font-semibold text-slate-100">{currency(takings)}</span>
+              {/* Only worth saying when something actually went back. */}
+              {refunded > 0 && (
+                <span className="ms-2 text-xs text-red-400">
+                  {t("dayClosing.refunded")} -{currency(refunded)}
+                </span>
+              )}
             </span>
             <button
               type="button"
@@ -129,8 +145,15 @@ function SaleHistoryModal({ canRefund, onRefund, onReprint, onClose }) {
                     {receipt.status}
                   </span>
 
-                  <span className="w-24 text-end font-semibold tabular-nums">
-                    {currency(receipt.total)}
+                  <span className="w-24 text-end tabular-nums">
+                    {/* The original total stays put — it is what the customer
+                        was charged — with what came back underneath it. */}
+                    <span className="block font-semibold">{currency(receipt.total)}</span>
+                    {refundedOn(receipt) > 0 && (
+                      <span className="block text-[11px] font-semibold text-red-400">
+                        -{currency(refundedOn(receipt))}
+                      </span>
+                    )}
                   </span>
 
                   <div className="flex gap-1">
@@ -190,30 +213,71 @@ function SaleHistoryModal({ canRefund, onRefund, onReprint, onClose }) {
             </div>
             <div className="s-rule" />
 
-            {receipts.map((entry) => (
-              <div key={`slip-${entry.receiptNo}`} className="s-row">
-                <div className="s-row-top">
-                  <span>{entry.receiptNo}</span>
-                  <span>{currency(entry.total)}</span>
+            {receipts.map((entry) => {
+              const back = round(refundedOn(entry));
+              return (
+                <div key={`slip-${entry.receiptNo}`} className="s-row">
+                  <div className="s-row-top">
+                    <span>{entry.receiptNo}</span>
+                    <span>{currency(entry.total)}</span>
+                  </div>
+                  <div className="s-row-sub">
+                    <span>
+                      {new Date(entry.createdAt).toLocaleTimeString(undefined, {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}{" "}
+                      · {t(`common.payments.${entry.paymentMethod}`, entry.paymentMethod)}
+                    </span>
+                    {/* A voided or refunded row still shows its original total,
+                        so the state has to travel with it or the column lies. */}
+                    <span>{entry.status !== "completed" ? entry.status : ""}</span>
+                  </div>
+                  {/* Every line on the sale. A receipt number and a total say
+                      that a sale happened and nothing about what left the
+                      shelf, which is the one thing somebody reading this roll
+                      later actually needs. */}
+                  {(entry.items || []).map((item, index) => (
+                    <div key={`${entry.receiptNo}-${index}`} className="s-item">
+                      <span>
+                        {item.quantity} × {item.name}
+                      </span>
+                      <span>{currency(item.lineTotal)}</span>
+                    </div>
+                  ))}
+
+                  {/* What went back on this one, and what is left of it. Anyone
+                      checking the roll against the drawer needs the second
+                      figure, and doing that subtraction by hand down a column
+                      of fifty receipts is how mistakes get made. */}
+                  {back > 0 && (
+                    <div className="s-item">
+                      <span>
+                        {t("dayClosing.refunded")} -{currency(back)}
+                      </span>
+                      <span>{currency(round(Number(entry.total || 0) - back))}</span>
+                    </div>
+                  )}
                 </div>
-                <div className="s-row-sub">
-                  <span>
-                    {new Date(entry.createdAt).toLocaleTimeString(undefined, {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}{" "}
-                    · {t(`common.payments.${entry.paymentMethod}`, entry.paymentMethod)}
-                  </span>
-                  {/* A voided or refunded row still shows its original total,
-                      so the state has to travel with it or the column lies. */}
-                  <span>{entry.status !== "completed" ? entry.status : ""}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
 
             <div className="s-rule" />
+            {/* Rung up, gone back, kept. The last one is the only figure that
+                should ever be compared with the drawer, so it is the one set in
+                bold at the bottom. */}
+            <div className="s-line">
+              <span>{t("pos.subtotal", "Subtotal")}</span>
+              <span>{currency(gross)}</span>
+            </div>
+            {refunded > 0 && (
+              <div className="s-line">
+                <span>{t("dayClosing.refunded")}</span>
+                <span>-{currency(refunded)}</span>
+              </div>
+            )}
             <div className="s-total">
-              <span>{t("pos.total")}</span>
+              <span>{t("pos.history.netTakings", "Net takings")}</span>
               <span>{currency(takings)}</span>
             </div>
             <div className="s-line">

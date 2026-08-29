@@ -5,7 +5,12 @@ import toast from "react-hot-toast";
 import { FiPrinter, FiRotateCcw } from "react-icons/fi";
 import axiosInstance from "../../lib/axios";
 import PosModal from "./PosModal";
-import { currency, printSlip } from "./posUtils";
+import {
+  currency,
+  printSlip,
+  REFUND_REASONS,
+  refundReasonLabel,
+} from "./posUtils";
 
 // What has gone back out over the counter. Built from the receipts rather than
 // from a table of its own: a refund belongs to the sale it reverses, and a
@@ -94,6 +99,14 @@ function RefundHistoryModal({ onClose }) {
                         {t("pos.refund.voided", "Void")}
                       </span>
                     )}
+                    {/* One of the three set answers, badged beside the method so
+                        a month of returns can be read down the column. Anything
+                        typed by hand stays as the quote underneath. */}
+                    {REFUND_REASONS.includes(entry.reason) && (
+                      <span className="bg-amber-950 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
+                        {refundReasonLabel(t, entry.reason)}
+                      </span>
+                    )}
                   </p>
                   <p className="mt-0.5 text-xs text-slate-500">
                     {t("pos.receipt")} {entry.receiptNo} ·{" "}
@@ -129,9 +142,12 @@ function RefundHistoryModal({ onClose }) {
                 </ul>
               )}
 
-              {entry.reason && entry.reason !== "refund" && entry.reason !== "void" && (
-                <p className="mt-2 text-xs italic text-slate-600">"{entry.reason}"</p>
-              )}
+              {entry.reason &&
+                entry.reason !== "refund" &&
+                entry.reason !== "void" &&
+                !REFUND_REASONS.includes(entry.reason) && (
+                  <p className="mt-2 text-xs italic text-slate-600">"{entry.reason}"</p>
+                )}
             </div>
           ))}
 
@@ -163,6 +179,9 @@ function RefundHistoryModal({ onClose }) {
                     })}
                     {entry.method
                       ? ` · ${t(`common.payments.${entry.method}`, entry.method)}`
+                      : ""}
+                    {entry.reason && entry.reason !== "refund"
+                      ? ` · ${refundReasonLabel(t, entry.reason)}`
                       : ""}
                   </span>
                   <span>{entry.receiptNo}</span>
