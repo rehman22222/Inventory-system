@@ -664,7 +664,7 @@
       "vatRate": "VAT",
       "vatValue": "VAT Value",
       "totalDue": "Total Due",
-      "onlineStore": "Online store",
+      "onlineStore": "Visit our online store at {{url}}",
       "cashier": "Cashier"
     },
     "productSearch": {

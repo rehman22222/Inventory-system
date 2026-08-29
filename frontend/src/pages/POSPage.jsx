@@ -2078,7 +2078,10 @@ function POSPage() {
               that is the last thing a customer's eye lands on. */}
           {SHOP?.onlineStoreUrl && (
             <div className="r-center r-online">
-              {t("pos.receiptDoc.onlineStore", "Online store")} {SHOP.onlineStoreUrl}
+              {t("pos.receiptDoc.onlineStore", {
+                url: SHOP.onlineStoreUrl,
+                defaultValue: "Visit our online store at {{url}}",
+              })}
             </div>
           )}
 
