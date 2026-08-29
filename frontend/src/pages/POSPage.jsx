@@ -1157,6 +1157,22 @@ function POSPage() {
   const checkout = async (payments, creditTerms) => {
     setIsCheckingOut(true);
 
+    // Selling on account needs the server. The debt gets a reference, a term
+    // and an account somebody can search for, and the offline queue carries
+    // none of that — a queued credit sale is one the server refuses at sync,
+    // which strands it in the queue with the goods already gone.
+    const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+    if (creditTerms && offline) {
+      toast.error(
+        t(
+          "pos.credit.needsNetwork",
+          "A sale on account needs the connection — take payment another way, or wait for it to come back",
+        ),
+      );
+      setIsCheckingOut(false);
+      return;
+    }
+
     // A refund credit is money held on a server record, and nothing offline can
     // check whether it has already been spent. The refund that created it went
     // through seconds ago, so the line has only just dropped — better to say so
@@ -1212,7 +1228,16 @@ function POSPage() {
       // The line dropped mid-sale (the browser can still think it is online).
       // Fall back to the queue rather than losing the sale.
       if (isNetworkError(error)) {
-        if (refundCredit && creditApplied > 0) {
+        if (creditTerms) {
+          // Same reason as above: a debt needs a record only the server can
+          // write, so queueing it would strand the sale at sync.
+          toast.error(
+            t(
+              "pos.credit.needsNetwork",
+              "A sale on account needs the connection — take payment another way, or wait for it to come back",
+            ),
+          );
+        } else if (refundCredit && creditApplied > 0) {
           // Same reason: the credit has to be claimed against the refund
           // record, and the queue cannot do that.
           toast.error(

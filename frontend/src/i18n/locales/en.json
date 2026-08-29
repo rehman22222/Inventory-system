@@ -803,7 +803,8 @@
       "contact": "Contact",
       "bought": "Bought",
       "paymentsMade": "Paid So Far",
-      "accounts": "Accounts"
+      "accounts": "Accounts",
+      "needsNetwork": "A sale on account needs the connection — take payment another way, or wait for it to come back"
     }
   },
   "sales": {
