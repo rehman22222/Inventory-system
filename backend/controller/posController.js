@@ -145,6 +145,9 @@ module.exports.checkout = async (req, res) => {
       // { reference: "RFD-000009", amount }. The amount is a request, not an
       // instruction — what is actually allowed comes off the refund record.
       refundCredit = null,
+      // Who owes it and by when, required whenever any of the basket goes on
+      // account: { email, phone, termDays }.
+      creditTerms = null,
     } = req.body;
 
     // Ids only — the amounts stay this server's business.
@@ -462,6 +465,55 @@ module.exports.checkout = async (req, res) => {
       }
     }
 
+    // Sold on account: work out what is going on the book, and refuse to write
+    // a debt nobody can collect.
+    //
+    // A debt owed by "Walk-in Customer" with no way to reach them is not a
+    // debt, it is a loss with paperwork — so one contact detail is required,
+    // and it is required HERE rather than trusted from the till.
+    const onAccount = money(
+      tenders
+        .filter((entry) => entry.method === "credit")
+        .reduce((sum, entry) => sum + entry.amount, 0),
+    );
+
+    let creditBlock;
+    if (onAccount > 0) {
+      const email = String(creditTerms?.email || "").trim().toLowerCase();
+      const phone = String(creditTerms?.phone || "").trim();
+
+      if (!email && !phone) {
+        return res.status(400).json({
+          message:
+            "A sale on account needs an email or a phone number — it is how the money is collected later",
+        });
+      }
+
+      // Loose on purpose: enough to catch a typo at the counter, not enough to
+      // argue with somebody's real address.
+      if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        return res
+          .status(400)
+          .json({ message: `That email does not look right: ${email}` });
+      }
+
+      // The run the shop gave them. A fortnight by default — long enough to be
+      // a real term, short enough that nobody forgets it exists.
+      const termDays = Math.max(
+        1,
+        Math.min(365, Math.floor(Number(creditTerms?.termDays || 14))),
+      );
+
+      creditBlock = {
+        email: email || undefined,
+        phone: phone || undefined,
+        amount: onAccount,
+        termDays,
+        dueAt: new Date(Date.now() + termDays * 24 * 60 * 60 * 1000),
+        payments: [],
+      };
+    }
+
     // The customer must actually have covered the bill. Overpaying is fine —
     // that is change.
     const paid =
@@ -759,6 +811,9 @@ module.exports.checkout = async (req, res) => {
                 tendered === undefined
                   ? undefined
                   : money(Math.max(0, tendered - total)),
+              // Undefined unless part of this basket went on the book, so an
+              // ordinary sale carries nothing to chase.
+              credit: creditBlock,
               status: "completed",
               saleIds,
             },
@@ -2170,7 +2225,230 @@ module.exports.changePaymentMethod = async (req, res) => {
   }
 };
 
+
+// ── Money owed to the shop ───────────────────────────────────────────────────
+
+// What is still outstanding on a credit sale: what went on the book, less what
+// has come back against it. Derived rather than stored — a running balance kept
+// in a second field is a second thing to disagree with the first.
+const creditOutstanding = (receipt) => {
+  const owed = Number(receipt.credit?.amount || 0);
+  const paid = (receipt.credit?.payments || []).reduce(
+    (sum, entry) => sum + Number(entry.amount || 0),
+    0,
+  );
+
+  return money(Math.max(0, owed - paid));
+};
+
+// One row per account, as the counter needs to see it.
+const creditRow = (receipt) => ({
+  receiptNo: receipt.receiptNo,
+  customerName: receipt.customerName,
+  email: receipt.credit?.email || null,
+  phone: receipt.credit?.phone || null,
+  soldAt: receipt.createdAt,
+  cashierName: receipt.cashierName,
+  total: money(receipt.total),
+  amount: money(receipt.credit?.amount || 0),
+  paid: money(
+    (receipt.credit?.payments || []).reduce((sum, e) => sum + Number(e.amount || 0), 0),
+  ),
+  outstanding: creditOutstanding(receipt),
+  termDays: receipt.credit?.termDays || null,
+  dueAt: receipt.credit?.dueAt || null,
+  // Past its date and still owed. The one thing worth colouring on the screen.
+  overdue:
+    !receipt.credit?.settledAt &&
+    receipt.credit?.dueAt &&
+    new Date(receipt.credit.dueAt).getTime() < Date.now(),
+  settledAt: receipt.credit?.settledAt || null,
+  payments: (receipt.credit?.payments || []).map((entry) => ({
+    at: entry.at,
+    amount: money(entry.amount),
+    method: entry.method || null,
+    by: entry.byName || null,
+    reference: entry.reference || null,
+  })),
+  items: (receipt.items || []).map((item) => ({
+    name: item.name,
+    quantity: item.quantity,
+    lineTotal: money(item.lineTotal),
+  })),
+});
+
+// The book. Searched by whatever the customer can produce at the counter — the
+// email or number they left, their name, or the receipt itself — because a
+// customer coming back to settle up rarely brings the slip.
+module.exports.getCredits = async (req, res) => {
+  try {
+    const query = String(req.query.query || "").trim();
+    const includeSettled = String(req.query.settled || "") === "true";
+    const limit = Math.min(Number(req.query.limit || 100), 300);
+
+    const filter = { "credit.amount": { $gt: 0 } };
+    if (!includeSettled) filter["credit.settledAt"] = null;
+
+    if (query) {
+      const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const like = new RegExp(escaped, "i");
+      filter.$or = [
+        { "credit.email": like },
+        { "credit.phone": like },
+        { customerName: like },
+        { receiptNo: like },
+      ];
+    }
+
+    const receipts = await Receipt.find(filter)
+      .select("receiptNo customerName cashierName createdAt total items credit")
+      .sort({ "credit.dueAt": 1 })
+      .limit(limit)
+      .lean();
+
+    const rows = receipts.map(creditRow).filter((row) => includeSettled || row.outstanding > 0);
+
+    return res.status(200).json({
+      credits: rows,
+      outstanding: money(rows.reduce((sum, row) => sum + row.outstanding, 0)),
+      overdue: money(
+        rows.filter((row) => row.overdue).reduce((sum, row) => sum + row.outstanding, 0),
+      ),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Could not load the credit book" });
+  }
+};
+
+// The customer comes back and pays some or all of it.
+//
+// This is money in the drawer TODAY against a sale from whenever — which is why
+// the payment carries its own method, its own cashier and its own date, and is
+// not folded into the original receipt's tenders. The sale happened once; the
+// paying can happen in instalments.
+module.exports.recordCreditPayment = async (req, res) => {
+  try {
+    const receiptNo = String(req.params.receiptNo || "").trim().toUpperCase();
+    const { amount, method } = req.body;
+
+    if (!["cash", "creditcard", "wallet"].includes(method)) {
+      return res.status(400).json({ message: `Cannot take a credit payment by ${method}` });
+    }
+
+    const taking = money(amount);
+    if (!Number.isFinite(taking) || taking <= 0) {
+      return res.status(400).json({ message: "Enter how much they are paying" });
+    }
+
+    const result = await runInTransaction(async (session) => {
+      const query = Receipt.findOne({
+        $or: [{ receiptNo }, { "offline.ref": receiptNo }],
+        "credit.amount": { $gt: 0 },
+      });
+      const receipt = session ? await query.session(session) : await query;
+
+      if (!receipt) {
+        throw Object.assign(new Error("No credit sale with that number"), { statusCode: 404 });
+      }
+
+      const outstanding = creditOutstanding(receipt);
+      if (outstanding <= 0) {
+        throw Object.assign(new Error("This account is already settled"), { statusCode: 400 });
+      }
+
+      // Never more than is owed. Handing back change on a debt is a different
+      // transaction, and one nobody asked for.
+      if (taking > outstanding + 0.005) {
+        throw Object.assign(
+          new Error(`Only ${outstanding} is outstanding on ${receipt.receiptNo}`),
+          { statusCode: 400 },
+        );
+      }
+
+      const seq = await nextSequence("creditPayment", session);
+      const reference = `CRP-${String(seq).padStart(6, "0")}`;
+
+      receipt.credit.payments.push({
+        at: new Date(),
+        amount: taking,
+        method,
+        by: req.user?._id,
+        byName: req.user?.name,
+        reference,
+        dayClosing: null,
+      });
+
+      const left = creditOutstanding(receipt);
+      if (left <= 0) receipt.credit.settledAt = new Date();
+
+      await receipt.save(opts(session));
+
+      return { receipt, reference, taking, left };
+    });
+
+    await logActivity({
+      action: "POS Credit Payment",
+      description: `${result.taking} taken against ${result.receipt.receiptNo} by ${method}. ${
+        result.left > 0 ? `${result.left} still owed.` : "Account settled."
+      }`,
+      entity: "order",
+      entityId: result.receipt._id,
+      userId: req.user?._id,
+      ipAddress: req.ip,
+    });
+
+    return res.status(200).json({
+      success: true,
+      reference: result.reference,
+      message:
+        result.left > 0
+          ? `Took ${result.taking} — ${result.left} still owed`
+          : `Took ${result.taking} — account settled`,
+      credit: creditRow(result.receipt),
+    });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    return res
+      .status(status)
+      .json({ message: status === 500 ? "Could not record the payment" : error.message });
+  }
+};
+
 // --- Day closing -----------------------------------------------------------
+
+// Money taken back against old accounts on this shift.
+//
+// A credit repayment is real money in the drawer TODAY against a sale from
+// whenever — so it belongs to the shift that took it, not to the shift that
+// made the sale. Found by who took it and stamped with the closing that claims
+// it, exactly like a receipt.
+const creditPaymentsForShift = async (user, session) => {
+  const query = Receipt.find({
+    "credit.payments": {
+      $elemMatch: { by: user._id, dayClosing: null },
+    },
+  }).select("receiptNo credit");
+
+  const holders = session ? await query.session(session) : await query;
+
+  const taken = [];
+  for (const receipt of holders) {
+    for (const entry of receipt.credit?.payments || []) {
+      if (String(entry.by) !== String(user._id) || entry.dayClosing) continue;
+      taken.push({
+        receiptNo: receipt.receiptNo,
+        receiptId: receipt._id,
+        reference: entry.reference,
+        at: entry.at,
+        amount: money(entry.amount),
+        method: entry.method || "cash",
+      });
+    }
+  }
+
+  return taken;
+};
+
 
 // Roll a batch of receipts up into the figures the admin reviews — all of them
 // derived from receipts that are never altered. Lives in libs/dayClosing.js so
@@ -2220,9 +2498,15 @@ module.exports.dayClosingSummary = async (req, res) => {
         })),
     );
 
+    // Money taken back against old accounts today. Not a sale — the sale
+    // happened whenever it happened — but it IS in the drawer now, and a count
+    // that ignores it comes up over by exactly this much.
+    const creditTaken = await creditPaymentsForShift(req.user);
+
     return res.status(200).json({
       summary: {
-        ...summarise(receipts),
+        ...summarise(receipts, creditTaken),
+        creditTaken,
         // Loose ends, listed where the shift is counted.
         unspentCredit,
         // Every sale behind the totals, so the printed slip can be reconciled
@@ -2283,7 +2567,11 @@ module.exports.closeDay = async (req, res) => {
         .json({ message: "There are no open sales to close" });
     }
 
-    const summary = summarise(receipts);
+    // The same figures the cashier just read on the preview, repayments and
+    // all — a closing that counted something different from what was on screen
+    // would be a closing nobody could argue with.
+    const creditTaken = await creditPaymentsForShift(user);
+    const summary = summarise(receipts, creditTaken);
     const receiptIds = receipts.map((receipt) => receipt._id);
     // Every per-line Sale row behind those receipts moves across too.
     const saleIds = receipts.flatMap((receipt) => receipt.saleIds || []);
@@ -2319,6 +2607,7 @@ module.exports.closeDay = async (req, res) => {
             refundAmount: summary.refundAmount,
             netSales: summary.netSales,
             cashHandedBack: summary.cashHandedBack,
+            creditRepaid: summary.creditRepaid,
             expectedCash: summary.expectedCash,
             expectedCard: summary.expectedCard,
             byMethod: summary.byMethod,
@@ -2339,6 +2628,23 @@ module.exports.closeDay = async (req, res) => {
         await Sale.updateMany(
           { _id: { $in: saleIds }, dayClosing: null },
           { $set: { dayClosing: created._id } },
+          opts(session),
+        );
+      }
+
+      // The repayments this shift took against old accounts go with it. Guarded
+      // on dayClosing:null for the same reason as the receipts — and stamped
+      // one at a time, because they sit inside receipts that mostly belong to
+      // other days and must not be claimed wholesale.
+      for (const payment of creditTaken) {
+        await Receipt.updateOne(
+          {
+            _id: payment.receiptId,
+            "credit.payments": {
+              $elemMatch: { reference: payment.reference, dayClosing: null },
+            },
+          },
+          { $set: { "credit.payments.$.dayClosing": created._id } },
           opts(session),
         );
       }

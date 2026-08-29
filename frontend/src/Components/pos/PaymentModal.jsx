@@ -20,11 +20,30 @@ function PaymentModal({ total, methods, onConfirm, onClose, busy }) {
 
   const [payments, setPayments] = useState([]);
   const [amount, setAmount] = useState("");
+  // Splitting a bill by typing an amount and tapping a method works, but it
+  // is a trick you have to be told. This is the same thing said out loud:
+  // one line per method, each taking whatever part of the bill it is paying.
+  const [splitOpen, setSplitOpen] = useState(false);
+  const [parts, setParts] = useState({});
+
+  // A sale on account needs a way to collect it later. Held here because the
+  // tender screen is where the decision is actually made.
+  const [account, setAccount] = useState({ email: "", phone: "", termDays: 14 });
 
   const paid = payments.reduce((sum, entry) => sum + entry.amount, 0);
   const remaining = Math.max(0, Math.round((total - paid) * 100) / 100);
   const change = Math.max(0, Math.round((paid - total) * 100) / 100);
   const settled = paid + 0.001 >= total;
+
+  // What is going on the book. A sale can be part cash, part account.
+  const onAccount = payments
+    .filter((entry) => entry.method === "credit")
+    .reduce((sum, entry) => sum + entry.amount, 0);
+  // Something to reach them by, or the debt is a loss with paperwork. The
+  // server refuses it too — this is so the cashier finds out here rather than
+  // after pressing Complete Sale.
+  const accountReady =
+    onAccount <= 0 || Boolean(account.email.trim() || account.phone.trim());
 
   // Rounding up to the next whole euro — what a customer hands over when they
   // don't want the coins back (€50.90 owed → €51). Hidden when the balance is
@@ -49,10 +68,14 @@ function PaymentModal({ total, methods, onConfirm, onClose, busy }) {
     // It closes ONLY on an exact settle. The moment there is change to hand
     // back, the screen stays up and shows the figure — a till that pockets the
     // sale before the cashier has read "change €2.80" is how drawers go short.
+    // ...unless part of it went on the book. That sale is not finished until
+    // there is a way to collect it, and closing here would take the goods out
+    // of the shop with nothing but a name attached.
     const nowPaid = next.reduce((sum, item) => sum + item.amount, 0);
     const covered = nowPaid + 0.001 >= total;
     const owesChange = nowPaid - total > 0.001;
-    if (covered && !owesChange) onConfirm(next);
+    const anyCredit = next.some((item) => item.method === "credit");
+    if (covered && !owesChange && !anyCredit) onConfirm(next);
   };
 
   const typed = Number(amount);
@@ -87,8 +110,8 @@ function PaymentModal({ total, methods, onConfirm, onClose, busy }) {
       setPayments(next);
       setAmount("");
       // The two together are the balance exactly, so there is no change to read
-      // and nothing left to ask.
-      onConfirm(next);
+      // and — unless one of them is the book — nothing left to ask.
+      if (payMethod !== "credit") onConfirm(next);
       return;
     }
 
@@ -118,8 +141,19 @@ function PaymentModal({ total, methods, onConfirm, onClose, busy }) {
           </button>
           <button
             type="button"
-            disabled={!settled || busy}
-            onClick={() => onConfirm(payments)}
+            disabled={!settled || busy || !accountReady}
+            onClick={() =>
+              onConfirm(
+                payments,
+                onAccount > 0
+                  ? {
+                      email: account.email.trim(),
+                      phone: account.phone.trim(),
+                      termDays: Number(account.termDays) || 14,
+                    }
+                  : undefined,
+              )
+            }
             className="bg-gradient-to-b from-emerald-600 to-emerald-700 px-6 py-2 text-sm font-bold uppercase tracking-wide text-white ring-1 ring-emerald-500 transition hover:from-emerald-500 disabled:opacity-40"
           >
             {busy ? t("pos.processing") : t("pos.payment.complete")}
@@ -155,6 +189,77 @@ function PaymentModal({ total, methods, onConfirm, onClose, busy }) {
             </p>
           </div>
         </div>
+
+        {/* On the book. Shown the moment any of the bill goes on account,
+            because that is the moment the shop needs a way to collect it — a
+            debt owed by "Walk-in Customer" with no contact is a loss with
+            paperwork. Either field will do; the server insists on one too. */}
+        {onAccount > 0 && (
+          <div className="space-y-2 border border-amber-800 bg-amber-950/30 p-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-xs font-bold uppercase tracking-wide text-amber-300">
+                {t("pos.credit.onAccount", "On Account")}
+              </span>
+              <span className="font-bold tabular-nums text-amber-200">
+                {currency(onAccount)}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5">
+              <input
+                type="email"
+                inputMode="email"
+                value={account.email}
+                onChange={(event) =>
+                  setAccount((current) => ({ ...current, email: event.target.value }))
+                }
+                placeholder={t("pos.credit.email", "Email")}
+                className="min-w-0 border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-100 outline-none focus:border-amber-500"
+              />
+              <input
+                type="tel"
+                inputMode="tel"
+                value={account.phone}
+                onChange={(event) =>
+                  setAccount((current) => ({ ...current, phone: event.target.value }))
+                }
+                placeholder={t("pos.credit.phone", "Phone")}
+                className="min-w-0 border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-100 outline-none focus:border-amber-500"
+              />
+            </div>
+
+            {/* How long they have. The common runs as buttons, because nobody
+                agrees a term of 23 days. */}
+            <div className="flex items-center gap-1.5">
+              <span className="me-auto text-[11px] font-semibold uppercase text-slate-400">
+                {t("pos.credit.payWithin", "Pay within")}
+              </span>
+              {[7, 14, 30, 60].map((days) => (
+                <button
+                  key={days}
+                  type="button"
+                  onClick={() => setAccount((current) => ({ ...current, termDays: days }))}
+                  className={`px-2 py-1 text-[11px] font-bold uppercase transition ${
+                    Number(account.termDays) === days
+                      ? "bg-amber-700 text-white"
+                      : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  }`}
+                >
+                  {t("pos.credit.days", "{{n}}d", { n: days })}
+                </button>
+              ))}
+            </div>
+
+            {!accountReady && (
+              <p className="text-[11px] font-semibold text-amber-400">
+                {t(
+                  "pos.credit.contactRequired",
+                  "An email or a phone number is needed — it is how this gets collected.",
+                )}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Tenders taken so far */}
         {payments.length > 0 && (
@@ -227,6 +332,68 @@ function PaymentModal({ total, methods, onConfirm, onClose, busy }) {
                 );
               })}
             </div>
+
+            {/* Splitting, said out loud. Typing an amount and tapping a method
+                already splits a bill, but that is a trick you have to be told —
+                this is one line per method, each taking the part it is paying,
+                and it puts through exactly the same tenders. */}
+            <button
+              type="button"
+              onClick={() => setSplitOpen((open) => !open)}
+              className={`w-full py-2 text-xs font-bold uppercase tracking-wide transition ${
+                splitOpen
+                  ? "bg-cyan-800 text-white ring-1 ring-cyan-600"
+                  : "bg-slate-800 text-slate-300 ring-1 ring-slate-700 hover:bg-slate-700"
+              }`}
+            >
+              {t("pos.payment.split", "Split")}
+            </button>
+
+            {splitOpen && (
+              <div className="space-y-1.5 border border-cyan-900 bg-cyan-950/20 p-2">
+                {methods.map((entry) => (
+                  <div key={`split-${entry.value}`} className="flex items-center gap-1.5">
+                    <span className="w-16 shrink-0 text-[11px] font-bold uppercase text-slate-400">
+                      {label(entry.value)}
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      data-keyboard="numeric"
+                      value={parts[entry.value] || ""}
+                      onChange={(event) =>
+                        setParts((current) => ({
+                          ...current,
+                          [entry.value]: sanitizeDecimal(event.target.value),
+                        }))
+                      }
+                      placeholder={currency(remaining)}
+                      className="min-w-0 flex-1 border border-slate-700 bg-slate-950 px-2 py-1.5 text-center font-mono text-sm text-slate-100 outline-none focus:border-cyan-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const part = Number(parts[entry.value]);
+                        addPayment(
+                          Number.isFinite(part) && part > 0 ? part : remaining,
+                          entry.value,
+                        );
+                        setParts((current) => ({ ...current, [entry.value]: "" }));
+                      }}
+                      className="shrink-0 bg-slate-800 px-3 py-1.5 text-[11px] font-bold uppercase text-slate-200 transition hover:bg-cyan-800"
+                    >
+                      {t("pos.payment.take", "Take")}
+                    </button>
+                  </div>
+                ))}
+                <p className="pt-0.5 text-[10px] text-slate-500">
+                  {t(
+                    "pos.payment.splitHint",
+                    "Leave an amount empty to put the whole balance on that method.",
+                  )}
+                </p>
+              </div>
+            )}
 
             {/* Cash the customer overpays with, so there is change to hand back. */}
             {roundedUp && (

@@ -467,7 +467,8 @@
       "send": "Held",
       "dayClosing": "Day Roaster",
       "refundHistory": "Refund History",
-      "deals": "Deals"
+      "deals": "Deals",
+      "credit": "Credit Book"
     },
     "table": {
       "product": "Product",
@@ -643,7 +644,10 @@
       "hint": "Tap a method to settle the balance on it. Type the cash they handed over first, then tap how they are paying the rest.",
       "giveChange": "Give {{amount}} change",
       "roundOff": "Round off",
-      "roundOffHint": "cash"
+      "roundOffHint": "cash",
+      "split": "Split",
+      "take": "Take",
+      "splitHint": "Leave an amount empty to put the whole balance on that method."
     },
     "currencyHint": "Display currency for this till",
     "receiptDoc": {
@@ -765,6 +769,34 @@
     "roaster": {
       "title": "Day Roaster",
       "subtitle": "Hand your takings over to the admin."
+    },
+    "credit": {
+      "title": "Credit Book",
+      "subtitle": "What the shop is owed, and taking it back",
+      "onAccount": "On Account",
+      "email": "Email",
+      "phone": "Phone",
+      "payWithin": "Pay within",
+      "days": "{{n}}d",
+      "contactRequired": "An email or a phone number is needed — it is how this gets collected.",
+      "searchPlaceholder": "Email, phone, name or receipt number",
+      "empty": "Nothing is owed",
+      "overdue": "Overdue",
+      "due": "Due",
+      "paidSoFar": "Paid",
+      "take": "Take Payment",
+      "confirm": "Confirm",
+      "enterAmount": "Enter how much they are paying",
+      "takeFailed": "Could not record it",
+      "loadFailed": "Could not load the credit book",
+      "outstandingTotal": "Outstanding",
+      "overdueTotal": "Overdue",
+      "slipTitle": "Account Payment",
+      "slipRef": "Payment",
+      "received": "Received",
+      "wasOwed": "Was owed",
+      "stillOwed": "Still owed",
+      "settled": "Settled in full"
     }
   },
   "sales": {
@@ -1265,7 +1297,8 @@
     "notTakings": "not takings",
     "unspentCredit": "Refund Credit Not Spent",
     "unspentCreditHint": "A return was taken as an exchange and the replacement was never rung up. This money is still the customer's.",
-    "closingWithCredit": "{{amount}} of refund credit across {{count}} refund(s) is still unspent. Hand it back or ring up the replacement before closing — after this it belongs to the admin."
+    "closingWithCredit": "{{amount}} of refund credit across {{count}} refund(s) is still unspent. Hand it back or ring up the replacement before closing — after this it belongs to the admin.",
+    "creditRepaid": "Credit Repaid"
   },
   "dayClosings": {
     "title": "Day Closings",

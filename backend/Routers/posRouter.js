@@ -8,6 +8,8 @@ const {
   getReceipt,
   emailReceipt,
   getRefunds,
+  getCredits,
+  recordCreditPayment,
   releaseRefundCredit,
   changePaymentMethod,
   syncOfflineSales,
@@ -47,6 +49,17 @@ router.post(
   authmiddleware,
   tillUser,
   releaseRefundCredit,
+);
+
+// The credit book: what is still owed, and taking money against it. Open to
+// whoever is on the till — a customer settling up should not have to come
+// back when a particular person is on.
+router.get("/credits", authmiddleware, tillUser, getCredits);
+router.post(
+  "/receipt/:receiptNo/credit-payment",
+  authmiddleware,
+  tillUser,
+  recordCreditPayment,
 );
 
 router.get("/receipts", authmiddleware, getReceipts);

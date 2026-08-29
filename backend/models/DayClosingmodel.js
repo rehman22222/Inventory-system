@@ -51,6 +51,9 @@ const DayClosingSchema = new mongoose.Schema(
     // What actually crossed the counter, as opposed to what was refunded on
     // paper: refundAmount minus the part spent on exchanges.
     cashHandedBack: { type: Number },
+    // Taken back against old accounts on this shift. In the drawer, but not a
+    // sale — the goods left on the day the account was opened.
+    creditRepaid: { type: Number },
     expectedCash: { type: Number },
     expectedCard: { type: Number },
 

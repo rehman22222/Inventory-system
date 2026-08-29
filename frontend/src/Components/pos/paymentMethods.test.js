@@ -25,9 +25,16 @@ describe("what a sale can be settled with", () => {
   const receipt = read("models/Receiptmodel.js");
   const sale = read("models/Salesmodel.js");
 
-  const receiptTenders = enumAfter(receipt, "payments: [");
+  // Anchored on the comment above each enum rather than on the field name.
+  // "payments: [" was ambiguous the moment a second payments array appeared on
+  // the schema (the credit book's), and the test started reading the wrong one
+  // — which is a fragile test, not a real disagreement.
+  const receiptTenders = enumAfter(receipt, '// "wallet" covers digital/online tenders');
   const receiptSettled = enumAfter(receipt, "paymentMethod: {");
   const saleSettled = enumAfter(sale, "paymentMethod: {");
+  // What a debt can be settled with. Deliberately narrower: you cannot pay off
+  // an account with another account, or with credit from a return.
+  const creditRepayment = enumAfter(receipt, "credit: {");
 
   test("the models were found and parsed", () => {
     expect(receiptTenders).toContain("cash");
@@ -48,6 +55,15 @@ describe("what a sale can be settled with", () => {
       expect(receiptSettled).toContain(method);
       expect(saleSettled).toContain(method);
     }
+  });
+
+  test("a debt cannot be paid off with another debt", () => {
+    // Credit and refund credit are both promises, not money. Letting either
+    // settle an account would clear the books without anything arriving.
+    expect(creditRepayment).not.toContain("credit");
+    expect(creditRepayment).not.toContain("refund");
+    expect(creditRepayment).toContain("cash");
+    expect(creditRepayment).toContain("creditcard");
   });
 
   test("the Sale row accepts everything the Receipt does", () => {

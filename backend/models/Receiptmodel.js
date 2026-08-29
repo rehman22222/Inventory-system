@@ -64,6 +64,51 @@ const ReceiptSchema = new mongoose.Schema(
     cashierName: { type: String },
     customerName: { type: String, default: "Walk-in Customer" },
 
+    // Sold on account. The goods went and the money did not, so this is the
+    // shop's side of a debt: who owes it, when it is due, and what has come
+    // back against it since.
+    //
+    // Absent on an ordinary sale — a receipt with no credit block was paid for
+    // at the counter and there is nothing to chase.
+    credit: {
+      // How the customer is found again. One of these is required at the till
+      // when a sale goes on account: a debt owed by "Walk-in Customer" with no
+      // way to reach them is not a debt, it is a loss.
+      email: { type: String, trim: true, lowercase: true },
+      phone: { type: String, trim: true },
+
+      // What was put on account. Not the receipt total: a customer can pay
+      // half in cash and put the rest on the book.
+      amount: { type: Number, default: 0 },
+
+      // The agreed run, in days, and the date it falls due. Both stored: the
+      // term is what was agreed and the date is what is chased, and working
+      // one back from the other later would use today's calendar rather than
+      // the one the customer was standing in.
+      termDays: { type: Number },
+      dueAt: { type: Date },
+
+      // Money that has come back against it. Each entry is real money in the
+      // drawer on the day it was taken, which is why it carries its own method
+      // and cashier — the day it is repaid is not the day it was sold.
+      payments: [
+        {
+          _id: false,
+          at: { type: Date, default: Date.now },
+          amount: { type: Number, required: true },
+          method: { type: String, enum: ["cash", "creditcard", "wallet"] },
+          by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+          byName: { type: String },
+          reference: { type: String },
+          // Stamped when the cashier hands their day over, exactly like a
+          // receipt: a repayment belongs to the shift that took it.
+          dayClosing: { type: mongoose.Schema.Types.ObjectId, ref: "DayClosing", default: null },
+        },
+      ],
+
+      settledAt: { type: Date },
+    },
+
     items: [ReceiptItemSchema],
 
     subtotal: { type: Number, default: 0 },
@@ -195,6 +240,11 @@ ReceiptSchema.index({ "offline.ref": 1 }, { sparse: true });
 ReceiptSchema.index({ createdAt: -1 });
 ReceiptSchema.index({ cashier: 1, createdAt: -1 });
 ReceiptSchema.index({ status: 1, createdAt: -1 });
+// Chasing a debt: found by the contact the customer left, and listed by what
+// is still outstanding. Sparse, because most receipts carry no credit at all.
+ReceiptSchema.index({ "credit.email": 1 }, { sparse: true });
+ReceiptSchema.index({ "credit.phone": 1 }, { sparse: true });
+ReceiptSchema.index({ "credit.settledAt": 1, "credit.dueAt": 1 }, { sparse: true });
 
 const Receipt = mongoose.model("Receipt", ReceiptSchema);
 

@@ -49,7 +49,11 @@ const cashOutOf = (entry, receipt) => ({
   amount: Math.max(0, money(Number(entry.amount || 0) - Number(entry.exchangeCredit || 0))),
 });
 
-const summariseTakings = (receipts = []) => {
+// `creditTaken` is money handed over TODAY against accounts sold whenever:
+// [{ amount, method }]. It is not revenue — that was booked on the day of the
+// sale — but it is in the drawer now, and a count that ignores it comes up
+// over by exactly this much.
+const summariseTakings = (receipts = [], creditTaken = []) => {
   const sales = new Map(); // method -> { amount, count } taken in
   const refunds = new Map(); // method -> amount actually handed back
 
@@ -104,6 +108,23 @@ const summariseTakings = (receipts = []) => {
     }
   }
 
+  // Repayments land on the method they were taken by, alongside the sales.
+  // They are deliberately NOT added to grossSales or netSales: the goods left
+  // the shop on the day of the sale and were counted then. Counting them
+  // again here would book the same revenue twice.
+  let creditRepaid = 0;
+  for (const entry of creditTaken || []) {
+    const key = entry?.method || "cash";
+    const amount = Number(entry?.amount || 0);
+    if (amount <= 0) continue;
+
+    creditRepaid += amount;
+    const current = sales.get(key) || { method: key, amount: 0, count: 0 };
+    current.amount += amount;
+    current.count += 1;
+    sales.set(key, current);
+  }
+
   // One row per method that saw anything at all, in or out, so a method that
   // only ever refunded still appears rather than vanishing from the count.
   const methods = new Set([...sales.keys(), ...refunds.keys()]);
@@ -143,6 +164,9 @@ const summariseTakings = (receipts = []) => {
     // What actually went back over the counter, as opposed to what was
     // refunded on paper.
     cashHandedBack: money(refundAmount - exchangeCredit),
+
+    // What came back against the book today. In the drawer, not in the sales.
+    creditRepaid: money(creditRepaid),
 
     expectedCash: expectedFor("cash"),
     expectedCard: expectedFor("creditcard"),

@@ -9,7 +9,7 @@ import {
   FiImage,
   FiLock,
   FiLogOut,
-  FiPause,
+  FiBookOpen,
   FiPercent,
   FiPlay,
   FiRotateCcw,
@@ -45,6 +45,7 @@ import RefundHistoryModal from "../Components/pos/RefundHistoryModal";
 import DealsModal from "../Components/DealsModal";
 import ProductSearchModal from "../Components/pos/ProductSearchModal";
 import DayClosingModal from "../Components/pos/DayClosingModal";
+import CreditBookModal from "../Components/pos/CreditBookModal";
 import {
   CURRENCIES,
   currency,
@@ -1036,7 +1037,7 @@ function POSPage() {
   // Everything that goes on the receipt, worked out from the cart on this till.
   // Online this is only a preview and the server recomputes it; offline it is
   // what gets printed and later synced, so it is built once and used for both.
-  const saleSnapshot = (payments) => ({
+  const saleSnapshot = (payments, creditTerms) => ({
     customerName: customerName.trim(),
     payments,
     discount: Number(discount || 0),
@@ -1057,6 +1058,9 @@ function POSPage() {
     // The order things were rung up, so the server forms the same sets.
     scanOrder,
     items: cart.map((item) => ({ product: item.productId, quantity: item.quantity })),
+    // Who owes what went on the book, and by when. Undefined on an ordinary
+    // sale; the server refuses a credit tender without it.
+    creditTerms,
     // Credit from a return, spent here. The server checks it against the refund
     // record and decides what it is actually worth; this is a request.
     refundCredit:
@@ -1150,7 +1154,7 @@ function POSPage() {
     toast.success(t("pos.offline.queued"));
   };
 
-  const checkout = async (payments) => {
+  const checkout = async (payments, creditTerms) => {
     setIsCheckingOut(true);
 
     // A refund credit is money held on a server record, and nothing offline can
@@ -1186,7 +1190,7 @@ function POSPage() {
     }
 
     try {
-      const response = await axiosInstance.post("pos/checkout", saleSnapshot(payments));
+      const response = await axiosInstance.post("pos/checkout", saleSnapshot(payments, creditTerms));
 
       finishSale(response.data.receipt);
       toast.success(t("pos.receiptCompleted"));
@@ -1269,7 +1273,16 @@ function POSPage() {
       onClick: () => setModal("deals"),
     },
     { id: "void", label: "pos.rail.void", tone: "red", icon: FiSlash, onClick: voidSale },
-    { id: "suspend", label: "pos.rail.suspend", tone: "amber", icon: FiPause, onClick: holdSale },
+    // Suspend used to sit here. It is still reachable — Resume opens the same
+    // held sales — but the counter needed a way to chase what it is owed far
+    // more than a second button for parking a basket.
+    {
+      id: "credit",
+      label: "pos.rail.credit",
+      tone: "amber",
+      icon: FiBookOpen,
+      onClick: () => setModal("credit"),
+    },
     {
       id: "resume",
       label: "pos.rail.resume",
@@ -2292,6 +2305,8 @@ function POSPage() {
           onClose={() => setModal(null)}
         />
       )}
+
+      {modal === "credit" && <CreditBookModal onClose={() => setModal(null)} />}
 
       {modal === "held" && (
         <HeldSalesModal onResume={resumeSale} onClose={() => setModal(null)} />

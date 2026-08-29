@@ -46,6 +46,7 @@ const figures = (summary) => {
     grossSales,
     refundAmount,
     exchangeCredit: Number(summary.exchangeCredit || 0),
+    creditRepaid: Number(summary.creditRepaid || 0),
     netSales: Number(summary.netSales ?? grossSales - refundAmount),
     cashHandedBack: Number(
       summary.cashHandedBack ?? refundAmount - Number(summary.exchangeCredit || 0),
@@ -441,6 +442,14 @@ function DayClosingModal({ onClosed, onClose }) {
               <div className="flex justify-between gap-6 text-[11px] text-slate-600">
                 <span>{t("dayClosing.exchangeCredit", "Spent on exchanges")}</span>
                 <span className="tabular-nums">{currency(money.exchangeCredit)}</span>
+              </div>
+            )}
+            {Number(money.creditRepaid || 0) > 0 && (
+              <div className="flex justify-between gap-6 text-slate-500">
+                <span>{t("dayClosing.creditRepaid", "Credit repaid")}</span>
+                <span className="tabular-nums text-emerald-400">
+                  {currency(money.creditRepaid)}
+                </span>
               </div>
             )}
             {/* What the shop kept. This line used to print the sales total

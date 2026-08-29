@@ -228,3 +228,91 @@ describe("what a shift came to", () => {
     expect(summary.refunded).toBe(30);
   });
 });
+
+describe("money taken back against the book", () => {
+  test("a sale on account is revenue but not takings", () => {
+    // The goods went and the money did not. It counts as a sale — the shop is
+    // owed it — and there is nothing in the drawer for it.
+    const summary = summariseTakings([
+      sale({ total: 50, method: "credit", payments: [{ method: "credit", amount: 50 }] }),
+    ]);
+
+    expect(summary.grossSales).toBe(50);
+    expect(summary.netSales).toBe(50);
+    expect(summary.expectedCash).toBe(0);
+    expect(summary.creditRepaid).toBe(0);
+  });
+
+  test("a repayment is takings but not revenue", () => {
+    // The mirror image, and the reason it cannot simply be added to sales: the
+    // €50 was booked the day the account was opened. Counting it again here
+    // would book the same goods twice.
+    const summary = summariseTakings([], [{ amount: 50, method: "cash" }]);
+
+    expect(summary.grossSales).toBe(0);
+    expect(summary.netSales).toBe(0);
+    expect(summary.creditRepaid).toBe(50);
+    expect(summary.expectedCash).toBe(50);
+  });
+
+  test("a repayment lands on the method it was taken by", () => {
+    const summary = summariseTakings([], [{ amount: 30, method: "creditcard" }]);
+
+    expect(summary.expectedCard).toBe(30);
+    expect(summary.expectedCash).toBe(0);
+  });
+
+  test("sold on account today, part-paid today", () => {
+    // Both halves on one shift: €50 on the book, €20 of it back in cash.
+    const summary = summariseTakings(
+      [sale({ total: 50, method: "credit", payments: [{ method: "credit", amount: 50 }] })],
+      [{ amount: 20, method: "cash" }],
+    );
+
+    expect(summary.grossSales).toBe(50); // the sale, once
+    expect(summary.creditRepaid).toBe(20);
+    expect(summary.expectedCash).toBe(20); // only what was handed over
+    expect(summary.byMethod.find((row) => row.method === "credit").expected).toBe(0);
+  });
+
+  test("part cash, part account, in one sale", () => {
+    const summary = summariseTakings([
+      sale({
+        total: 100,
+        method: "split",
+        payments: [
+          { method: "cash", amount: 60 },
+          { method: "credit", amount: 40 },
+        ],
+      }),
+    ]);
+
+    expect(summary.grossSales).toBe(100);
+    expect(summary.expectedCash).toBe(60); // the 40 is owed, not held
+  });
+
+  test("repayments and refunds meet on the same method without cancelling wrongly", () => {
+    const summary = summariseTakings(
+      [sale({ total: 100, refunds: [{ amount: 30, method: "cash" }] })],
+      [{ amount: 25, method: "cash" }],
+    );
+
+    // 100 in, 25 back against the book, 30 handed out again.
+    expect(summary.expectedCash).toBe(95);
+    // The repayment is not revenue, so the sales figures are untouched by it.
+    expect(summary.netSales).toBe(70);
+  });
+
+  test("a repayment with no method is cash, because that is what a counter takes", () => {
+    const summary = summariseTakings([], [{ amount: 10 }]);
+    expect(summary.expectedCash).toBe(10);
+  });
+
+  test("no repayments at all leaves every figure where it was", () => {
+    const withNone = summariseTakings([sale({ total: 40 })]);
+    const withEmpty = summariseTakings([sale({ total: 40 })], []);
+
+    expect(withEmpty).toEqual(withNone);
+    expect(withNone.creditRepaid).toBe(0);
+  });
+});
