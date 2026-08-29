@@ -125,7 +125,40 @@ module.exports.login=async(req,res)=>{
      // Accounts are stored with a lowercased email, so the login lookup has to
      // normalise too — otherwise "Admin@Shop.ie" never matches "admin@shop.ie"
      // and the user is told "no user found" for a perfectly good address.
-     const duplicatedUser=await User.findOne({ email: normalizedEmail })
+     let duplicatedUser=await User.findOne({ email: normalizedEmail })
+
+     // ...except for the accounts that were written before anything normalised
+     // them. The email field had no lowercase setter for most of this project's
+     // life, so an account seeded or inserted by hand as "Admin@e360pro.com" is
+     // invisible to the lookup above — and the owner is told their password is
+     // wrong forever, while every account created through the app signs in
+     // fine. That asymmetry is the whole symptom.
+     //
+     // Only runs when the exact, indexed lookup misses, so the ordinary path is
+     // untouched. Two accounts differing only in case is not something to guess
+     // at: say so and refuse, rather than signing somebody into whichever one
+     // the database happened to return first.
+     if (!duplicatedUser && normalizedEmail) {
+       const escaped = normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+       // Surrounding whitespace too: a stored " admin@shop.ie" is invisible in
+       // every admin tool there is, and misses the lookup just as completely.
+       const candidates = await User.find({
+         email: new RegExp(`^\\s*${escaped}\\s*$`, "i"),
+       }).limit(2);
+
+       if (candidates.length === 1) {
+         duplicatedUser = candidates[0];
+         console.warn(
+           `[auth] ${duplicatedUser.email} is stored with capitals and only matched case-insensitively. ` +
+             `Normalise it: db.users.updateOne({_id:ObjectId("${duplicatedUser._id}")},{$set:{email:"${normalizedEmail}"}})`,
+         );
+       } else if (candidates.length > 1) {
+         console.error(
+           `[auth] more than one account matches ${normalizedEmail} apart from capitals — refusing to guess. ` +
+             `Run: npm run diagnose-login -- ${normalizedEmail}`,
+         );
+       }
+     }
 
      // Both failures answer on `message`. The no-user branch used to reply on an
      // `error` key that nothing on the client read, so a wrong email surfaced as

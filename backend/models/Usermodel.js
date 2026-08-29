@@ -13,7 +13,14 @@ const UserSchema= new mongoose.Schema({
     email:{
         type:String,
         require:true,
-        unique:true
+        unique:true,
+        // The login lowercases what is typed before it looks anybody up, so an
+        // account stored with capitals could never be found — its owner was
+        // told their password was wrong, forever, while everyone created
+        // through the app signed in fine. Normalised on write from here on;
+        // accounts written before this still need fixing in the database.
+        lowercase:true,
+        trim:true
     },
     password:{
         type:String,

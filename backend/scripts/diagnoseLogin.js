@@ -53,7 +53,16 @@ const run = async () => {
 
   await mongoose.connect(uri);
 
-  const query = wanted ? { email: wanted } : {};
+  // Case-insensitive on purpose: an account stored with capitals is exactly the
+  // fault this is looking for, and an exact match would hide it.
+  const query = wanted
+    ? {
+        email: new RegExp(
+          `^\\s*${wanted.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`,
+          "i",
+        ),
+      }
+    : {};
   const users = await mongoose.connection.db
     .collection("users")
     .find(query, { projection: { email: 1, role: 1, password: 1, updatedAt: 1 } })
@@ -63,7 +72,7 @@ const run = async () => {
   if (users.length === 0) {
     console.log(
       wanted
-        ? `\nNo account with the email ${wanted}. That alone explains the message.`
+        ? `\nNo account with the email ${wanted}, in any capitalisation. That alone explains the message.`
         : "\nThis database has no user accounts at all.",
     );
     await mongoose.disconnect();
@@ -71,6 +80,7 @@ const run = async () => {
   }
 
   console.log(`\n── ${users.length} account(s) ───────────────────────────────────`);
+  const mixedCase = [];
   for (const user of users) {
     let cost;
     try {
@@ -79,13 +89,38 @@ const run = async () => {
       cost = "NOT A BCRYPT HASH";
     }
 
+    const stored = String(user.email || "");
+    const normalised = stored.trim().toLowerCase() === stored;
+    if (!normalised) mixedCase.push(user);
+
     console.log(
       [
-        String(user.email || "").padEnd(34),
+        stored.padEnd(34),
         String(user.role || "").padEnd(11),
         `cost=${cost}`.padEnd(9),
         `last written ${user.updatedAt ? new Date(user.updatedAt).toISOString() : "unknown"}`,
+        normalised ? "" : "  ← STORED WITH CAPITALS: CANNOT SIGN IN",
       ].join(" "),
+    );
+  }
+
+  if (mixedCase.length > 0) {
+    console.log(`
+── found it ──────────────────────────────────────────
+The login lowercases what is typed before looking anybody up, so ${
+      mixedCase.length === 1 ? "this account is" : "these accounts are"
+    } invisible
+to it — the password was never the problem. Fix in the database:
+`);
+    for (const user of mixedCase) {
+      console.log(
+        `  db.users.updateOne({_id:ObjectId("${user._id}")},{$set:{email:"${String(user.email)
+          .trim()
+          .toLowerCase()}"}})`,
+      );
+    }
+    console.log(
+      "\nNew accounts are normalised on write, so this cannot happen again.",
     );
   }
 
