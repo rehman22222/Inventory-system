@@ -417,7 +417,7 @@ function Orderpage() {
                       <input
                         type="number"
                         min="1"
-                        placeholder="1"
+                        placeholder="0.0"
                         value={quantity}
                         onChange={(e) => setQuantity(e.target.value)}
                         className="w-full h-10 px-2 border-2 border-base-300 rounded-lg mt-1 bg-base-100 text-base-content"

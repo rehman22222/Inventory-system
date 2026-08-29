@@ -110,7 +110,13 @@ function DealsModal({ onClose }) {
     });
   }, [products, query, categoryId, tillOnly]);
 
-  const matches = useMemo(() => allMatches.slice(0, 100), [allMatches]);
+  // The list used to stop at 100 without saying so, which is how a category of
+  // 663 looked like a category of 100 and a product somebody expected to find
+  // simply was not there. The ceiling is now high enough to hold any one
+  // category whole, and when it does bite the list says so rather than ending
+  // quietly. "Add all" has always worked on the full set of matches.
+  const LIST_CEILING = 1000;
+  const matches = useMemo(() => allMatches.slice(0, LIST_CEILING), [allMatches]);
 
   const pickedIds = useMemo(
     () => new Set(picked.map((entry) => entry.productId)),
@@ -211,6 +217,27 @@ function DealsModal({ onClose }) {
     if (discountType === "setPrice") return Math.max(0, setValue - Number(discount || 0));
     return Number(discount || 0);
   })();
+
+  // A set of one is not an offer, it is a price change — and there is a screen
+  // for that. Rather than letting the number reach 1 and refusing at the end,
+  // the button stops and says why the first time it is pressed.
+  const stepSet = (by) => {
+    const now = Math.floor(Number(groupQuantity || 0)) || 0;
+    const next = now + by;
+
+    if (next < 2) {
+      toast(
+        t(
+          "deals.mixMin",
+          "A set needs at least 2 — one product at a lower price is a price change, not a deal.",
+        ),
+      );
+      setGroupQuantity("2");
+      return;
+    }
+
+    setGroupQuantity(String(next));
+  };
 
   const submit = async (event) => {
     event.preventDefault();
@@ -439,19 +466,48 @@ function DealsModal({ onClose }) {
                 <label className="mb-1 block text-xs font-semibold uppercase text-base-content/60">
                   {t("deals.perSet", "Products per set")}
                 </label>
-                <input
-                  type="number"
-                  min="2"
-                  step="1"
-                  value={groupQuantity}
-                  onChange={(e) => setGroupQuantity(e.target.value)}
-                  className="h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3"
-                />
+                {/* Buttons rather than the browser's spinner: those arrows are
+                    a four-pixel target, and this is the one number on the form
+                    that decides what the offer is. */}
+                <div className="flex h-10 overflow-hidden rounded-lg border-2 border-base-300 bg-base-100">
+                  <button
+                    type="button"
+                    onClick={() => stepSet(-1)}
+                    aria-label={t("deals.perSetLess", "One fewer")}
+                    className="w-12 shrink-0 border-e-2 border-base-300 text-lg font-bold transition hover:bg-base-200"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min="2"
+                    step="1"
+                    value={groupQuantity}
+                    onChange={(e) => setGroupQuantity(e.target.value)}
+                    className="w-full bg-transparent px-3 text-center text-lg font-semibold outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => stepSet(1)}
+                    aria-label={t("deals.perSetMore", "One more")}
+                    className="w-12 shrink-0 border-s-2 border-base-300 text-lg font-bold transition hover:bg-base-200"
+                  >
+                    +
+                  </button>
+                </div>
                 <p className="mt-1 text-xs text-base-content/50">
                   {t(
                     "deals.perSetHint",
                     "Any {{n}} from the products below — the shopper mixes them however they like, same flavour or not.",
                     { n: need >= 2 ? need : "…" },
+                  )}
+                </p>
+                {/* The commonest offer a shop actually runs is on one flavour,
+                    and nothing on this form said it was allowed. */}
+                <p className="mt-1 text-xs text-base-content/50">
+                  {t(
+                    "deals.perSetSingle",
+                    "One product is fine: pick just that one for \"3 Velo Mint for €12\".",
                   )}
                 </p>
               </div>
@@ -600,7 +656,22 @@ function DealsModal({ onClose }) {
                 )}
               </label>
 
-              <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-base-300 bg-base-100">
+              {/* How many there are, and how many of them are on screen. A list
+                  that simply stops is indistinguishable from a catalogue that
+                  does not contain what you are looking for. */}
+              <p className="mt-2 text-xs text-base-content/50">
+                {allMatches.length > matches.length
+                  ? t(
+                      "deals.showingSome",
+                      "Showing {{shown}} of {{total}} — search to narrow it, or use Add all",
+                      { shown: matches.length, total: allMatches.length },
+                    )
+                  : t("deals.showingAll", "{{total}} products", {
+                      total: allMatches.length,
+                    })}
+              </p>
+
+              <div className="mt-1 max-h-56 overflow-y-auto rounded-lg border border-base-300 bg-base-100">
                 {matches.length === 0 ? (
                   <p className="py-6 text-center text-sm text-base-content/50">
                     {t("deals.noMatches")}

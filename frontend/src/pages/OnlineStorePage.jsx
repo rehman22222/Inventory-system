@@ -1388,7 +1388,7 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
                         type="number"
                         step="1"
                         className="input input-sm input-bordered w-24 min-w-0"
-                        placeholder="Order"
+                        placeholder="0.0"
                         value={item.sortWeight}
                         onChange={(event) =>
                           setLinkedListingField(
@@ -2618,7 +2618,7 @@ function HeroSlides({ slides, listings, categories }) {
           <input
             type="number"
             className="input input-sm input-bordered"
-            placeholder="Order"
+            placeholder="0.0"
             value={draft.sortWeight}
             onChange={(event) => set("sortWeight", Number(event.target.value))}
           />
@@ -3376,7 +3376,7 @@ function DealsControls({ listings, settings, isActing }) {
               type="number"
               min="1"
               step="1"
-              placeholder="1 — applies to every unit"
+              placeholder="0.0"
               className="input input-sm input-bordered w-full"
               value={deal.minQty}
               onChange={(event) => setDealField("minQty", event.target.value)}
@@ -3846,7 +3846,7 @@ function Promotions({ vouchers, listings, categories, isActing }) {
             type="number"
             min="1"
             className="input input-sm input-bordered"
-            placeholder="Total usage limit"
+            placeholder="0.0"
             value={draft.usageLimit}
             onChange={(event) => set("usageLimit", event.target.value)}
           />
@@ -3854,7 +3854,7 @@ function Promotions({ vouchers, listings, categories, isActing }) {
             type="number"
             min="1"
             className="input input-sm input-bordered"
-            placeholder="Per customer limit"
+            placeholder="0.0"
             value={draft.perCustomerLimit}
             onChange={(event) => set("perCustomerLimit", event.target.value)}
           />

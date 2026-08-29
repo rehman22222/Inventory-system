@@ -561,7 +561,7 @@ function Productpage() {
                     <label className="text-sm">{t("products.lowStockThreshold")}</label>
                     <input
                       type="number"
-                      placeholder="10"
+                      placeholder="0.0"
                       value={lowStockThreshold}
                       onChange={(e) => setLowStockThreshold(e.target.value)}
                       className="mt-1 h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-2 text-base-content"
