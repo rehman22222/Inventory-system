@@ -1,6 +1,19 @@
+const mongoose = require('mongoose');
 const StockTransaction = require('../models/StockTranscationmodel');
+const Product = require('../models/Productmodel');
+const { runInTransaction } = require('../libs/txn');
+const logActivity = require('../libs/logger');
+const { emitStockChanged } = require('../libs/stockEvents');
 
 
+// Record a stock movement AND move the stock.
+//
+// This wrote the ledger row and stopped there, so a delivery booked in here
+// left the shelf count exactly where it was: the history said forty arrived and
+// the catalogue still said none. Every other path in the system — a sale, a
+// refund, a POS quick-add — moves the count and writes the row together,
+// because a movement that only exists on paper is worse than one nobody
+// recorded. Somebody trusts the number.
 module.exports.createStockTransaction = async (req, res) => {
   try {
     const { product, type, quantity, supplier } = req.body;
@@ -9,18 +22,88 @@ module.exports.createStockTransaction = async (req, res) => {
       return res.status(400).json({ success: false, message: "Product, type, and quantity are required." });
     }
 
-    const newTransaction = new StockTransaction({
-      product,
-      type,
-      quantity,
-      supplier,
+    if (!mongoose.isValidObjectId(product)) {
+      return res.status(400).json({ success: false, message: "Invalid product id" });
+    }
+
+    const units = Math.floor(Number(quantity));
+    if (!Number.isFinite(units) || units <= 0) {
+      return res.status(400).json({ success: false, message: "Quantity must be a whole number above zero" });
+    }
+
+    if (type !== "Stock-in" && type !== "Stock-out") {
+      return res.status(400).json({ success: false, message: `Unknown movement type: ${type}` });
+    }
+
+    const change = type === "Stock-in" ? units : -units;
+
+    const result = await runInTransaction(async (session) => {
+      const opts = session ? { session } : {};
+
+      // Guarded, like the till's decrement: the filter re-checks the count at
+      // write time, so booking stock out cannot take it below zero however many
+      // people are doing it at once. A shop cannot ship what it does not have,
+      // and a negative shelf count is a number nobody can act on.
+      const filter = { _id: product };
+      if (change < 0) filter.quantity = { $gte: units };
+
+      const updated = await Product.findOneAndUpdate(
+        filter,
+        { $inc: { quantity: change } },
+        { new: true, ...opts },
+      ).select("name quantity supplier lowStockThreshold");
+
+      if (!updated) {
+        const exists = await Product.findById(product).select("name quantity").lean();
+        throw Object.assign(
+          new Error(
+            exists
+              ? `Only ${exists.quantity} of ${exists.name} in stock — cannot take out ${units}`
+              : "Product not found",
+          ),
+          { statusCode: exists ? 400 : 404 },
+        );
+      }
+
+      const [created] = await StockTransaction.create(
+        [{ product, type, quantity: units, supplier: supplier || undefined }],
+        opts,
+      );
+
+      return { created, updated };
     });
 
-    await newTransaction.save();
+    // Every till showing this product patches its number rather than refetching
+    // the catalogue.
+    emitStockChanged(
+      req,
+      [{ product: result.updated._id, quantity: result.updated.quantity }],
+      `Stock ${type}`,
+    );
 
-    res.status(201).json( {message: "Stock transaction created successfully"});
+    // Stock moved by hand is the one movement with no sale or delivery behind
+    // it to explain it, so the log carries who and how many.
+    void logActivity({
+      action: type === "Stock-in" ? "Stock In" : "Stock Out",
+      description: `${type === "Stock-in" ? "Added" : "Removed"} ${units} x ${result.updated.name}. Now ${result.updated.quantity} in stock.`,
+      entity: "product",
+      entityId: result.updated._id,
+      userId: req.user?._id,
+      ipAddress: req.ip,
+    });
+
+    res.status(201).json({
+      message: "Stock transaction created successfully",
+      transaction: result.created,
+      // So the page can show the new figure instead of the one it loaded with.
+      product: { _id: result.updated._id, name: result.updated.name, quantity: result.updated.quantity },
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Error creating stock transaction", error });
+    const status = error.statusCode || 500;
+    return res.status(status).json({
+      success: false,
+      message: status === 500 ? "Error creating stock transaction" : error.message,
+    });
   }
 };
 

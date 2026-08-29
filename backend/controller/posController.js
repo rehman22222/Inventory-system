@@ -943,6 +943,9 @@ const planRefund = (receipt, requested) => {
       price: item.price,
       // What was paid for these units, not what the shelf says.
       lineTotal: money((paid.get(key)?.perUnit || 0) * quantity),
+      // The tax inside that figure, so the reversal can back it out the same
+      // way the sale did.
+      tax: money((paid.get(key)?.taxPerUnit || 0) * quantity),
     });
   }
 
@@ -1067,6 +1070,9 @@ const performRefund = async ({
               price: line.price,
             },
             totalAmount: -line.lineTotal,
+            // Negative like the amount it sits inside: the shop collected this
+            // tax on the sale and is giving it back with the rest.
+            tax: -Number(line.tax || 0),
             // How the money actually went back, not how the sale was paid for.
             // A card sale handed back in cash is an ordinary thing at a
             // counter, and a report grouped by method has to be able to say
@@ -2179,9 +2185,46 @@ module.exports.dayClosingSummary = async (req, res) => {
       createdAt: 1,
     });
 
+    // Credit from a return that has not paid for anything yet. The refund
+    // handed the customer less than it was worth because a replacement was
+    // coming; if it never came, the shop is holding money it has no claim to.
+    //
+    // Found by who PUT THE REFUND THROUGH, not by whose sale it was — a
+    // colleague's receipt refunded on your shift is your loose end, and
+    // scoping it to your own receipts would hide exactly those.
+    const holders = await Receipt.find({
+      refunds: {
+        $elemMatch: {
+          by: req.user._id,
+          creditReceiptNo: null,
+          exchangeCredit: { $gt: 0 },
+        },
+      },
+    })
+      .select("receiptNo refunds")
+      .lean();
+
+    const unspentCredit = holders.flatMap((receipt) =>
+      (receipt.refunds || [])
+        .filter(
+          (entry) =>
+            String(entry.by) === String(req.user._id) &&
+            !entry.creditReceiptNo &&
+            Number(entry.exchangeCredit || 0) > 0,
+        )
+        .map((entry) => ({
+          reference: entry.reference,
+          receiptNo: receipt.receiptNo,
+          at: entry.at,
+          amount: money(entry.exchangeCredit),
+        })),
+    );
+
     return res.status(200).json({
       summary: {
         ...summarise(receipts),
+        // Loose ends, listed where the shift is counted.
+        unspentCredit,
         // Every sale behind the totals, so the printed slip can be reconciled
         // against the drawer line by line. Kept out of `summarise` itself —
         // that also builds the stored DayClosing document, which has no need

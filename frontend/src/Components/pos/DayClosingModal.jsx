@@ -252,6 +252,24 @@ function DayClosingModal({ onClosed, onClose }) {
             <span>{currency(money.exchangeCredit)}</span>
           </div>
         )}
+        {/* Refund credit nobody spent. On the paper as well as the screen: the
+            slip is what gets checked against the drawer, and this is money the
+            shop is holding for a customer who walked out without it. */}
+        {(summary.unspentCredit || []).length > 0 && (
+          <>
+            <div className="s-rule" />
+            <div className="s-section">
+              {t("dayClosing.unspentCredit", "Refund credit not spent")}
+            </div>
+            {summary.unspentCredit.map((entry) => (
+              <div key={entry.reference} className="s-item">
+                <span>{entry.reference}</span>
+                <span>{currency(entry.amount)}</span>
+              </div>
+            ))}
+          </>
+        )}
+
         <div className="s-rule" />
         {/* What the shop kept. The old slip printed the sales total here, under
             a line that said the refunds had been taken off — they had not. */}
@@ -429,6 +447,33 @@ function DayClosingModal({ onClosed, onClose }) {
               </span>
             </div>
           </div>
+
+          {/* Shown before the confirm step, not after it: this is a thing to go
+              and do, not a warning to click past. */}
+          {(summary.unspentCredit || []).length > 0 && (
+            <div className="border border-amber-700 bg-amber-950/40 px-4 py-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-amber-300">
+                {t("dayClosing.unspentCredit", "Refund credit not spent")}
+              </p>
+              <p className="mt-1 text-xs text-amber-200/80">
+                {t(
+                  "dayClosing.unspentCreditHint",
+                  "A return was taken as an exchange and the replacement was never rung up. This money is still the customer's.",
+                )}
+              </p>
+              <ul className="mt-2 space-y-1">
+                {summary.unspentCredit.map((entry) => (
+                  <li
+                    key={entry.reference}
+                    className="flex justify-between gap-4 text-sm text-amber-100"
+                  >
+                    <span className="font-mono">{entry.reference}</span>
+                    <span className="tabular-nums">{currency(entry.amount)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {confirming && (
             <div className="flex gap-3 border border-amber-800 bg-amber-950/30 px-4 py-3">

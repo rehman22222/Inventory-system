@@ -77,6 +77,12 @@ const paidByLine = (receipt) => {
         quantity: line.quantity,
         paid,
         perUnit: line.quantity > 0 ? paid / line.quantity : 0,
+        // Old receipts spread tax the same proportional way, so its share of
+        // the line is the same proportion of the tax.
+        taxPerUnit:
+          line.quantity > 0 && subtotal > 0
+            ? (Number(receipt.tax || 0) * (line.value / subtotal)) / line.quantity
+            : 0,
       });
     }
     return result;
@@ -138,6 +144,10 @@ const paidByLine = (receipt) => {
   const paid = taxable.map((line) => ({
     key: line.key,
     quantity: line.quantity,
+    // Kept apart from the total: a refund reverses revenue AND the tax that
+    // was collected on it, and a report that cannot tell the two apart counts
+    // tax as profit going out.
+    tax: taxableTotal > 0 ? (tax * line.value) / taxableTotal : 0,
     paid: line.value + (taxableTotal > 0 ? (tax * line.value) / taxableTotal : 0),
   }));
 
@@ -157,6 +167,7 @@ const paidByLine = (receipt) => {
       quantity: line.quantity,
       paid: line.paid,
       perUnit: line.quantity > 0 ? line.paid / line.quantity : 0,
+      taxPerUnit: line.quantity > 0 ? money(line.tax) / line.quantity : 0,
     });
   }
 

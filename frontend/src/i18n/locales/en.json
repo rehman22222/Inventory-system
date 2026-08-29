@@ -1244,7 +1244,9 @@
     "takenIn": "Taken",
     "handedBackShort": "Back",
     "shouldHold": "Should Hold",
-    "notTakings": "not takings"
+    "notTakings": "not takings",
+    "unspentCredit": "Refund Credit Not Spent",
+    "unspentCreditHint": "A return was taken as an exchange and the replacement was never rung up. This money is still the customer's."
   },
   "dayClosings": {
     "title": "Day Closings",

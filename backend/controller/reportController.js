@@ -106,6 +106,7 @@ async function buildSales(req, options = {}) {
   let totalDiscount = 0;
   let totalTax = 0;
   let netRevenue = 0;
+  let netOfTax = 0;
   let totalCost = 0;
   const byChannel = {
     counter: { receipts: new Set(), revenue: 0 },
@@ -122,14 +123,29 @@ async function buildSales(req, options = {}) {
     const qty = sign * Number(s.products?.quantity || 0);
     const unitPrice = Number(s.products?.price || 0);
     const unitCost = Number(s.products?.product?.costPrice || 0);
-    const lineTotal = unitPrice * qty;
+    // Three different figures, and only one of them is profit.
+    //
+    //   lineList    what the shelf said: unit price x quantity
+    //   lineNet     what was actually charged for it, less the tax collected on
+    //               it — the line's share of the basket's discount is already
+    //               in totalAmount, spread there at checkout
+    //   lineProfit  lineNet - cost
+    //
+    // Profit used to be list price minus cost, so every discount the shop gave
+    // came back as profit it never made; and tax collected for the state was
+    // counted as revenue. On a day of 20%-off promotions those columns did not
+    // reconcile with anything.
+    const lineList = unitPrice * qty;
     const lineCost = unitCost * qty;
-    const lineProfit = lineTotal - lineCost;
+    const lineTax = Number(s.tax || 0); // already signed with the row
+    const lineNet = Number(s.totalAmount || 0) - lineTax;
+    const lineProfit = lineNet - lineCost;
 
-    grossSales += lineTotal;
+    grossSales += lineList;
     totalDiscount += sign * Number(s.discount || 0);
-    totalTax += sign * Number(s.tax || 0);
+    totalTax += lineTax;
     netRevenue += Number(s.totalAmount || 0); // already signed
+    netOfTax += lineNet;
     totalCost += lineCost;
     const channel =
       s.source === "online"
@@ -157,7 +173,8 @@ async function buildSales(req, options = {}) {
       qty,
       money(unitPrice),
       money(unitCost),
-      money(lineTotal),
+      money(lineList),
+      money(lineNet),
       money(lineProfit),
       money(s.totalAmount),
       s.paymentMethod,
@@ -166,18 +183,21 @@ async function buildSales(req, options = {}) {
     ];
   });
 
-  const grossProfit = grossSales - totalCost;
-  const netProfit = netRevenue - totalCost;
+  // Profit is what was actually taken, less tax, less what the goods cost. The
+  // list-price line above it is kept because "what we would have taken at full
+  // price" is a real question — it is simply not profit, and labelling it so
+  // was the confusion.
+  const grossProfit = netOfTax - totalCost;
   const summary = [
     ["Total Receipts / Orders", allReceipts.size],
     ["Total Sale Lines", sales.length],
-    ["Gross Sales", money(grossSales)],
+    ["Gross Sales (list price)", money(grossSales)],
     ["Total Discount", money(totalDiscount)],
     ["Total Tax", money(totalTax)],
-    ["Net Revenue", money(netRevenue)],
+    ["Net Revenue (incl. tax)", money(netRevenue)],
+    ["Net Revenue (excl. tax)", money(netOfTax)],
     ["Total Cost of Goods", money(totalCost)],
     ["Gross Profit", money(grossProfit)],
-    ["Net Profit / Loss", money(netProfit)],
   ];
 
   if (options.combined) {
@@ -200,8 +220,8 @@ async function buildSales(req, options = {}) {
     subtitle: periodLabel(from, to),
     headers: [
       "Receipt No", "Date & Time", "Customer", "Cashier", "Product",
-      "Qty", "Unit Price", "Unit Cost", "Line Total", "Line Profit",
-      "Total", "Payment", "Status", "Channel",
+      "Qty", "Unit Price", "Unit Cost", "Line Total (list)", "Line Net (excl. tax)",
+      "Line Profit", "Charged", "Payment", "Status", "Channel",
     ],
     rows,
     summary,
