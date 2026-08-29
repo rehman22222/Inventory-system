@@ -1204,13 +1204,15 @@
     "newInstead": "New Deal Instead",
     "perSetLess": "One Fewer",
     "perSetMore": "One More",
-    "perSetSingle": "One product is fine: pick just that one for \"3 Velo Mint for €12\".",
     "mixMin": "A set needs at least 2 — one product at a lower price is a price change, not a deal.",
     "showingSome": "Showing {{shown}} of {{total}} — search to narrow it, or use Add all",
     "showingAll": "{{total}} products",
     "addAll": "Add All",
     "startsAt": "Starts (Optional)",
-    "endsAt": "Ends (Optional)"
+    "endsAt": "Ends (Optional)",
+    "kindSingle": "Single Product",
+    "kindSingleHint": "3 Velo Mint for €12. One product, several of it — the offer never mixes.",
+    "perSetSingleHint": "{{n}} of the one product below. Buy {{n}} more and it is another set."
   },
   "dayClosing": {
     "title": "Day Closing",

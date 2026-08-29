@@ -43,7 +43,31 @@ function DealsModal({ onClose }) {
   // The pricing IS the deal type here: "setPrice" is a multi-buy ("any 3 for
   // €12"), anything else is a festive discount off the same set of products.
   const [discountType, setDiscountType] = useState("setPrice");
-  const dealKind = discountType === "setPrice" ? "multibuy" : "festive";
+  // "Single product" is not a different engine — it is a multi-buy whose list
+  // holds one product, which is what "3 Velo Mint for €12" already was. It is a
+  // separate choice on the form because nobody reading "Products per set" over
+  // a picker full of the whole catalogue works out that they may pick one.
+  const [singleProduct, setSingleProduct] = useState(false);
+  const dealKind = singleProduct
+    ? "single"
+    : discountType === "setPrice"
+      ? "multibuy"
+      : "festive";
+
+  const chooseKind = (key) => {
+    if (key === "single") {
+      setSingleProduct(true);
+      setDiscountType("setPrice");
+      // Whatever was already picked, keep the first — switching to a
+      // one-product offer with eleven products in it is not a state worth
+      // being able to reach.
+      setPicked((current) => current.slice(0, 1));
+      return;
+    }
+
+    setSingleProduct(false);
+    setDiscountType(key === "multibuy" ? "setPrice" : "amount");
+  };
 
   // Every deal this form builds is a pick-any-N that repeats for each complete
   // set. The engine still supports recipe bundles and once-per-sale offers, and
@@ -148,6 +172,21 @@ function DealsModal({ onClose }) {
   };
 
   const addProduct = (product) => {
+    // A one-product offer holds one product: tapping another swaps it rather
+    // than quietly building a two-product deal under a heading that says
+    // otherwise.
+    if (singleProduct) {
+      setPicked([
+        {
+          productId: product._id,
+          name: product.name,
+          price: Number(product.Price || 0),
+          quantity: 1,
+        },
+      ]);
+      return;
+    }
+
     setPicked((current) => {
       const existing = current.find((entry) => entry.productId === product._id);
       if (existing) {
@@ -190,6 +229,7 @@ function DealsModal({ onClose }) {
     setName("");
     setDiscount("");
     setDiscountType("setPrice");
+    setSingleProduct(false);
     setGroupQuantity("3");
     setStartsAt("");
     setEndsAt("");
@@ -218,25 +258,13 @@ function DealsModal({ onClose }) {
     return Number(discount || 0);
   })();
 
-  // A set of one is not an offer, it is a price change — and there is a screen
-  // for that. Rather than letting the number reach 1 and refusing at the end,
-  // the button stops and says why the first time it is pressed.
+  // The number goes all the way down to zero, because a control that refuses to
+  // move is a control somebody presses twice wondering if it is broken. What it
+  // cannot do is SAVE below 2 — that is checked when the deal is built, and the
+  // form says so in place while the number is short.
   const stepSet = (by) => {
     const now = Math.floor(Number(groupQuantity || 0)) || 0;
-    const next = now + by;
-
-    if (next < 2) {
-      toast(
-        t(
-          "deals.mixMin",
-          "A set needs at least 2 — one product at a lower price is a price change, not a deal.",
-        ),
-      );
-      setGroupQuantity("2");
-      return;
-    }
-
-    setGroupQuantity(String(next));
+    setGroupQuantity(String(Math.max(0, now + by)));
   };
 
   const submit = async (event) => {
@@ -328,6 +356,11 @@ function DealsModal({ onClose }) {
     setName(deal.name || "");
     setDiscount(String(deal.discount ?? ""));
     setDiscountType(deal.discountType || "setPrice");
+    // A saved offer on one product opens as one, so editing it does not quietly
+    // turn it back into a mix-and-match.
+    setSingleProduct(
+      (deal.items || []).length === 1 && (deal.discountType || "setPrice") === "setPrice",
+    );
     setGroupQuantity(String(deal.groupQuantity || 3));
     setStartsAt(deal.startsAt ? String(deal.startsAt).slice(0, 10) : "");
     setEndsAt(deal.endsAt ? String(deal.endsAt).slice(0, 10) : "");
@@ -424,7 +457,7 @@ function DealsModal({ onClose }) {
                 <label className="mb-1 block text-xs font-semibold uppercase text-base-content/60">
                   {t("deals.kind", "Deal type")}
                 </label>
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-2 sm:grid-cols-3">
                   {[
                     {
                       key: "multibuy",
@@ -432,6 +465,14 @@ function DealsModal({ onClose }) {
                       hint: t(
                         "deals.kindMultibuyHint",
                         "Any 3 for €12. Every complete set of 3 is €12; anything left over is at its normal price.",
+                      ),
+                    },
+                    {
+                      key: "single",
+                      title: t("deals.kindSingle", "Single Product"),
+                      hint: t(
+                        "deals.kindSingleHint",
+                        "3 Velo Mint for €12. One product, several of it — the offer never mixes.",
                       ),
                     },
                     {
@@ -446,9 +487,7 @@ function DealsModal({ onClose }) {
                     <button
                       key={option.key}
                       type="button"
-                      onClick={() =>
-                        setDiscountType(option.key === "multibuy" ? "setPrice" : "amount")
-                      }
+                      onClick={() => chooseKind(option.key)}
                       className={`rounded-lg border-2 p-3 text-start transition ${
                         dealKind === option.key
                           ? "border-primary bg-primary/10"
@@ -496,20 +535,28 @@ function DealsModal({ onClose }) {
                   </button>
                 </div>
                 <p className="mt-1 text-xs text-base-content/50">
-                  {t(
-                    "deals.perSetHint",
-                    "Any {{n}} from the products below — the shopper mixes them however they like, same flavour or not.",
-                    { n: need >= 2 ? need : "…" },
-                  )}
+                  {singleProduct
+                    ? t(
+                        "deals.perSetSingleHint",
+                        "{{n}} of the one product below. Buy {{n}} more and it is another set.",
+                        { n: need >= 2 ? need : "…" },
+                      )
+                    : t(
+                        "deals.perSetHint",
+                        "Any {{n}} from the products below — the shopper mixes them however they like, same flavour or not.",
+                        { n: need >= 2 ? need : "…" },
+                      )}
                 </p>
-                {/* The commonest offer a shop actually runs is on one flavour,
-                    and nothing on this form said it was allowed. */}
-                <p className="mt-1 text-xs text-base-content/50">
-                  {t(
-                    "deals.perSetSingle",
-                    "One product is fine: pick just that one for \"3 Velo Mint for €12\".",
-                  )}
-                </p>
+                {/* Said in place while the number is short, rather than only
+                    when Create is pressed. */}
+                {need < 2 && (
+                  <p className="mt-1 text-xs font-semibold text-amber-600">
+                    {t(
+                      "deals.mixMin",
+                      "A set needs at least 2 — one product at a lower price is a price change, not a deal.",
+                    )}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -551,13 +598,7 @@ function DealsModal({ onClose }) {
                     step="0.01"
                     value={discount}
                     onChange={(e) => setDiscount(e.target.value)}
-                    placeholder={
-                      discountType === "percent"
-                        ? "10"
-                        : discountType === "setPrice"
-                          ? "12.00"
-                          : "3.00"
-                    }
+                    placeholder="0.0"
                     className="h-10 w-full rounded-e-lg border-2 border-base-300 bg-base-100 px-3"
                   />
                 </div>
@@ -636,7 +677,7 @@ function DealsModal({ onClose }) {
                 <button
                   type="button"
                   onClick={addAllMatching}
-                  disabled={!allMatches.length}
+                  disabled={!allMatches.length || singleProduct}
                   className="h-10 shrink-0 rounded-lg bg-blue-800 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-40"
                 >
                   {t("deals.addAll", "Add all")} {allMatches.length ? `(${allMatches.length})` : ""}
