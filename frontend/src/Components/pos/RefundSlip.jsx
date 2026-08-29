@@ -123,11 +123,12 @@ function RefundSlipBody({ slip, shop, t }) {
       )}
 
       {/* The refund's own number, scannable. Last on the paper, the way it is
-          on the sale receipt, so both kinds of slip end the same way. */}
+          on the sale receipt, so both kinds of slip end the same way. The
+          number is not repeated under it — it is already at the top, and
+          printing it twice only makes the customer wonder which one matters. */}
       <div className="s-rule" />
       <div className="s-qr">
         <QRCodeSVG value={qr} size={96} level="M" />
-        <div className="s-qrcaption">{slip.reference}</div>
       </div>
     </>
   );

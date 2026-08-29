@@ -10,7 +10,6 @@ import {
   currency,
   printSlip,
   REFUND_REASONS,
-  restocksOnRefund,
 } from "./posUtils";
 
 // The refund that has just gone through, shown as a piece of paper: the counter
@@ -601,23 +600,6 @@ function RefundModal({
                 </button>
               ))}
             </div>
-
-            {/* What the reason costs the shop, said before Confirm rather than
-                discovered at the next stock take. Expired and damaged goods are
-                refunded and written off; anything else goes back on the count.
-                Only shown once a reason is chosen — there is nothing to warn
-                about while the question is still open. */}
-            {reason && (
-              <p
-                className={`mt-2 text-xs font-semibold ${
-                  restocksOnRefund(reason) ? "text-emerald-400" : "text-amber-400"
-                }`}
-              >
-                {restocksOnRefund(reason)
-                  ? t("pos.refund.restock", "Goes back on the shelf")
-                  : t("pos.refund.writeOff", "Written off — stock not returned")}
-              </p>
-            )}
           </div>
 
           {/* What the customer takes instead. Optional — leave it empty and

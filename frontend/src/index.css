@@ -790,9 +790,9 @@ body.osk-open .admin-drawer {
   margin-bottom: 1mm;
 }
 
-/* The code at the foot of a slip. Centred, with the number under it in plain
-   type: a scanner that will not read a smudged thermal print still leaves
-   somebody able to type it in. */
+/* The code at the foot of a slip. The number itself is not repeated under it —
+   it is already at the top of the slip in plain type, which is what somebody
+   types in when a smudged thermal print will not scan. */
 .slip .s-qr {
   margin-top: 3mm;
   text-align: center;
@@ -803,12 +803,6 @@ body.osk-open .admin-drawer {
    the code sitting against the left edge. */
 .slip .s-qr svg {
   margin-inline: auto;
-}
-
-.slip .s-qrcaption {
-  margin-top: 1mm;
-  font-size: 10px;
-  letter-spacing: 0.04em;
 }
 
 /* A row is two lines: what it is and what it came to, then the detail beneath.

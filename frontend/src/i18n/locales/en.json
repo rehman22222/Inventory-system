@@ -532,8 +532,6 @@
         "damaged": "Damaged / used",
         "unwanted": "Didn't like it"
       },
-      "restock": "Goes back on the shelf",
-      "writeOff": "Written off — stock not returned",
       "printOne": "Print this refund"
     },
     "void": {
