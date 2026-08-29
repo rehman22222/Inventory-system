@@ -1133,6 +1133,16 @@ const performRefund = async ({
             // Negative like the amount it sits inside: the shop collected this
             // tax on the sale and is giving it back with the rest.
             tax: -Number(line.tax || 0),
+            // The discount these units carried, un-given. Stored positive; the
+            // report multiplies a refund row by -1, so it lands as a reduction
+            // in discounts given — which is what a return of discounted goods
+            // actually is. Without it, "Net Sales before Discounts less
+            // Discounts" does not come to "Net Sales excl. Tax", and a
+            // statement that does not add up is a statement nobody trusts.
+            discount: money(
+              Number(line.price || 0) * Number(line.quantity || 0) -
+                (Number(line.lineTotal || 0) - Number(line.tax || 0)),
+            ),
             // How the money actually went back, not how the sale was paid for.
             // A card sale handed back in cash is an ordinary thing at a
             // counter, and a report grouped by method has to be able to say

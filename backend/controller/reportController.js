@@ -20,6 +20,7 @@ const { buildWorkbookBuffer } = require("../libs/excel");
 const { buildPdfBuffer } = require("../libs/pdf");
 const { buildShadowNetReport, currentNetTotal } = require("../libs/shadowNetReport");
 const { startOfDay, endOfDay, formatInZone } = require("../libs/time");
+const { salesStatement } = require("../libs/salesStatement");
 
 // Every timestamp on a report is rendered in the shop's timezone, and every
 // date-range filter is interpreted there — so a report reads correctly whether
@@ -102,12 +103,10 @@ async function buildSales(req, options = {}) {
     .populate("products.product", "name costPrice")
     .sort({ createdAt: -1 });
 
-  let grossSales = 0;
-  let totalDiscount = 0;
-  let totalTax = 0;
-  let netRevenue = 0;
-  let netOfTax = 0;
-  let totalCost = 0;
+  // Every statement figure comes from salesStatement, over these same rows —
+  // one definition, run once here and again in its own test. Only the
+  // per-channel split is accumulated in the row loop below.
+  const st = salesStatement(sales);
   const byChannel = {
     counter: { receipts: new Set(), revenue: 0 },
     online: { receipts: new Set(), revenue: 0 },
@@ -141,12 +140,6 @@ async function buildSales(req, options = {}) {
     const lineNet = Number(s.totalAmount || 0) - lineTax;
     const lineProfit = lineNet - lineCost;
 
-    grossSales += lineList;
-    totalDiscount += sign * Number(s.discount || 0);
-    totalTax += lineTax;
-    netRevenue += Number(s.totalAmount || 0); // already signed
-    netOfTax += lineNet;
-    totalCost += lineCost;
     const channel =
       s.source === "online"
         ? "Online store"
@@ -183,21 +176,29 @@ async function buildSales(req, options = {}) {
     ];
   });
 
-  // Profit is what was actually taken, less tax, less what the goods cost. The
-  // list-price line above it is kept because "what we would have taken at full
-  // price" is a real question — it is simply not profit, and labelling it so
-  // was the confusion.
-  const grossProfit = netOfTax - totalCost;
+  // Read top to bottom, each line following from the one above it.
+  //
+  // "Gross Sales" used to be the sum of every row including the negative refund
+  // ones, so it was already after returns while calling itself gross — and the
+  // returns themselves appeared nowhere. Sold and returned are separate lines
+  // now, and the subtraction is shown rather than assumed.
+  //
+  // Profit needs to know what the goods cost. With no cost prices in the
+  // catalogue "Gross Profit" would be revenue with a different name on it — a
+  // figure an accountant would take at face value and act on — so it says so
+  // instead of pretending.
   const summary = [
     ["Total Receipts / Orders", allReceipts.size],
     ["Total Sale Lines", sales.length],
-    ["Gross Sales (list price)", money(grossSales)],
-    ["Total Discount", money(totalDiscount)],
-    ["Total Tax", money(totalTax)],
-    ["Net Revenue (incl. tax)", money(netRevenue)],
-    ["Net Revenue (excl. tax)", money(netOfTax)],
-    ["Total Cost of Goods", money(totalCost)],
-    ["Gross Profit", money(grossProfit)],
+    ["Gross Sales", st.grossSales],
+    ["Refunds / Returns", st.returns],
+    ["Net Sales before Discounts", st.netBeforeDiscounts],
+    ["Discounts", st.discounts],
+    ["Net Sales excl. Tax", st.netExTax],
+    ["Tax Collected", st.tax],
+    ["Net Sales incl. Tax", st.netIncTax],
+    ["COGS", st.cogs],
+    ["Gross Profit", st.haveCost ? st.grossProfit : "N/A — no cost prices set"],
   ];
 
   if (options.combined) {
