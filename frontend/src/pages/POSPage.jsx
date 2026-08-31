@@ -749,53 +749,6 @@ function POSPage() {
     return { normal, saving, price: Math.max(0, normal - saving) };
   };
 
-  // A scanned code the catalogue does not know, tried as a voucher.
-  //
-  // The sticker printed from the voucher screen carries the code as a barcode,
-  // so this is the whole point of it: stick one on a product, scan it at the
-  // counter, and the discount lands without anybody typing. Priced by the
-  // server against this basket, exactly as typing the code would be — a
-  // scanner is a keyboard, not a shortcut past the rules.
-  //
-  // Returns true when it applied, so the caller knows not to go on and offer
-  // to learn the code as a new product.
-  const applyScannedVoucher = useCallback(
-    async (code) => {
-      if (voucher) return false; // one voucher to a basket, as ever
-      if (cart.length === 0) return false; // nothing to discount yet
-
-      try {
-        const response = await axiosInstance.post("voucher/validate", {
-          code: code.toUpperCase(),
-          subtotal,
-        });
-
-        setVoucher({
-          code: response.data.code,
-          type: response.data.type,
-          value: response.data.value,
-          amount: response.data.computedDiscount,
-        });
-        toast.success(
-          t("pos.voucher.applied", { amount: currency(response.data.computedDiscount) }),
-        );
-        return true;
-      } catch (error) {
-        // A voucher the server knows but refuses — spent, expired, under the
-        // minimum spend — is a real answer and the cashier has to hear it.
-        // Anything else means this was never a voucher, so say nothing and let
-        // the unknown-barcode path have it.
-        const message = error.response?.data?.message;
-        if (error.response?.status === 400 && message) {
-          toast.error(message);
-          return true;
-        }
-        return false;
-      }
-    },
-    [voucher, cart.length, subtotal, t],
-  );
-
   // Every scan: try the loaded catalogue, then the server (the list may be
   // stale), and if the code is genuinely unknown, offer to learn it.
   const handleScanCode = useCallback(
@@ -823,19 +776,13 @@ function POSPage() {
         toast.success(t("pos.productAdded", { name: response.data.product.name }));
       } catch (error) {
         if (error.response?.status === 404) {
-          // Not a product. It may be a voucher sticker off a shelf — those
-          // carry the code as a CODE128 symbol precisely so the cashier can
-          // scan them instead of typing. Tried only after the catalogue, so a
-          // product can never be shadowed by a voucher with the same code.
-          if (await applyScannedVoucher(code)) return;
-
           setUnknownBarcode(code);
         } else {
           toast.error(error.response?.data?.message || t("pos.barcodeNotFound"));
         }
       }
     },
-    [products, addToCart, applyScannedVoucher, multiplier, t]
+    [products, addToCart, multiplier, t]
   );
 
   const scannerEnabled = location.pathname.toLowerCase().startsWith("/pos");

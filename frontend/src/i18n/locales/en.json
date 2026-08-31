@@ -570,12 +570,7 @@
       "offlineUnknown": "Unknown code — this till has no record of it while offline",
       "offlineAlreadyUsed": "This till already used that code while offline",
       "appliedOffline": "{{amount}} off — will be confirmed when the connection is back",
-      "expired": "This voucher has expired",
-      "madeTitle": "Voucher Created",
-      "stickers": "Stickers",
-      "printStickers": "Print Stickers",
-      "another": "New One",
-      "stickerHint": "Stick one on any product. Scanning it at the till applies the voucher to the basket."
+      "expired": "This voucher has expired"
     },
     "discountModal": {
       "title": "Discount",

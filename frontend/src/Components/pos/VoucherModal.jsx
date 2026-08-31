@@ -1,13 +1,11 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
-import { FiPrinter } from "react-icons/fi";
 import axiosInstance from "../../lib/axios";
 import { cacheGet, isVoucherSpentOffline } from "../../lib/offlineDb";
 import { isNetworkError } from "../../lib/offlineQueue";
 import PosModal from "./PosModal";
-import VoucherLabel from "./VoucherLabel";
-import { currency, printSlip, sanitizeDecimal, sanitizeInteger } from "./posUtils";
+import { currency, sanitizeDecimal, sanitizeInteger } from "./posUtils";
 
 // Work out what a cached voucher is worth, mirroring Vouchermodel's
 // computeDiscount + rejectionReason so an offline preview matches what the
@@ -36,10 +34,6 @@ function VoucherModal({ subtotal, applied, canGenerate, onApply, onRemove, onClo
   const [tab, setTab] = useState("apply");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
-  // The voucher just created, held so stickers can be printed for it, and
-  // how many of them to put on the sheet.
-  const [made, setMade] = useState(null);
-  const [stickers, setStickers] = useState(12);
 
   const [form, setForm] = useState({
     code: "",
@@ -152,37 +146,11 @@ function VoucherModal({ subtotal, applied, canGenerate, onApply, onRemove, onClo
         usageLimit: Number(form.usageLimit || 1),
       });
       toast.success(t("pos.voucher.generated", { code: form.code.trim().toUpperCase() }));
-      // Held rather than cleared away: a voucher is made to be put on
-      // something, and the sheet of stickers is the next thing the person
-      // who made it wants.
-      setMade({
-        code: form.code.trim().toUpperCase(),
-        type: form.type,
-        value: Number(form.value),
-        minSpend: Number(form.minSpend || 0),
-        expiresAt: form.expiresAt || null,
-      });
       setForm({ code: "", type: "amount", value: "", minSpend: "", expiresAt: "", usageLimit: "1" });
     } catch (error) {
       toast.error(error.response?.data?.message || t("pos.voucher.generateFailed"));
     } finally {
       setBusy(false);
-    }
-  };
-
-  // The app prints to an 80mm till roll by default. Stickers go on a normal
-  // sheet, so @page is overridden for this print only — a rule appended last
-  // wins the cascade, and it is taken away again afterwards so the next
-  // receipt is not printed on A4.
-  const printStickers = () => {
-    const style = document.createElement("style");
-    style.textContent = "@page { size: A4; margin: 8mm; }";
-    document.head.appendChild(style);
-
-    try {
-      printSlip("voucher-sheet");
-    } finally {
-      style.remove();
     }
   };
 
@@ -265,71 +233,6 @@ function VoucherModal({ subtotal, applied, canGenerate, onApply, onRemove, onClo
               </button>
             </form>
           )}
-        </div>
-      ) : made ? (
-        /* The voucher exists. What the person who made it wants next is a sheet
-           of it to cut up and stick on stock — so that is the screen, rather
-           than an empty form and a toast that has already gone. */
-        <div className="space-y-4">
-          <div className="border border-emerald-800 bg-emerald-950/30 px-3 py-2 text-center">
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
-              {t("pos.voucher.madeTitle", "Voucher Created")}
-            </p>
-            <p className="font-mono text-lg font-bold text-slate-100">{made.code}</p>
-          </div>
-
-          {/* One sticker, at the size it prints, so nobody discovers the
-              barcode is unreadable after running off a sheet of forty. */}
-          <div className="mx-auto w-fit bg-white px-3 py-2">
-            <div className="vc-label" style={{ width: "45mm", textAlign: "center" }}>
-              <VoucherLabel voucher={made} />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold uppercase text-slate-400">
-              {t("pos.voucher.stickers", "Stickers")}
-            </label>
-            <input
-              inputMode="numeric"
-              value={stickers}
-              onChange={(event) => setStickers(sanitizeInteger(event.target.value))}
-              className="w-20 border border-slate-700 bg-slate-950 px-2 py-1.5 text-center text-slate-100 outline-none focus:border-cyan-500"
-            />
-            <button
-              type="button"
-              onClick={printStickers}
-              className="ms-auto flex items-center gap-2 bg-cyan-700 px-4 py-2 text-sm font-bold uppercase text-white hover:bg-cyan-600"
-            >
-              <FiPrinter className="h-4 w-4" />
-              {t("pos.voucher.printStickers", "Print Stickers")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMade(null)}
-              className="bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700"
-            >
-              {t("pos.voucher.another", "New One")}
-            </button>
-          </div>
-
-          <p className="text-xs text-slate-500">
-            {t(
-              "pos.voucher.stickerHint",
-              "Stick one on any product. Scanning it at the till applies the voucher to the basket.",
-            )}
-          </p>
-
-          {/* The sheet itself, hidden until it prints. */}
-          <div id="voucher-sheet" className="hidden">
-            <div className="vc-grid">
-              {Array.from({ length: Math.max(1, Math.min(200, Number(stickers) || 1)) }).map(
-                (_, index) => (
-                  <VoucherLabel key={index} voucher={made} />
-                ),
-              )}
-            </div>
-          </div>
         </div>
       ) : (
         <form onSubmit={generate} className="space-y-3">
