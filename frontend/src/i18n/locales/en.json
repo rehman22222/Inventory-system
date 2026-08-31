@@ -816,7 +816,7 @@
       "category": "Category",
       "stock": "Opening Stock",
       "barcode": "Barcode",
-      "barcodePlaceholder": "Scan it, or generate one",
+      "barcodePlaceholder": "Scan, type or generate",
       "barcodeHint": "Scan the one on the box if it has one. Generated codes use the in-store range, so they never clash with a real product.",
       "generate": "Generate",
       "submit": "Add Product",

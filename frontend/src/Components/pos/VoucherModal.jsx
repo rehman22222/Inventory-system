@@ -496,7 +496,7 @@ function VoucherModal({
                 <input
                   value={product.barcode}
                   onChange={setProductField("barcode")}
-                  placeholder={t("pos.newProduct.barcodePlaceholder", "Scan it, or generate one")}
+                  placeholder={t("pos.newProduct.barcodePlaceholder", "Scan, type or generate")}
                   className={`${field} font-mono`}
                 />
                 <button
