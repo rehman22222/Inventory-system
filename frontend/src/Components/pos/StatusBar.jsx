@@ -13,7 +13,7 @@ const Field = ({ label, value }) => (
   </span>
 );
 
-function StatusBar({ user, till, itemCount = 0, onPrint }) {
+function StatusBar({ user, till, onPrint }) {
   const { t } = useTranslation();
   const [now, setNow] = useState(new Date());
   const [online, setOnline] = useState(navigator.onLine);
@@ -56,14 +56,6 @@ function StatusBar({ user, till, itemCount = 0, onPrint }) {
       </div>
 
       <div className="flex shrink-0 items-center gap-3">
-        {/* What is in the basket. It was in the header, over the till name,
-            where it competed with the sale for attention — down here it sits
-            with the other things that are simply true right now. */}
-        {itemCount > 0 && (
-          <span className="bg-cyan-950 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-cyan-300 ring-1 ring-cyan-800">
-            {t("pos.itemsCount", { count: itemCount })}
-          </span>
-        )}
 
         {/* Queued sales are money the server hasn't seen yet — never hide it. */}
         {queue.count > 0 && (

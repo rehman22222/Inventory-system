@@ -1538,7 +1538,20 @@ function POSPage() {
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 border border-slate-800 bg-black/40 px-3 py-3 sm:gap-6 sm:px-4">
               <div className="min-w-0 space-y-1 text-sm">
                 <div className="flex justify-between gap-8 text-slate-500">
-                  <span>{t("pos.subtotal")}</span>
+                  <span className="flex items-center gap-2">
+                    {t("pos.subtotal")}
+                    {/* How many units are in the basket, beside what they come
+                        to. This is where a cashier checks it against the goods
+                        on the counter — up in the header it was nowhere near
+                        the thing it counts. */}
+                    {cart.length > 0 && (
+                      <span className="bg-cyan-950 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-300 ring-1 ring-cyan-800">
+                        {t("pos.itemsCount", {
+                          count: cart.reduce((sum, item) => sum + item.quantity, 0),
+                        })}
+                      </span>
+                    )}
+                  </span>
                   <span className="tabular-nums text-slate-300">{currency(subtotal)}</span>
                 </div>
                 {voucherDiscount > 0 && (
@@ -1932,7 +1945,6 @@ function POSPage() {
         <StatusBar
           user={Authuser}
           till={TILL}
-          itemCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
           onPrint={printReceipt}
         />
       </div>
