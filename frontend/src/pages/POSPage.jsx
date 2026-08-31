@@ -21,7 +21,6 @@ import {
 import axiosInstance from "../lib/axios";
 import { isDemoMode } from "../lib/demoMode";
 import useBarcodeScanner from "../lib/useBarcodeScanner";
-import LanguageSwitcher from "../Components/LanguageSwitcher";
 import { gettingallproducts, stockChanged, stockSold } from "../features/productSlice";
 import { io } from "socket.io-client";
 import { socketURL } from "../lib/socket";
@@ -1395,12 +1394,10 @@ function POSPage() {
           </span>
         </div>
 
+        {/* The header keeps only what is about the till itself. The basket
+            count and the language belong with the other standing facts on the
+            status bar, where they are out of the way of the sale. */}
         <div className="flex items-center gap-2">
-          {cart.length > 0 && (
-            <span className="bg-cyan-950 px-3 py-1 text-xs font-semibold text-cyan-300 ring-1 ring-cyan-800">
-              {t("pos.itemsCount", { count: cart.reduce((sum, i) => sum + i.quantity, 0) })}
-            </span>
-          )}
           <span
             title={t("pos.currencyHint")}
             className="border border-slate-800 bg-black px-2 py-1.5 text-sm font-semibold text-slate-200"
@@ -1409,9 +1406,6 @@ function POSPage() {
             {currencyCode}
           </span>
 
-          <span className="hidden sm:block">
-            <LanguageSwitcher tone="auto" />
-          </span>
           <Link
             to={dashboardPath}
             // Walking away from the till with a customer's refund credit still
@@ -1425,10 +1419,14 @@ function POSPage() {
                 if (done) navigate(dashboardPath);
               });
             }}
-            className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 text-sm font-semibold text-slate-200 ring-1 ring-slate-700 transition hover:bg-slate-700"
+            title={t("pos.exit")}
+            aria-label={t("pos.exit")}
+            // Icon only, and red: leaving the till mid-shift is the one thing
+            // in this header nobody should press by accident, and a word beside
+            // it made it look like just another button.
+            className="flex items-center justify-center bg-red-900/40 p-2 text-red-400 ring-1 ring-red-800 transition hover:bg-red-800 hover:text-white"
           >
             <FiLogOut className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("pos.exit")}</span>
           </Link>
         </div>
       </header>
@@ -1931,7 +1929,12 @@ function POSPage() {
       </div>
 
       <div className="no-print">
-        <StatusBar user={Authuser} till={TILL} onPrint={printReceipt} />
+        <StatusBar
+          user={Authuser}
+          till={TILL}
+          itemCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+          onPrint={printReceipt}
+        />
       </div>
 
       {/* Printable receipt — everything else is hidden by the print stylesheet. */}
