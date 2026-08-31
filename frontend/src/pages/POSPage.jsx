@@ -7,7 +7,7 @@ import {
   FiClock,
   FiHash,
   FiImage,
-  FiLock,
+  FiClipboard,
   FiLogOut,
   FiBookOpen,
   FiPlay,
@@ -1288,7 +1288,8 @@ function POSPage() {
   const actions = [
     {
       id: "search",
-      label: "pos.rail.productSearch",      icon: FiSearch,
+      label: "pos.rail.productSearch",
+      icon: FiSearch,
       onClick: () => setModal("search"),
     },
     {
@@ -1296,35 +1297,42 @@ function POSPage() {
       // so it is the same dialog — the till is simply where the person who
       // decides the offer is standing.
       id: "deals",
-      label: "pos.rail.deals",      icon: FiTag,
+      label: "pos.rail.deals",
+      icon: FiTag,
       disabled: !isElevated,
       onClick: () => setModal("deals"),
     },
-
     {
+      // Vouchers, a hand-typed discount, and adding stock with its shelf label
+      // — all of it "change what this costs, or what we sell".
       id: "vouchers",
-      label: "pos.rail.vouchers",      icon: FiTag,
+      label: "pos.rail.vouchers",
+      icon: FiTag,
       onClick: () => setModal("voucher"),
     },
     {
       id: "code",
-      label: "pos.rail.enterCode",      icon: FiHash,
+      label: "pos.rail.enterCode",
+      icon: FiHash,
       onClick: () => setModal("code"),
     },
     {
       id: "credit",
-      label: "pos.rail.credit",      icon: FiBookOpen,
+      label: "pos.rail.credit",
+      icon: FiBookOpen,
       onClick: () => setModal("credit"),
     },
     {
       id: "resume",
-      label: "pos.rail.resume",      icon: FiPlay,
+      label: "pos.rail.resume",
+      icon: FiPlay,
       onClick: () => setModal("held"),
     },
     { id: "void", label: "pos.rail.void", icon: FiSlash, onClick: voidSale },
     {
       id: "refund",
-      label: "pos.rail.refund",      icon: FiRotateCcw,
+      label: "pos.rail.refund",
+      icon: FiRotateCcw,
       disabled: !isElevated,
       onClick: () => {
         setRefundReceiptNo("");
@@ -1332,14 +1340,20 @@ function POSPage() {
       },
     },
     {
+      // Sales and refunds are two tabs on one screen, so one button opens both.
       id: "history",
-      label: "pos.rail.saleHistory",      icon: FiClock,
+      label: "pos.rail.saleHistory",
+      icon: FiClock,
       onClick: () => setModal("history"),
     },
-
     {
       id: "dayClosing",
-      label: "pos.rail.dayClosing",      icon: FiLock,
+      label: "pos.rail.dayClosing",
+      // A clipboard, not a padlock. The lock was right when this said "Day
+      // Closing" — it meant sealing the shift. It is the Till Summary now: the
+      // sheet you hold while counting the drawer, which gets read long before
+      // anything is closed.
+      icon: FiClipboard,
       onClick: () => setModal("dayClosing"),
     },
   ];

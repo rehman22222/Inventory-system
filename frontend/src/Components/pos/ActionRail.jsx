@@ -20,21 +20,21 @@ import { useTranslation } from "react-i18next";
 // Two blues sit in here on purpose: finding a product and reading the sale
 // history are both "go and look at something", and neither changes anything.
 const COLOURS = {
-  search: "#60A1C3", // Find Product — blue: find, browse, navigate
-  deals: "#71268C", // Deals — deep purple: special value
-  vouchers: "#6037D4", // Promotions — blue-violet: marketing
-  code: "#4C5568", // Enter Barcode — charcoal: a utility
-  credit: "#C0781C", // Customer Credit — gold: money and accounts
-  resume: "#467659", // Held Sales — forest green: saved and safe
-  void: "#BA3227", // Clear Basket — red: destructive
-  refund: "#A0223B", // Refund / Exchange — maroon: reversing a sale
-  history: "#3754D4", // Sales History — royal blue: records
-  dayClosing: "#46756E", // Till Summary — muted teal: closing up
+  search: "#7BA1C1", // Find Product — blue: find, browse, navigate
+  deals: "#612E89", // Deals — deep purple: special value
+  vouchers: "#5841D0", // Promotions — blue-violet: marketing
+  code: "#4F5567", // Enter Barcode — charcoal: a utility
+  credit: "#AC7928", // Customer Credit — gold: money and accounts
+  resume: "#59755B", // Held Sales — forest green: saved and safe
+  void: "#9E3829", // Clear Basket — red: destructive
+  refund: "#87293B", // Refund / Exchange — maroon: reversing a sale
+  history: "#4559D0", // Sales History — royal blue: records
+  dayClosing: "#59746E", // Till Summary — muted teal: closing up
 };
 
 // Anything added later without a colour of its own. Charcoal rather than a
 // bright default: a button whose meaning nobody has decided should not shout.
-const FALLBACK = "#4C5568";
+const FALLBACK = "#4F5567";
 
 function ActionRail({ actions }) {
   const { t } = useTranslation();
