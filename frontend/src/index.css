@@ -959,9 +959,11 @@ body.osk-open .admin-drawer {
    `backwards` matters: without it every letter shows at full opacity for the
    length of its own delay, and the whole line flashes before it writes. The
    slight rise and blur are what stop it reading as a typewriter. */
+/* The duration here is only a floor — each caller sets its own, because the
+   greeting across the header is meant to be watched and the line on the empty
+   grid is only meant to be read. */
 .pos-written {
   display: inline-block;
-  white-space: pre;
   opacity: 0;
   animation: pos-write 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }

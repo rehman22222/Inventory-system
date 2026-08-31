@@ -1869,8 +1869,11 @@ function POSPage() {
               /* Nothing open. A word about the hour rather than "no products
                  found" — that is true of an empty grid and no use at all to
                  the person looking at it. */
-              <div className="flex min-h-[240px] items-center justify-center px-6">
-                <GreetingLine className="text-center text-base font-medium text-slate-600" />
+              /* Centred in the whole pane rather than in a box near the top,
+                 so the line holds one place for as long as the grid is empty
+                 instead of drifting with whatever is above it. */
+              <div className="flex h-full min-h-[240px] items-center justify-center px-6">
+                <GreetingLine className="max-w-md text-center text-base font-medium leading-relaxed text-slate-600" />
               </div>
             ) : filteredProducts.length === 0 ? (
               <p className="py-12 text-center text-sm text-slate-700">{t("pos.noProducts")}</p>
