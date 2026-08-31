@@ -20,21 +20,24 @@ import { useTranslation } from "react-i18next";
 // Two blues sit in here on purpose: finding a product and reading the sale
 // history are both "go and look at something", and neither changes anything.
 const COLOURS = {
-  search: "#7BA1C1", // Find Product — blue: find, browse, navigate
-  deals: "#612E89", // Deals — deep purple: special value
-  vouchers: "#5841D0", // Promotions — blue-violet: marketing
-  code: "#4F5567", // Enter Barcode — charcoal: a utility
-  credit: "#AC7928", // Customer Credit — gold: money and accounts
-  resume: "#59755B", // Held Sales — forest green: saved and safe
-  void: "#9E3829", // Clear Basket — red: destructive
-  refund: "#87293B", // Refund / Exchange — maroon: reversing a sale
-  history: "#4559D0", // Sales History — royal blue: records
-  dayClosing: "#59746E", // Till Summary — muted teal: closing up
+  search: "#1976D2", // Find Product — strong blue: find, browse, navigate
+  deals: "#6C2BD9", // Deals — rich purple: special value
+  vouchers: "#5B36E8", // Promotions — bright violet: marketing
+  code: "#374151", // Enter Barcode — charcoal: a utility
+  credit: "#A85F00", // Customer Credit — amber: money and accounts
+  resume: "#27864A", // Held Sales — green: saved and safe
+  void: "#C62828", // Clear Basket — red: destructive
+  // Deep magenta-red: a reversal is destructive too, but it is not the same
+  // action as clearing, and two identical reds at a counter is how the wrong
+  // one gets pressed.
+  refund: "#A61E4D", // Refund / Exchange
+  history: "#2952CC", // Sales History — royal blue: records
+  dayClosing: "#2F6F6D", // Till Summary — deep teal: reporting
 };
 
 // Anything added later without a colour of its own. Charcoal rather than a
 // bright default: a button whose meaning nobody has decided should not shout.
-const FALLBACK = "#4F5567";
+const FALLBACK = "#374151";
 
 function ActionRail({ actions }) {
   const { t } = useTranslation();

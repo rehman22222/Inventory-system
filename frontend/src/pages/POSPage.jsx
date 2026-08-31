@@ -399,11 +399,6 @@ function POSPage() {
   const searching = query.trim().length > 0;
   const showingDeals = !searching && category === DEALS_TAB;
 
-  // Nothing open shows nothing — not "Uncategorized", which is a real
-  // category and would be a lie about what is on screen.
-  const activeCategoryName = searching
-    ? t("pos.searchResults")
-    : categories.find((entry) => entry._id === category)?.name || "";
 
   const filteredProducts = useMemo(() => {
     const value = query.trim().toLowerCase();
@@ -1778,14 +1773,10 @@ function POSPage() {
               />
             </div>
 
-            <div className="hidden shrink-0 items-baseline gap-2 sm:flex">
-              <span className="text-sm font-bold uppercase tracking-wide text-slate-300">
-                {activeCategoryName}
-              </span>
-              <span className="text-xs tabular-nums text-slate-600">
-                {showingDeals ? activeDeals.length : filteredProducts.length}
-              </span>
-            </div>
+            {/* The category name and its count used to sit here, repeating
+                what the tile on the right already says — and saying it in the
+                one place a cashier is trying to type. The bar is the search
+                box now, and nothing else. */}
           </div>
 
           {/* The category column is hidden below lg, so the tiles ride along here. */}
