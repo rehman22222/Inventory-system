@@ -482,3 +482,25 @@ export const restocksOnRefund = (reason) =>
 // shown as it was written rather than swallowed.
 export const refundReasonLabel = (t, reason) =>
   REFUND_REASONS.includes(reason) ? t(`pos.refund.reasons.${reason}`) : reason;
+
+// A scannable in-store barcode for a product that arrived without one.
+//
+// GS1 reserves the prefix 20 for restricted distribution — codes a shop makes
+// for its own shelves — so one of these can never collide with a real
+// manufacturer barcode. Mirrors backend/libs/barcode.js, which builds the same
+// thing from a sequence; here the middle is random, because the till has no
+// counter to draw from and a clash is caught by the unique index anyway.
+export const newInStoreBarcode = () => {
+  let payload = "20";
+  for (let i = 0; i < 10; i += 1) payload += Math.floor(Math.random() * 10);
+
+  // The EAN-13 check digit: alternate weights of 1 and 3 across the twelve,
+  // then whatever takes the total to a multiple of ten. Without it a scanner
+  // reads the bars and rejects the number.
+  let sum = 0;
+  for (let i = 0; i < 12; i += 1) {
+    sum += Number(payload[i]) * (i % 2 === 0 ? 1 : 3);
+  }
+
+  return payload + String((10 - (sum % 10)) % 10);
+};

@@ -806,6 +806,28 @@
       "accounts": "Accounts",
       "needsNetwork": "A sale on account needs the connection — take payment another way, or wait for it to come back",
       "debtCancelled": "Taken off what you owe"
+    },
+    "newProduct": {
+      "tab": "Add Product",
+      "name": "Product Name",
+      "price": "Selling Price",
+      "cost": "Cost Price",
+      "costHint": "Without it, profit cannot be reported",
+      "category": "Category",
+      "stock": "Opening Stock",
+      "barcode": "Barcode",
+      "barcodePlaceholder": "Scan it, or generate one",
+      "barcodeHint": "Scan the one on the box if it has one. Generated codes use the in-store range, so they never clash with a real product.",
+      "generate": "Generate",
+      "submit": "Add Product",
+      "missingFields": "A name and a price are needed",
+      "badBarcode": "A barcode is 12 or 13 digits — scan one, or generate it",
+      "created": "{{name}} added",
+      "failed": "Could not add it",
+      "added": "Product Added",
+      "labels": "Labels",
+      "print": "Print Labels",
+      "another": "Add Another"
     }
   },
   "sales": {

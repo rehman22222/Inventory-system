@@ -49,6 +49,7 @@ import CreditBookModal from "../Components/pos/CreditBookModal";
 import {
   CURRENCIES,
   currency,
+  currencySymbol,
   setCurrencyCode,
   applicableDeals,
   allDealIds,
@@ -2230,8 +2231,13 @@ function POSPage() {
           subtotal={subtotal}
           applied={voucher}
           canGenerate={isElevated}
+          categories={categories}
+          symbol={currencySymbol()}
           onApply={setVoucher}
           onRemove={() => setVoucher(null)}
+          // A product added here has to reach the grid without a refresh —
+          // the cashier added it to sell it, probably to the person waiting.
+          onProductAdded={() => dispatch(gettingallproducts({ view: "pos" }))}
           onClose={() => setModal(null)}
         />
       )}

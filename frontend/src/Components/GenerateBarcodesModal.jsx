@@ -5,6 +5,7 @@ import { FiPrinter, FiX } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { generateRandomBarcodes, gettingallproducts } from "../features/productSlice";
 import BarcodeLabel from "./BarcodeLabel";
+import { printSlip } from "./pos/posUtils";
 
 // Generate a batch of price-point barcodes for the permanent "Random" category —
 // for generic items that have no manufacturer barcode. The result can be printed
@@ -72,7 +73,10 @@ function GenerateBarcodesModal({ onClose }) {
     };
     window.addEventListener("afterprint", cleanup);
 
-    window.print();
+    // Through printSlip like every other printable surface: it lifts the sheet
+    // out into the flow so a long run of labels breaks across pages instead of
+    // being clipped to the first one.
+    printSlip("barcode-sheet");
   };
 
   return (

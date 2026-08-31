@@ -4,8 +4,16 @@ import toast from "react-hot-toast";
 import axiosInstance from "../../lib/axios";
 import { cacheGet, isVoucherSpentOffline } from "../../lib/offlineDb";
 import { isNetworkError } from "../../lib/offlineQueue";
+import { FiPrinter } from "react-icons/fi";
 import PosModal from "./PosModal";
-import { currency, sanitizeDecimal, sanitizeInteger } from "./posUtils";
+import BarcodeLabel from "../BarcodeLabel";
+import {
+  currency,
+  newInStoreBarcode,
+  printSlip,
+  sanitizeDecimal,
+  sanitizeInteger,
+} from "./posUtils";
 
 // Work out what a cached voucher is worth, mirroring Vouchermodel's
 // computeDiscount + rejectionReason so an offline preview matches what the
@@ -29,7 +37,17 @@ const priceCachedVoucher = (voucher, subtotal) => {
 // Cashiers apply a code; admin/manager can also cut a new one without leaving
 // the till. Redemption itself happens server-side inside the checkout
 // transaction, so applying a code here is only a preview.
-function VoucherModal({ subtotal, applied, canGenerate, onApply, onRemove, onClose }) {
+function VoucherModal({
+  subtotal,
+  applied,
+  canGenerate,
+  categories = [],
+  symbol = "€",
+  onApply,
+  onRemove,
+  onProductAdded,
+  onClose,
+}) {
   const { t } = useTranslation();
   const [tab, setTab] = useState("apply");
   const [code, setCode] = useState("");
@@ -154,6 +172,84 @@ function VoucherModal({ subtotal, applied, canGenerate, onApply, onRemove, onClo
     }
   };
 
+  // Adding a product from the till, and the label that goes on the shelf after.
+  const [product, setProduct] = useState({
+    name: "",
+    Price: "",
+    costPrice: "",
+    Category: "",
+    quantity: "",
+    barcode: "",
+  });
+  const [made, setMade] = useState(null);
+  const [labels, setLabels] = useState(12);
+
+  const setProductField = (key) => (event) =>
+    setProduct((current) => ({ ...current, [key]: event.target.value }));
+
+  const createProduct = async (event) => {
+    event.preventDefault();
+
+    if (!product.name.trim() || !product.Price) {
+      toast.error(t("pos.newProduct.missingFields", "A name and a price are needed"));
+      return;
+    }
+    // The label is an EAN-13 symbol, and EAN-13 is exactly this. Better to
+    // refuse here than to print a sheet of stickers no scanner will read.
+    if (!/^\d{12,13}$/.test(product.barcode.trim())) {
+      toast.error(
+        t("pos.newProduct.badBarcode", "A barcode is 12 or 13 digits — scan one, or generate it"),
+      );
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const payload = new FormData();
+      payload.append("name", product.name.trim());
+      payload.append("Price", product.Price);
+      if (product.costPrice) payload.append("costPrice", product.costPrice);
+      if (product.Category) payload.append("Category", product.Category);
+      payload.append("quantity", product.quantity || "0");
+      payload.append("barcode", product.barcode.trim());
+
+      // The till's own create path, open to every cashier — the same one the
+      // unknown-barcode screen uses, so a product added here is identical to
+      // one learned at the scanner.
+      const response = await axiosInstance.post("product/quick-add", payload);
+      const created = response.data.product || {};
+
+      toast.success(t("pos.newProduct.created", { name: product.name.trim() }));
+      setMade({
+        name: created.name || product.name.trim(),
+        barcode: created.barcode || product.barcode.trim(),
+        Price: Number(created.Price ?? product.Price),
+      });
+      setProduct({ name: "", Price: "", costPrice: "", Category: "", quantity: "", barcode: "" });
+      onProductAdded?.();
+    } catch (error) {
+      toast.error(error.response?.data?.message || t("pos.newProduct.failed", "Could not add it"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // The app prints to an 80mm till roll by default. Shelf labels go on a normal
+  // sheet, so @page is overridden for this print only — a rule appended last
+  // wins the cascade, and it comes off again so the next receipt is not printed
+  // on A4.
+  const printLabels = () => {
+    const style = document.createElement("style");
+    style.textContent = "@page { size: A4; margin: 8mm; }";
+    document.head.appendChild(style);
+
+    try {
+      printSlip("barcode-sheet");
+    } finally {
+      style.remove();
+    }
+  };
+
   const field =
     "w-full border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-cyan-500";
   const label = "mb-1 block text-xs uppercase text-slate-400";
@@ -166,7 +262,7 @@ function VoucherModal({ subtotal, applied, canGenerate, onApply, onRemove, onClo
       width="max-w-xl"
     >
       {canGenerate && (
-        <div className="mb-4 grid grid-cols-2 gap-2">
+        <div className="mb-4 grid grid-cols-3 gap-2">
           <button
             type="button"
             onClick={() => setTab("apply")}
@@ -184,6 +280,17 @@ function VoucherModal({ subtotal, applied, canGenerate, onApply, onRemove, onClo
             }`}
           >
             {t("pos.voucher.generateTab")}
+          </button>
+          {/* Adding stock and its shelf label lives here because this is the
+              screen somebody is already on when a delivery lands mid-shift. */}
+          <button
+            type="button"
+            onClick={() => setTab("product")}
+            className={`px-4 py-2 text-sm font-semibold transition ${
+              tab === "product" ? "bg-cyan-700 text-white" : "bg-slate-800 text-slate-300"
+            }`}
+          >
+            {t("pos.newProduct.tab", "Add Product")}
           </button>
         </div>
       )}
@@ -234,6 +341,194 @@ function VoucherModal({ subtotal, applied, canGenerate, onApply, onRemove, onClo
             </form>
           )}
         </div>
+      ) : tab === "product" ? (
+        made ? (
+          /* The product exists. What the person who added it wants next is the
+             label to put on the shelf, so that is the screen — not an empty
+             form and a toast that has already gone. */
+          <div className="space-y-4">
+            <div className="border border-emerald-800 bg-emerald-950/30 px-3 py-2 text-center">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
+                {t("pos.newProduct.added", "Product Added")}
+              </p>
+              <p className="text-lg font-bold text-slate-100">{made.name}</p>
+              <p className="font-mono text-xs text-slate-400">{made.barcode}</p>
+            </div>
+
+            {/* One label at the size it prints, so nobody discovers the symbol
+                is unreadable after running off a sheet of forty. */}
+            <div className="mx-auto w-fit bg-white px-3 py-2">
+              <div style={{ width: "36mm", textAlign: "center" }}>
+                <BarcodeLabel code={made.barcode} price={made.Price} symbol={symbol} />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold uppercase text-slate-400">
+                {t("pos.newProduct.labels", "Labels")}
+              </label>
+              <input
+                inputMode="numeric"
+                value={labels}
+                onChange={(event) => setLabels(sanitizeInteger(event.target.value))}
+                className="w-20 border border-slate-700 bg-slate-950 px-2 py-1.5 text-center text-slate-100 outline-none focus:border-cyan-500"
+              />
+              <button
+                type="button"
+                onClick={printLabels}
+                className="ms-auto flex items-center gap-2 bg-cyan-700 px-4 py-2 text-sm font-bold uppercase text-white hover:bg-cyan-600"
+              >
+                <FiPrinter className="h-4 w-4" />
+                {t("pos.newProduct.print", "Print Labels")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMade(null)}
+                className="bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700"
+              >
+                {t("pos.newProduct.another", "Add Another")}
+              </button>
+            </div>
+
+            {/* The sheet, hidden until it prints. */}
+            <div id="barcode-sheet" className="hidden">
+              <div className="bc-grid">
+                {Array.from({
+                  length: Math.max(1, Math.min(200, Number(labels) || 1)),
+                }).map((_, index) => (
+                  <BarcodeLabel
+                    key={index}
+                    code={made.barcode}
+                    price={made.Price}
+                    symbol={symbol}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={createProduct} className="space-y-3">
+            <div>
+              <label className={label}>{t("pos.newProduct.name", "Product Name")}</label>
+              <input
+                autoFocus
+                value={product.name}
+                onChange={setProductField("name")}
+                placeholder={t("products.namePlaceholder")}
+                className={field}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={label}>{t("pos.newProduct.price", "Selling Price")}</label>
+                <input
+                  inputMode="decimal"
+                  value={product.Price}
+                  onChange={(event) =>
+                    setProduct((current) => ({
+                      ...current,
+                      Price: sanitizeDecimal(event.target.value),
+                    }))
+                  }
+                  placeholder="0.0"
+                  className={field}
+                />
+              </div>
+              <div>
+                <label className={label}>{t("pos.newProduct.cost", "Cost Price")}</label>
+                <input
+                  inputMode="decimal"
+                  value={product.costPrice}
+                  onChange={(event) =>
+                    setProduct((current) => ({
+                      ...current,
+                      costPrice: sanitizeDecimal(event.target.value),
+                    }))
+                  }
+                  placeholder="0.0"
+                  className={field}
+                />
+                {/* Not required, but the reports say so if it is missing: with
+                    no cost there is no profit figure to report. */}
+                <p className="mt-1 text-[11px] text-slate-500">
+                  {t("pos.newProduct.costHint", "Without it, profit cannot be reported")}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={label}>{t("pos.newProduct.category", "Category")}</label>
+                <select
+                  value={product.Category}
+                  onChange={setProductField("Category")}
+                  className={field}
+                >
+                  <option value="">{t("pos.uncategorized")}</option>
+                  {categories.map((category) => (
+                    <option key={category._id} value={category._id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={label}>{t("pos.newProduct.stock", "Opening Stock")}</label>
+                <input
+                  inputMode="numeric"
+                  value={product.quantity}
+                  onChange={(event) =>
+                    setProduct((current) => ({
+                      ...current,
+                      quantity: sanitizeInteger(event.target.value),
+                    }))
+                  }
+                  placeholder="0.0"
+                  className={field}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className={label}>{t("pos.newProduct.barcode", "Barcode")}</label>
+              <div className="flex gap-2">
+                <input
+                  value={product.barcode}
+                  onChange={setProductField("barcode")}
+                  placeholder={t("pos.newProduct.barcodePlaceholder", "Scan it, or generate one")}
+                  className={`${field} font-mono`}
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setProduct((current) => ({ ...current, barcode: newInStoreBarcode() }))
+                  }
+                  className="shrink-0 bg-slate-800 px-4 text-sm font-bold uppercase text-slate-200 transition hover:bg-slate-700"
+                >
+                  {t("pos.newProduct.generate", "Generate")}
+                </button>
+              </div>
+              {/* Scanning the supplier's own barcode is better than inventing
+                  one — it is already on the box. Generate is for loose stock
+                  and own-brand items that carry none. */}
+              <p className="mt-1 text-[11px] text-slate-500">
+                {t(
+                  "pos.newProduct.barcodeHint",
+                  "Scan the one on the box if it has one. Generated codes use the in-store range, so they never clash with a real product.",
+                )}
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={busy}
+              className="w-full bg-cyan-700 py-2.5 font-semibold text-white transition hover:bg-cyan-600 disabled:opacity-50"
+            >
+              {busy ? t("pos.processing") : t("pos.newProduct.submit", "Add Product")}
+            </button>
+          </form>
+        )
       ) : (
         <form onSubmit={generate} className="space-y-3">
           <div>

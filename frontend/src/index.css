@@ -370,9 +370,10 @@
      shrink these further — an unreadable label costs a sale. */
   #barcode-sheet {
     display: block !important;
-    position: absolute;
-    inset-inline-start: 0;
-    top: 0;
+    /* In the flow, not absolute: printSlip lifts it under <body>, and an
+       absolutely positioned box does not paginate — a sheet of forty labels
+       would be silently clipped to the first page. */
+    position: static;
     width: 100%;
     background: #fff;
     color: #000;
