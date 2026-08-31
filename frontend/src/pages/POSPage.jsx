@@ -1288,9 +1288,7 @@ function POSPage() {
   const actions = [
     {
       id: "search",
-      label: "pos.rail.productSearch",
-      tone: "cyan",
-      icon: FiSearch,
+      label: "pos.rail.productSearch",      icon: FiSearch,
       onClick: () => setModal("search"),
     },
     {
@@ -1298,47 +1296,35 @@ function POSPage() {
       // so it is the same dialog — the till is simply where the person who
       // decides the offer is standing.
       id: "deals",
-      label: "pos.rail.deals",
-      tone: "fuchsia",
-      icon: FiTag,
+      label: "pos.rail.deals",      icon: FiTag,
       disabled: !isElevated,
       onClick: () => setModal("deals"),
     },
 
     {
       id: "vouchers",
-      label: "pos.rail.vouchers",
-      tone: "violet",
-      icon: FiTag,
+      label: "pos.rail.vouchers",      icon: FiTag,
       onClick: () => setModal("voucher"),
     },
     {
       id: "code",
-      label: "pos.rail.enterCode",
-      tone: "slate",
-      icon: FiHash,
+      label: "pos.rail.enterCode",      icon: FiHash,
       onClick: () => setModal("code"),
     },
     {
       id: "credit",
-      label: "pos.rail.credit",
-      tone: "amber",
-      icon: FiBookOpen,
+      label: "pos.rail.credit",      icon: FiBookOpen,
       onClick: () => setModal("credit"),
     },
     {
       id: "resume",
-      label: "pos.rail.resume",
-      tone: "emerald",
-      icon: FiPlay,
+      label: "pos.rail.resume",      icon: FiPlay,
       onClick: () => setModal("held"),
     },
-    { id: "void", label: "pos.rail.void", tone: "red", icon: FiSlash, onClick: voidSale },
+    { id: "void", label: "pos.rail.void", icon: FiSlash, onClick: voidSale },
     {
       id: "refund",
-      label: "pos.rail.refund",
-      tone: "rose",
-      icon: FiRotateCcw,
+      label: "pos.rail.refund",      icon: FiRotateCcw,
       disabled: !isElevated,
       onClick: () => {
         setRefundReceiptNo("");
@@ -1347,17 +1333,13 @@ function POSPage() {
     },
     {
       id: "history",
-      label: "pos.rail.saleHistory",
-      tone: "blue",
-      icon: FiClock,
+      label: "pos.rail.saleHistory",      icon: FiClock,
       onClick: () => setModal("history"),
     },
 
     {
       id: "dayClosing",
-      label: "pos.rail.dayClosing",
-      tone: "teal",
-      icon: FiLock,
+      label: "pos.rail.dayClosing",      icon: FiLock,
       onClick: () => setModal("dayClosing"),
     },
   ];
