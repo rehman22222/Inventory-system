@@ -830,7 +830,17 @@
       "print": "Print Labels",
       "another": "Add Another"
     },
-    "clearCategory": "Clear"
+    "clearCategory": "Clear",
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening",
+      "line": {
+        "morning": "A fresh day at the counter — pick an aisle, or scan.",
+        "afternoon": "Good trade this afternoon — pick an aisle, or scan.",
+        "evening": "Winding down for the evening — pick an aisle, or scan."
+      }
+    }
   },
   "sales": {
     "reportTitle": "Sales Report",

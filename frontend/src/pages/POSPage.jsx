@@ -30,6 +30,7 @@ import SaleTable from "../Components/pos/SaleTable";
 import CategoryTiles from "../Components/pos/CategoryTiles";
 import NumericKeypad from "../Components/pos/NumericKeypad";
 import StatusBar from "../Components/pos/StatusBar";
+import { Greeting, GreetingLine } from "../Components/pos/Greeting";
 import RefundModal from "../Components/pos/RefundModal";
 import VoucherModal from "../Components/pos/VoucherModal";
 import UnknownBarcodeModal from "../Components/pos/UnknownBarcodeModal";
@@ -1376,9 +1377,23 @@ function POSPage() {
   return (
     <div className="pos-root flex h-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
       {/* Top chrome */}
-      <header className="no-print flex items-center justify-between gap-4 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 px-4 py-2">
+      <header className="no-print relative flex items-center justify-between gap-4 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 px-4 py-2">
         <div className="flex min-w-0 items-center gap-3">
-          <img src={e360LogoDark} alt="Eire Tech 360" className="h-6 sm:h-7" />
+          {/* Just the mark and E360 — the "Inventory Suite" lockup is cropped
+              off. Measured rather than guessed: the wordmark's ink ends at
+              x=1319 of 1854, then 111px of clear space, then the suffix. The
+              cut sits in that gap at 1375, so nothing of E360 is clipped and
+              no sliver of the suffix survives. */}
+          <span
+            className="block h-6 overflow-hidden sm:h-7"
+            style={{ aspectRatio: "1375 / 431" }}
+          >
+            <img
+              src={e360LogoDark}
+              alt="E360"
+              className="h-full w-auto max-w-none"
+            />
+          </span>
           <span className="hidden h-5 w-px bg-slate-700 sm:block" />
           {/* Whose till this is — set by the owner in Super Admin → Store. */}
           <span className="hidden truncate text-sm font-bold tracking-wide text-slate-200 sm:block">
@@ -1389,6 +1404,11 @@ function POSPage() {
             {t("pos.title")}
           </span>
         </div>
+
+        {/* The shop saying hello, in its own time zone. Centred and absolute
+            so it sits in the middle of the header without pushing the shop
+            name or the till controls around as it writes itself on. */}
+        <Greeting className="pointer-events-none absolute inset-x-0 hidden text-center text-lg font-semibold tracking-wide text-slate-300 lg:block" />
 
         {/* The header keeps only what is about the till itself. The basket
             count and the language belong with the other standing facts on the
@@ -1846,10 +1866,12 @@ function POSPage() {
                 })}
               </div>
             ) : !searching && !category ? (
-              /* Nothing open. Deliberately blank: the tiles are what to look
-                 at, and a message here would just be something else to read
-                 past on the way to them. */
-              <div className="py-12" />
+              /* Nothing open. A word about the hour rather than "no products
+                 found" — that is true of an empty grid and no use at all to
+                 the person looking at it. */
+              <div className="flex min-h-[240px] items-center justify-center px-6">
+                <GreetingLine className="text-center text-base font-medium text-slate-600" />
+              </div>
             ) : filteredProducts.length === 0 ? (
               <p className="py-12 text-center text-sm text-slate-700">{t("pos.noProducts")}</p>
             ) : (
