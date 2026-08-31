@@ -10,7 +10,12 @@ module.exports = {
         // the webfont was downloaded and never used.
         sans: ["Poppins", "system-ui", "sans-serif"],
         body: ["Poppins", "system-ui", "sans-serif"],
-        display: ['"Space Grotesk"', "system-ui", "sans-serif"],
+        // One face for the whole system. `display` stays as a name because
+        // 58 places ask for it — the till total, the change due, the
+        // dashboard figures — and they are the loudest text on the screen.
+        // Pointing it at Poppins is what makes the shop look like one system
+        // rather than two fonts arguing.
+        display: ["Poppins", "system-ui", "sans-serif"],
         mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "monospace"],
       },
       colors: {
