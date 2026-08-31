@@ -44,7 +44,6 @@ import ProductSearchModal from "../Components/pos/ProductSearchModal";
 import DayClosingModal from "../Components/pos/DayClosingModal";
 import CreditBookModal from "../Components/pos/CreditBookModal";
 import {
-  CURRENCIES,
   currency,
   currencySymbol,
   setCurrencyCode,
@@ -161,7 +160,17 @@ function POSPage() {
   // The tax rate is the shop's call, not ours — no hardcoded percentage. The
   // last rate the cashier used is remembered on this till.
   const [taxRate, setTaxRate] = useState(() => localStorage.getItem(TAX_RATE_KEY) || "");
-  const [currencyCode, setCurrency] = useState("EUR");
+  // posUtils holds the active currency at module level, so currency() picks it
+  // up everywhere without prop-drilling. This state exists only to re-render
+  // the till once the shop setting arrives — the code itself is never read
+  // here, which is why nothing is bound to it.
+  const [, setCurrency] = useState("EUR");
+  // What has gone on the book since this cashier signed in. Not a stored
+  // figure and not meant to be one — the Credit Book holds the real balances.
+  // This is the running total of what THIS session has put out on account, so
+  // whoever is on the till can see it climbing rather than discovering it at
+  // the end of the shift.
+  const [sessionCredit, setSessionCredit] = useState(0);
 
   const [receipt, setReceipt] = useState(null);
   // The just-finished sale, held only while the counter decides what to do with
@@ -380,17 +389,21 @@ function POSPage() {
     ];
   }, [realCategories, stockedCounts, activeDeals, t]);
 
-  // Open the first category as soon as the list arrives.
-  useEffect(() => {
-    if (!category && categories.length > 0) setCategory(categories[0]._id);
-  }, [categories, category]);
+  // Nothing is open to begin with, and Clear puts it back to nothing.
+  //
+  // The till used to fling the first category up the moment the list loaded,
+  // which meant every shift started staring at whichever aisle happened to
+  // sort first. A cashier reaches for a category or scans — an empty grid is
+  // the honest resting state, and it makes the tiles the thing you look at.
 
   const searching = query.trim().length > 0;
   const showingDeals = !searching && category === DEALS_TAB;
 
+  // Nothing open shows nothing — not "Uncategorized", which is a real
+  // category and would be a lie about what is on screen.
   const activeCategoryName = searching
     ? t("pos.searchResults")
-    : categories.find((entry) => entry._id === category)?.name || t("pos.uncategorized");
+    : categories.find((entry) => entry._id === category)?.name || "";
 
   const filteredProducts = useMemo(() => {
     const value = query.trim().toLowerCase();
@@ -1075,6 +1088,13 @@ function POSPage() {
   const finishSale = (completed) => {
     setReceipt(completed);
     setJustSold(completed);
+
+    // Read off the tenders the server actually wrote, not off what the till
+    // asked for — a credit the server refused must not show up here.
+    const onAccount = (completed?.payments || [])
+      .filter((entry) => entry.method === "credit")
+      .reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
+    if (onAccount > 0) setSessionCredit((current) => current + onAccount);
     setModal(null);
     // On narrow screens the receipt (with Print / New Sale) lives in the sale
     // pane — show it, or the cashier is left staring at the product grid.
@@ -1379,13 +1399,19 @@ function POSPage() {
             count and the language belong with the other standing facts on the
             status bar, where they are out of the way of the sale. */}
         <div className="flex items-center gap-2">
-          <span
-            title={t("pos.currencyHint")}
-            className="border border-slate-800 bg-black px-2 py-1.5 text-sm font-semibold text-slate-200"
-          >
-            {(CURRENCIES.find((entry) => entry.code === currencyCode) || CURRENCIES[0]).symbol}{" "}
-            {currencyCode}
-          </span>
+          {/* What this session has put on the book, climbing as it happens.
+              The currency chip used to sit here saying "EUR" all day, which
+              nobody needed twice — every figure on the screen already carries
+              the symbol. */}
+          {sessionCredit > 0 && (
+            <span
+              title={t("pos.credit.sessionHint", "Sold on account since you signed in")}
+              className="flex items-center gap-1.5 border border-amber-800 bg-amber-950/40 px-2.5 py-1.5 text-sm font-semibold text-amber-300"
+            >
+              <FiBookOpen className="h-3.5 w-3.5" />
+              {currency(sessionCredit)}
+            </span>
+          )}
 
           <Link
             to={dashboardPath}
@@ -1768,6 +1794,7 @@ function POSPage() {
               categories={categories}
               selected={category}
               onSelect={setCategory}
+              onClear={() => setCategory(null)}
               layout="row"
             />
           </div>
@@ -1827,6 +1854,11 @@ function POSPage() {
                   );
                 })}
               </div>
+            ) : !searching && !category ? (
+              /* Nothing open. Deliberately blank: the tiles are what to look
+                 at, and a message here would just be something else to read
+                 past on the way to them. */
+              <div className="py-12" />
             ) : filteredProducts.length === 0 ? (
               <p className="py-12 text-center text-sm text-slate-700">{t("pos.noProducts")}</p>
             ) : (
@@ -1910,7 +1942,12 @@ function POSPage() {
           </p>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <CategoryTiles categories={categories} selected={category} onSelect={setCategory} />
+            <CategoryTiles
+              categories={categories}
+              selected={category}
+              onSelect={setCategory}
+              onClear={() => setCategory(null)}
+            />
           </div>
 
           <NumericKeypad

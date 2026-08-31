@@ -805,7 +805,8 @@
       "paymentsMade": "Paid So Far",
       "accounts": "Accounts",
       "needsNetwork": "A sale on account needs the connection — take payment another way, or wait for it to come back",
-      "debtCancelled": "Taken off what you owe"
+      "debtCancelled": "Taken off what you owe",
+      "sessionHint": "Sold on account since you signed in"
     },
     "newProduct": {
       "tab": "Add Product",
@@ -828,7 +829,8 @@
       "labels": "Labels",
       "print": "Print Labels",
       "another": "Add Another"
-    }
+    },
+    "clearCategory": "Clear"
   },
   "sales": {
     "reportTitle": "Sales Report",
