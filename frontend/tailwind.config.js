@@ -5,8 +5,12 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
+        // `sans` is the one Tailwind applies by default. Setting only `body`
+        // meant every ordinary screen fell through to the system stack while
+        // the webfont was downloaded and never used.
+        sans: ["Poppins", "system-ui", "sans-serif"],
+        body: ["Poppins", "system-ui", "sans-serif"],
         display: ['"Space Grotesk"', "system-ui", "sans-serif"],
-        body: ["Inter", "system-ui", "sans-serif"],
         mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "monospace"],
       },
       colors: {

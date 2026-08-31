@@ -1,8 +1,13 @@
 import React from "react";
-import { tileColor } from "./posUtils";
+import { tileColor, TILE_SELECTED } from "./posUtils";
 
 // Colour-blocked category tiles. `layout="row"` gives a horizontally scrolling
 // strip for narrow screens, where the dedicated category column is hidden.
+//
+// The colours are inline styles rather than Tailwind classes because they are
+// the shop's own hex values, not palette steps — see tileColor. The selected
+// tile switches to amber with dark text, which is the one state a cashier
+// checks mid-transaction without stopping to read.
 function CategoryTiles({ categories, selected, onSelect, layout = "grid" }) {
   const row = layout === "row";
 
@@ -10,9 +15,7 @@ function CategoryTiles({ categories, selected, onSelect, layout = "grid" }) {
     ? "flex gap-2 overflow-x-auto pb-1"
     : "grid grid-cols-2 gap-2";
 
-  const tile = row
-    ? "h-[52px] w-[104px] shrink-0"
-    : "h-[64px]";
+  const tile = row ? "h-[52px] w-[104px] shrink-0" : "h-[64px]";
 
   return (
     <div className={wrapper}>
@@ -24,12 +27,20 @@ function CategoryTiles({ categories, selected, onSelect, layout = "grid" }) {
             key={category._id}
             type="button"
             onClick={() => onSelect(category._id)}
-            className={`${tile} relative flex flex-col items-center justify-center px-1 text-center text-[11px] font-bold uppercase leading-[1.15] tracking-wide text-white ring-1 transition active:scale-[0.97] ${tileColor(
-              category.name
-            )} ${
+            style={
               active
-                ? "ring-2 ring-white shadow-lg shadow-black/40"
-                : "ring-black/20 hover:brightness-110"
+                ? { ...TILE_SELECTED, borderWidth: 2, borderStyle: "solid" }
+                : {
+                    background: tileColor(category.name),
+                    borderWidth: 2,
+                    borderStyle: "solid",
+                    borderColor: "rgba(0,0,0,0.25)",
+                  }
+            }
+            // The press feedback is unchanged — it is the thing that tells a
+            // cashier the tap landed on a screen they are not looking at.
+            className={`${tile} relative flex flex-col items-center justify-center px-1 text-center text-[11px] font-bold uppercase leading-[1.15] tracking-wide transition active:scale-[0.97] ${
+              active ? "shadow-lg shadow-black/40" : "text-white hover:brightness-110"
             }`}
           >
             <span className="line-clamp-2 px-0.5">{category.name}</span>

@@ -456,20 +456,20 @@
     "closeOrder": "Charge",
     "noProducts": "No products in this category",
     "rail": {
-      "refund": "Refund & Exchange",
-      "void": "Void Sale",
+      "refund": "Refund / Exchange",
+      "void": "Clear Basket",
       "suspend": "Suspend",
-      "resume": "Resume",
-      "productSearch": "Product Search",
+      "resume": "Held Sales",
+      "productSearch": "Find Product",
       "discount": "Discount",
-      "vouchers": "Vouchers",
-      "saleHistory": "Sale History",
-      "enterCode": "Enter Code",
+      "vouchers": "Promotions",
+      "saleHistory": "Sales History",
+      "enterCode": "Enter Barcode",
       "send": "Held",
-      "dayClosing": "Day Roaster",
+      "dayClosing": "Till Summary",
       "refundHistory": "Refund History",
       "deals": "Deals",
-      "credit": "Credit Book"
+      "credit": "Customer Credit"
     },
     "table": {
       "product": "Product",
@@ -768,7 +768,7 @@
       "outOfStock": "Out of Stock"
     },
     "roaster": {
-      "title": "Day Roaster",
+      "title": "Till Summary",
       "subtitle": "Hand your takings over to the admin."
     },
     "credit": {

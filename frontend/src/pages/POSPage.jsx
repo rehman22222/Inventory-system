@@ -90,6 +90,11 @@ const paymentMethods = [
   { label: "Credit", value: "credit" },
 ];
 
+// Who the sale is for. Fixed answers so the shop can actually count staff
+// purchases against loyalty against passing trade — the first is the default
+// and what every ordinary sale carries.
+const CUSTOMER_TYPES = ["Walk-In", "Staff", "Loyalty Customer"];
+
 const TILL = "TERMINAL-MAIN";
 const TAX_RATE_KEY = "pos_tax_rate";
 
@@ -136,7 +141,7 @@ function POSPage() {
   const [scanOrder, setScanOrder] = useState([]);
   const [selectedLine, setSelectedLine] = useState(null);
 
-  const [customerName, setCustomerName] = useState(t("pos.walkIn"));
+  const [customerName, setCustomerName] = useState(CUSTOMER_TYPES[0]);
   const [discount, setDiscount] = useState(0);
   const [discountType, setDiscountType] = useState("amount");
   const [voucher, setVoucher] = useState(null);
@@ -862,7 +867,7 @@ function POSPage() {
     setCart([]);
     setScanOrder([]);
     setSelectedLine(null);
-    setCustomerName(t("pos.walkIn"));
+    setCustomerName(CUSTOMER_TYPES[0]);
     setDiscount(0);
     setDiscountType("amount");
     setVoucher(null);
@@ -965,7 +970,7 @@ function POSPage() {
         };
       })
     );
-    setCustomerName(held.customerName || t("pos.walkIn"));
+    setCustomerName(held.customerName || CUSTOMER_TYPES[0]);
     setDiscount(held.discount || 0);
     setDiscountType(held.discountType || "amount");
     setTaxEnabled(Boolean(held.taxEnabled));
@@ -1274,17 +1279,21 @@ function POSPage() {
     printSlip("receipt");
   };
 
+  // The rail, in the order a shift actually uses it: finding and pricing
+  // things first, then the customer's money, then the things that undo a sale,
+  // then the looking-back screens, then closing up.
+  //
+  // Every button does exactly what it did before — only the wording and the
+  // order changed. The names are the shop's: "Clear Basket" says what the
+  // button does, where "Void Sale" made a cashier stop and think about whether
+  // it meant the printed receipt.
   const actions = [
     {
-      id: "refund",
-      label: "pos.rail.refund",
-      tone: "rose",
-      icon: FiRotateCcw,
-      disabled: !isElevated,
-      onClick: () => {
-        setRefundReceiptNo("");
-        setModal("refund");
-      },
+      id: "search",
+      label: "pos.rail.productSearch",
+      tone: "cyan",
+      icon: FiSearch,
+      onClick: () => setModal("search"),
     },
     {
       // Building an offer is the same job here as it is on the Products page,
@@ -1296,31 +1305,6 @@ function POSPage() {
       icon: FiTag,
       disabled: !isElevated,
       onClick: () => setModal("deals"),
-    },
-    { id: "void", label: "pos.rail.void", tone: "red", icon: FiSlash, onClick: voidSale },
-    // Suspend used to sit here. It is still reachable — Resume opens the same
-    // held sales — but the counter needed a way to chase what it is owed far
-    // more than a second button for parking a basket.
-    {
-      id: "credit",
-      label: "pos.rail.credit",
-      tone: "amber",
-      icon: FiBookOpen,
-      onClick: () => setModal("credit"),
-    },
-    {
-      id: "resume",
-      label: "pos.rail.resume",
-      tone: "emerald",
-      icon: FiPlay,
-      onClick: () => setModal("held"),
-    },
-    {
-      id: "search",
-      label: "pos.rail.productSearch",
-      tone: "cyan",
-      icon: FiSearch,
-      onClick: () => setModal("search"),
     },
     {
       id: "discount",
@@ -1337,18 +1321,44 @@ function POSPage() {
       onClick: () => setModal("voucher"),
     },
     {
-      id: "history",
-      label: "pos.rail.saleHistory",
-      tone: "blue",
-      icon: FiClock,
-      onClick: () => setModal("history"),
-    },
-    {
       id: "code",
       label: "pos.rail.enterCode",
       tone: "slate",
       icon: FiHash,
       onClick: () => setModal("code"),
+    },
+    {
+      id: "credit",
+      label: "pos.rail.credit",
+      tone: "amber",
+      icon: FiBookOpen,
+      onClick: () => setModal("credit"),
+    },
+    {
+      id: "resume",
+      label: "pos.rail.resume",
+      tone: "emerald",
+      icon: FiPlay,
+      onClick: () => setModal("held"),
+    },
+    { id: "void", label: "pos.rail.void", tone: "red", icon: FiSlash, onClick: voidSale },
+    {
+      id: "refund",
+      label: "pos.rail.refund",
+      tone: "rose",
+      icon: FiRotateCcw,
+      disabled: !isElevated,
+      onClick: () => {
+        setRefundReceiptNo("");
+        setModal("refund");
+      },
+    },
+    {
+      id: "history",
+      label: "pos.rail.saleHistory",
+      tone: "blue",
+      icon: FiClock,
+      onClick: () => setModal("history"),
     },
     {
       id: "refundHistory",
@@ -1469,12 +1479,23 @@ function POSPage() {
           {/* Totals + tender */}
           <div className="space-y-2.5 border-t border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950 p-3">
             <div className="flex flex-wrap gap-2">
-              <input
-                value={customerName}
+              {/* Who is buying, as three fixed answers rather than free text.
+                  The shop wants to be able to count staff sales against
+                  loyalty against passing trade, and that only works if the
+                  answer is the same word every time — a box somebody types
+                  into gives four spellings of "staff" and no figure at all. */}
+              <select
+                value={CUSTOMER_TYPES.includes(customerName) ? customerName : CUSTOMER_TYPES[0]}
                 onChange={(event) => setCustomerName(event.target.value)}
-                placeholder={t("pos.customer")}
+                aria-label={t("pos.customer")}
                 className="min-w-[140px] flex-1 border border-slate-800 bg-black px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-cyan-600"
-              />
+              >
+                {CUSTOMER_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
               <div
                 className={`flex items-center gap-2 border px-3 transition ${
                   taxEnabled
@@ -1951,7 +1972,7 @@ function POSPage() {
               {receipt.cashierName || Authuser?.name || t("pos.receiptDoc.cashier", "Cashier")}
             </span>
           </div>
-          {receipt.customerName && receipt.customerName !== t("pos.walkIn") && (
+          {receipt.customerName && receipt.customerName !== CUSTOMER_TYPES[0] && (
             <div className="r-meta">
               <span>{t("pos.customer")}</span>
               <span>{receipt.customerName}</span>

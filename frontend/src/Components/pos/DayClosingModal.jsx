@@ -145,7 +145,7 @@ function DayClosingModal({ onClosed, onClose }) {
           {/* What the till calls it. The admin side still says "Day closing"
               on the stored record and its report — same document, two counters
               that name it differently. */}
-          <div className="s-title">{t("pos.roaster.title", "Day Roaster")}</div>
+          <div className="s-title">{t("pos.roaster.title", "Till Summary")}</div>
         </div>
 
         <div className="s-meta">
@@ -295,7 +295,7 @@ function DayClosingModal({ onClosed, onClose }) {
 
   return (
     <PosModal
-      title={t("pos.roaster.title", "Day Roaster")}
+      title={t("pos.roaster.title", "Till Summary")}
       subtitle={t("pos.roaster.subtitle", "Hand your takings over to the admin.")}
       onClose={onClose}
       width="max-w-md"

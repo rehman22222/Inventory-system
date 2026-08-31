@@ -82,29 +82,56 @@ export const sanitizeDecimal = (raw) => {
 // Whole numbers only — stock counts, usage limits.
 export const sanitizeInteger = (raw) => String(raw ?? "").replace(/\D/g, "");
 
-// Categories have no colour field in the model, so derive a stable one from the
-// name — the same category always gets the same tile colour.
-const TILE_COLORS = [
-  "bg-rose-600",
-  "bg-amber-600",
-  "bg-sky-700",
-  "bg-emerald-700",
-  "bg-violet-700",
-  "bg-orange-600",
-  "bg-cyan-700",
-  "bg-fuchsia-700",
-  "bg-lime-700",
-  "bg-indigo-700",
-  "bg-teal-700",
-  "bg-red-700",
+// The shop's own colours for the aisles it actually has. A cashier reaching for
+// "the green one" all day is faster than one reading labels, and that only
+// works if green means the same thing every shift — so these are chosen, not
+// derived. Matched on a squashed name so "E-Liquids & Nic Salts", "e liquids"
+// and "E-LIQUIDS" all land on the same tile.
+const NAMED_TILES = [
+  [/nicotinepouch|pouch/, "#558B2F"],
+  [/disposable/, "#8E24AA"],
+  [/eliquid|liquid|nicsalt/, "#00897B"],
+  [/vapedevice|device|kit|mod/, "#E65100"],
+  [/drink|beverage|soda|juice/, "#1976D2"],
+  [/candy|sweet|confection/, "#F57C00"],
+  [/miscellaneous|misc|other|general/, "#546E7A"],
+];
+
+// Anything the shop adds later still gets a stable colour of its own rather
+// than a default grey — the same category always gets the same one.
+const FALLBACK_TILES = [
+  "#C2185B",
+  "#5E35B1",
+  "#0277BD",
+  "#2E7D32",
+  "#AD1457",
+  "#4527A0",
+  "#00695C",
+  "#EF6C00",
+  "#37474F",
+  "#6A1B9A",
 ];
 
 export const tileColor = (name = "") => {
+  const squashed = String(name).toLowerCase().replace(/[^a-z]/g, "");
+
+  for (const [pattern, colour] of NAMED_TILES) {
+    if (pattern.test(squashed)) return colour;
+  }
+
   let hash = 0;
   for (let i = 0; i < name.length; i += 1) {
     hash = (hash * 31 + name.charCodeAt(i)) % 100000;
   }
-  return TILE_COLORS[hash % TILE_COLORS.length];
+  return FALLBACK_TILES[hash % FALLBACK_TILES.length];
+};
+
+// The selected aisle, in the shop's amber. Dark text on it because #FFC107 is
+// far too bright to carry white — a label nobody can read is not a highlight.
+export const TILE_SELECTED = {
+  background: "#FFC107",
+  color: "#1A1A1A",
+  borderColor: "#FFD54F",
 };
 
 const round2 = (value) => Math.round(Number(value || 0) * 100) / 100;
