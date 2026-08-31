@@ -140,6 +140,9 @@ function POSPage() {
   const [selectedLine, setSelectedLine] = useState(null);
 
   const [customerName, setCustomerName] = useState(CUSTOMER_TYPES[0]);
+  // Which tender button opened the tender screen, so it arrives with the
+  // answer already filled in rather than asking again.
+  const [payMethod, setPayMethod] = useState(paymentMethods[0].value);
   const [discount, setDiscount] = useState(0);
   const [discountType, setDiscountType] = useState("amount");
   const [voucher, setVoucher] = useState(null);
@@ -1024,7 +1027,7 @@ function POSPage() {
 
   // "Close Order" doesn't sell anything on its own — it opens the tender screen,
   // where the cashier records what the customer actually handed over.
-  const openPayment = () => {
+  const openPayment = (payMethod) => {
     if (cart.length === 0) {
       toast.error(t("pos.addOneProduct"));
       return;
@@ -1043,6 +1046,7 @@ function POSPage() {
       return;
     }
 
+    setPayMethod(payMethod);
     setModal("payment");
   };
 
@@ -1509,7 +1513,7 @@ function POSPage() {
                 value={CUSTOMER_TYPES.includes(customerName) ? customerName : CUSTOMER_TYPES[0]}
                 onChange={(event) => setCustomerName(event.target.value)}
                 aria-label={t("pos.customer")}
-                className="min-w-[140px] flex-1 border border-slate-800 bg-black px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-cyan-600"
+                className="min-w-[120px] flex-1 border border-slate-800 bg-black px-3 py-2 text-xs text-slate-100 outline-none transition focus:border-cyan-600"
               >
                 {CUSTOMER_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -1517,6 +1521,19 @@ function POSPage() {
                   </option>
                 ))}
               </select>
+
+              {/* Holding a sale is not a way of paying for one. It sat in the
+                  tender row taking a third of the width off the buttons that
+                  take money, so it moves up here with the other things that
+                  are set BEFORE the sale is closed. */}
+              <button
+                type="button"
+                onClick={holdSale}
+                disabled={cart.length === 0}
+                className="shrink-0 border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-200 transition hover:bg-slate-700 active:scale-[0.99] disabled:opacity-35"
+              >
+                {t("pos.rail.send")}
+              </button>
               <div
                 className={`flex items-center gap-2 border px-3 transition ${
                   taxEnabled
@@ -1754,23 +1771,31 @@ function POSPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-[1fr_1.6fr] gap-2">
-              <button
-                type="button"
-                onClick={holdSale}
-                disabled={cart.length === 0}
-                className="bg-slate-800 py-3 text-sm font-bold uppercase tracking-wide text-slate-200 ring-1 ring-slate-700 transition hover:bg-slate-700 active:scale-[0.99] disabled:opacity-35"
-              >
-                {t("pos.rail.send")}
-              </button>
-              <button
-                type="button"
-                onClick={openPayment}
-                disabled={isCheckingOut || cart.length === 0}
-                className="bg-gradient-to-b from-blue-600 to-blue-700 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-blue-950/50 ring-1 ring-blue-500 transition hover:from-blue-500 hover:to-blue-600 active:scale-[0.99] disabled:opacity-35 disabled:shadow-none"
-              >
-                {isCheckingOut ? t("pos.processing") : t("pos.closeOrder")}
-              </button>
+            {/* How they are paying, asked here rather than on the next screen.
+                At a counter the customer says "card" while the last item is
+                still going through, so the cashier presses CARD and arrives at
+                the tender screen with the answer already given — one screen
+                doing one thing instead of two asking the same question. */}
+            <div className="grid grid-cols-3 gap-2">
+              {paymentMethods.map((entry) => (
+                <button
+                  key={entry.value}
+                  type="button"
+                  onClick={() => openPayment(entry.value)}
+                  disabled={isCheckingOut || cart.length === 0}
+                  // Credit takes the amber the rail already uses for money
+                  // owed. Cash and card put money in the drawer; this one
+                  // sends the goods out on a promise, and three identical
+                  // blue buttons is how that gets pressed by accident.
+                  className={`py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg ring-1 transition active:scale-[0.99] disabled:opacity-35 disabled:shadow-none ${
+                    entry.value === "credit"
+                      ? "bg-gradient-to-b from-amber-600 to-amber-700 shadow-amber-950/50 ring-amber-500 hover:from-amber-500 hover:to-amber-600"
+                      : "bg-gradient-to-b from-blue-600 to-blue-700 shadow-blue-950/50 ring-blue-500 hover:from-blue-500 hover:to-blue-600"
+                  }`}
+                >
+                  {t(`common.payments.${entry.value}`, entry.label)}
+                </button>
+              ))}
             </div>
           </div>
         </section>
@@ -2233,6 +2258,7 @@ function POSPage() {
           // credit is settled the moment it opens.
           total={due}
           methods={paymentMethods}
+          initialMethod={payMethod}
           busy={isCheckingOut}
           onConfirm={checkout}
           onClose={() => setModal(null)}

@@ -4,24 +4,33 @@ import { FiTrash2 } from "react-icons/fi";
 import PosModal from "./PosModal";
 import { currency, sanitizeDecimal } from "./posUtils";
 
-// The tender screen. A customer paying €50 can hand over €30 cash and put €20
-// on a card: each tender is added in turn, the remaining balance drops, and the
-// sale only closes once the bill is fully covered. Overpaying in cash gives
+// The tender screen.
+//
+// How a sale is being paid is decided at the basket, not here: the cashier
+// presses CASH, CARD or CREDIT down by the total and arrives with that method
+// already chosen. That is the order the counter actually works in — the
+// customer says how they are paying while the last item is still being scanned
+// — and it saves the screen asking a question it was opened with the answer to.
+//
+// So the method buttons here SELECT rather than take. Nothing goes through
+// until CHARGE, which is one button doing one thing: put the chosen tender
+// through, and close the sale if that settles it.
+//
+// A customer paying 50 can still hand over 30 in cash and put 20 on a card —
+// type the cash into the box, or open Split and give each method its share. The
+// sale only closes once the bill is fully covered, and overpaying in cash gives
 // change.
-//
-// The method buttons TAKE the payment rather than just selecting a method:
-// tapping one settles whatever is left on it. Type an amount first only when
-// splitting — €30 → CASH leaves €20, then CARD clears the rest in one tap.
-//
-// A tap that clears the bill exactly also CLOSES the sale — no second confirm.
-// A tap that leaves change does not: the cashier has to see what to hand back.
-function PaymentModal({ total, methods, onConfirm, onClose, busy }) {
+function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy }) {
   const { t } = useTranslation();
 
   const [payments, setPayments] = useState([]);
   const [amount, setAmount] = useState("");
-  // Splitting a bill by typing an amount and tapping a method works, but it
-  // is a trick you have to be told. This is the same thing said out loud:
+  // What CHARGE will put the money through on. Comes in from whichever button
+  // was pressed at the basket; cash is the fallback because it is what a till
+  // takes when nobody has said otherwise.
+  const [method, setMethod] = useState(() => initialMethod || methods[0]?.value || "cash");
+  // Splitting a bill by typing an amount and charging another method works, but
+  // it is a trick you have to be told. This is the same thing said out loud:
   // one line per method, each taking whatever part of the bill it is paying.
   const [splitOpen, setSplitOpen] = useState(false);
   const [parts, setParts] = useState({});
@@ -39,19 +48,32 @@ function PaymentModal({ total, methods, onConfirm, onClose, busy }) {
   const onAccount = payments
     .filter((entry) => entry.method === "credit")
     .reduce((sum, entry) => sum + entry.amount, 0);
+  // Asked for as soon as CREDIT is the chosen method rather than after the
+  // tender has gone through, so the cashier is not sent back for a phone number
+  // by a button that has already stopped working.
+  const goingOnAccount = onAccount > 0 || (!settled && method === "credit");
   // Something to reach them by, or the debt is a loss with paperwork. The
   // server refuses it too — this is so the cashier finds out here rather than
-  // after pressing Complete Sale.
+  // after pressing Charge.
   const accountReady =
-    onAccount <= 0 || Boolean(account.email.trim() || account.phone.trim());
+    !goingOnAccount || Boolean(account.email.trim() || account.phone.trim());
 
   // Rounding up to the next whole euro — what a customer hands over when they
-  // don't want the coins back (€50.90 owed → €51). Hidden when the balance is
-  // already a whole number, since that is just "Exact".
+  // don't want the coins back (50.90 owed becomes 51). Hidden when the balance
+  // is already a whole number, since that is just "Exact".
   const roundedUp = useMemo(() => {
     const up = Math.ceil(remaining);
     return up > remaining ? up : null;
   }, [remaining]);
+
+  const terms = () =>
+    onAccount > 0
+      ? {
+          email: account.email.trim(),
+          phone: account.phone.trim(),
+          termDays: Number(account.termDays) || 14,
+        }
+      : undefined;
 
   const addPayment = (value, payMethod) => {
     const entry = Math.round(Number(value || 0) * 100) / 100;
@@ -61,13 +83,13 @@ function PaymentModal({ total, methods, onConfirm, onClose, busy }) {
     setPayments(next);
     setAmount("");
 
-    // One tap, one sale. The overwhelmingly common sale is exact and single
-    // tender: making the cashier confirm a screen that has nothing left to say
+    // One press, one sale. The overwhelmingly common sale is exact and single
+    // tender, and making the cashier confirm a screen with nothing left to say
     // is a keystroke per customer, all day.
     //
     // It closes ONLY on an exact settle. The moment there is change to hand
     // back, the screen stays up and shows the figure — a till that pockets the
-    // sale before the cashier has read "change €2.80" is how drawers go short.
+    // sale before the cashier has read "change 2.80" is how drawers go short.
     // ...unless part of it went on the book. That sale is not finished until
     // there is a way to collect it, and closing here would take the goods out
     // of the shop with nothing but a name attached.
@@ -83,10 +105,10 @@ function PaymentModal({ total, methods, onConfirm, onClose, busy }) {
   // A figure in the box is cash already on the counter — the customer put notes
   // down and is settling the rest another way. Only a figure SHORT of the
   // balance can mean that; anything at or over it is a single tender on
-  // whichever method is tapped, which is how change gets handed back.
+  // whichever method is chosen, which is how change gets handed back.
   const splitting = hasTyped && typed < remaining - 0.001;
 
-  // What each button will actually put through, so nothing has to be guessed.
+  // What each method would actually put through, so nothing is guessed.
   const takesFor = (payMethod) => {
     if (!hasTyped) return remaining;
     if (!splitting) return Math.round(typed * 100) / 100;
@@ -94,28 +116,30 @@ function PaymentModal({ total, methods, onConfirm, onClose, busy }) {
     return payMethod === "cash" ? remaining : Math.round((remaining - typed) * 100) / 100;
   };
 
-  // Tap a method to settle on it. With cash already counted into the box, that
-  // one tap finishes the sale — a split is not worth two.
-  const takePayment = (payMethod) => {
-    if (busy) return;
+  // CHARGE. Puts the chosen tender through — and with cash already counted into
+  // the box, settles the rest on the chosen method in the same press.
+  const charge = () => {
+    if (busy || !accountReady) return;
 
-    if (splitting && payMethod !== "cash") {
+    // Nothing left to collect: this press is the confirmation.
+    if (settled) {
+      onConfirm(payments, terms());
+      return;
+    }
+
+    if (splitting && method !== "cash") {
       const cash = Math.round(typed * 100) / 100;
       const rest = Math.round((remaining - cash) * 100) / 100;
-      const next = [
-        ...payments,
-        { method: "cash", amount: cash },
-        { method: payMethod, amount: rest },
-      ];
+      const next = [...payments, { method: "cash", amount: cash }, { method, amount: rest }];
       setPayments(next);
       setAmount("");
       // The two together are the balance exactly, so there is no change to read
       // and — unless one of them is the book — nothing left to ask.
-      if (payMethod !== "credit") onConfirm(next);
+      if (method !== "credit") onConfirm(next);
       return;
     }
 
-    addPayment(hasTyped && !splitting ? typed : remaining, payMethod);
+    addPayment(hasTyped && !splitting ? typed : remaining, method);
   };
 
   const removePayment = (index) =>
@@ -126,82 +150,203 @@ function PaymentModal({ total, methods, onConfirm, onClose, busy }) {
 
   return (
     <PosModal
-      title={t("pos.payment.title")}
-      subtitle={t("pos.payment.subtitle")}
-      onClose={onClose}
+      // No title. The cashier pressed CASH on the basket a moment ago and knows
+      // exactly what this is; a heading saying "Take Payment" over the top of it
+      // is a line to read past on the way to the figure.
+      onBack={onClose}
       width="max-w-lg"
       footer={
-        <>
-          <button
-            type="button"
-            onClick={onClose}
-            className="bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700"
-          >
-            {t("pos.refund.cancel")}
-          </button>
-          <button
-            type="button"
-            disabled={!settled || busy || !accountReady}
-            onClick={() =>
-              onConfirm(
-                payments,
-                onAccount > 0
-                  ? {
-                      email: account.email.trim(),
-                      phone: account.phone.trim(),
-                      termDays: Number(account.termDays) || 14,
-                    }
-                  : undefined,
-              )
-            }
-            className="bg-gradient-to-b from-emerald-600 to-emerald-700 px-6 py-2 text-sm font-bold uppercase tracking-wide text-white ring-1 ring-emerald-500 transition hover:from-emerald-500 disabled:opacity-40"
-          >
-            {busy ? t("pos.processing") : t("pos.payment.complete")}
-          </button>
-        </>
+        <button
+          type="button"
+          disabled={busy || !accountReady}
+          onClick={charge}
+          className="w-full bg-gradient-to-b from-blue-600 to-blue-700 px-6 py-3 text-sm font-bold uppercase tracking-wide text-white ring-1 ring-blue-500 transition hover:from-blue-500 disabled:opacity-40"
+        >
+          {busy ? t("pos.processing") : t("pos.closeOrder")}
+        </button>
       }
     >
       <div className="space-y-4">
-        {/* Running balance */}
-        <div className="grid grid-cols-3 gap-2 border border-slate-800 bg-black/50 p-3 text-center">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
-              {t("pos.total")}
+        {/* What is owed, and what is left of it. Stacked rather than spread over
+            three columns: the balance is the figure the cashier is working to,
+            so it is the biggest thing on the screen. */}
+        <div className="border border-slate-800 bg-black/50 p-4 text-center">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
+            {t("pos.total")}
+          </p>
+          <p className="text-lg font-bold tabular-nums text-slate-300">{currency(total)}</p>
+
+          <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-slate-600">
+            {settled ? t("pos.changeDue") : t("pos.payment.remaining")}
+          </p>
+          <p
+            className={`font-display text-4xl font-bold tabular-nums ${
+              settled ? "text-emerald-400" : "text-amber-400"
+            }`}
+          >
+            {currency(settled ? change : remaining)}
+          </p>
+
+          {/* Only worth saying once some of the bill has actually been taken —
+              on an ordinary sale it would read 0.00 the whole way through. */}
+          {paid > 0 && (
+            <p className="mt-2 text-[11px] font-semibold text-slate-500">
+              {t("pos.payment.paid")} {currency(paid)}
             </p>
-            <p className="text-lg font-bold tabular-nums text-slate-200">{currency(total)}</p>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
-              {t("pos.payment.paid")}
-            </p>
-            <p className="text-lg font-bold tabular-nums text-cyan-400">{currency(paid)}</p>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
-              {settled ? t("pos.changeDue") : t("pos.payment.remaining")}
-            </p>
-            <p
-              className={`text-lg font-bold tabular-nums ${
-                settled ? "text-emerald-400" : "text-amber-400"
-              }`}
-            >
-              {currency(settled ? change : remaining)}
-            </p>
-          </div>
+          )}
         </div>
 
-        {/* On the book. Shown the moment any of the bill goes on account,
-            because that is the moment the shop needs a way to collect it — a
-            debt owed by "Walk-in Customer" with no contact is a loss with
+        {!settled && (
+          <div className="space-y-3">
+            {/* How it is being paid. Already chosen at the basket — this is
+                where it changes if the customer changes their mind. */}
+            <div className="grid grid-cols-3 gap-1.5">
+              {methods.map((entry) => {
+                const chosen = method === entry.value;
+
+                return (
+                  <button
+                    key={entry.value}
+                    type="button"
+                    onClick={() => setMethod(entry.value)}
+                    aria-pressed={chosen}
+                    className={`flex flex-col items-center justify-center gap-0.5 py-2.5 text-xs font-bold uppercase transition active:scale-[0.98] ${
+                      chosen
+                        ? "bg-gradient-to-b from-blue-600 to-blue-700 text-white ring-1 ring-blue-400"
+                        : "bg-slate-800 text-slate-300 ring-1 ring-slate-700 hover:bg-slate-700"
+                    }`}
+                  >
+                    {label(entry.value)}
+                    <span
+                      className={`text-[11px] font-semibold tabular-nums ${
+                        chosen ? "text-blue-100" : "text-slate-500"
+                      }`}
+                    >
+                      {currency(takesFor(entry.value))}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Amount — optional. Leave it blank and Charge settles the whole
+                balance; type into it to give change, or to split. */}
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                charge();
+              }}
+            >
+              <input
+                autoFocus
+                type="text"
+                inputMode="decimal"
+                data-keyboard="numeric"
+                value={amount}
+                onChange={(event) => setAmount(sanitizeDecimal(event.target.value))}
+                placeholder={currency(remaining)}
+                className="w-full border border-slate-700 bg-slate-950 px-3 py-2.5 text-center font-mono text-lg text-slate-100 outline-none focus:border-cyan-500"
+              />
+            </form>
+
+            {/* Splitting, said out loud. Typing an amount and charging another
+                method already splits a bill, but that is a trick you have to be
+                told — this is one line per method, each taking the part it is
+                paying, and it puts through exactly the same tenders. */}
+            <button
+              type="button"
+              onClick={() => setSplitOpen((open) => !open)}
+              className={`w-full py-2 text-xs font-bold uppercase tracking-wide transition ${
+                splitOpen
+                  ? "bg-cyan-800 text-white ring-1 ring-cyan-600"
+                  : "bg-slate-800 text-slate-300 ring-1 ring-slate-700 hover:bg-slate-700"
+              }`}
+            >
+              {t("pos.payment.split", "Split")}
+            </button>
+
+            {splitOpen && (
+              <div className="space-y-1.5 border border-cyan-900 bg-cyan-950/20 p-2">
+                {methods.map((entry) => (
+                  <div key={`split-${entry.value}`} className="flex items-center gap-1.5">
+                    <span className="w-16 shrink-0 text-[11px] font-bold uppercase text-slate-400">
+                      {label(entry.value)}
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      data-keyboard="numeric"
+                      value={parts[entry.value] || ""}
+                      onChange={(event) =>
+                        setParts((current) => ({
+                          ...current,
+                          [entry.value]: sanitizeDecimal(event.target.value),
+                        }))
+                      }
+                      placeholder={currency(remaining)}
+                      className="min-w-0 flex-1 border border-slate-700 bg-slate-950 px-2 py-1.5 text-center font-mono text-sm text-slate-100 outline-none focus:border-cyan-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const part = Number(parts[entry.value]);
+                        addPayment(
+                          Number.isFinite(part) && part > 0 ? part : remaining,
+                          entry.value,
+                        );
+                        setParts((current) => ({ ...current, [entry.value]: "" }));
+                      }}
+                      className="shrink-0 bg-slate-800 px-3 py-1.5 text-[11px] font-bold uppercase text-slate-200 transition hover:bg-cyan-800"
+                    >
+                      {t("pos.payment.take", "Take")}
+                    </button>
+                  </div>
+                ))}
+                <p className="pt-0.5 text-[10px] text-slate-500">
+                  {t(
+                    "pos.payment.splitHint",
+                    "Leave an amount empty to put the whole balance on that method.",
+                  )}
+                </p>
+              </div>
+            )}
+
+            {/* Cash the customer overpays with, so there is change to hand back. */}
+            {roundedUp && (
+              <button
+                type="button"
+                onClick={() => addPayment(roundedUp, "cash")}
+                className="flex w-full items-center justify-center gap-2 bg-slate-800 py-2.5 text-xs font-bold uppercase text-slate-200 transition hover:bg-slate-700"
+              >
+                {t("pos.payment.roundOff")}
+                <span className="tabular-nums opacity-80">{currency(roundedUp)}</span>
+                <span className="font-normal normal-case opacity-60">
+                  {t("pos.payment.roundOffHint")}
+                </span>
+              </button>
+            )}
+
+            <p className="text-center text-[11px] text-slate-600">
+              {t(
+                "pos.payment.chargeHint",
+                "Charge settles the balance on the chosen method. Type the cash they handed over first to give change, or to pay the rest another way.",
+              )}
+            </p>
+          </div>
+        )}
+
+        {/* On the book. Shown the moment any of the bill is headed for the
+            account, because that is the moment the shop needs a way to collect
+            it — a debt owed by "Walk-In" with no contact is a loss with
             paperwork. Either field will do; the server insists on one too. */}
-        {onAccount > 0 && (
+        {goingOnAccount && (
           <div className="space-y-2 border border-amber-800 bg-amber-950/30 p-3">
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-xs font-bold uppercase tracking-wide text-amber-300">
                 {t("pos.credit.onAccount", "On Account")}
               </span>
               <span className="font-bold tabular-nums text-amber-200">
-                {currency(onAccount)}
+                {currency(onAccount > 0 ? onAccount : takesFor("credit"))}
               </span>
             </div>
 
@@ -285,132 +430,6 @@ function PaymentModal({ total, methods, onConfirm, onClose, busy }) {
                 </span>
               </div>
             ))}
-          </div>
-        )}
-
-        {!settled && (
-          <div className="space-y-3">
-            {/* Amount — optional. Leave it blank and a method button settles the
-                whole balance; type into it only to split. */}
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                // Enter is the cash path: it is what a hand-typed amount is for.
-                takePayment("cash");
-              }}
-            >
-              <input
-                autoFocus
-                type="text"
-                inputMode="decimal"
-                data-keyboard="numeric"
-                value={amount}
-                onChange={(event) => setAmount(sanitizeDecimal(event.target.value))}
-                placeholder={currency(remaining)}
-                className="w-full border border-slate-700 bg-slate-950 px-3 py-2.5 text-center font-mono text-lg text-slate-100 outline-none focus:border-cyan-500"
-              />
-            </form>
-
-            {/* Tap to take. The amount on each button is what it will actually
-                put through, so there is no guessing. */}
-            <div className="grid grid-cols-3 gap-1.5">
-              {methods.map((entry) => {
-                const takes = takesFor(entry.value);
-
-                return (
-                  <button
-                    key={entry.value}
-                    type="button"
-                    onClick={() => takePayment(entry.value)}
-                    className="flex flex-col items-center justify-center gap-0.5 bg-slate-800 py-2.5 text-xs font-bold uppercase text-slate-200 ring-1 ring-slate-700 transition hover:bg-cyan-800 hover:ring-cyan-600 active:scale-[0.98]"
-                  >
-                    {label(entry.value)}
-                    <span className="text-[11px] font-semibold tabular-nums text-cyan-400">
-                      {currency(takes)}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Splitting, said out loud. Typing an amount and tapping a method
-                already splits a bill, but that is a trick you have to be told —
-                this is one line per method, each taking the part it is paying,
-                and it puts through exactly the same tenders. */}
-            <button
-              type="button"
-              onClick={() => setSplitOpen((open) => !open)}
-              className={`w-full py-2 text-xs font-bold uppercase tracking-wide transition ${
-                splitOpen
-                  ? "bg-cyan-800 text-white ring-1 ring-cyan-600"
-                  : "bg-slate-800 text-slate-300 ring-1 ring-slate-700 hover:bg-slate-700"
-              }`}
-            >
-              {t("pos.payment.split", "Split")}
-            </button>
-
-            {splitOpen && (
-              <div className="space-y-1.5 border border-cyan-900 bg-cyan-950/20 p-2">
-                {methods.map((entry) => (
-                  <div key={`split-${entry.value}`} className="flex items-center gap-1.5">
-                    <span className="w-16 shrink-0 text-[11px] font-bold uppercase text-slate-400">
-                      {label(entry.value)}
-                    </span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      data-keyboard="numeric"
-                      value={parts[entry.value] || ""}
-                      onChange={(event) =>
-                        setParts((current) => ({
-                          ...current,
-                          [entry.value]: sanitizeDecimal(event.target.value),
-                        }))
-                      }
-                      placeholder={currency(remaining)}
-                      className="min-w-0 flex-1 border border-slate-700 bg-slate-950 px-2 py-1.5 text-center font-mono text-sm text-slate-100 outline-none focus:border-cyan-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const part = Number(parts[entry.value]);
-                        addPayment(
-                          Number.isFinite(part) && part > 0 ? part : remaining,
-                          entry.value,
-                        );
-                        setParts((current) => ({ ...current, [entry.value]: "" }));
-                      }}
-                      className="shrink-0 bg-slate-800 px-3 py-1.5 text-[11px] font-bold uppercase text-slate-200 transition hover:bg-cyan-800"
-                    >
-                      {t("pos.payment.take", "Take")}
-                    </button>
-                  </div>
-                ))}
-                <p className="pt-0.5 text-[10px] text-slate-500">
-                  {t(
-                    "pos.payment.splitHint",
-                    "Leave an amount empty to put the whole balance on that method.",
-                  )}
-                </p>
-              </div>
-            )}
-
-            {/* Cash the customer overpays with, so there is change to hand back. */}
-            {roundedUp && (
-              <button
-                type="button"
-                onClick={() => addPayment(roundedUp, "cash")}
-                className="flex w-full items-center justify-center gap-2 bg-slate-800 py-2.5 text-xs font-bold uppercase text-slate-200 transition hover:bg-slate-700"
-              >
-                {t("pos.payment.roundOff")}
-                <span className="tabular-nums opacity-80">{currency(roundedUp)}</span>
-                <span className="font-normal normal-case opacity-60">
-                  {t("pos.payment.roundOffHint")}
-                </span>
-              </button>
-            )}
-
-            <p className="text-center text-[11px] text-slate-600">{t("pos.payment.hint")}</p>
           </div>
         )}
 
