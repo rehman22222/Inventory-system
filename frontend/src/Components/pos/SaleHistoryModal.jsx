@@ -5,6 +5,7 @@ import { FiLock, FiPrinter, FiRefreshCw } from "react-icons/fi";
 import toast from "react-hot-toast";
 import axiosInstance from "../../lib/axios";
 import PosModal from "./PosModal";
+import { HistoryTabs } from "./HistoryTabs";
 import { currency, printSlip } from "./posUtils";
 
 const STATUS_TONE = {
@@ -21,7 +22,7 @@ const METHOD_TONE = {
   split: "bg-amber-950 text-amber-300 ring-amber-800",
 };
 
-function SaleHistoryModal({ canRefund, onRefund, onReprint, onClose }) {
+function SaleHistoryModal({ canRefund, onRefund, onReprint, onShowRefunds, onClose }) {
   const { t } = useTranslation();
   const { store: SHOP } = useSelector((state) => state.store);
   const [receipts, setReceipts] = useState([]);
@@ -115,6 +116,8 @@ function SaleHistoryModal({ canRefund, onRefund, onReprint, onClose }) {
         )
       }
     >
+      <HistoryTabs active="sales" onSales={() => {}} onRefunds={onShowRefunds} t={t} />
+
       {loading ? (
         <p className="py-8 text-center text-sm text-slate-500">{t("pos.processing")}</p>
       ) : receipts.length === 0 ? (

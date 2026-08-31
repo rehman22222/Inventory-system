@@ -45,6 +45,9 @@ function VoucherModal({
   symbol = "€",
   onApply,
   onRemove,
+  discount = 0,
+  discountType = "amount",
+  onApplyDiscount,
   onProductAdded,
   onClose,
 }) {
@@ -184,6 +187,15 @@ function VoucherModal({
   const [made, setMade] = useState(null);
   const [labels, setLabels] = useState(12);
 
+  // Hand-typed money off this basket, folded in from what used to be its own
+  // rail button.
+  const [discountValue, setDiscountValue] = useState(String(discount || ""));
+  const [discountKind, setDiscountKind] = useState(discountType);
+  const discountPreview =
+    discountKind === "percent"
+      ? (subtotal * Number(discountValue || 0)) / 100
+      : Number(discountValue || 0);
+
   const setProductField = (key) => (event) =>
     setProduct((current) => ({ ...current, [key]: event.target.value }));
 
@@ -261,8 +273,9 @@ function VoucherModal({
       onClose={onClose}
       width="max-w-xl"
     >
-      {canGenerate && (
-        <div className="mb-4 grid grid-cols-3 gap-2">
+      <div
+        className={`mb-4 grid gap-2 ${canGenerate ? "grid-cols-4" : "grid-cols-2"}`}
+      >
           <button
             type="button"
             onClick={() => setTab("apply")}
@@ -274,28 +287,43 @@ function VoucherModal({
           </button>
           <button
             type="button"
-            onClick={() => setTab("generate")}
-            className={`px-4 py-2 text-sm font-semibold transition ${
-              tab === "generate" ? "bg-cyan-700 text-white" : "bg-slate-800 text-slate-300"
+            onClick={() => setTab("discount")}
+            className={`px-3 py-2 text-sm font-semibold transition ${
+              tab === "discount" ? "bg-cyan-700 text-white" : "bg-slate-800 text-slate-300"
             }`}
           >
-            {t("pos.voucher.generateTab")}
+            {t("pos.rail.discount")}
           </button>
-          {/* Adding stock and its shelf label lives here because this is the
-              screen somebody is already on when a delivery lands mid-shift. */}
-          <button
-            type="button"
-            onClick={() => setTab("product")}
-            className={`px-4 py-2 text-sm font-semibold transition ${
-              tab === "product" ? "bg-cyan-700 text-white" : "bg-slate-800 text-slate-300"
-            }`}
-          >
-            {t("pos.newProduct.tab", "Add Product")}
-          </button>
+          {/* Cutting a voucher and adding stock are the owner side's; applying
+              a code and taking money off this basket are anybody's. */}
+          {canGenerate && (
+            <>
+              <button
+                type="button"
+                onClick={() => setTab("generate")}
+                className={`px-4 py-2 text-sm font-semibold transition ${
+                  tab === "generate" ? "bg-cyan-700 text-white" : "bg-slate-800 text-slate-300"
+                }`}
+              >
+                {t("pos.voucher.generateTab")}
+              </button>
+              {/* Adding stock and its shelf label lives here because this is
+                  the screen somebody is already on when a delivery lands
+                  mid-shift. */}
+              <button
+                type="button"
+                onClick={() => setTab("product")}
+                className={`px-4 py-2 text-sm font-semibold transition ${
+                  tab === "product" ? "bg-cyan-700 text-white" : "bg-slate-800 text-slate-300"
+                }`}
+              >
+                {t("pos.newProduct.tab", "Add Product")}
+              </button>
+            </>
+          )}
         </div>
-      )}
 
-      {tab === "apply" || !canGenerate ? (
+      {tab === "apply" ? (
         <div className="space-y-4">
           {applied ? (
             <div className="flex items-center justify-between border border-emerald-700 bg-emerald-900/20 px-4 py-3">
@@ -340,6 +368,81 @@ function VoucherModal({
               </button>
             </form>
           )}
+        </div>
+      ) : tab === "discount" ? (
+        /* Taking money off this basket by hand. It lives beside the vouchers
+           because they are the same decision from the cashier's side — "make
+           this cheaper" — and having them on two rail buttons meant learning
+           which one to reach for. */
+        <div className="space-y-4">
+          <p className="text-sm text-slate-400">
+            {t("pos.voucher.againstSubtotal", { amount: currency(subtotal) })}
+          </p>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setDiscountKind("amount")}
+              className={`py-2 text-sm font-semibold transition ${
+                discountKind === "amount"
+                  ? "bg-cyan-700 text-white"
+                  : "bg-slate-800 text-slate-300"
+              }`}
+            >
+              {t("pos.voucher.typeAmount")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDiscountKind("percent")}
+              className={`py-2 text-sm font-semibold transition ${
+                discountKind === "percent"
+                  ? "bg-cyan-700 text-white"
+                  : "bg-slate-800 text-slate-300"
+              }`}
+            >
+              {t("pos.voucher.typePercent")}
+            </button>
+          </div>
+
+          <input
+            autoFocus
+            type="text"
+            inputMode="decimal"
+            data-keyboard="numeric"
+            value={discountValue}
+            onChange={(event) => setDiscountValue(sanitizeDecimal(event.target.value))}
+            className="w-full border border-slate-700 bg-slate-950 px-3 py-3 text-center font-mono text-2xl text-slate-100 outline-none focus:border-cyan-500"
+          />
+
+          <p className="text-center text-sm text-slate-400">
+            {t("pos.discountModal.preview")}:{" "}
+            <span className="font-semibold text-slate-100">
+              {currency(Math.min(discountPreview, subtotal))}
+            </span>
+          </p>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                onApplyDiscount?.(0, "amount");
+                onClose();
+              }}
+              className="bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700"
+            >
+              {t("pos.discountModal.clear")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onApplyDiscount?.(Number(discountValue || 0), discountKind);
+                onClose();
+              }}
+              className="ms-auto bg-cyan-700 px-5 py-2 text-sm font-bold uppercase text-white hover:bg-cyan-600"
+            >
+              {t("pos.discountModal.apply")}
+            </button>
+          </div>
         </div>
       ) : tab === "product" ? (
         made ? (

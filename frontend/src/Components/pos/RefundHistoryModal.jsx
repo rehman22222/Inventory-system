@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { FiPrinter, FiRotateCcw } from "react-icons/fi";
 import axiosInstance from "../../lib/axios";
 import PosModal from "./PosModal";
+import { HistoryTabs } from "./HistoryTabs";
 import RefundSlipBody from "./RefundSlip";
 import {
   currency,
@@ -21,7 +22,7 @@ import {
 const slipId = (entry, index) =>
   `refund-slip-${entry.reference || entry.receiptNo || "row"}-${index}`;
 
-function RefundHistoryModal({ onClose }) {
+function RefundHistoryModal({ onShowSales, onClose }) {
   const { t } = useTranslation();
   const { store: SHOP } = useSelector((state) => state.store);
   const [refunds, setRefunds] = useState(null);
@@ -71,6 +72,8 @@ function RefundHistoryModal({ onClose }) {
         )
       }
     >
+      <HistoryTabs active="refunds" onSales={onShowSales} onRefunds={() => {}} t={t} />
+
       {refunds === null ? (
         <p className="py-10 text-center text-sm text-slate-500">{t("pos.processing")}</p>
       ) : refunds.length === 0 ? (

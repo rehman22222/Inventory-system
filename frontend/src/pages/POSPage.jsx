@@ -10,7 +10,6 @@ import {
   FiLock,
   FiLogOut,
   FiBookOpen,
-  FiPercent,
   FiPlay,
   FiRotateCcw,
   FiSearch,
@@ -33,7 +32,6 @@ import NumericKeypad from "../Components/pos/NumericKeypad";
 import StatusBar from "../Components/pos/StatusBar";
 import RefundModal from "../Components/pos/RefundModal";
 import VoucherModal from "../Components/pos/VoucherModal";
-import DiscountModal from "../Components/pos/DiscountModal";
 import UnknownBarcodeModal from "../Components/pos/UnknownBarcodeModal";
 import SaleHistoryModal from "../Components/pos/SaleHistoryModal";
 import HeldSalesModal from "../Components/pos/HeldSalesModal";
@@ -1306,13 +1304,7 @@ function POSPage() {
       disabled: !isElevated,
       onClick: () => setModal("deals"),
     },
-    {
-      id: "discount",
-      label: "pos.rail.discount",
-      tone: "indigo",
-      icon: FiPercent,
-      onClick: () => setModal("discount"),
-    },
+
     {
       id: "vouchers",
       label: "pos.rail.vouchers",
@@ -1360,14 +1352,7 @@ function POSPage() {
       icon: FiClock,
       onClick: () => setModal("history"),
     },
-    {
-      id: "refundHistory",
-      label: "pos.rail.refundHistory",
-      tone: "rose",
-      icon: FiRotateCcw,
-      disabled: !isElevated,
-      onClick: () => setModal("refundHistory"),
-    },
+
     {
       id: "dayClosing",
       label: "pos.rail.dayClosing",
@@ -2248,7 +2233,13 @@ function POSPage() {
           canGenerate={isElevated}
           categories={categories}
           symbol={currencySymbol()}
+          discount={discount}
+          discountType={discountType}
           onApply={setVoucher}
+          onApplyDiscount={(value, type) => {
+            setDiscount(value);
+            setDiscountType(type);
+          }}
           onRemove={() => setVoucher(null)}
           // A product added here has to reach the grid without a refresh —
           // the cashier added it to sell it, probably to the person waiting.
@@ -2257,18 +2248,6 @@ function POSPage() {
         />
       )}
 
-      {modal === "discount" && (
-        <DiscountModal
-          subtotal={afterVoucher}
-          discount={discount}
-          discountType={discountType}
-          onApply={(value, type) => {
-            setDiscount(value);
-            setDiscountType(type);
-          }}
-          onClose={() => setModal(null)}
-        />
-      )}
 
       {/* Stacked over the refund dialog, which stays mounted underneath so the
           lines and quantities the cashier already chose are still there. */}
@@ -2283,7 +2262,10 @@ function POSPage() {
       )}
 
       {modal === "refundHistory" && (
-        <RefundHistoryModal onClose={() => setModal(null)} />
+        <RefundHistoryModal
+          onShowSales={() => setModal("history")}
+          onClose={() => setModal(null)}
+        />
       )}
 
       {modal === "deals" && (
@@ -2358,6 +2340,7 @@ function POSPage() {
       {modal === "history" && (
         <SaleHistoryModal
           canRefund={isElevated}
+          onShowRefunds={() => setModal("refundHistory")}
           onReprint={(entry) => {
             setReceipt(entry);
             setModal(null);
