@@ -121,9 +121,11 @@ export function Greeting({ className = "" }) {
 // hour rather than "no products found", which is true of an empty grid and
 // useless to the person looking at it.
 //
-// It writes itself on once and then simply stays there, holding its place for
-// as long as no category is open. The only thing that ever changes it is the
-// clock: when the shop passes noon or five, the line is rewritten to match.
+// This one does not animate. It is simply there, the way the shop sign is
+// there — the cashier is looking straight through this space for a product,
+// and a line writing itself on in their eyeline is something to wait for
+// rather than something to read past. The greeting up in the header is the
+// flourish; down here the words just sit still until the clock changes them.
 export function GreetingLine({ className = "" }) {
   const { t } = useTranslation();
   const part = usePartOfDay();
@@ -134,7 +136,7 @@ export function GreetingLine({ className = "" }) {
     evening: "Winding down for the evening — pick an aisle, or scan.",
   }[part]);
 
-  return <Written key={part} text={text} className={className} step={34} duration={620} />;
+  return <span className={className}>{text}</span>;
 }
 
 export default Greeting;

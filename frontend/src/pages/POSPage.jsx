@@ -1873,7 +1873,7 @@ function POSPage() {
                  so the line holds one place for as long as the grid is empty
                  instead of drifting with whatever is above it. */
               <div className="flex h-full min-h-[240px] items-center justify-center px-6">
-                <GreetingLine className="max-w-md text-center text-base font-medium leading-relaxed text-slate-600" />
+                <GreetingLine className="max-w-md text-center text-base font-medium leading-relaxed text-slate-500" />
               </div>
             ) : filteredProducts.length === 0 ? (
               <p className="py-12 text-center text-sm text-slate-700">{t("pos.noProducts")}</p>
