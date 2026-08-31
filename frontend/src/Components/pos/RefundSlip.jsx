@@ -68,8 +68,16 @@ function RefundSlipBody({ slip, shop, t }) {
         <span>-{currency(slip.amount)}</span>
       </div>
 
-      {/* What was spent on the replacement rather than handed over. Both halves
-          have to be on the paper or the figures above them do not add up. */}
+      {/* What the refund went to instead of the customer's hand. Both have to
+          be on the paper or the figures above them do not add up — and the
+          debt one especially: a customer handed nothing back needs to see
+          exactly why, in writing. */}
+      {slip.debtCancelled > 0 && (
+        <div className="s-line">
+          <span>{t("pos.credit.debtCancelled", "Taken off what you owe")}</span>
+          <span>{currency(slip.debtCancelled)}</span>
+        </div>
+      )}
       {slip.exchangeCredit > 0 && (
         <div className="s-line">
           <span>{t("pos.exchange.credit", "Refund credit")}</span>
@@ -77,15 +85,15 @@ function RefundSlipBody({ slip, shop, t }) {
         </div>
       )}
 
-      {/* Only when money genuinely crossed the counter. An exchange that used
-          the whole refund handed nothing back, and "Refund by: Cash" under it
-          would describe a payment that never happened. */}
+      {/* Only when money genuinely crossed the counter. A refund swallowed by a
+          replacement or by an unpaid account handed nothing back, and "Refund
+          by: Cash" under it would describe a payment that never happened. */}
       {slip.method && slip.cashBack !== 0 && (
         <div className="s-line">
           <span>{t("pos.refund.method", "Refund by")}</span>
           <span>
             {t(`common.payments.${slip.method}`, slip.method)}
-            {slip.cashBack > 0 && slip.exchangeCredit > 0
+            {slip.cashBack > 0 && (slip.exchangeCredit > 0 || slip.debtCancelled > 0)
               ? ` ${currency(slip.cashBack)}`
               : ""}
           </span>

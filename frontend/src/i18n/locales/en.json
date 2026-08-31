@@ -804,7 +804,8 @@
       "bought": "Bought",
       "paymentsMade": "Paid So Far",
       "accounts": "Accounts",
-      "needsNetwork": "A sale on account needs the connection — take payment another way, or wait for it to come back"
+      "needsNetwork": "A sale on account needs the connection — take payment another way, or wait for it to come back",
+      "debtCancelled": "Taken off what you owe"
     }
   },
   "sales": {
@@ -1306,7 +1307,8 @@
     "unspentCredit": "Refund Credit Not Spent",
     "unspentCreditHint": "A return was taken as an exchange and the replacement was never rung up. This money is still the customer's.",
     "closingWithCredit": "{{amount}} of refund credit across {{count}} refund(s) is still unspent. Hand it back or ring up the replacement before closing — after this it belongs to the admin.",
-    "creditRepaid": "Credit Repaid"
+    "creditRepaid": "Credit Repaid",
+    "debtCancelled": "Cancelled Against Accounts"
   },
   "dayClosings": {
     "title": "Day Closings",

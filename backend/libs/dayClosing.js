@@ -46,7 +46,17 @@ const NON_CASH_TENDERS = new Set(["credit", "refund"]);
 // and what every row written before the method existed assumed.
 const cashOutOf = (entry, receipt) => ({
   method: entry.method || receipt.paymentMethod || "unknown",
-  amount: Math.max(0, money(Number(entry.amount || 0) - Number(entry.exchangeCredit || 0))),
+  // Two parts of a refund never reach the drawer: value spent on a
+  // replacement, and value that cancelled a debt the customer had not paid.
+  // Only what survives both was actually handed over.
+  amount: Math.max(
+    0,
+    money(
+      Number(entry.amount || 0) -
+        Number(entry.exchangeCredit || 0) -
+        Number(entry.debtCancelled || 0),
+    ),
+  ),
 });
 
 // `creditTaken` is money handed over TODAY against accounts sold whenever:
@@ -63,6 +73,7 @@ const summariseTakings = (receipts = [], creditTaken = []) => {
   let grossSales = 0; // what the sales were worth, refunds not yet counted
   let refundAmount = 0; // the value returned to customers
   let exchangeCredit = 0; // the part of that spent on replacements
+  let debtCancelled = 0; // the part that cancelled an unpaid account
 
   for (const receipt of receipts) {
     gross += Number(receipt.subtotal || 0);
@@ -73,6 +84,7 @@ const summariseTakings = (receipts = [], creditTaken = []) => {
     for (const entry of receipt.refunds || []) {
       refundAmount += Number(entry.amount || 0);
       exchangeCredit += Number(entry.exchangeCredit || 0);
+      debtCancelled += Number(entry.debtCancelled || 0);
 
       const out = cashOutOf(entry, receipt);
       if (out.amount > 0) {
@@ -163,7 +175,10 @@ const summariseTakings = (receipts = [], creditTaken = []) => {
     netSales: money(grossSales - refundAmount),
     // What actually went back over the counter, as opposed to what was
     // refunded on paper.
-    cashHandedBack: money(refundAmount - exchangeCredit),
+    cashHandedBack: money(refundAmount - exchangeCredit - debtCancelled),
+    // Refund value that went against an unpaid account instead of being
+    // handed over.
+    debtCancelled: money(debtCancelled),
 
     // What came back against the book today. In the drawer, not in the sales.
     creditRepaid: money(creditRepaid),

@@ -316,3 +316,87 @@ describe("money taken back against the book", () => {
     expect(withNone.creditRepaid).toBe(0);
   });
 });
+
+describe("returning goods that were never paid for", () => {
+  test("the whole refund cancels the debt, and no cash leaves the drawer", () => {
+    // Bought a 50 item on account, paid nothing, brought it back. The debt goes
+    // to zero and the customer is handed nothing — they were never out of
+    // pocket. Handing over 50 AND leaving the 50 owed put them 50 up.
+    const summary = summariseTakings([
+      sale({
+        total: 50,
+        method: "credit",
+        payments: [{ method: "credit", amount: 50 }],
+        refunds: [{ amount: 50, method: "cash", debtCancelled: 50 }],
+      }),
+    ]);
+
+    expect(summary.refundAmount).toBe(50);
+    expect(summary.debtCancelled).toBe(50);
+    expect(summary.cashHandedBack).toBe(0);
+    expect(summary.expectedCash).toBe(0);
+  });
+
+  test("part paid: the debt goes first, the rest is handed over", () => {
+    // 50 on account, 30 already paid, 20 still owed. A 50 return clears the 20
+    // and hands back the 30 they had actually parted with.
+    const summary = summariseTakings(
+      [
+        sale({
+          total: 50,
+          method: "credit",
+          payments: [{ method: "credit", amount: 50 }],
+          refunds: [{ amount: 50, method: "cash", debtCancelled: 20 }],
+        }),
+      ],
+      [{ amount: 30, method: "cash" }],
+    );
+
+    expect(summary.debtCancelled).toBe(20);
+    expect(summary.cashHandedBack).toBe(30);
+    // 30 came in as a repayment, 30 went back out as the refund.
+    expect(summary.expectedCash).toBe(0);
+  });
+
+  test("an ordinary refund on a paid sale is untouched by any of this", () => {
+    const summary = summariseTakings([
+      sale({ total: 100, refunds: [{ amount: 30, method: "cash" }] }),
+    ]);
+
+    expect(summary.debtCancelled).toBe(0);
+    expect(summary.cashHandedBack).toBe(30);
+    expect(summary.expectedCash).toBe(70);
+  });
+
+  test("debt and exchange together: debt first, then the replacement", () => {
+    // 50 returned against a 20 debt, with a 30 replacement taken. Nothing is
+    // handed over at all: 20 clears the account, 30 buys the new item.
+    const summary = summariseTakings([
+      sale({
+        total: 50,
+        method: "credit",
+        payments: [{ method: "credit", amount: 50 }],
+        refunds: [
+          { amount: 50, method: "cash", debtCancelled: 20, exchangeCredit: 30 },
+        ],
+      }),
+      sale({ total: 30, method: "refund", payments: [{ method: "refund", amount: 30 }] }),
+    ]);
+
+    expect(summary.debtCancelled).toBe(20);
+    expect(summary.exchangeCredit).toBe(30);
+    expect(summary.cashHandedBack).toBe(0);
+    expect(summary.expectedCash).toBe(0);
+  });
+
+  test("refunds from before this existed still read correctly", () => {
+    // No debtCancelled on the row at all: the whole refund was cash out, which
+    // is what it was at the time.
+    const summary = summariseTakings([
+      sale({ total: 40, refunds: [{ amount: 40, method: "cash" }] }),
+    ]);
+
+    expect(summary.debtCancelled).toBe(0);
+    expect(summary.cashHandedBack).toBe(40);
+  });
+});

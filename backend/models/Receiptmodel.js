@@ -41,6 +41,10 @@ const RefundEntrySchema = new mongoose.Schema(
     // that, so the takings can tell "handed back" from "spent here"; `method`
     // then describes only the rest.
     exchangeCredit: { type: Number, default: 0 },
+    // The part of this refund that cancelled what the customer still owed
+    // for the goods, rather than being handed over. Returning something
+    // bought on account pays the debt off before it pays anybody back.
+    debtCancelled: { type: Number, default: 0 },
     // The sale that spent it, by receipt number. Set once and checked before
     // spending, so one refund cannot pay for two baskets.
     creditReceiptNo: { type: String, default: null },

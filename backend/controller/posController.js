@@ -1066,8 +1066,23 @@ const performRefund = async ({
     //
     // Priced from the catalogue at this moment, because this figure decides how
     // much of the next basket is already paid for.
+    // Goods the customer has not paid for cancel the debt before they buy
+    // anything back.
+    //
+    // Returning a €50 item bought on account used to hand over €50 AND leave
+    // the €50 still owed — the customer walked out €50 up, and the credit book
+    // went on chasing money for goods sitting back on the shelf. The shop's
+    // first claim on returned value is what it is already owed for it.
+    //
+    // Order matters, and it is: debt first, then a replacement, then cash. A
+    // customer who owes for something cannot use its return to buy something
+    // else while the debt stands.
+    const owedBefore = creditOutstanding(receipt);
+    const debtCancelled = money(Math.min(amount, owedBefore));
+    let leftToGiveBack = money(amount - debtCancelled);
+
     let exchangeCredit = 0;
-    if (Array.isArray(exchange) && exchange.length > 0) {
+    if (leftToGiveBack > 0 && Array.isArray(exchange) && exchange.length > 0) {
       const wanted = exchange
         .filter((entry) => mongoose.isValidObjectId(entry?.productId))
         .slice(0, 50);
@@ -1086,7 +1101,36 @@ const performRefund = async ({
         return sum + price * quantity;
       }, 0);
 
-      exchangeCredit = money(Math.min(amount, value));
+      // Only what is left after the debt — a replacement cannot be paid for
+      // with value the shop was already owed.
+      exchangeCredit = money(Math.min(leftToGiveBack, value));
+      leftToGiveBack = money(leftToGiveBack - exchangeCredit);
+    }
+
+    // Whatever survives both is the money that actually crosses the counter.
+    const cashBack = leftToGiveBack;
+
+    // Take the returned goods off the debt. `credit.amount` is what went on the
+    // book, so reducing it is what "these goods are no longer owed for" means —
+    // the payments already made stay exactly as they were.
+    if (debtCancelled > 0) {
+      receipt.credit.amount = money(Number(receipt.credit.amount || 0) - debtCancelled);
+
+      // Nothing left owed: the account closes, and the sale rows stop saying
+      // Pending. They are not "paid" in the sense of money arriving — the goods
+      // came back instead — but nothing is outstanding either, and the negative
+      // refund rows beside them are what net the sale out.
+      if (creditOutstanding(receipt) <= 0) {
+        receipt.credit.settledAt = new Date();
+
+        if (receipt.saleIds?.length) {
+          await Sale.updateMany(
+            { _id: { $in: receipt.saleIds } },
+            { $set: { paymentStatus: "paid" } },
+            opts(session),
+          );
+        }
+      }
     }
 
     // Expired and damaged goods are refunded but not resold, so they never go
@@ -1177,6 +1221,10 @@ const performRefund = async ({
       restocked: restock,
       amount,
       exchangeCredit,
+      // What of this refund went to clearing what the customer already owed for
+      // the goods. Money that never crossed the counter, so the drawer must not
+      // be told it did.
+      debtCancelled,
       creditReceiptNo: null,
       items: lines,
     });
@@ -1200,6 +1248,8 @@ const performRefund = async ({
       lines,
       restocked: restock,
       exchangeCredit,
+      debtCancelled,
+      cashBack,
       status: receipt.status,
       receiptId: receipt._id,
       reference: refundRef,
@@ -1218,7 +1268,8 @@ const performRefund = async ({
         // the counter. On a straight refund the first is zero and the second is
         // the whole amount.
         exchangeCredit,
-        cashBack: money(amount - exchangeCredit),
+        debtCancelled,
+        cashBack,
         items: lines.map((line) => ({
           name: line.name,
           quantity: line.quantity,
@@ -1501,7 +1552,12 @@ module.exports.getRefunds = async (req, res) => {
           // that came out at the counter, so it needs the same two halves: what
           // was spent on a replacement, and what actually went back.
           exchangeCredit: money(entry.exchangeCredit),
-          cashBack: money(Number(entry.amount || 0) - Number(entry.exchangeCredit || 0)),
+          debtCancelled: money(entry.debtCancelled),
+          cashBack: money(
+            Number(entry.amount || 0) -
+              Number(entry.exchangeCredit || 0) -
+              Number(entry.debtCancelled || 0),
+          ),
           items: (entry.items || []).map((item) => ({
             name: item.name,
             quantity: item.quantity,
