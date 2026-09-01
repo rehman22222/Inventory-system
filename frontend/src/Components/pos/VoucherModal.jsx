@@ -185,7 +185,11 @@ function VoucherModal({
     barcode: "",
   });
   const [made, setMade] = useState(null);
-  const [labels, setLabels] = useState(12);
+  // How many stickers to print. Set from the quantity received the moment the
+  // product is created — one label per unit going on the shelf — so the common
+  // case needs no typing. It used to open at a flat 12, which was a number
+  // with nothing behind it: add three vapes, get twelve stickers.
+  const [labels, setLabels] = useState(1);
 
   // Hand-typed money off this basket, folded in from what used to be its own
   // rail button.
@@ -237,6 +241,9 @@ function VoucherModal({
         barcode: created.barcode || product.barcode.trim(),
         Price: Number(created.Price ?? product.Price),
       });
+      // A shelf label per unit received. Nothing to price means nothing to
+      // label yet, so that falls to a single sticker rather than none.
+      setLabels(Math.max(1, Math.min(200, Number(product.quantity) || 1)));
       setProduct({ name: "", Price: "", costPrice: "", Category: "", quantity: "", barcode: "" });
       onProductAdded?.();
     } catch (error) {
