@@ -82,7 +82,7 @@ function StatusBar({ user, till, onPrint }) {
           {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </span>
         <span className="hidden sm:block">
-          <LanguageSwitcher tone="auto" />
+          <LanguageSwitcher tone="auto" drop="up" />
         </span>
         <button
           type="button"

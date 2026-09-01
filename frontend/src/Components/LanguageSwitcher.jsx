@@ -9,8 +9,11 @@ import { LANGUAGES } from "../i18n";
  *
  * @param {"dark"|"light"|"auto"} tone  color scheme of the surrounding surface.
  *   "auto" follows the active DaisyUI theme (base-content/base-100).
+ * @param {"down"|"up"} drop  which way the menu opens. The till puts this in a
+ *   status bar pinned to the bottom of an overflow-hidden screen, where a menu
+ *   dropping downwards renders off the viewport and is clipped away entirely.
  */
-export default function LanguageSwitcher({ tone = "dark" }) {
+export default function LanguageSwitcher({ tone = "dark", drop = "down" }) {
   const { i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -55,12 +58,19 @@ export default function LanguageSwitcher({ tone = "dark" }) {
       >
         <FiGlobe className="text-sm" />
         {current.native}
-        <FiChevronDown className={`text-xs transition-transform ${open ? "rotate-180" : ""}`} />
+        {/* The chevron points the way the menu will actually go. */}
+        <FiChevronDown
+          className={`text-xs transition-transform ${
+            (drop === "up") !== open ? "rotate-180" : ""
+          }`}
+        />
       </button>
 
       {open && (
         <ul
-          className={`absolute right-0 z-50 mt-3 w-44 border py-1 shadow-xl ${panelBg}`}
+          className={`absolute right-0 z-50 w-44 border py-1 shadow-xl ${
+            drop === "up" ? "bottom-full mb-3" : "mt-3"
+          } ${panelBg}`}
           style={{ borderRadius: 0 }}
         >
           {LANGUAGES.map((l) => {

@@ -43,8 +43,11 @@ export const initCurrency = () => active;
 export const currencySymbol = () =>
   (CURRENCIES.find((entry) => entry.code === getCurrencyCode()) || CURRENCIES[0]).symbol;
 
+// A non-breaking space between the sign and the figure. Breaking would let a
+// narrow column wrap the euro sign onto one line and the money onto the next,
+// which is how a price becomes unreadable at exactly the width it matters.
 export const currency = (value) =>
-  `${currencySymbol()}${Number(value || 0).toLocaleString(undefined, {
+  `${currencySymbol()} ${Number(value || 0).toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
