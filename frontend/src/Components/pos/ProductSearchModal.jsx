@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FiArrowRight, FiEdit2, FiImage, FiSearch } from "react-icons/fi";
+import { FiArrowRight, FiEdit2, FiSearch } from "react-icons/fi";
 import PosModal from "./PosModal";
 import ProductEditPanel from "./ProductEditPanel";
 import { currency } from "./posUtils";
+import { iconForCategory } from "./categoryIcons";
 
 // A filter-rich product search, in the style of a real till: a category tree on
 // the left, a "search by" selector and sort controls on top, and result rows
@@ -200,17 +201,14 @@ function ProductSearchModal({ products, categories, canEdit = false, onPick, onE
                         : "cursor-pointer hover:border-cyan-700"
                     }`}
                   >
-                    {product.image?.url ? (
-                      <img
-                        src={product.image.url}
-                        alt={product.name}
-                        className="h-11 w-11 shrink-0 object-cover ring-1 ring-slate-700"
-                      />
-                    ) : (
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center bg-slate-800 text-slate-600 ring-1 ring-slate-700">
-                        <FiImage className="h-4 w-4" />
-                      </span>
-                    )}
+                    {/* The category mark, the same as the product tiles use.
+                        The till stopped fetching photographs when it stopped
+                        showing them, so this row was falling through to a
+                        placeholder on every product — an empty grey frame that
+                        said nothing about what it sat beside. */}
+                    {React.createElement(iconForCategory(product.Category?.name), {
+                      className: "h-6 w-6 shrink-0 text-slate-500",
+                    })}
 
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium text-slate-100">{product.name}</p>
