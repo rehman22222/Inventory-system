@@ -152,7 +152,10 @@ module.exports.quickAddProduct = async (req, res) => {
     module.exports.getProduct = async (req, res) => {
         try {
           const views = {
-            pos: "name Desciption Category Price quantity lowStockThreshold barcode image.url",
+            // No image: the till shows the category icon instead, and this
+            // projection is fetched for the whole catalogue at once — several
+            // hundred Cloudinary URLs nothing renders is payload for nothing.
+            pos: "name Desciption Category Price quantity lowStockThreshold barcode",
             dashboard: "name Category Price quantity lowStockThreshold",
             lookup: "name",
             // What the till's unknown-barcode dialog needs to show a candidate

@@ -6,7 +6,6 @@ import toast from "react-hot-toast";
 import {
   FiClock,
   FiHash,
-  FiImage,
   FiClipboard,
   FiLogOut,
   FiBookOpen,
@@ -28,6 +27,7 @@ import { gettingallDeals } from "../features/dealSlice";
 import ActionRail from "../Components/pos/ActionRail";
 import SaleTable from "../Components/pos/SaleTable";
 import CategoryTiles from "../Components/pos/CategoryTiles";
+import { iconForCategory } from "../Components/pos/categoryIcons";
 import NumericKeypad from "../Components/pos/NumericKeypad";
 import StatusBar from "../Components/pos/StatusBar";
 import { Greeting, GreetingLine } from "../Components/pos/Greeting";
@@ -1924,18 +1924,19 @@ function POSPage() {
                           {t("pos.tile.outOfStock", "Out of stock")}
                         </span>
                       )}
+                      {/* What KIND of thing this is, rather than a photograph
+                          of it. A vape shop sells four hundred near-identical
+                          black rectangles: the photos were a wall of the same
+                          grey smudge, and most of them were never taken at
+                          all. The category icon tells a cashier more, loads
+                          nothing, and is never missing. */}
                       <div className="flex items-start gap-2">
-                        {product.image?.url ? (
-                          <img
-                            src={product.image.url}
-                            alt={product.name}
-                            className="h-10 w-10 shrink-0 object-cover ring-1 ring-slate-700"
-                          />
-                        ) : (
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center bg-slate-800 text-slate-600 ring-1 ring-slate-700">
-                            <FiImage className="h-4 w-4" />
-                          </span>
-                        )}
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-slate-800 text-slate-500 ring-1 ring-slate-700">
+                          {React.createElement(iconForCategory(product.Category?.name), {
+                            className: "h-4 w-4",
+                            strokeWidth: 2,
+                          })}
+                        </span>
                         <span className="line-clamp-2 text-xs font-medium leading-snug text-slate-200">
                           {product.name}
                         </span>

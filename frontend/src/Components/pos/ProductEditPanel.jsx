@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
-import { FiImage, FiX } from "react-icons/fi";
+import { FiX } from "react-icons/fi";
 import axiosInstance from "../../lib/axios";
 import { EditProduct } from "../../features/productSlice";
 import { sanitizeDecimal, sanitizeInteger } from "./posUtils";
@@ -12,7 +12,9 @@ import { sanitizeDecimal, sanitizeInteger } from "./posUtils";
 // A manager standing at the counter finds the wrong price, a missing barcode or
 // a stock count that is out — and having to walk to the back office for that is
 // what this exists to avoid. Same fields as the Products page, so there is one
-// mental model rather than two.
+// mental model rather than two — bar the product photo, which the till has no
+// use for: the grid shows a category icon, and a cashier standing at a counter
+// with a queue is not the person to be uploading pictures.
 //
 // The till's catalogue is fetched with a narrow projection and deliberately
 // carries no cost price, so the whole record is loaded here for the one product
@@ -44,9 +46,6 @@ function ProductEditPanel({ product, categories, onSaved, onClose }) {
     expiryDate: "",
     Desciption: "",
   });
-
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState("");
 
   const set = (key) => (value) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -85,7 +84,6 @@ function ProductEditPanel({ product, categories, onSaved, onClose }) {
           expiryDate: asDateInput(full.expiryDate),
           Desciption: full.Desciption || "",
         });
-        setImagePreview(full.image?.url || "");
       })
       .catch((error) => {
         if (!alive) return;
@@ -102,21 +100,6 @@ function ProductEditPanel({ product, categories, onSaved, onClose }) {
       alive = false;
     };
   }, [product._id, t]);
-
-  const pickImage = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast.error(
-        t("pos.productEdit.imageOnly", { defaultValue: "Choose an image file." }),
-      );
-      return;
-    }
-
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-  };
 
   // Shelf label is optional, but when given the server only accepts letters,
   // numbers, spaces and dashes — check it here so the cashier is told before the
@@ -154,7 +137,6 @@ function ProductEditPanel({ product, categories, onSaved, onClose }) {
     if (form.barcode) payload.append("barcode", form.barcode.trim());
     if (form.expiryDate) payload.append("expiryDate", form.expiryDate);
     if (form.Desciption) payload.append("Desciption", form.Desciption.trim());
-    if (imageFile) payload.append("image", imageFile);
 
     // Only send the cost when it has actually been changed. The server re-reads
     // any cost it is given as being in the shop's own currency, which clears the
@@ -229,30 +211,6 @@ function ProductEditPanel({ product, categories, onSaved, onClose }) {
       </div>
 
       <div className="space-y-3">
-        {/* Image */}
-        <div className="flex items-center gap-3">
-          {imagePreview ? (
-            <img
-              src={imagePreview}
-              alt={form.name}
-              className="h-16 w-16 shrink-0 object-cover ring-1 ring-slate-700"
-            />
-          ) : (
-            <span className="flex h-16 w-16 shrink-0 items-center justify-center bg-slate-800 text-slate-600 ring-1 ring-slate-700">
-              <FiImage className="h-5 w-5" />
-            </span>
-          )}
-          <div>
-            <span className={label}>
-              {t("pos.productEdit.image", { defaultValue: "Product image" })}
-            </span>
-            <label className="inline-flex cursor-pointer items-center border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800">
-              {t("pos.productEdit.upload", { defaultValue: "Upload" })}
-              <input type="file" accept="image/*" onChange={pickImage} className="hidden" />
-            </label>
-          </div>
-        </div>
-
         <div>
           <label className={label} htmlFor="pos-edit-name">
             {t("pos.productEdit.name", { defaultValue: "Name" })} *
