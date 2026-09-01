@@ -1930,12 +1930,14 @@ function POSPage() {
                           grey smudge, and most of them were never taken at
                           all. The category icon tells a cashier more, loads
                           nothing, and is never missing. */}
-                      <div className="flex items-start gap-2">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-slate-800 text-slate-500 ring-1 ring-slate-700">
-                          {React.createElement(iconForCategory(product.Category?.name), {
-                            className: "h-5 w-5",
-                          })}
-                        </span>
+                      <div className="flex items-start gap-2.5">
+                        {/* Bare. The boxed-and-ringed version put a frame
+                            round every tile inside a grid that is already all
+                            frames, and the icon ended up reading as a missing
+                            photograph rather than a mark. */}
+                        {React.createElement(iconForCategory(product.Category?.name), {
+                          className: "mt-0.5 h-6 w-6 shrink-0 text-slate-500",
+                        })}
                         <span className="line-clamp-2 text-xs font-medium leading-snug text-slate-200">
                           {product.name}
                         </span>

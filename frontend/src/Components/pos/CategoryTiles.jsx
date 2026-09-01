@@ -24,13 +24,13 @@ function CategoryTiles({ categories, selected, onSelect, onClear, layout = "grid
   const row = layout === "row";
 
   const wrapper = row ? "flex gap-2 overflow-x-auto pb-1" : "grid grid-cols-2 gap-2";
-  const size = row ? "h-[52px] w-[104px] shrink-0" : "h-[64px]";
-  const base = `${size} relative flex flex-col items-center justify-center gap-0.5 border px-1 text-center text-[11px] font-bold uppercase leading-[1.15] tracking-wide transition active:scale-[0.97]`;
+  const size = row ? "h-[56px] w-[112px] shrink-0" : "h-[72px]";
+  const base = `${size} relative flex flex-col items-center justify-center gap-1 border px-2 text-center text-[13px] font-bold uppercase leading-[1.2] tracking-wide transition active:scale-[0.97]`;
   const idle =
     "border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-600 hover:bg-slate-800";
   // Tucked into the corner and kept quiet. It is there to be recognised at a
   // glance, not to compete with the name it belongs to.
-  const corner = "pointer-events-none absolute start-1.5 top-1.5 h-3.5 w-3.5";
+  const corner = "pointer-events-none absolute start-2 top-2 h-[18px] w-[18px]";
 
   return (
     <div className={wrapper}>
@@ -57,7 +57,7 @@ function CategoryTiles({ categories, selected, onSelect, onClear, layout = "grid
                 repeats it. */}
             {typeof category.productCount === "number" && (
               <span
-                className={`text-[9px] font-semibold tabular-nums ${
+                className={`text-[10px] font-semibold tabular-nums ${
                   active ? "text-blue-200" : "text-slate-500"
                 }`}
               >
