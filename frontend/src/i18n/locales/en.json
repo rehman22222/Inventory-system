@@ -473,7 +473,7 @@
     },
     "table": {
       "product": "Item",
-      "rate": "Rate",
+      "rate": "Price",
       "qty": "Qty",
       "total": "Total",
       "increase": "Increase Quantity",

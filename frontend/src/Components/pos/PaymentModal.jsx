@@ -118,7 +118,7 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
 
   // CHARGE. Puts the chosen tender through — and with cash already counted into
   // the box, settles the rest on the chosen method in the same press.
-  const charge = () => {
+  const charge = (payMethod = method) => {
     if (busy || !accountReady) return;
 
     // Nothing left to collect: this press is the confirmation.
@@ -127,19 +127,23 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
       return;
     }
 
-    if (splitting && method !== "cash") {
+    if (splitting && payMethod !== "cash") {
       const cash = Math.round(typed * 100) / 100;
       const rest = Math.round((remaining - cash) * 100) / 100;
-      const next = [...payments, { method: "cash", amount: cash }, { method, amount: rest }];
+      const next = [
+        ...payments,
+        { method: "cash", amount: cash },
+        { method: payMethod, amount: rest },
+      ];
       setPayments(next);
       setAmount("");
       // The two together are the balance exactly, so there is no change to read
       // and — unless one of them is the book — nothing left to ask.
-      if (method !== "credit") onConfirm(next);
+      if (payMethod !== "credit") onConfirm(next);
       return;
     }
 
-    addPayment(hasTyped && !splitting ? typed : remaining, method);
+    addPayment(hasTyped && !splitting ? typed : remaining, payMethod);
   };
 
   const removePayment = (index) =>
@@ -160,7 +164,7 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
       // must never scroll away, and the header bar was carrying nothing but a
       // back arrow.
       headerRight={
-        <div className="flex items-baseline gap-4">
+        <div className="flex items-baseline gap-4 border border-slate-700 bg-black/50 px-4 py-1.5">
           <span className="flex items-baseline gap-1.5">
             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
               {t("pos.total")}
@@ -222,6 +226,11 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
                     key={entry.value}
                     type="button"
                     onClick={() => setMethod(entry.value)}
+                    // One tap chooses, two puts it through. The overwhelming
+                    // majority of sales are the whole balance on the method
+                    // that is already lit, and reaching down to CHARGE for
+                    // every one of them is a movement per customer, all day.
+                    onDoubleClick={() => charge(entry.value)}
                     aria-pressed={chosen}
                     className={`flex flex-col items-center justify-center gap-0.5 py-2.5 text-xs font-bold uppercase transition active:scale-[0.98] ${
                       chosen

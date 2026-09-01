@@ -25,7 +25,7 @@ import { socketURL } from "../lib/socket";
 import { gettingallCategory } from "../features/categorySlice";
 import { gettingallDeals } from "../features/dealSlice";
 import ActionRail from "../Components/pos/ActionRail";
-import SaleTable from "../Components/pos/SaleTable";
+import SaleTable, { COLS as TABLE_COLS } from "../Components/pos/SaleTable";
 import CategoryTiles from "../Components/pos/CategoryTiles";
 import { iconForCategory } from "../Components/pos/categoryIcons";
 import NumericKeypad from "../Components/pos/NumericKeypad";
@@ -1570,24 +1570,31 @@ function POSPage() {
               </div>
             </div>
 
-            {/* minmax(0,1fr), not 1fr: a bare 1fr is minmax(auto,1fr) and refuses
-                to shrink below its content, so an applied deal — a long product
-                name, an EDITED badge and a set stepper — pushed the total clean
-                off the edge of a narrow till. */}
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border border-slate-800 bg-black/40 px-3 py-3 sm:gap-6 sm:px-4">
-              <div className="min-w-0 space-y-1 text-sm">
-                {/* The word and the count, side by side. What they come to is
-                    over on the money side with the total, so every figure in
-                    this panel is read down one column. */}
-                <div className="flex items-center gap-2 text-slate-500">
+            {/* What the basket comes to, and everything taken off it on the
+                way. Padded to match the table above so the columns line up
+                rather than nearly line up. */}
+            <div className="space-y-1 border border-slate-800 bg-black/40 px-3 py-3 text-sm">
+              <div className="min-w-0 space-y-1">
+                {/* Laid out on the SAME columns as the basket above it, so the
+                    count sits under PRICE and what it comes to under TOTAL.
+                    The panel used to be a grid of its own invention and every
+                    figure in it landed a little to the left of the figure it
+                    was summing. */}
+                <div className={`grid ${TABLE_COLS} items-center gap-1.5 text-slate-500`}>
                   <span>{t("pos.subtotal")}</span>
-                  {cart.length > 0 && (
-                    <span className="bg-cyan-950 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-300 ring-1 ring-cyan-800">
-                      {t("pos.itemsCount", {
-                        count: cart.reduce((sum, item) => sum + item.quantity, 0),
-                      })}
-                    </span>
-                  )}
+                  <span>
+                    {cart.length > 0 && (
+                      <span className="whitespace-nowrap bg-cyan-950 px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-300 ring-1 ring-cyan-800">
+                        {t("pos.itemsCount", {
+                          count: cart.reduce((sum, item) => sum + item.quantity, 0),
+                        })}
+                      </span>
+                    )}
+                  </span>
+                  <span />
+                  <span className="text-end tabular-nums text-slate-300">
+                    {currency(subtotal)}
+                  </span>
                 </div>
                 {voucherDiscount > 0 && (
                   <div className="flex justify-between gap-8 text-emerald-400">
@@ -1750,14 +1757,8 @@ function POSPage() {
                 )}
               </div>
 
-              <div className="min-w-0 text-end">
-                {/* What the goods came to before anything was taken off it,
-                    directly above what is actually owed. The two figures a
-                    cashier compares now sit one under the other instead of
-                    across the panel from each other. */}
-                <p className="tabular-nums text-sm text-slate-400">{currency(subtotal)}</p>
-
-                <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
+              <div className="min-w-0 border-t border-slate-800 pt-2 text-end">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
                   {creditApplied > 0 ? t("pos.receiptDoc.totalDue", "Total due") : t("pos.total")}
                 </p>
                 <p className="font-display whitespace-nowrap text-2xl font-bold tabular-nums text-cyan-400 sm:text-3xl">
