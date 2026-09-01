@@ -1577,11 +1577,18 @@ function POSPage() {
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border border-slate-800 bg-black/40 px-3 py-3 text-sm sm:gap-6 sm:px-4">
               <div className="min-w-0 space-y-1">
                 {/* Subtotal, and how many units it is the sum of, at either
-                    end of the line they both describe. */}
+                    end of the line they both describe.
+
+                    The margin brings the count under the Held button above
+                    it. That is an eye-match, not a lock: Held sits in a flex
+                    row and this sits in a grid cell inside a padded panel, so
+                    the two are only as aligned as the tax box and the total
+                    column happen to leave them. It holds at the till's own
+                    width, which is the only width it is ever seen at. */}
                 <div className="flex items-center justify-between gap-4 text-slate-500">
                   <span>{t("pos.subtotal")}</span>
                   {cart.length > 0 && (
-                    <span className="whitespace-nowrap bg-cyan-950 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-300 ring-1 ring-cyan-800">
+                    <span className="me-6 whitespace-nowrap bg-cyan-950 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-300 ring-1 ring-cyan-800">
                       {t("pos.itemsCount", {
                         count: cart.reduce((sum, item) => sum + item.quantity, 0),
                       })}
@@ -1754,12 +1761,12 @@ function POSPage() {
                     owed. The two figures a cashier compares sit one under the
                     other in the same column rather than across the panel from
                     each other with a list of deductions in between. */}
-                <p className="tabular-nums text-slate-300">{currency(subtotal)}</p>
+                <p className="font-mono tabular-nums text-slate-300">{currency(subtotal)}</p>
 
                 <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
                   {creditApplied > 0 ? t("pos.receiptDoc.totalDue", "Total due") : t("pos.total")}
                 </p>
-                <p className="font-display whitespace-nowrap text-2xl font-bold tabular-nums text-cyan-400 sm:text-3xl">
+                <p className="whitespace-nowrap font-mono text-2xl font-bold tabular-nums text-cyan-400 sm:text-3xl">
                   {currency(due)}
                 </p>
                 {/* The full price stays visible: the customer is buying a

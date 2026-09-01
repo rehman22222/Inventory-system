@@ -169,7 +169,7 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
             <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
               {t("pos.total")}
             </span>
-            <span className="text-lg font-semibold tabular-nums text-slate-300">
+            <span className="font-mono text-lg font-semibold tabular-nums text-slate-300">
               {currency(total)}
             </span>
           </span>
@@ -181,7 +181,7 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
               <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
                 {t("pos.payment.paid")}
               </span>
-              <span className="text-lg font-semibold tabular-nums text-cyan-400">
+              <span className="font-mono text-lg font-semibold tabular-nums text-cyan-400">
                 {currency(paid)}
               </span>
             </span>
@@ -192,7 +192,7 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
               {settled ? t("pos.changeDue") : t("pos.payment.due", "Due")}
             </span>
             <span
-              className={`font-display text-3xl font-bold tabular-nums ${
+              className={`font-mono text-3xl font-bold tabular-nums ${
                 settled ? "text-emerald-400" : "text-amber-400"
               }`}
             >
@@ -240,7 +240,7 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
                   >
                     {label(entry.value)}
                     <span
-                      className={`text-[11px] font-semibold tabular-nums ${
+                      className={`font-mono text-[11px] font-semibold tabular-nums ${
                         chosen ? "text-blue-100" : "text-slate-500"
                       }`}
                     >
@@ -341,7 +341,7 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
                 className="flex w-full items-center justify-center gap-2 bg-slate-800 py-2.5 text-xs font-bold uppercase text-slate-200 transition hover:bg-slate-700"
               >
                 {t("pos.payment.roundOff")}
-                <span className="tabular-nums opacity-80">{currency(roundedUp)}</span>
+                <span className="font-mono tabular-nums opacity-80">{currency(roundedUp)}</span>
                 <span className="font-normal normal-case opacity-60">
                   {t("pos.payment.roundOffHint")}
                 </span>
@@ -361,7 +361,7 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
               <span className="text-xs font-bold uppercase tracking-wide text-amber-300">
                 {t("pos.credit.onAccount", "On Account")}
               </span>
-              <span className="font-bold tabular-nums text-amber-200">
+              <span className="font-mono font-bold tabular-nums text-amber-200">
                 {currency(onAccount > 0 ? onAccount : takesFor("credit"))}
               </span>
             </div>
@@ -432,7 +432,7 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
               >
                 <span className="font-semibold text-slate-300">{label(entry.method)}</span>
                 <span className="flex items-center gap-3">
-                  <span className="font-bold tabular-nums text-slate-100">
+                  <span className="font-mono font-bold tabular-nums text-slate-100">
                     {currency(entry.amount)}
                   </span>
                   <button

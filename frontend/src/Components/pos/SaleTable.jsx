@@ -76,7 +76,7 @@ function SaleTable({
           </p>
         </div>
 
-        <span className="text-end tabular-nums text-slate-400">{currency(item.price)}</span>
+        <span className="text-end font-mono tabular-nums text-slate-400">{currency(item.price)}</span>
 
         <div className="flex items-center justify-center gap-1">
           <button
@@ -93,7 +93,7 @@ function SaleTable({
           >
             <FiMinus className="h-3 w-3" />
           </button>
-          <span className="w-7 text-center font-semibold tabular-nums text-slate-100">
+          <span className="w-7 text-center font-mono font-semibold tabular-nums text-slate-100">
             {item.quantity}
           </span>
           <button
@@ -110,7 +110,7 @@ function SaleTable({
         </div>
 
         <div className="flex items-center justify-end gap-0.5">
-          <span className="font-semibold tabular-nums text-slate-100">
+          <span className="font-mono font-semibold tabular-nums text-slate-100">
             {currency(item.price * item.quantity)}
           </span>
           <button
