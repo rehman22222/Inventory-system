@@ -11,10 +11,11 @@ import { iconForCategory } from "./categoryIcons";
 // to mean "this is the thing happening", and reusing it costs a cashier nothing
 // to learn.
 //
-// Each tile carries its own icon in the start corner. A cashier reaching for
-// Drinks finds the cup before they have read the word, which is the whole point
-// of a tile over a list — and the icon is picked from the category's name, so a
-// shop that renames or adds one still gets the right picture.
+// Three things in a fixed shape: the icon and the count share a top row, and
+// the name has the whole space beneath them. The icon used to float in the
+// corner over the top of everything, which was fine until a name ran to two
+// lines — "E-Liquids & Nic Salts" then printed straight through it. Nothing
+// here overlaps because nothing here sits on top of anything else.
 //
 // Clear is a tile like the rest, not a strip underneath. It does the same kind
 // of job — choosing what the grid shows — so it belongs in the same row of
@@ -24,19 +25,17 @@ function CategoryTiles({ categories, selected, onSelect, onClear, layout = "grid
   const row = layout === "row";
 
   const wrapper = row ? "flex gap-2 overflow-x-auto pb-1" : "grid grid-cols-2 gap-2";
-  const size = row ? "h-[56px] w-[112px] shrink-0" : "h-[72px]";
-  const base = `${size} relative flex flex-col items-center justify-center gap-1 border px-2 text-center text-[13px] font-bold uppercase leading-[1.2] tracking-wide transition active:scale-[0.97]`;
+  const size = row ? "h-[76px] w-[124px] shrink-0" : "h-[76px]";
+  const base = `${size} flex flex-col border px-2 py-1.5 text-center text-[13px] font-bold uppercase leading-[1.2] tracking-wide transition active:scale-[0.97]`;
   const idle =
     "border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-600 hover:bg-slate-800";
-  // Tucked into the corner and kept quiet. It is there to be recognised at a
-  // glance, not to compete with the name it belongs to.
-  const corner = "pointer-events-none absolute start-2 top-2 h-[18px] w-[18px]";
 
   return (
     <div className={wrapper}>
       {categories.map((category) => {
         const active = selected === category._id;
         const Icon = iconForCategory(category.name);
+        const muted = active ? "text-blue-200" : "text-slate-400";
 
         return (
           <button
@@ -49,21 +48,22 @@ function CategoryTiles({ categories, selected, onSelect, onClear, layout = "grid
                 : idle
             }`}
           >
-            <Icon className={`${corner} ${active ? "text-blue-200" : "text-slate-400"}`} />
+            {/* The mark and the number, on one line and out of the way. How
+                many things are in an aisle is part of reading the aisle, so it
+                stays on the tile — just not under the name, where a second line
+                was being pushed up into the icon. */}
+            <span className="flex w-full items-center justify-between">
+              <Icon className={`h-[18px] w-[18px] ${muted}`} />
+              {typeof category.productCount === "number" && (
+                <span className={`text-[11px] font-semibold tabular-nums ${muted}`}>
+                  {category.productCount}
+                </span>
+              )}
+            </span>
 
-            <span className="line-clamp-2 px-0.5">{category.name}</span>
-            {/* Under the name, not tucked in a corner: how many things are in
-                an aisle is part of reading the aisle, and the top bar no longer
-                repeats it. */}
-            {typeof category.productCount === "number" && (
-              <span
-                className={`text-[10px] font-semibold tabular-nums ${
-                  active ? "text-blue-200" : "text-slate-500"
-                }`}
-              >
-                {category.productCount}
-              </span>
-            )}
+            <span className="flex flex-1 items-center justify-center">
+              <span className="line-clamp-2">{category.name}</span>
+            </span>
           </button>
         );
       })}
@@ -71,8 +71,13 @@ function CategoryTiles({ categories, selected, onSelect, onClear, layout = "grid
       {/* Only worth offering when something is actually open. */}
       {selected && onClear && (
         <button type="button" onClick={onClear} className={`${base} ${idle}`}>
-          <TbX className={`${corner} text-slate-500`} strokeWidth={2} />
-          <span className="line-clamp-2 px-0.5">{t("pos.clearCategory", "Clear")}</span>
+          <span className="flex w-full items-center justify-between">
+            <TbX className="h-[18px] w-[18px] text-slate-400" strokeWidth={2} />
+          </span>
+
+          <span className="flex flex-1 items-center justify-center">
+            <span className="line-clamp-2">{t("pos.clearCategory", "Clear")}</span>
+          </span>
         </button>
       )}
     </div>
