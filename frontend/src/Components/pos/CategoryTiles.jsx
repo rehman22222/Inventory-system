@@ -48,17 +48,19 @@ function CategoryTiles({ categories, selected, onSelect, onClear, layout = "grid
                 : idle
             }`}
           >
-            {/* The mark and the number together, at the start. Pushed to
-                opposite ends of the tile they read as two separate facts with a
-                gap of nothing between them; side by side they read as one — a
-                picture of the aisle and how much is in it. */}
-            <span className="flex w-full items-center gap-2">
-              <Icon className={`h-[18px] w-[18px] shrink-0 ${muted}`} />
+            {/* The mark holds the corner and the number takes the middle,
+                over the name it belongs to. Three columns rather than a flex
+                row: the empty cell on the end is the same width as the icon,
+                so the number is centred on the TILE and not on whatever space
+                the icon happened to leave. */}
+            <span className="grid w-full grid-cols-[18px_1fr_18px] items-center">
+              <Icon className={`h-[18px] w-[18px] ${muted}`} />
               {typeof category.productCount === "number" && (
-                <span className={`text-[11px] font-semibold tabular-nums ${muted}`}>
+                <span className={`text-center text-[11px] font-semibold tabular-nums ${muted}`}>
                   {category.productCount}
                 </span>
               )}
+              <span />
             </span>
 
             <span className="flex flex-1 items-center justify-center">
@@ -71,7 +73,7 @@ function CategoryTiles({ categories, selected, onSelect, onClear, layout = "grid
       {/* Only worth offering when something is actually open. */}
       {selected && onClear && (
         <button type="button" onClick={onClear} className={`${base} ${idle}`}>
-          <span className="flex w-full items-center justify-between">
+          <span className="grid w-full grid-cols-[18px_1fr_18px] items-center">
             <TbX className="h-[18px] w-[18px] text-slate-400" strokeWidth={2} />
           </span>
 
