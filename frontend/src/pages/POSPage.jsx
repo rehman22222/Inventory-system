@@ -1576,22 +1576,18 @@ function POSPage() {
                 off the edge of a narrow till. */}
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border border-slate-800 bg-black/40 px-3 py-3 sm:gap-6 sm:px-4">
               <div className="min-w-0 space-y-1 text-sm">
-                {/* Subtotal, the count, and what it comes to — one line, read
-                    left to right. Stacked over each other the count sat on a
-                    line of its own with nothing beside it, and the panel grew
-                    a row to hold three words. */}
-                <div className="flex items-center justify-between gap-4 text-slate-500">
+                {/* The word and the count, side by side. What they come to is
+                    over on the money side with the total, so every figure in
+                    this panel is read down one column. */}
+                <div className="flex items-center gap-2 text-slate-500">
                   <span>{t("pos.subtotal")}</span>
-                  <span className="flex items-center gap-2">
-                    {cart.length > 0 && (
-                      <span className="bg-cyan-950 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-300 ring-1 ring-cyan-800">
-                        {t("pos.itemsCount", {
-                          count: cart.reduce((sum, item) => sum + item.quantity, 0),
-                        })}
-                      </span>
-                    )}
-                    <span className="tabular-nums text-slate-300">{currency(subtotal)}</span>
-                  </span>
+                  {cart.length > 0 && (
+                    <span className="bg-cyan-950 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-300 ring-1 ring-cyan-800">
+                      {t("pos.itemsCount", {
+                        count: cart.reduce((sum, item) => sum + item.quantity, 0),
+                      })}
+                    </span>
+                  )}
                 </div>
                 {voucherDiscount > 0 && (
                   <div className="flex justify-between gap-8 text-emerald-400">
@@ -1755,7 +1751,13 @@ function POSPage() {
               </div>
 
               <div className="min-w-0 text-end">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
+                {/* What the goods came to before anything was taken off it,
+                    directly above what is actually owed. The two figures a
+                    cashier compares now sit one under the other instead of
+                    across the panel from each other. */}
+                <p className="tabular-nums text-sm text-slate-400">{currency(subtotal)}</p>
+
+                <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
                   {creditApplied > 0 ? t("pos.receiptDoc.totalDue", "Total due") : t("pos.total")}
                 </p>
                 <p className="font-display whitespace-nowrap text-2xl font-bold tabular-nums text-cyan-400 sm:text-3xl">

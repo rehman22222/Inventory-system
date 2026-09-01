@@ -27,7 +27,7 @@ function PosModal({
         className={`pos-modal-panel flex max-h-[90vh] w-full ${width} flex-col overflow-hidden border border-slate-700 bg-slate-900 text-slate-100 shadow-2xl`}
       >
         <div
-          className={`flex items-start gap-4 border-b border-slate-700 px-5 ${
+          className={`relative flex items-start gap-4 border-b border-slate-700 px-5 ${
             bare ? "py-3" : "py-4"
           }`}
         >
@@ -47,7 +47,16 @@ function PosModal({
             {subtitle && <p className="mt-0.5 text-sm text-slate-400">{subtitle}</p>}
           </div>
 
-          {headerRight}
+          {/* Centred on the dialog rather than pushed to one end, and laid
+              over the bar rather than in it: whatever this carries is the
+              thing being looked at, and it should sit in the middle of the
+              screen it belongs to. It takes no clicks, so the back arrow
+              underneath keeps working right across the bar. */}
+          {headerRight && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-14">
+              {headerRight}
+            </div>
+          )}
 
           {/* An arrow and a cross side by side are two ways to do one thing,
               and a cashier reading the screen has to decide which. Whichever
