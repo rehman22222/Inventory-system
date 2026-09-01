@@ -1576,12 +1576,13 @@ function POSPage() {
                 off the edge of a narrow till. */}
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border border-slate-800 bg-black/40 px-3 py-3 sm:gap-6 sm:px-4">
               <div className="min-w-0 space-y-1 text-sm">
-                {/* How many units are in the basket. On its own line at the
-                    top, level with the TOTAL heading opposite: that corner was
-                    empty, and hung off the end of "Subtotal" the chip read as
-                    a note about the subtotal rather than about the basket. */}
+                {/* How many units are in the basket. Its own line at the top,
+                    sitting over the subtotal figure rather than out at the far
+                    edge — the count and the money it comes to belong in the
+                    same column, and the eye reads down one line instead of
+                    across the panel and back. */}
                 {cart.length > 0 && (
-                  <div className="flex">
+                  <div className="flex justify-end">
                     <span className="bg-cyan-950 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-300 ring-1 ring-cyan-800">
                       {t("pos.itemsCount", {
                         count: cart.reduce((sum, item) => sum + item.quantity, 0),
