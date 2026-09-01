@@ -49,10 +49,7 @@ function CategoryTiles({ categories, selected, onSelect, onClear, layout = "grid
                 : idle
             }`}
           >
-            <Icon
-              className={`${corner} ${active ? "text-blue-200" : "text-slate-500"}`}
-              strokeWidth={2}
-            />
+            <Icon className={`${corner} ${active ? "text-blue-200" : "text-slate-400"}`} />
 
             <span className="line-clamp-2 px-0.5">{category.name}</span>
             {/* Under the name, not tucked in a corner: how many things are in

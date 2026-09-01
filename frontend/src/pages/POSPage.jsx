@@ -1933,8 +1933,7 @@ function POSPage() {
                       <div className="flex items-start gap-2">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-slate-800 text-slate-500 ring-1 ring-slate-700">
                           {React.createElement(iconForCategory(product.Category?.name), {
-                            className: "h-4 w-4",
-                            strokeWidth: 2,
+                            className: "h-5 w-5",
                           })}
                         </span>
                         <span className="line-clamp-2 text-xs font-medium leading-snug text-slate-200">
