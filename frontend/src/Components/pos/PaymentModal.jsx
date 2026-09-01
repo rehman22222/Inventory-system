@@ -155,6 +155,48 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
       // is a line to read past on the way to the figure.
       onBack={onClose}
       width="max-w-lg"
+      // The balance lives in the header rather than in a panel of its own. It
+      // is the one figure that matters on this screen and the one thing that
+      // must never scroll away, and the header bar was carrying nothing but a
+      // back arrow.
+      headerRight={
+        <div className="flex items-baseline gap-4">
+          <span className="flex items-baseline gap-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
+              {t("pos.total")}
+            </span>
+            <span className="text-sm font-semibold tabular-nums text-slate-300">
+              {currency(total)}
+            </span>
+          </span>
+
+          {/* Only once part of the bill has actually been taken — on an
+              ordinary sale it would read 0.00 the whole way through. */}
+          {paid > 0 && (
+            <span className="flex items-baseline gap-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
+                {t("pos.payment.paid")}
+              </span>
+              <span className="text-sm font-semibold tabular-nums text-cyan-400">
+                {currency(paid)}
+              </span>
+            </span>
+          )}
+
+          <span className="flex items-baseline gap-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
+              {settled ? t("pos.changeDue") : t("pos.payment.due", "Due")}
+            </span>
+            <span
+              className={`font-display text-xl font-bold tabular-nums ${
+                settled ? "text-emerald-400" : "text-amber-400"
+              }`}
+            >
+              {currency(settled ? change : remaining)}
+            </span>
+          </span>
+        </div>
+      }
       footer={
         <button
           type="button"
@@ -167,35 +209,6 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
       }
     >
       <div className="space-y-4">
-        {/* What is owed, and what is left of it. Stacked rather than spread over
-            three columns: the balance is the figure the cashier is working to,
-            so it is the biggest thing on the screen. */}
-        <div className="border border-slate-800 bg-black/50 px-3 py-2.5 text-center">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
-            {t("pos.total")}
-          </p>
-          <p className="text-sm font-bold tabular-nums text-slate-300">{currency(total)}</p>
-
-          <p className="mt-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-600">
-            {settled ? t("pos.changeDue") : t("pos.payment.due", "Due")}
-          </p>
-          <p
-            className={`font-display text-2xl font-bold tabular-nums ${
-              settled ? "text-emerald-400" : "text-amber-400"
-            }`}
-          >
-            {currency(settled ? change : remaining)}
-          </p>
-
-          {/* Only worth saying once some of the bill has actually been taken —
-              on an ordinary sale it would read 0.00 the whole way through. */}
-          {paid > 0 && (
-            <p className="mt-2 text-[11px] font-semibold text-slate-500">
-              {t("pos.payment.paid")} {currency(paid)}
-            </p>
-          )}
-        </div>
-
         {!settled && (
           <div className="space-y-3">
             {/* How it is being paid. Already chosen at the basket — this is
