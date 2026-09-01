@@ -405,7 +405,6 @@
     "customer": "العميل",
     "paymentMethod": "طريقة الدفع",
     "cartEmpty": "السلة فارغة",
-    "scanOrSelect": "امسح الباركود أو اختر المنتجات.",
     "posName": "نقطة بيع المخزون",
     "receiptNo": "رقم الإيصال: {{no}}",
     "cashier": "أمين الصندوق: {{name}}",

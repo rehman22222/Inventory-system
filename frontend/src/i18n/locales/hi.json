@@ -405,7 +405,6 @@
     "customer": "ग्राहक",
     "paymentMethod": "भुगतान विधि",
     "cartEmpty": "कार्ट खाली है",
-    "scanOrSelect": "बारकोड स्कैन करें या उत्पाद चुनें।",
     "posName": "इन्वेंटरी पीओएस",
     "receiptNo": "रसीद संख्या: {{no}}",
     "cashier": "कैशियर: {{name}}",

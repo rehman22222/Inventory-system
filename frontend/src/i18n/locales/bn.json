@@ -405,7 +405,6 @@
     "customer": "গ্রাহক",
     "paymentMethod": "পেমেন্ট পদ্ধতি",
     "cartEmpty": "কার্ট খালি",
-    "scanOrSelect": "বারকোড স্ক্যান করুন বা পণ্য নির্বাচন করুন।",
     "posName": "ইনভেন্টরি পিওএস",
     "receiptNo": "রসিদ নং: {{no}}",
     "cashier": "ক্যাশিয়ার: {{name}}",

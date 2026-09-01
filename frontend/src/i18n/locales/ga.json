@@ -405,7 +405,6 @@
     "customer": "Custaiméir",
     "paymentMethod": "Modh íocaíochta",
     "cartEmpty": "Tá an tralaí folamh",
-    "scanOrSelect": "Scanáil barrachód nó roghnaigh táirgí.",
     "posName": "POS Fardail",
     "receiptNo": "Uimhir Admhála: {{no}}",
     "cashier": "Airgeadóir: {{name}}",

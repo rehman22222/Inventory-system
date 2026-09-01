@@ -408,7 +408,6 @@
     "customer": "Customer",
     "paymentMethod": "Payment Method",
     "cartEmpty": "Cart is empty",
-    "scanOrSelect": "Scan barcode or select products.",
     "posName": "Inventory POS",
     "receiptNo": "Receipt No: {{no}}",
     "cashier": "Cashier: {{name}}",

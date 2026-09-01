@@ -149,9 +149,12 @@ function SaleTable({
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {cart.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-700">
-            <EmptyCart className="h-14 w-14" />
-            <p className="text-sm font-medium text-slate-600">{t("pos.scanOrSelect")}</p>
+          /* The trolley on its own. "Scan barcode or select products" was
+             telling a cashier the two things they were already about to do,
+             every time the basket was empty — which is most of the day. The
+             mark says empty; nothing else needs saying. */
+          <div className="flex h-full items-center justify-center text-slate-800">
+            <EmptyCart className="h-28 w-28" />
           </div>
         ) : (
           <>
