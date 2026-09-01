@@ -1860,7 +1860,12 @@ function POSPage() {
                         </span>
                       </div>
 
-                      <p className="line-clamp-2 text-[11px] leading-snug text-slate-400">
+                      {/* What the offer actually covers. Centred and given a
+                          readable size: it is the thing a cashier checks
+                          before pressing the tile — "any 3 of 12" is the
+                          offer — and it was set smaller than the fine print
+                          under it. */}
+                      <p className="line-clamp-2 text-center text-[13px] font-semibold leading-snug text-slate-300">
                         {deal.mode === "mix"
                           ? t("pos.dealMixItems", "Any {{n}} of {{count}} products", {
                               n: Math.max(2, Math.floor(Number(deal.groupQuantity || 0))),
