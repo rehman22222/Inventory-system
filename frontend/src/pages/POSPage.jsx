@@ -1503,7 +1503,7 @@ function POSPage() {
 
           {/* Totals + tender */}
           <div className="space-y-2.5 border-t border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950 p-3">
-            <div className="flex flex-wrap items-start gap-2">
+            <div className="flex flex-wrap gap-2">
               {/* Who is buying, as three fixed answers rather than free text.
                   The shop wants to be able to count staff sales against
                   loyalty against passing trade, and that only works if the
@@ -1513,7 +1513,7 @@ function POSPage() {
                 value={CUSTOMER_TYPES.includes(customerName) ? customerName : CUSTOMER_TYPES[0]}
                 onChange={(event) => setCustomerName(event.target.value)}
                 aria-label={t("pos.customer")}
-                className="h-[34px] min-w-[120px] flex-1 border border-slate-800 bg-black px-3 text-xs text-slate-100 outline-none transition focus:border-cyan-600"
+                className="min-w-[120px] flex-1 border border-slate-800 bg-black px-3 py-2 text-xs text-slate-100 outline-none transition focus:border-cyan-600"
               >
                 {CUSTOMER_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -1526,30 +1526,16 @@ function POSPage() {
                   tender row taking a third of the width off the buttons that
                   take money, so it moves up here with the other things that
                   are set BEFORE the sale is closed. */}
-              <div className="flex shrink-0 flex-col gap-1">
-                <button
-                  type="button"
-                  onClick={holdSale}
-                  disabled={cart.length === 0}
-                  className="h-[34px] border border-slate-700 bg-slate-800 px-4 text-xs font-bold uppercase tracking-wide text-slate-200 transition hover:bg-slate-700 active:scale-[0.99] disabled:opacity-35"
-                >
-                  {t("pos.rail.send")}
-                </button>
-
-                {/* How many units are on the counter, under Held rather than
-                    somewhere near it. Being in the same column as the button
-                    is what keeps it there at every width — nothing is being
-                    measured against anything. */}
-                {cart.length > 0 && (
-                  <span className="whitespace-nowrap bg-cyan-950 py-0.5 text-center text-[10px] font-bold uppercase tracking-wide text-cyan-300 ring-1 ring-cyan-800">
-                    {t("pos.itemsCount", {
-                      count: cart.reduce((sum, item) => sum + item.quantity, 0),
-                    })}
-                  </span>
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={holdSale}
+                disabled={cart.length === 0}
+                className="shrink-0 border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-200 transition hover:bg-slate-700 active:scale-[0.99] disabled:opacity-35"
+              >
+                {t("pos.rail.send")}
+              </button>
               <div
-                className={`flex h-[34px] items-center gap-2 border px-3 transition ${
+                className={`flex items-center gap-2 border px-3 transition ${
                   taxEnabled
                     ? "border-cyan-700 bg-cyan-950/50 text-cyan-300"
                     : "border-slate-800 bg-black text-slate-500"
@@ -1590,7 +1576,18 @@ function POSPage() {
                 total clean off the edge of a narrow till. */}
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border border-slate-800 bg-black/40 px-3 py-3 text-sm sm:gap-6 sm:px-4">
               <div className="min-w-0 space-y-1">
-                <div className="text-slate-500">{t("pos.subtotal")}</div>
+                {/* Subtotal, and how many units it is the sum of, at either
+                    end of the line they both describe. */}
+                <div className="flex items-center justify-between gap-4 text-slate-500">
+                  <span>{t("pos.subtotal")}</span>
+                  {cart.length > 0 && (
+                    <span className="whitespace-nowrap bg-cyan-950 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-300 ring-1 ring-cyan-800">
+                      {t("pos.itemsCount", {
+                        count: cart.reduce((sum, item) => sum + item.quantity, 0),
+                      })}
+                    </span>
+                  )}
+                </div>
                 {voucherDiscount > 0 && (
                   <div className="flex justify-between gap-8 text-emerald-400">
                     <span className="font-mono text-xs">{voucher.code}</span>
