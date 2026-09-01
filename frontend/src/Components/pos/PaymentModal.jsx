@@ -170,17 +170,17 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
         {/* What is owed, and what is left of it. Stacked rather than spread over
             three columns: the balance is the figure the cashier is working to,
             so it is the biggest thing on the screen. */}
-        <div className="border border-slate-800 bg-black/50 p-4 text-center">
+        <div className="border border-slate-800 bg-black/50 px-3 py-2.5 text-center">
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
             {t("pos.total")}
           </p>
-          <p className="text-lg font-bold tabular-nums text-slate-300">{currency(total)}</p>
+          <p className="text-sm font-bold tabular-nums text-slate-300">{currency(total)}</p>
 
-          <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-slate-600">
-            {settled ? t("pos.changeDue") : t("pos.payment.remaining")}
+          <p className="mt-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-600">
+            {settled ? t("pos.changeDue") : t("pos.payment.due", "Due")}
           </p>
           <p
-            className={`font-display text-4xl font-bold tabular-nums ${
+            className={`font-display text-2xl font-bold tabular-nums ${
               settled ? "text-emerald-400" : "text-amber-400"
             }`}
           >
@@ -326,12 +326,6 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
               </button>
             )}
 
-            <p className="text-center text-[11px] text-slate-600">
-              {t(
-                "pos.payment.chargeHint",
-                "Charge settles the balance on the chosen method. Type the cash they handed over first to give change, or to pay the rest another way.",
-              )}
-            </p>
           </div>
         )}
 
