@@ -1590,10 +1590,7 @@ function POSPage() {
                 total clean off the edge of a narrow till. */}
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border border-slate-800 bg-black/40 px-3 py-3 text-sm sm:gap-6 sm:px-4">
               <div className="min-w-0 space-y-1">
-                <div className="flex justify-between gap-8 text-slate-500">
-                  <span>{t("pos.subtotal")}</span>
-                  <span className="tabular-nums text-slate-300">{currency(subtotal)}</span>
-                </div>
+                <div className="text-slate-500">{t("pos.subtotal")}</div>
                 {voucherDiscount > 0 && (
                   <div className="flex justify-between gap-8 text-emerald-400">
                     <span className="font-mono text-xs">{voucher.code}</span>
@@ -1756,7 +1753,13 @@ function POSPage() {
               </div>
 
               <div className="min-w-0 text-end">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
+                {/* What the goods came to, directly above what is actually
+                    owed. The two figures a cashier compares sit one under the
+                    other in the same column rather than across the panel from
+                    each other with a list of deductions in between. */}
+                <p className="tabular-nums text-slate-300">{currency(subtotal)}</p>
+
+                <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
                   {creditApplied > 0 ? t("pos.receiptDoc.totalDue", "Total due") : t("pos.total")}
                 </p>
                 <p className="font-display whitespace-nowrap text-2xl font-bold tabular-nums text-cyan-400 sm:text-3xl">
