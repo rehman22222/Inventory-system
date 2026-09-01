@@ -1503,7 +1503,7 @@ function POSPage() {
 
           {/* Totals + tender */}
           <div className="space-y-2.5 border-t border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950 p-3">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-start gap-2">
               {/* Who is buying, as three fixed answers rather than free text.
                   The shop wants to be able to count staff sales against
                   loyalty against passing trade, and that only works if the
@@ -1513,7 +1513,7 @@ function POSPage() {
                 value={CUSTOMER_TYPES.includes(customerName) ? customerName : CUSTOMER_TYPES[0]}
                 onChange={(event) => setCustomerName(event.target.value)}
                 aria-label={t("pos.customer")}
-                className="min-w-[120px] flex-1 border border-slate-800 bg-black px-3 py-2 text-xs text-slate-100 outline-none transition focus:border-cyan-600"
+                className="h-[34px] min-w-[120px] flex-1 border border-slate-800 bg-black px-3 text-xs text-slate-100 outline-none transition focus:border-cyan-600"
               >
                 {CUSTOMER_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -1526,16 +1526,30 @@ function POSPage() {
                   tender row taking a third of the width off the buttons that
                   take money, so it moves up here with the other things that
                   are set BEFORE the sale is closed. */}
-              <button
-                type="button"
-                onClick={holdSale}
-                disabled={cart.length === 0}
-                className="shrink-0 border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-200 transition hover:bg-slate-700 active:scale-[0.99] disabled:opacity-35"
-              >
-                {t("pos.rail.send")}
-              </button>
+              <div className="flex shrink-0 flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={holdSale}
+                  disabled={cart.length === 0}
+                  className="h-[34px] border border-slate-700 bg-slate-800 px-4 text-xs font-bold uppercase tracking-wide text-slate-200 transition hover:bg-slate-700 active:scale-[0.99] disabled:opacity-35"
+                >
+                  {t("pos.rail.send")}
+                </button>
+
+                {/* How many units are on the counter, under Held rather than
+                    somewhere near it. Being in the same column as the button
+                    is what keeps it there at every width — nothing is being
+                    measured against anything. */}
+                {cart.length > 0 && (
+                  <span className="whitespace-nowrap bg-cyan-950 py-0.5 text-center text-[10px] font-bold uppercase tracking-wide text-cyan-300 ring-1 ring-cyan-800">
+                    {t("pos.itemsCount", {
+                      count: cart.reduce((sum, item) => sum + item.quantity, 0),
+                    })}
+                  </span>
+                )}
+              </div>
               <div
-                className={`flex items-center gap-2 border px-3 transition ${
+                className={`flex h-[34px] items-center gap-2 border px-3 transition ${
                   taxEnabled
                     ? "border-cyan-700 bg-cyan-950/50 text-cyan-300"
                     : "border-slate-800 bg-black text-slate-500"
@@ -1575,22 +1589,14 @@ function POSPage() {
                 rather than nearly line up. */}
             <div className="-mx-3 space-y-1 border-y border-slate-800 bg-black/40 px-3 py-3 text-sm">
               <div className="min-w-0 space-y-1">
-                {/* Laid out on the SAME columns as the basket above it, so the
-                    count sits under PRICE and what it comes to under TOTAL.
-                    The panel used to be a grid of its own invention and every
-                    figure in it landed a little to the left of the figure it
-                    was summing. */}
+                {/* Laid out on the SAME columns as the basket above it, so what
+                    the lines come to lands under TOTAL, directly beneath the
+                    figures it sums. The panel used to keep a grid of its own
+                    invention and every total in it sat a little to the left of
+                    the column it was adding up. */}
                 <div className={`grid ${TABLE_COLS} items-center gap-1.5 text-slate-500`}>
                   <span>{t("pos.subtotal")}</span>
-                  <span className="flex justify-end">
-                    {cart.length > 0 && (
-                      <span className="whitespace-nowrap bg-cyan-950 px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-300 ring-1 ring-cyan-800">
-                        {t("pos.itemsCount", {
-                          count: cart.reduce((sum, item) => sum + item.quantity, 0),
-                        })}
-                      </span>
-                    )}
-                  </span>
+                  <span />
                   <span />
                   <span className="text-end tabular-nums text-slate-300">
                     {currency(subtotal)}

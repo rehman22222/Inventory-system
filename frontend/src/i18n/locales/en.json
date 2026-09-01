@@ -472,7 +472,7 @@
       "credit": "Customer Credit"
     },
     "table": {
-      "product": "Item",
+      "product": "Items",
       "rate": "Price",
       "qty": "Qty",
       "total": "Total",
