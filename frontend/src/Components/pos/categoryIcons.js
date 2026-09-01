@@ -1,4 +1,4 @@
-import React from "react";
+import maskIcon from "./maskIcon";
 import candyArt from "../../images/category-icons/candy.png";
 import disposableArt from "../../images/category-icons/disposible.png";
 import drinksArt from "../../images/category-icons/drinks.png";
@@ -9,49 +9,21 @@ import devicesArt from "../../images/category-icons/vapes-devices.png";
 
 // The shop's own category artwork.
 //
-// Drawn as a CSS mask rather than dropped in as an <img>. The art is white on
-// transparency, and a white <img> is white wherever it lands — it would glare
-// on the grey tiles and vanish against nothing. Masked, only the SHAPE is used
-// and the colour comes from `currentColor`, so each icon picks up whatever the
-// tile around it is already doing: muted on a closed aisle, bright on the open
-// one, without a second copy of the file in a second colour.
-//
-// The source PNGs are 2000x2000 with a lot of empty margin around the ink. They
-// live in images/Categories and are left exactly as delivered; what is imported
-// here is a cropped, downscaled copy, because a till that renders these at
+// The source PNGs are 2000x2000 with a lot of empty margin around the ink.
+// They live in images/Categories exactly as delivered; what is imported here
+// is a cropped, downscaled copy, because a till that renders these at
 // fourteen pixels has no use for four million.
-const mask = (src, name) => {
-  const CategoryIcon = ({ className = "" }) => (
-    <span
-      role="presentation"
-      className={className}
-      style={{
-        display: "inline-block",
-        backgroundColor: "currentColor",
-        WebkitMaskImage: `url(${src})`,
-        maskImage: `url(${src})`,
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-      }}
-    />
-  );
-
-  CategoryIcon.displayName = `CategoryIcon(${name})`;
-  return CategoryIcon;
-};
-
+//
+// Drawn as masks rather than images so each one takes the colour of the tile
+// it sits on — see maskIcon.
 export const ICONS = {
-  candy: mask(candyArt, "candy"),
-  disposable: mask(disposableArt, "disposable"),
-  drinks: mask(drinksArt, "drinks"),
-  eLiquid: mask(eLiquidArt, "eLiquid"),
-  misc: mask(miscArt, "misc"),
-  pouches: mask(pouchesArt, "pouches"),
-  devices: mask(devicesArt, "devices"),
+  candy: maskIcon(candyArt, "candy"),
+  disposable: maskIcon(disposableArt, "disposable"),
+  drinks: maskIcon(drinksArt, "drinks"),
+  eLiquid: maskIcon(eLiquidArt, "eLiquid"),
+  misc: maskIcon(miscArt, "misc"),
+  pouches: maskIcon(pouchesArt, "pouches"),
+  devices: maskIcon(devicesArt, "devices"),
 };
 
 // Matched on the category's NAME rather than its id, so the shop can rename

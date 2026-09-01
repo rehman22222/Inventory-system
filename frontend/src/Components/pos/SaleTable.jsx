@@ -1,13 +1,20 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { FiMinus, FiPlus, FiShoppingBag, FiTag, FiX } from "react-icons/fi";
+import { FiMinus, FiPlus, FiTag, FiX } from "react-icons/fi";
 import { currency } from "./posUtils";
+import maskIcon from "./maskIcon";
+import emptyCartArt from "../../images/category-icons/empty-cart.png";
 
 // Rate, qty and total are held to what their contents actually need — a price,
 // three small controls, a price and a cross — so everything left over goes to
 // the name. They used to reserve 306px between them, which left the product
 // column about 120px on a narrow panel and broke names one word to a line.
 const COLS = "grid-cols-[1fr_56px_84px_76px] sm:grid-cols-[1fr_64px_88px_84px]";
+
+// The shop's own trolley, for a basket with nothing in it yet. Masked like the
+// category marks, so it sits in the same muted grey as the line beneath it
+// rather than glaring white out of an empty panel.
+const EmptyCart = maskIcon(emptyCartArt, "emptyCart");
 
 // The middle sale panel: the running list of lines on this transaction.
 function SaleTable({
@@ -143,7 +150,7 @@ function SaleTable({
       <div className="min-h-0 flex-1 overflow-y-auto">
         {cart.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-700">
-            <FiShoppingBag className="h-12 w-12" strokeWidth={1.25} />
+            <EmptyCart className="h-14 w-14" />
             <p className="text-sm font-medium text-slate-600">{t("pos.scanOrSelect")}</p>
           </div>
         ) : (
