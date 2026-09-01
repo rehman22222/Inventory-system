@@ -1579,16 +1579,16 @@ function POSPage() {
                 {/* Subtotal, and how many units it is the sum of, at either
                     end of the line they both describe.
 
-                    The margin brings the count under the Held button above
-                    it. That is an eye-match, not a lock: Held sits in a flex
-                    row and this sits in a grid cell inside a padded panel, so
-                    the two are only as aligned as the tax box and the total
-                    column happen to leave them. It holds at the till's own
-                    width, which is the only width it is ever seen at. */}
+                    The margin squares the count up with Held above it and the
+                    deal's Apply below, so the three end on one line down the
+                    panel. That is an eye-match, not a lock: all three sit in
+                    different containers, and they line up because the tax box
+                    and the total column happen to leave them there. It holds
+                    at the width the till actually runs at. */}
                 <div className="flex items-center justify-between gap-4 text-slate-500">
                   <span>{t("pos.subtotal")}</span>
                   {cart.length > 0 && (
-                    <span className="me-6 whitespace-nowrap bg-cyan-950 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-300 ring-1 ring-cyan-800">
+                    <span className="me-1 whitespace-nowrap bg-cyan-950 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-300 ring-1 ring-cyan-800">
                       {t("pos.itemsCount", {
                         count: cart.reduce((sum, item) => sum + item.quantity, 0),
                       })}

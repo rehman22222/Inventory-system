@@ -166,7 +166,7 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
       headerRight={
         <div className="flex items-baseline gap-5 border border-slate-700 bg-black/50 px-5 py-2">
           <span className="flex items-baseline gap-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+            <span className="text-[13px] font-bold uppercase tracking-widest text-slate-400">
               {t("pos.total")}
             </span>
             <span className="font-mono text-lg font-semibold tabular-nums text-slate-300">
@@ -178,7 +178,7 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
               ordinary sale it would read 0.00 the whole way through. */}
           {paid > 0 && (
             <span className="flex items-baseline gap-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+              <span className="text-[13px] font-bold uppercase tracking-widest text-slate-400">
                 {t("pos.payment.paid")}
               </span>
               <span className="font-mono text-lg font-semibold tabular-nums text-cyan-400">
@@ -188,7 +188,7 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
           )}
 
           <span className="flex items-baseline gap-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+            <span className="text-[13px] font-bold uppercase tracking-widest text-slate-400">
               {settled ? t("pos.changeDue") : t("pos.payment.due", "Due")}
             </span>
             <span
