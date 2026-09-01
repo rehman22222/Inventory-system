@@ -1573,7 +1573,7 @@ function POSPage() {
             {/* What the basket comes to, and everything taken off it on the
                 way. Padded to match the table above so the columns line up
                 rather than nearly line up. */}
-            <div className="space-y-1 border border-slate-800 bg-black/40 px-3 py-3 text-sm">
+            <div className="-mx-3 space-y-1 border-y border-slate-800 bg-black/40 px-3 py-3 text-sm">
               <div className="min-w-0 space-y-1">
                 {/* Laid out on the SAME columns as the basket above it, so the
                     count sits under PRICE and what it comes to under TOTAL.
@@ -1582,7 +1582,7 @@ function POSPage() {
                     was summing. */}
                 <div className={`grid ${TABLE_COLS} items-center gap-1.5 text-slate-500`}>
                   <span>{t("pos.subtotal")}</span>
-                  <span>
+                  <span className="flex justify-end">
                     {cart.length > 0 && (
                       <span className="whitespace-nowrap bg-cyan-950 px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-300 ring-1 ring-cyan-800">
                         {t("pos.itemsCount", {
