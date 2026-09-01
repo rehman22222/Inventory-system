@@ -48,12 +48,12 @@ function CategoryTiles({ categories, selected, onSelect, onClear, layout = "grid
                 : idle
             }`}
           >
-            {/* The mark and the number, on one line and out of the way. How
-                many things are in an aisle is part of reading the aisle, so it
-                stays on the tile — just not under the name, where a second line
-                was being pushed up into the icon. */}
-            <span className="flex w-full items-center justify-between">
-              <Icon className={`h-[18px] w-[18px] ${muted}`} />
+            {/* The mark and the number together, at the start. Pushed to
+                opposite ends of the tile they read as two separate facts with a
+                gap of nothing between them; side by side they read as one — a
+                picture of the aisle and how much is in it. */}
+            <span className="flex w-full items-center gap-2">
+              <Icon className={`h-[18px] w-[18px] shrink-0 ${muted}`} />
               {typeof category.productCount === "number" && (
                 <span className={`text-[11px] font-semibold tabular-nums ${muted}`}>
                   {category.productCount}
