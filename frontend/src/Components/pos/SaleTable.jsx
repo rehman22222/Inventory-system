@@ -7,7 +7,7 @@ import { currency } from "./posUtils";
 // three small controls, a price and a cross — so everything left over goes to
 // the name. They used to reserve 306px between them, which left the product
 // column about 120px on a narrow panel and broke names one word to a line.
-export const COLS = "grid-cols-[1fr_56px_84px_76px] sm:grid-cols-[1fr_64px_88px_84px]";
+const COLS = "grid-cols-[1fr_56px_84px_76px] sm:grid-cols-[1fr_64px_88px_84px]";
 
 // The middle sale panel: the running list of lines on this transaction.
 function SaleTable({

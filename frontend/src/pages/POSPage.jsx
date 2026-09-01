@@ -25,7 +25,7 @@ import { socketURL } from "../lib/socket";
 import { gettingallCategory } from "../features/categorySlice";
 import { gettingallDeals } from "../features/dealSlice";
 import ActionRail from "../Components/pos/ActionRail";
-import SaleTable, { COLS as TABLE_COLS } from "../Components/pos/SaleTable";
+import SaleTable from "../Components/pos/SaleTable";
 import CategoryTiles from "../Components/pos/CategoryTiles";
 import { iconForCategory } from "../Components/pos/categoryIcons";
 import NumericKeypad from "../Components/pos/NumericKeypad";
@@ -1584,23 +1584,15 @@ function POSPage() {
               </div>
             </div>
 
-            {/* What the basket comes to, and everything taken off it on the
-                way. Padded to match the table above so the columns line up
-                rather than nearly line up. */}
-            <div className="-mx-3 space-y-1 border-y border-slate-800 bg-black/40 px-3 py-3 text-sm">
+            {/* minmax(0,1fr), not 1fr: a bare 1fr is minmax(auto,1fr) and
+                refuses to shrink below its content, so an applied deal — a long
+                product name, an EDITED badge and a set stepper — pushed the
+                total clean off the edge of a narrow till. */}
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border border-slate-800 bg-black/40 px-3 py-3 text-sm sm:gap-6 sm:px-4">
               <div className="min-w-0 space-y-1">
-                {/* Laid out on the SAME columns as the basket above it, so what
-                    the lines come to lands under TOTAL, directly beneath the
-                    figures it sums. The panel used to keep a grid of its own
-                    invention and every total in it sat a little to the left of
-                    the column it was adding up. */}
-                <div className={`grid ${TABLE_COLS} items-center gap-1.5 text-slate-500`}>
+                <div className="flex justify-between gap-8 text-slate-500">
                   <span>{t("pos.subtotal")}</span>
-                  <span />
-                  <span />
-                  <span className="text-end tabular-nums text-slate-300">
-                    {currency(subtotal)}
-                  </span>
+                  <span className="tabular-nums text-slate-300">{currency(subtotal)}</span>
                 </div>
                 {voucherDiscount > 0 && (
                   <div className="flex justify-between gap-8 text-emerald-400">
@@ -1763,7 +1755,7 @@ function POSPage() {
                 )}
               </div>
 
-              <div className="min-w-0 border-t border-slate-800 pt-2 text-end">
+              <div className="min-w-0 text-end">
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
                   {creditApplied > 0 ? t("pos.receiptDoc.totalDue", "Total due") : t("pos.total")}
                 </p>
