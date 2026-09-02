@@ -1588,10 +1588,12 @@ function POSPage() {
                 <div className="flex items-center justify-between gap-4 text-slate-500">
                   <span>{t("pos.subtotal")}</span>
                   {cart.length > 0 && (
-                    <span className="me-1 whitespace-nowrap bg-cyan-950 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-300 ring-1 ring-cyan-800">
-                      {t("pos.itemsCount", {
-                        count: cart.reduce((sum, item) => sum + item.quantity, 0),
-                      })}
+                    <span className="me-8 flex w-[62px] justify-center">
+                      <span className="whitespace-nowrap bg-cyan-950 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-300 ring-1 ring-cyan-800">
+                        {t("pos.itemsCount", {
+                          count: cart.reduce((sum, item) => sum + item.quantity, 0),
+                        })}
+                      </span>
                     </span>
                   )}
                 </div>
@@ -1627,8 +1629,10 @@ function POSPage() {
                         {t("pos.deal.saving")} {currency(entry.amount)}
                       </span>
                     </span>
-                    <span className="shrink-0 bg-fuchsia-700 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
-                      {t("pos.deal.apply")}
+                    <span className="me-6 flex w-[62px] shrink-0 justify-center">
+                      <span className="bg-fuchsia-700 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+                        {t("pos.deal.apply")}
+                      </span>
                     </span>
                   </button>
                 ))}

@@ -16,6 +16,7 @@ module.exports = {
         // Pointing it at Poppins is what makes the shop look like one system
         // rather than two fonts arguing.
         display: ["Poppins", "system-ui", "sans-serif"],
+        money: ['"Digital-7"', '"Digital-7 Mono"', '"DS-Digital"', '"Segment7"', "monospace"],
         mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "monospace"],
       },
       colors: {

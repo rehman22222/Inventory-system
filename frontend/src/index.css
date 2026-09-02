@@ -2,6 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: "Digital-7";
+  src: url("./assets/fonts/digital-7.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-money: "Digital-7", "Digital-7 Mono", "DS-Digital", "Segment7",
+    "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+/* Digital display face for IMS/POS figures. If Digital-7 is installed on the
+   till, the browser uses it; otherwise it falls back to a stable monospace. */
+.font-money,
+.tabular-nums,
+input[type="number"],
+input[inputmode="numeric"],
+input[inputmode="decimal"],
+.pos-numeric-key,
+.pos-numeric-keypad,
+.pos-root .font-mono,
+.slip .s-line > span:last-child,
+.slip .s-row-top > span:last-child,
+.slip .s-row-sub > span:last-child,
+.slip .s-item > span:last-child,
+.slip .s-total > span:last-child,
+#receipt .r-num,
+#receipt .r-line > span:last-child,
+#receipt .r-vatrow,
+#receipt .r-total > span:last-child {
+  font-family: var(--font-money) !important;
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
 /* Receipt printing: window.print() would otherwise print the whole terminal.
    Hide everything except #receipt and size it for an 80mm thermal roll. */
 @media print {
