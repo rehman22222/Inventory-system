@@ -175,10 +175,14 @@ function SaleTable({
                 key={String(group.dealId)}
                 className="m-1.5 border-2 border-fuchsia-700 bg-fuchsia-950/20"
               >
-                <div className="flex items-center gap-1.5 border-b border-fuchsia-900/60 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-fuchsia-300">
+                <div className="flex min-w-0 items-center gap-1.5 border-b border-fuchsia-900/60 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-fuchsia-300">
                   <FiTag className="h-2.5 w-2.5" />
-                  <span className="truncate">{group.name}</span>
-                  {group.sets > 1 && <span className="shrink-0">×{group.sets}</span>}
+                  <span className="min-w-0 flex-1 truncate">{group.name}</span>
+                  {group.sets > 1 && (
+                    <span className="shrink-0 rounded-sm bg-fuchsia-600 px-1.5 py-0.5 font-mono text-[10px] leading-none text-white ring-1 ring-fuchsia-400/50">
+                      x{group.sets}
+                    </span>
+                  )}
                 </div>
                 {group.rows.map((row) => renderRow(row))}
               </div>

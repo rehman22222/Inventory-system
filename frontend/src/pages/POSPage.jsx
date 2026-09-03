@@ -1615,15 +1615,19 @@ function POSPage() {
                     key={`offer-${String(entry.dealId)}`}
                     type="button"
                     onClick={() => setEditingDeal(entry)}
-                    className="flex w-full items-center justify-between gap-3 border border-dashed border-fuchsia-800 px-2 py-1.5 text-start transition hover:border-fuchsia-500 hover:bg-fuchsia-950/40"
+                    className="flex w-full min-w-0 items-center justify-between gap-3 border border-dashed border-fuchsia-800 px-2 py-1.5 text-start transition hover:border-fuchsia-500 hover:bg-fuchsia-950/40"
                   >
                     <span className="min-w-0">
                       <span className="flex items-center gap-1.5 text-fuchsia-300">
                         <FiTag className="h-3 w-3 shrink-0" />
-                        <span className="truncate text-xs font-semibold">
+                        <span className="min-w-0 truncate text-xs font-semibold">
                           {entry.name}
-                          {entry.sets > 1 ? ` ×${entry.sets}` : ""}
                         </span>
+                        {entry.sets > 1 && (
+                          <span className="shrink-0 rounded-sm bg-fuchsia-600 px-1.5 py-0.5 font-mono text-[10px] leading-none text-white ring-1 ring-fuchsia-400/50">
+                            x{entry.sets}
+                          </span>
+                        )}
                       </span>
                       <span className="mt-0.5 block text-[10px] text-slate-500">
                         {t("pos.deal.normal")} {currency(entry.normal)} →{" "}
@@ -1650,8 +1654,8 @@ function POSPage() {
                       key={id}
                       className="border border-fuchsia-900/60 bg-fuchsia-950/20 px-2 py-1.5 text-fuchsia-400"
                     >
-                      <div className="flex justify-between gap-4">
-                        <span className="flex min-w-0 items-center gap-1.5">
+                      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+                        <span className="flex min-w-0 flex-1 items-center gap-1.5">
                           <FiTag className="h-3 w-3 shrink-0" />
                           {/* The name is the way in to re-pricing it: a till has
                               no room for a button per action, and the row itself
@@ -1660,10 +1664,15 @@ function POSPage() {
                             type="button"
                             onClick={() => setEditingDeal(entry)}
                             title={t("pos.deal.editTitle", "Change the deal price")}
-                            className="truncate text-start text-xs underline decoration-dotted underline-offset-2 hover:text-fuchsia-300"
+                            className="min-w-0 truncate text-start text-xs underline decoration-dotted underline-offset-2 hover:text-fuchsia-300"
                           >
                             {entry.name}
                           </button>
+                          {given > 1 && (
+                            <span className="shrink-0 rounded-sm bg-fuchsia-600 px-1.5 py-0.5 font-mono text-[10px] font-bold leading-none text-white ring-1 ring-fuchsia-400/50">
+                              x{given}
+                            </span>
+                          )}
                           {entry.edited && (
                             <span className="shrink-0 bg-amber-900/60 px-1 text-[9px] font-bold uppercase text-amber-300">
                               {t("pos.deal.editedBadge", "edited")}
