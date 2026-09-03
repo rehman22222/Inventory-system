@@ -39,6 +39,23 @@ const COLOURS = {
 // bright default: a button whose meaning nobody has decided should not shout.
 const FALLBACK = "#374151";
 
+// The rail is painted with a gradient rather than a flat fill, so it sits with
+// the tender buttons on the basket (CASH, CARD, CREDIT), which are gradients
+// already. It is DERIVED from the one hex above rather than written out as a
+// second colour per button: the table stays one line per action, and a colour
+// changed there still only has to be changed once.
+const shade = (hex, by) => {
+  const n = parseInt(hex.slice(1), 16);
+  const clamp = (v) => Math.max(0, Math.min(255, Math.round(v)));
+  return `rgb(${clamp(((n >> 16) & 255) + by)}, ${clamp(((n >> 8) & 255) + by)}, ${clamp(
+    (n & 255) + by,
+  )})`;
+};
+
+// Light at the top, dark at the bottom — the same direction and roughly the
+// same distance as Tailwind's from-600/to-700 pairs the basket uses.
+const gradient = (hex) => `linear-gradient(to bottom, ${shade(hex, 20)}, ${shade(hex, -20)})`;
+
 function ActionRail({ actions }) {
   const { t } = useTranslation();
 
@@ -55,11 +72,18 @@ function ActionRail({ actions }) {
             onClick={action.onClick}
             disabled={action.disabled}
             title={action.disabled ? t("pos.void.notAllowed") : undefined}
-            style={{ backgroundColor: colour, borderBottomColor: "rgba(255,255,255,0.28)" }}
+            // backgroundColor stays underneath the gradient as the flat
+            // fallback: if the image is ever not painted, the button is still
+            // its own colour rather than transparent.
+            style={{
+              backgroundColor: colour,
+              backgroundImage: gradient(colour),
+              borderBottomColor: "rgba(255,255,255,0.28)",
+            }}
             // The press feedback is unchanged — on a screen with no travel it
             // is the only thing telling a cashier the tap landed. Brightness on
-            // hover rather than a second colour, so one hex per button stays
-            // the whole story.
+            // hover rather than a second palette entry, so one hex per button
+            // is still the whole story.
             className="group flex w-[80px] shrink-0 flex-col items-center justify-center gap-1.5 border-b-2 px-1 py-2.5 text-center text-white shadow-md shadow-black/30 transition-all duration-150 hover:brightness-110 active:translate-y-px active:brightness-95 active:shadow-none disabled:cursor-not-allowed disabled:opacity-30 lg:min-h-0 lg:w-auto lg:flex-1 lg:py-0"
           >
             {Icon && (

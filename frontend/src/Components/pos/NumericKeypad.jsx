@@ -22,7 +22,7 @@ function NumericKeypad({ buffer, multiplier, onKey, onClear }) {
               {t("pos.keypad.clear")}
             </span>
           )}
-          <span className="font-mono text-lg tabular-nums text-cyan-300">{buffer}</span>
+          <span className="pos-numeric-keypad font-mono text-lg tabular-nums text-cyan-300">{buffer}</span>
         </div>
         <button
           type="button"
@@ -39,7 +39,7 @@ function NumericKeypad({ buffer, multiplier, onKey, onClear }) {
             key={key}
             type="button"
             onClick={() => onKey(key)}
-            className={`h-11 font-mono text-lg font-semibold tabular-nums ring-1 transition active:scale-95 ${
+            className={`pos-numeric-key h-11 font-mono text-lg font-semibold tabular-nums ring-1 transition active:scale-95 ${
               key === "X"
                 ? "bg-gradient-to-b from-cyan-700 to-cyan-800 text-white ring-cyan-600 hover:from-cyan-600 hover:to-cyan-700"
                 : "bg-gradient-to-b from-slate-800 to-slate-900 text-slate-100 ring-slate-700 hover:from-slate-700 hover:to-slate-800"

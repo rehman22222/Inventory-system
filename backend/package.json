@@ -6,7 +6,7 @@
     "node": ">=18 <=24"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node scripts/verifyPosCredit.js && node scripts/verifyOnlinePromotions.js",
     "start": "node server",
     "build": "cd ../frontend && npm install && npm run build",
     "postinstall": "node scripts/postinstall.js",
@@ -16,7 +16,9 @@
     "create-superadmin": "node scripts/createSuperAdmin.js",
     "diagnose-login": "node scripts/diagnoseLogin.js",
     "set-barcoded-stock": "node scripts/setBarcodedStock.js",
-    "clear-trading": "node scripts/clearTradingRecords.js"
+    "clear-trading": "node scripts/clearTradingRecords.js",
+    "verify:pos-credit": "node scripts/verifyPosCredit.js",
+    "verify:online": "node scripts/verifyOnlinePromotions.js"
   },
   "author": "",
   "license": "ISC",

@@ -56,7 +56,7 @@ function CategoryTiles({ categories, selected, onSelect, onClear, layout = "grid
             <span className="grid w-full grid-cols-[18px_1fr_18px] items-center">
               <Icon className={`h-[18px] w-[18px] ${muted}`} />
               {typeof category.productCount === "number" && (
-                <span className={`text-center text-[11px] font-semibold tabular-nums ${muted}`}>
+                <span className={`pos-plain-num text-center text-[11px] font-semibold tabular-nums ${muted}`}>
                   {category.productCount}
                 </span>
               )}

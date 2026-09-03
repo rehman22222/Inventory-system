@@ -92,6 +92,11 @@ const ReceiptSchema = new mongoose.Schema(
       termDays: { type: Number },
       dueAt: { type: Date },
 
+      // A term the shop agreed without putting a date on it — "2W+". Present
+      // instead of termDays/dueAt, never alongside them, so a slip can print
+      // what was agreed even when there is no date to count down to.
+      termLabel: { type: String },
+
       // Money that has come back against it. Each entry is real money in the
       // drawer on the day it was taken, which is why it carries its own method
       // and cashier — the day it is repaid is not the day it was sold.

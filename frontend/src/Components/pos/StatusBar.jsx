@@ -77,7 +77,7 @@ function StatusBar({ user, till, onPrint }) {
           </button>
         )}
 
-        <span className="hidden font-mono text-[11px] tabular-nums text-slate-400 sm:block">
+        <span className="pos-plain-num hidden font-mono text-[11px] tabular-nums text-slate-400 sm:block">
           {now.toLocaleDateString()}{" "}
           {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </span>

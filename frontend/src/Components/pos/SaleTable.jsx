@@ -14,7 +14,11 @@ const COLS = "grid-cols-[1fr_56px_84px_76px] sm:grid-cols-[1fr_64px_88px_84px]";
 // The shop's own trolley, for a basket with nothing in it yet. Masked like the
 // category marks, so it sits in the same muted grey as the line beneath it
 // rather than glaring white out of an empty panel.
-const EmptyCart = maskIcon(emptyCartArt, "emptyCart");
+//
+// Exported because the product grid shows the same mark when no aisle is open.
+// One trolley in one place: two copies of this would eventually be two
+// different trolleys.
+export const EmptyCart = maskIcon(emptyCartArt, "emptyCart");
 
 // The middle sale panel: the running list of lines on this transaction.
 function SaleTable({
@@ -100,7 +104,7 @@ function SaleTable({
           >
             <FiMinus className="h-3 w-3" />
           </button>
-          <span className="w-7 text-center font-mono font-semibold tabular-nums text-slate-100">
+          <span className="pos-plain-num w-7 text-center font-mono font-semibold tabular-nums text-slate-100">
             {item.quantity}
           </span>
           <button
@@ -117,7 +121,12 @@ function SaleTable({
         </div>
 
         <div className="flex items-center justify-end gap-0.5">
-          <span className="font-mono font-semibold tabular-nums text-slate-100">
+          {/* The same cyan the product tiles price in. What a line comes to is
+              the figure the customer is watching, and it should read as the
+              same kind of number they just tapped on the grid — not as another
+              piece of the row's furniture. The unit price beside it stays grey:
+              two cyan columns and neither one leads. */}
+          <span className="font-mono font-semibold tabular-nums text-cyan-400">
             {currency(item.price * item.quantity)}
           </span>
           <button

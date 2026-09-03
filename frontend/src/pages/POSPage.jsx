@@ -9,6 +9,7 @@ import {
   FiClipboard,
   FiLogOut,
   FiBookOpen,
+  FiPercent,
   FiPlay,
   FiRotateCcw,
   FiSearch,
@@ -25,12 +26,12 @@ import { socketURL } from "../lib/socket";
 import { gettingallCategory } from "../features/categorySlice";
 import { gettingallDeals } from "../features/dealSlice";
 import ActionRail from "../Components/pos/ActionRail";
-import SaleTable from "../Components/pos/SaleTable";
+import SaleTable, { EmptyCart } from "../Components/pos/SaleTable";
 import CategoryTiles from "../Components/pos/CategoryTiles";
 import { iconForCategory } from "../Components/pos/categoryIcons";
 import NumericKeypad from "../Components/pos/NumericKeypad";
 import StatusBar from "../Components/pos/StatusBar";
-import { Greeting, GreetingLine } from "../Components/pos/Greeting";
+import { Greeting } from "../Components/pos/Greeting";
 import RefundModal from "../Components/pos/RefundModal";
 import VoucherModal from "../Components/pos/VoucherModal";
 import UnknownBarcodeModal from "../Components/pos/UnknownBarcodeModal";
@@ -1327,7 +1328,11 @@ function POSPage() {
       // — all of it "change what this costs, or what we sell".
       id: "vouchers",
       label: "pos.rail.vouchers",
-      icon: FiTag,
+      // A percent, not a second tag. Deals wears the tag — a bundle at a
+      // price — and this one is money off: a code, a typed discount, a
+      // marked-down shelf ticket. Two identical marks side by side in a
+      // column is how the wrong one gets pressed.
+      icon: FiPercent,
       onClick: () => setModal("voucher"),
     },
     {
@@ -1362,7 +1367,7 @@ function POSPage() {
     {
       // Sales and refunds are two tabs on one screen, so one button opens both.
       id: "history",
-      label: "pos.rail.saleHistory",
+      label: "pos.rail.history",
       icon: FiClock,
       onClick: () => setModal("history"),
     },
@@ -1412,7 +1417,7 @@ function POSPage() {
         {/* The shop saying hello, in its own time zone. Centred and absolute
             so it sits in the middle of the header without pushing the shop
             name or the till controls around as it writes itself on. */}
-        <Greeting className="pointer-events-none absolute inset-x-0 hidden text-center text-lg font-semibold tracking-wide text-slate-300 lg:block" />
+        <Greeting className="pointer-events-none absolute inset-x-0 hidden text-center text-lg font-semibold tracking-wide text-cyan-400 lg:block" />
 
         {/* The header keeps only what is about the till itself. The basket
             count and the language belong with the other standing facts on the
@@ -1795,14 +1800,20 @@ function POSPage() {
                   type="button"
                   onClick={() => openPayment(entry.value)}
                   disabled={isCheckingOut || cart.length === 0}
-                  // Credit takes the amber the rail already uses for money
-                  // owed. Cash and card put money in the drawer; this one
-                  // sends the goods out on a promise, and three identical
-                  // blue buttons is how that gets pressed by accident.
+                  // A colour each, because these three do different things with
+                  // the money. Cash is green — it is the one that fills the
+                  // drawer, and it is the press the counter makes most, so it
+                  // should be the one the hand finds without reading. Card
+                  // keeps the blue. Credit takes the amber the rail already
+                  // uses for money owed: it sends the goods out on a promise,
+                  // and three identical buttons is how that gets pressed by
+                  // accident.
                   className={`py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg ring-1 transition active:scale-[0.99] disabled:opacity-35 disabled:shadow-none ${
-                    entry.value === "credit"
-                      ? "bg-gradient-to-b from-amber-600 to-amber-700 shadow-amber-950/50 ring-amber-500 hover:from-amber-500 hover:to-amber-600"
-                      : "bg-gradient-to-b from-blue-600 to-blue-700 shadow-blue-950/50 ring-blue-500 hover:from-blue-500 hover:to-blue-600"
+                    entry.value === "cash"
+                      ? "bg-gradient-to-b from-emerald-600 to-emerald-700 shadow-emerald-950/50 ring-emerald-500 hover:from-emerald-500 hover:to-emerald-600"
+                      : entry.value === "credit"
+                        ? "bg-gradient-to-b from-amber-600 to-amber-700 shadow-amber-950/50 ring-amber-500 hover:from-amber-500 hover:to-amber-600"
+                        : "bg-gradient-to-b from-blue-600 to-blue-700 shadow-blue-950/50 ring-blue-500 hover:from-blue-500 hover:to-blue-600"
                   }`}
                 >
                   {t(`common.payments.${entry.value}`, entry.label)}
@@ -1908,14 +1919,12 @@ function POSPage() {
                 })}
               </div>
             ) : !searching && !category ? (
-              /* Nothing open. A word about the hour rather than "no products
-                 found" — that is true of an empty grid and no use at all to
-                 the person looking at it. */
-              /* Centred in the whole pane rather than in a box near the top,
-                 so the line holds one place for as long as the grid is empty
-                 instead of drifting with whatever is above it. */
-              <div className="flex h-full min-h-[240px] items-center justify-center px-6">
-                <GreetingLine className="max-w-md text-center text-base font-medium leading-relaxed text-slate-500" />
+              /* Nothing open. The same trolley the empty basket shows, and
+                 nothing else: a sentence about the time of day was one more
+                 thing to read past in the space the cashier is looking
+                 straight through for a product. The mark says empty. */
+              <div className="flex h-full min-h-[240px] items-center justify-center px-6 text-slate-800">
+                <EmptyCart className="h-32 w-32" />
               </div>
             ) : filteredProducts.length === 0 ? (
               <p className="py-12 text-center text-sm text-slate-700">{t("pos.noProducts")}</p>
@@ -1965,7 +1974,7 @@ function POSPage() {
                           {currency(product.Price)}
                         </span>
                         <span
-                          className={`px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
+                          className={`pos-plain-num px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
                             stock <= 0
                               ? "bg-red-950 text-red-400"
                               : stock <= (product.lowStockThreshold ?? 10)
@@ -2214,6 +2223,19 @@ function POSPage() {
             </span>
           </div>
 
+          {/* When it falls due. A run of days prints the date it was counted
+              to; an open term ("2W+") prints itself, because there is no date
+              behind it to print instead. */}
+          {receipt.credit && (receipt.credit.termLabel || receipt.credit.dueAt) && (
+            <div className="r-line">
+              <span>{t("pos.credit.payWithin", "Pay within")}</span>
+              <span>
+                {receipt.credit.termLabel ||
+                  new Date(receipt.credit.dueAt).toLocaleDateString()}
+              </span>
+            </div>
+          )}
+
           {/* The line customers actually look for. Worth its own box. */}
           {receipt.discount > 0 && (
             <div className="r-savedbox">
@@ -2226,10 +2248,10 @@ function POSPage() {
           <div className="r-center r-qrwrap">
             <QRCodeSVG
               value={(SHOP?.qrTemplate || "{ref}").replace("{ref}", receipt.receiptNo)}
-              // Smaller with the rest of the receipt. A phone reads a 88px
-              // code across a counter without trouble; the roll is what the
+              // Smaller again with the rest of the receipt. A phone still
+              // reads a 72px code across a counter, and the roll is what the
               // shop is paying for.
-              size={88}
+              size={72}
               level="M"
             />
           </div>
@@ -2248,6 +2270,13 @@ function POSPage() {
           <div className="r-center r-footer">
             {SHOP?.footer || t("pos.receiptDoc.thanksShopping", "Thank you for shopping with us")}
           </div>
+
+          {/* The shop's standing terms. Deliberately without a heading: three
+              short lines that say what they are read faster than a "Returns
+              Policy" title above them, and the roll is what the shop pays for.
+              The line breaks are in the string, held by white-space: pre-line. */}
+          <div className="r-center r-policy">{t("pos.receiptDoc.policy")}</div>
+
           <div className="r-center r-tail">• • •</div>
         </div>
       )}
@@ -2510,7 +2539,6 @@ function EnterCodeModal({ onSubmit, onClose }) {
           autoFocus
           value={code}
           onChange={(event) => setCode(event.target.value)}
-          placeholder={t("pos.enterCode.placeholder")}
           className="w-full border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-slate-100 outline-none focus:border-cyan-500"
         />
         <div className="flex gap-2">

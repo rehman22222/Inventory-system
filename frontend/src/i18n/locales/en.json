@@ -455,7 +455,7 @@
     "closeOrder": "Charge",
     "noProducts": "No products in this category",
     "rail": {
-      "refund": "Refund / Exchange",
+      "refund": "Refund & Exchange",
       "void": "Clear Basket",
       "suspend": "Suspend",
       "resume": "Held Sales",
@@ -468,7 +468,8 @@
       "dayClosing": "Till Summary",
       "refundHistory": "Refund History",
       "deals": "Deals",
-      "credit": "Customer Credit"
+      "credit": "Credit Logs",
+      "history": "History"
     },
     "table": {
       "product": "Items",
@@ -542,13 +543,11 @@
       "notAllowed": "Only an admin or manager can void a completed sale"
     },
     "voucher": {
-      "title": "Vouchers",
-      "subtitle": "Apply a customer's code, or cut a new one",
-      "applyTab": "Apply Code",
-      "generateTab": "Generate",
-      "code": "Voucher Code",
-      "codePlaceholder": "SAVE10",
-      "apply": "Apply Voucher",
+      "title": "Promotions",
+      "applyTab": "Promo Code",
+      "generateTab": "Create Promocode",
+      "code": "Promo Code",
+      "apply": "Apply Promo",
       "applied": "Voucher applied — {{amount}} off",
       "invalid": "This voucher cannot be used",
       "remove": "Remove",
@@ -562,14 +561,15 @@
       "minSpend": "This voucher needs a minimum spend of {{amount}}",
       "usageLimit": "Usage Limit",
       "expires": "Expires",
-      "generate": "Generate Voucher",
+      "generate": "Generate",
       "generated": "Voucher {{code}} created",
       "generateFailed": "Could not create voucher",
       "missingFields": "Enter a code and a value",
       "offlineUnknown": "Unknown code — this till has no record of it while offline",
       "offlineAlreadyUsed": "This till already used that code while offline",
       "appliedOffline": "{{amount}} off — will be confirmed when the connection is back",
-      "expired": "This voucher has expired"
+      "expired": "This voucher has expired",
+      "minSpendLabel": "Minimum Spend"
     },
     "discountModal": {
       "title": "Discount",
@@ -627,8 +627,7 @@
       "delete": "Delete"
     },
     "enterCode": {
-      "title": "Enter a Barcode or Code",
-      "placeholder": "Scan failed? Type the code"
+      "title": "Enter a Barcode or Code"
     },
     "categories": "Categories",
     "taxLabel": "Tax",
@@ -646,9 +645,7 @@
       "giveChange": "Give {{amount}} change",
       "roundOff": "Round off",
       "roundOffHint": "cash",
-      "split": "Split",
-      "take": "Take",
-      "splitHint": "Leave an amount empty to put the whole balance on that method."
+      "split": "Split"
     },
     "currencyHint": "Display currency for this till",
     "receiptDoc": {
@@ -670,7 +667,8 @@
       "vatValue": "VAT Value",
       "totalDue": "Total Due",
       "onlineStore": "Visit our online store at {{url}}",
-      "cashier": "Cashier"
+      "cashier": "Cashier",
+      "policy": "18+ only. Valid ID may be required.\n7-day returns with receipt; unused & unopened items only.\nStatutory consumer rights remain unaffected."
     },
     "productSearch": {
       "title": "Product Search",
@@ -773,13 +771,11 @@
     },
     "credit": {
       "title": "Credit Book",
-      "subtitle": "What the shop is owed, and taking it back",
-      "onAccount": "On Account",
       "email": "Email",
       "phone": "Phone",
       "payWithin": "Pay within",
       "days": "{{n}}d",
-      "contactRequired": "An email or a phone number is needed — it is how this gets collected.",
+      "contactRequired": "An email or a phone number is needed",
       "searchPlaceholder": "Email, phone, name or receipt number",
       "empty": "Nothing is owed",
       "overdue": "Overdue",
@@ -787,7 +783,6 @@
       "paidSoFar": "Paid",
       "take": "Take Payment",
       "confirm": "Confirm",
-      "enterAmount": "Enter how much they are paying",
       "takeFailed": "Could not record it",
       "loadFailed": "Could not load the credit book",
       "outstandingTotal": "Outstanding",
@@ -806,21 +801,19 @@
       "accounts": "Accounts",
       "needsNetwork": "A sale on account needs the connection — take payment another way, or wait for it to come back",
       "debtCancelled": "Taken off what you owe",
-      "sessionHint": "Sold on account since you signed in"
+      "sessionHint": "Sold on account since you signed in",
+      "noTerm": "No term"
     },
     "newProduct": {
-      "tab": "Add Product",
-      "name": "Product Name",
+      "tab": "Shelf Labels",
+      "name": "Name",
       "price": "Selling Price",
-      "cost": "Cost Price",
-      "costHint": "Without it, profit cannot be reported",
       "category": "Category",
-      "stock": "Opening Stock",
+      "stock": "Add Stock",
       "barcode": "Barcode",
       "barcodePlaceholder": "Scan, type or generate",
-      "barcodeHint": "Scan the one on the box if it has one. Generated codes use the in-store range, so they never clash with a real product.",
       "generate": "Generate",
-      "submit": "Add Product",
+      "submit": "Generate",
       "missingFields": "A name and a price are needed",
       "badBarcode": "A barcode is 12 or 13 digits — scan one, or generate it",
       "created": "{{name}} added",
@@ -828,18 +821,15 @@
       "added": "Product Added",
       "labels": "Labels",
       "print": "Print Labels",
-      "another": "Add Another"
+      "another": "Add Another",
+      "wasPrice": "Was Price",
+      "savesOnPrint": "Saves when you print"
     },
     "clearCategory": "Clear",
     "greeting": {
       "morning": "Good morning",
       "afternoon": "Good afternoon",
-      "evening": "Good evening",
-      "line": {
-        "morning": "A fresh day at the counter — pick an aisle, or scan.",
-        "afternoon": "Good trade this afternoon — pick an aisle, or scan.",
-        "evening": "Winding down for the evening — pick an aisle, or scan."
-      }
+      "evening": "Good evening"
     }
   },
   "sales": {

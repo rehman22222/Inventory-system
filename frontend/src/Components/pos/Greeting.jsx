@@ -117,26 +117,4 @@ export function Greeting({ className = "" }) {
   return <Written key={part} text={text} className={className} step={130} duration={900} />;
 }
 
-// The line on the empty grid, when no aisle is open. Says something about the
-// hour rather than "no products found", which is true of an empty grid and
-// useless to the person looking at it.
-//
-// This one does not animate. It is simply there, the way the shop sign is
-// there — the cashier is looking straight through this space for a product,
-// and a line writing itself on in their eyeline is something to wait for
-// rather than something to read past. The greeting up in the header is the
-// flourish; down here the words just sit still until the clock changes them.
-export function GreetingLine({ className = "" }) {
-  const { t } = useTranslation();
-  const part = usePartOfDay();
-
-  const text = t(`pos.greeting.line.${part}`, {
-    morning: "A fresh day at the counter — pick an aisle, or scan.",
-    afternoon: "Good trade this afternoon — pick an aisle, or scan.",
-    evening: "Winding down for the evening — pick an aisle, or scan.",
-  }[part]);
-
-  return <span className={className}>{text}</span>;
-}
-
 export default Greeting;

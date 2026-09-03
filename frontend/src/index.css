@@ -13,6 +13,8 @@
 :root {
   --font-money: "Digital-7", "Digital-7 Mono", "DS-Digital", "Segment7",
     "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
 }
 
 /* Digital display face for IMS/POS figures. If Digital-7 is installed on the
@@ -37,6 +39,18 @@ input[inputmode="decimal"],
   font-family: var(--font-money) !important;
   font-variant-numeric: tabular-nums;
   font-weight: 400;
+}
+
+/* Numbers that are NOT money, opting back out of the digital face.
+   The rule above is deliberately broad — nearly every figure at the till is a
+   price, and tagging each one would be a hundred edits waiting to be missed.
+   The exceptions are few and they are listed here instead: a count of products
+   in an aisle, units in stock, how many of a line are in the basket, the wall
+   clock. A stock level set in the same seven-segment face as the total reads
+   like a price, which is the one thing it must not do. */
+.pos-plain-num {
+  font-family: var(--font-ui) !important;
+  font-variant-numeric: normal;
 }
 
 /* Receipt printing: window.print() would otherwise print the whole terminal.
@@ -137,7 +151,7 @@ input[inputmode="decimal"],
        less roll per sale and still comfortably above what a 203dpi head can
        render; below about 8px the strokes start to fill in. */
     font-size: 10px;
-    line-height: 1.3;
+    line-height: 1.2;
   }
 
   /* The stamp, laid across the slip the way it is on a paid invoice. Outline
@@ -153,7 +167,7 @@ input[inputmode="decimal"],
     width: 100%;
     text-align: center;
     transform: rotate(-18deg);
-    font-size: 34px;
+    font-size: 26px;
     font-weight: 800;
     letter-spacing: 0.12em;
     color: transparent;
@@ -177,6 +191,7 @@ input[inputmode="decimal"],
   #receipt .r-thanks,
   #receipt .r-online,
   #receipt .r-footer,
+  #receipt .r-policy,
   #receipt .r-tail {
     position: relative;
     z-index: 1;
@@ -189,10 +204,10 @@ input[inputmode="decimal"],
   /* Header ------------------------------------------------------------- */
   #receipt .r-head {
     text-align: center;
-    padding-bottom: 4px;
+    padding-bottom: 2.5px;
   }
   #receipt .r-shop {
-    font-size: 16px;
+    font-size: 13px;
     font-weight: 800;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -200,23 +215,23 @@ input[inputmode="decimal"],
   }
   #receipt .r-addr {
     font-size: 9px;
-    line-height: 1.25;
+    line-height: 1.2;
   }
   /* The receipt number is what a customer quotes at the counter for a
      refund, so it is the second-loudest thing on the page. */
   #receipt .r-order {
-    margin-top: 4px;
-    padding: 2px 0;
+    margin-top: 2.5px;
+    padding: 1px 0;
     border-top: 2px solid #000;
     border-bottom: 2px solid #000;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.04em;
   }
 
   #receipt .r-rule {
     border-top: 1px dashed #000;
-    margin: 4px 0;
+    margin: 2.5px 0;
   }
 
   /* Meta: label left, value right — scannable, never a wrapped run-on. */
@@ -252,7 +267,7 @@ input[inputmode="decimal"],
     font-size: 8px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    padding-bottom: 2px;
+    padding-bottom: 1px;
     border-bottom: 1.5px solid #000;
     color: #000;
   }
@@ -262,7 +277,7 @@ input[inputmode="decimal"],
      grey and thin strokes, and the reason the list looked washed out beside
      everything under it. A thermal head renders #bbb as nothing at all. */
   #receipt .r-table td {
-    padding: 1.5px 0;
+    padding: 1px 0;
     vertical-align: top;
     font-size: 10px;
     font-weight: 600;
@@ -321,10 +336,10 @@ input[inputmode="decimal"],
     text-transform: uppercase;
     letter-spacing: 0.04em;
     border-bottom: 1px solid #000;
-    padding-bottom: 2px;
+    padding-bottom: 1px;
   }
   #receipt .r-vatrow {
-    padding-top: 2px;
+    padding-top: 1px;
   }
   /* The units an offer actually covered, listed under it. Indented and a size
      down so the eye reads them as belonging to the line above rather than as
@@ -335,18 +350,18 @@ input[inputmode="decimal"],
   }
   /* The number the customer checks first. */
   #receipt .r-total {
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 800;
-    margin-top: 3px;
-    padding: 2px 0;
+    margin-top: 2px;
+    padding: 1px 0;
     border-top: 2px solid #000;
     border-bottom: 2px solid #000;
     text-transform: uppercase;
   }
   /* What they saved — the one line worth a box around it. */
   #receipt .r-savedbox {
-    margin-top: 4px;
-    padding: 2px 6px;
+    margin-top: 2.5px;
+    padding: 1px 6px;
     border: 1.5px solid #000;
     text-align: center;
     font-size: 10px;
@@ -356,7 +371,7 @@ input[inputmode="decimal"],
   }
 
   #receipt .r-qrwrap {
-    margin-top: 5px;
+    margin-top: 3px;
     text-align: center;
   }
   #receipt .r-qrwrap svg {
@@ -364,13 +379,13 @@ input[inputmode="decimal"],
     margin: 0 auto;
   }
   #receipt .r-qrcap {
-    margin-top: 2px;
+    margin-top: 1px;
     font-size: 9px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
   #receipt .r-thanks {
-    margin-top: 4px;
+    margin-top: 2.5px;
     font-size: 10px;
     font-weight: 800;
     text-transform: uppercase;
@@ -380,21 +395,27 @@ input[inputmode="decimal"],
      even after the receipt was tightened — a customer reading it later is
      typing it into a phone. */
   #receipt .r-online {
-    margin-top: 4px;
+    margin-top: 2.5px;
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.02em;
   }
 
   #receipt .r-footer {
-    margin-top: 3px;
+    margin-top: 2px;
     font-size: 9px;
-    line-height: 1.25;
+    line-height: 1.2;
+  }
+  #receipt .r-policy {
+    margin-top: 2.5px;
+    font-size: 8px;
+    line-height: 1.2;
+    white-space: pre-line;
   }
   /* Tear-off breathing room: thermal cutters eat the last few millimetres. */
   #receipt .r-tail {
-    margin-top: 5px;
-    padding-bottom: 6px;
+    margin-top: 3px;
+    padding-bottom: 3.5px;
     font-size: 9px;
     letter-spacing: 0.3em;
   }
@@ -437,6 +458,63 @@ input[inputmode="decimal"],
     margin-bottom: 0.5mm;
   }
 
+  /* --- Price sticker. Wider than the plain label because the two figures sit
+     side by side, so its sheet gets its own column width. --- */
+  #barcode-sheet .bc-grid-shelf {
+    grid-template-columns: repeat(auto-fill, 70mm);
+  }
+  #barcode-sheet .bc-label.bc-shelf {
+    width: 70mm;
+    overflow: hidden;
+    text-align: left;
+    padding: 1.5mm;
+    border: 0.3mm solid #111;
+  }
+  #barcode-sheet .bc-shelf-row {
+    display: flex;
+    align-items: baseline;
+    /* A long price (three figures and cents) would push the old price off the
+       sticker. Let it drop to its own line instead of overflowing. */
+    flex-wrap: wrap;
+    gap: 1mm 2.5mm;
+    margin-bottom: 1mm;
+  }
+  /* The highlight has to survive printing. Browsers drop background colour on
+     paper unless told not to, and without this the block prints white and the
+     sticker loses the thing that marks it. */
+  #barcode-sheet .bc-now {
+    background: #f5c518;
+    padding: 1mm 2.5mm;
+    font-size: 28pt;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    white-space: nowrap;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  #barcode-sheet .bc-was {
+    font-size: 15pt;
+    font-weight: 700;
+    line-height: 1.1;
+    text-decoration: line-through;
+    white-space: nowrap;
+  }
+  /* Two lines of name at most: a sticker is found by its price and its symbol,
+     and a third line pushes the barcode off it. */
+  #barcode-sheet .bc-name {
+    font-size: 6pt;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    line-height: 1.2;
+    margin-bottom: 0.8mm;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
   /* The SVG carries its own quiet zone, so it fills the label edge to edge. */
   #barcode-sheet .bc-svg {
     width: 100%;
@@ -466,6 +544,52 @@ input[inputmode="decimal"],
   font-weight: 700;
   line-height: 1.1;
 }
+
+/* Price sticker, on screen. Same shape as the printed one so the preview is
+   worth looking at before a sheet is run off. */
+.bc-label.bc-shelf {
+  text-align: left;
+  padding: 8px;
+  border: 1px solid #111;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.bc-shelf-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-bottom: 5px;
+}
+.bc-now {
+  background: #f5c518;
+  padding: 4px 11px;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+.bc-was {
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-decoration: line-through;
+  white-space: nowrap;
+}
+.bc-name {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  margin-bottom: 5px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .bc-svg {
   width: 100%;
   height: auto;
@@ -1002,7 +1126,7 @@ body.osk-open .admin-drawer {
 .pos-written {
   display: inline-block;
   opacity: 0;
-  animation: pos-write 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation: pos-write 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes pos-write {

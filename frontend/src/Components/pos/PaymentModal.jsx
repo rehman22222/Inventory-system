@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FiTrash2 } from "react-icons/fi";
+import { FiTrash2, FiX } from "react-icons/fi";
 import PosModal from "./PosModal";
 import { currency, sanitizeDecimal } from "./posUtils";
 
@@ -37,7 +37,11 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
 
   // A sale on account needs a way to collect it later. Held here because the
   // tender screen is where the decision is actually made.
-  const [account, setAccount] = useState({ email: "", phone: "", termDays: 14 });
+  // `term` is one of the runs below, or null for "no term agreed". 7 and 14 are
+  // real numbers of days and get a due date; "2W+" is the open-ended one a shop
+  // gives a regular it will not put a date on, so it is carried as its own
+  // label rather than as a count of days that would invent one.
+  const [account, setAccount] = useState({ email: "", phone: "", term: 14 });
 
   const paid = payments.reduce((sum, entry) => sum + entry.amount, 0);
   const remaining = Math.max(0, Math.round((total - paid) * 100) / 100);
@@ -71,7 +75,11 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
       ? {
           email: account.email.trim(),
           phone: account.phone.trim(),
-          termDays: Number(account.termDays) || 14,
+          // A number of days is a run the server can date; anything else is a
+          // term with no date on it, and the server is told so rather than
+          // being left to fall back on the house default.
+          termDays: typeof account.term === "number" ? account.term : null,
+          termLabel: typeof account.term === "string" ? account.term : undefined,
         }
       : undefined;
 
@@ -108,6 +116,17 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
   // whichever method is chosen, which is how change gets handed back.
   const splitting = hasTyped && typed < remaining - 0.001;
 
+  // The split panel. Only a row the cashier actually typed into is money; the
+  // rest are still empty, and what they show is what they WOULD take. So the
+  // balance falls out of the typed rows: put 10 against cash on a 14 bill and
+  // card and credit both offer to cover the 4, whichever one gets used.
+  const splitPart = (value) => {
+    const part = Number(parts[value]);
+    return Number.isFinite(part) && part > 0 ? Math.round(part * 100) / 100 : 0;
+  };
+  const splitTyped = methods.reduce((sum, entry) => sum + splitPart(entry.value), 0);
+  const splitLeft = Math.max(0, Math.round((remaining - splitTyped) * 100) / 100);
+
   // What each method would actually put through, so nothing is guessed.
   const takesFor = (payMethod) => {
     if (!hasTyped) return remaining;
@@ -124,6 +143,32 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
     // Nothing left to collect: this press is the confirmation.
     if (settled) {
       onConfirm(payments, terms());
+      return;
+    }
+
+    // A split the cashier laid out by hand. Every row they typed into goes
+    // through as its own tender, and whatever those rows did not cover lands on
+    // the method that is lit — the same rule the single amount box follows, so
+    // there is one answer to "where does the rest go" rather than two.
+    if (splitOpen && splitTyped > 0) {
+      const next = [
+        ...payments,
+        ...methods
+          .map((entry) => ({ method: entry.value, amount: splitPart(entry.value) }))
+          .filter((row) => row.amount > 0),
+      ];
+      if (splitLeft > 0.001) next.push({ method: payMethod, amount: splitLeft });
+
+      setPayments(next);
+      setParts({});
+      setAmount("");
+
+      // Same guard as a single tender: hold the screen if there is change to
+      // count back, or if any of it went on the book and still needs terms.
+      const nowPaid = next.reduce((sum, item) => sum + item.amount, 0);
+      const owesChange = nowPaid - total > 0.001;
+      const anyCredit = next.some((item) => item.method === "credit");
+      if (nowPaid + 0.001 >= total && !owesChange && !anyCredit) onConfirm(next);
       return;
     }
 
@@ -205,7 +250,15 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
         <button
           type="button"
           disabled={busy || !accountReady}
-          onClick={charge}
+          // Called through an arrow, NOT passed straight to onClick. React
+          // hands a click handler the event as its first argument, and
+          // `charge(payMethod = method)` only falls back to the chosen method
+          // when that argument is undefined — an event is not. Wired directly,
+          // every press tendered the sale against a SyntheticEvent instead of
+          // "cash", which reached the receipt as an object, failed the
+          // paymentMethod enum on the server, and left the sale unsaved with
+          // "common.payments.[object Object]" sitting in the tender list.
+          onClick={() => charge()}
           className="w-full bg-gradient-to-b from-blue-600 to-blue-700 px-6 py-3 text-sm font-bold uppercase tracking-wide text-white ring-1 ring-blue-500 transition hover:from-blue-500 disabled:opacity-40"
         >
           {busy ? t("pos.processing") : t("pos.closeOrder")}
@@ -305,31 +358,15 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
                           [entry.value]: sanitizeDecimal(event.target.value),
                         }))
                       }
-                      placeholder={currency(remaining)}
-                      className="min-w-0 flex-1 border border-slate-700 bg-slate-950 px-2 py-1.5 text-center font-mono text-sm text-slate-100 outline-none focus:border-cyan-500"
+                      // What is still uncovered, so the rows the cashier has
+                      // not filled in show what they would each take. Type 10
+                      // against cash on a 14 bill and the other two both read
+                      // 4.00 — greyed, because it is an offer, not a tender.
+                      placeholder={currency(splitLeft)}
+                      className="min-w-0 flex-1 border border-slate-700 bg-slate-950 px-2 py-1.5 text-center font-mono text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-cyan-500"
                     />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const part = Number(parts[entry.value]);
-                        addPayment(
-                          Number.isFinite(part) && part > 0 ? part : remaining,
-                          entry.value,
-                        );
-                        setParts((current) => ({ ...current, [entry.value]: "" }));
-                      }}
-                      className="shrink-0 bg-slate-800 px-3 py-1.5 text-[11px] font-bold uppercase text-slate-200 transition hover:bg-cyan-800"
-                    >
-                      {t("pos.payment.take", "Take")}
-                    </button>
                   </div>
                 ))}
-                <p className="pt-0.5 text-[10px] text-slate-500">
-                  {t(
-                    "pos.payment.splitHint",
-                    "Leave an amount empty to put the whole balance on that method.",
-                  )}
-                </p>
               </div>
             )}
 
@@ -359,7 +396,7 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
           <div className="space-y-2 border border-amber-800 bg-amber-950/30 p-3">
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-xs font-bold uppercase tracking-wide text-amber-300">
-                {t("pos.credit.onAccount", "On Account")}
+                {t("common.payments.credit", "Credit")}
               </span>
               <span className="font-mono font-bold tabular-nums text-amber-200">
                 {currency(onAccount > 0 ? onAccount : takesFor("credit"))}
@@ -395,28 +432,40 @@ function PaymentModal({ total, methods, initialMethod, onConfirm, onClose, busy 
               <span className="me-auto text-[11px] font-semibold uppercase text-slate-400">
                 {t("pos.credit.payWithin", "Pay within")}
               </span>
-              {[7, 14, 30, 60].map((days) => (
+              {[7, 14, "2W+"].map((run) => (
                 <button
-                  key={days}
+                  key={run}
                   type="button"
-                  onClick={() => setAccount((current) => ({ ...current, termDays: days }))}
+                  onClick={() => setAccount((current) => ({ ...current, term: run }))}
                   className={`px-2 py-1 text-[11px] font-bold uppercase transition ${
-                    Number(account.termDays) === days
+                    account.term === run
                       ? "bg-amber-700 text-white"
                       : "bg-slate-800 text-slate-300 hover:bg-slate-700"
                   }`}
                 >
-                  {t("pos.credit.days", "{{n}}d", { n: days })}
+                  {typeof run === "number" ? t("pos.credit.days", "{{n}}d", { n: run }) : run}
                 </button>
               ))}
+              {/* No term at all. A shop that has not agreed one should not have
+                  a run picked for it by whichever button happened to be lit. */}
+              <button
+                type="button"
+                onClick={() => setAccount((current) => ({ ...current, term: null }))}
+                aria-label={t("pos.credit.noTerm", "No term")}
+                title={t("pos.credit.noTerm", "No term")}
+                className={`px-2 py-1 text-[11px] font-bold transition ${
+                  account.term === null
+                    ? "bg-amber-700 text-white"
+                    : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+                }`}
+              >
+                <FiX className="h-3.5 w-3.5" />
+              </button>
             </div>
 
             {!accountReady && (
               <p className="text-[11px] font-semibold text-amber-400">
-                {t(
-                  "pos.credit.contactRequired",
-                  "An email or a phone number is needed — it is how this gets collected.",
-                )}
+                {t("pos.credit.contactRequired", "An email or a phone number is needed")}
               </p>
             )}
           </div>

@@ -24,7 +24,6 @@ function CreditBookModal({ onClose }) {
   const [book, setBook] = useState(null);
   const [loading, setLoading] = useState(true);
   const [taking, setTaking] = useState(null); // the account being paid
-  const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("cash");
   const [busy, setBusy] = useState(false);
   const [receipt, setReceipt] = useState(null); // the slip just given
@@ -52,12 +51,12 @@ function CreditBookModal({ onClose }) {
     load("");
   }, [load]);
 
+  // Settling an account means settling it: what is owed, in one press. There is
+  // no figure to type, so there is no figure to mistype — the amount is read
+  // straight off the row the cashier opened.
   const take = async () => {
-    const paying = Number(amount);
-    if (!Number.isFinite(paying) || paying <= 0) {
-      toast.error(t("pos.credit.enterAmount", "Enter how much they are paying"));
-      return;
-    }
+    const paying = Number(taking?.outstanding);
+    if (!Number.isFinite(paying) || paying <= 0) return;
 
     setBusy(true);
     try {
@@ -74,7 +73,6 @@ function CreditBookModal({ onClose }) {
         at: new Date().toISOString(),
       });
       setTaking(null);
-      setAmount("");
       load(query);
     } catch (error) {
       toast.error(error.response?.data?.message || t("pos.credit.takeFailed", "Could not record it"));
@@ -88,7 +86,6 @@ function CreditBookModal({ onClose }) {
   return (
     <PosModal
       title={t("pos.credit.title", "Credit Book")}
-      subtitle={t("pos.credit.subtitle", "What the shop is owed, and taking it back")}
       onClose={onClose}
       width="max-w-3xl"
       footer={
@@ -233,7 +230,6 @@ function CreditBookModal({ onClose }) {
                         type="button"
                         onClick={() => {
                           setTaking(row);
-                          setAmount(String(row.outstanding));
                           setMethod("cash");
                         }}
                         className="bg-emerald-700 px-3 py-1.5 text-xs font-bold uppercase text-white hover:bg-emerald-600"
@@ -259,13 +255,10 @@ function CreditBookModal({ onClose }) {
                       cashier can see what it is they are settling. */}
                   {taking?.receiptNo === row.receiptNo && (
                     <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-800 pt-2">
-                      <input
-                        autoFocus
-                        inputMode="decimal"
-                        value={amount}
-                        onChange={(event) => setAmount(event.target.value)}
-                        className="w-28 border border-slate-700 bg-slate-950 px-2 py-1.5 text-center font-mono text-slate-100 outline-none focus:border-emerald-500"
-                      />
+                      {/* What is being settled, shown rather than typed. */}
+                      <span className="border border-slate-700 bg-slate-950 px-3 py-1.5 text-center font-mono font-semibold tabular-nums text-amber-300">
+                        {currency(row.outstanding)}
+                      </span>
                       {[
                         { key: "cash", label: t("common.payments.cash", "Cash") },
                         { key: "creditcard", label: t("common.payments.creditcard", "Card") },

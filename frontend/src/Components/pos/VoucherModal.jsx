@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import axiosInstance from "../../lib/axios";
 import { cacheGet, isVoucherSpentOffline } from "../../lib/offlineDb";
 import { isNetworkError } from "../../lib/offlineQueue";
-import { FiPrinter } from "react-icons/fi";
+import { FiMinus, FiPlus, FiPrinter } from "react-icons/fi";
 import PosModal from "./PosModal";
 import BarcodeLabel from "../BarcodeLabel";
 import {
@@ -179,16 +179,21 @@ function VoucherModal({
   const [product, setProduct] = useState({
     name: "",
     Price: "",
-    costPrice: "",
+    wasPrice: "",
     Category: "",
     quantity: "",
     barcode: "",
   });
   const [made, setMade] = useState(null);
-  // How many stickers to print. Set from the quantity received the moment the
-  // product is created — one label per unit going on the shelf — so the common
-  // case needs no typing. It used to open at a flat 12, which was a number
-  // with nothing behind it: add three vapes, get twelve stickers.
+  // The barcode of the product this screen actually created. Nothing is written
+  // until Print, and a second Print is another sheet of the same sticker rather
+  // than a second product — so what was saved is remembered by its code, not by
+  // a flag that a trip back to the form would reset.
+  const [savedBarcode, setSavedBarcode] = useState(null);
+  // How many tickets to print. One, always — a shelf edge takes a single label
+  // whether four units came in or four hundred, and the steppers beside the box
+  // count up for the times a strip is wanted. It used to open at the quantity
+  // received, which offered forty stickers for one price change.
   const [labels, setLabels] = useState(1);
 
   // Hand-typed money off this basket, folded in from what used to be its own
@@ -203,7 +208,11 @@ function VoucherModal({
   const setProductField = (key) => (event) =>
     setProduct((current) => ({ ...current, [key]: event.target.value }));
 
-  const createProduct = async (event) => {
+  // Generate checks the form and shows the sticker. It writes NOTHING: the
+  // product is created by Print, so a cashier who looks at a preview and backs
+  // out has put nothing in the catalogue, and the form they come back to still
+  // holds everything they typed.
+  const reviewProduct = (event) => {
     event.preventDefault();
 
     if (!product.name.trim() || !product.Price) {
@@ -219,44 +228,65 @@ function VoucherModal({
       return;
     }
 
-    setBusy(true);
-    try {
-      const payload = new FormData();
-      payload.append("name", product.name.trim());
-      payload.append("Price", product.Price);
-      if (product.costPrice) payload.append("costPrice", product.costPrice);
-      if (product.Category) payload.append("Category", product.Category);
-      payload.append("quantity", product.quantity || "0");
-      payload.append("barcode", product.barcode.trim());
+    setMade({
+      name: product.name.trim(),
+      barcode: product.barcode.trim(),
+      Price: Number(product.Price),
+      // Kept off the product itself: what a thing used to cost is a fact about
+      // this batch of stickers, not about the item.
+      wasPrice: product.wasPrice ? Number(product.wasPrice) : null,
+    });
+    // One sticker. A shelf edge takes a single label however many units came in,
+    // and a cashier who wants a strip can count up with the steppers.
+    setLabels(1);
+  };
 
-      // The till's own create path, open to every cashier — the same one the
-      // unknown-barcode screen uses, so a product added here is identical to
-      // one learned at the scanner.
-      const response = await axiosInstance.post("product/quick-add", payload);
-      const created = response.data.product || {};
+  // Write the product. This is the moment the catalogue changes, and it happens
+  // on Print rather than on Generate.
+  const saveProduct = async () => {
+    const payload = new FormData();
+    payload.append("name", product.name.trim());
+    payload.append("Price", product.Price);
+    if (product.Category) payload.append("Category", product.Category);
+    payload.append("quantity", product.quantity || "0");
+    payload.append("barcode", product.barcode.trim());
 
-      toast.success(t("pos.newProduct.created", { name: product.name.trim() }));
-      setMade({
-        name: created.name || product.name.trim(),
-        barcode: created.barcode || product.barcode.trim(),
-        Price: Number(created.Price ?? product.Price),
-      });
-      // A shelf label per unit received. Nothing to price means nothing to
-      // label yet, so that falls to a single sticker rather than none.
-      setLabels(Math.max(1, Math.min(200, Number(product.quantity) || 1)));
-      setProduct({ name: "", Price: "", costPrice: "", Category: "", quantity: "", barcode: "" });
-      onProductAdded?.();
-    } catch (error) {
-      toast.error(error.response?.data?.message || t("pos.newProduct.failed", "Could not add it"));
-    } finally {
-      setBusy(false);
-    }
+    // The till's own create path, open to every cashier — the same one the
+    // unknown-barcode screen uses, so a product added here is identical to one
+    // learned at the scanner.
+    await axiosInstance.post("product/quick-add", payload);
+    toast.success(t("pos.newProduct.created", { name: product.name.trim() }));
+    setSavedBarcode(product.barcode.trim());
+    onProductAdded?.();
   };
 
   // The app prints to an 80mm till roll by default. Shelf labels go on a normal
   // sheet, so @page is overridden for this print only — a rule appended last
   // wins the cascade, and it comes off again so the next receipt is not printed
   // on A4.
+  const saveAndPrint = async () => {
+    if (busy) return;
+
+    // Already written on an earlier press — this is just another sheet.
+    if (savedBarcode !== made?.barcode) {
+      setBusy(true);
+      try {
+        await saveProduct();
+      } catch (error) {
+        toast.error(
+          error.response?.data?.message || t("pos.newProduct.failed", "Could not add it"),
+        );
+        // No sticker for a product the catalogue does not have: it would go on
+        // a shelf carrying a code nothing scans.
+        return;
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    printLabels();
+  };
+
   const printLabels = () => {
     const style = document.createElement("style");
     style.textContent = "@page { size: A4; margin: 8mm; }";
@@ -276,7 +306,10 @@ function VoucherModal({
   return (
     <PosModal
       title={t("pos.voucher.title")}
-      subtitle={t("pos.voucher.subtitle")}
+      // The sticker screen is a step further in, so it gets the arrow back to
+      // the form — which still holds everything typed, because Generate only
+      // previewed. Backing out of a preview leaves no trace anywhere.
+      onBack={made ? () => setMade(null) : undefined}
       onClose={onClose}
       width="max-w-xl"
     >
@@ -359,7 +392,6 @@ function VoucherModal({
                   autoFocus
                   value={code}
                   onChange={(event) => setCode(event.target.value)}
-                  placeholder={t("pos.voucher.codePlaceholder")}
                   className={`${field} font-mono uppercase`}
                 />
               </div>
@@ -453,13 +485,25 @@ function VoucherModal({
         </div>
       ) : tab === "product" ? (
         made ? (
-          /* The product exists. What the person who added it wants next is the
-             label to put on the shelf, so that is the screen — not an empty
-             form and a toast that has already gone. */
+          /* The sticker, before it is anything else. Nothing has been written
+             yet — Print does that — so the banner says which of the two states
+             this is rather than claiming a product that does not exist. */
           <div className="space-y-4">
-            <div className="border border-emerald-800 bg-emerald-950/30 px-3 py-2 text-center">
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
-                {t("pos.newProduct.added", "Product Added")}
+            <div
+              className={`border px-3 py-2 text-center ${
+                savedBarcode === made.barcode
+                  ? "border-emerald-800 bg-emerald-950/30"
+                  : "border-slate-700 bg-slate-950"
+              }`}
+            >
+              <p
+                className={`text-xs font-semibold uppercase tracking-wide ${
+                  savedBarcode === made.barcode ? "text-emerald-300" : "text-slate-400"
+                }`}
+              >
+                {savedBarcode === made.barcode
+                  ? t("pos.newProduct.added", "Product Added")
+                  : t("pos.newProduct.savesOnPrint", "Saves when you print")}
               </p>
               <p className="text-lg font-bold text-slate-100">{made.name}</p>
               <p className="font-mono text-xs text-slate-400">{made.barcode}</p>
@@ -468,8 +512,15 @@ function VoucherModal({
             {/* One label at the size it prints, so nobody discovers the symbol
                 is unreadable after running off a sheet of forty. */}
             <div className="mx-auto w-fit bg-white px-3 py-2">
-              <div style={{ width: "36mm", textAlign: "center" }}>
-                <BarcodeLabel code={made.barcode} price={made.Price} symbol={symbol} />
+              <div style={{ width: "84mm" }}>
+                <BarcodeLabel
+                  variant="shelf"
+                  code={made.barcode}
+                  price={made.Price}
+                  wasPrice={made.wasPrice}
+                  name={made.name}
+                  symbol={symbol}
+                />
               </div>
             </div>
 
@@ -477,15 +528,43 @@ function VoucherModal({
               <label className="text-xs font-semibold uppercase text-slate-400">
                 {t("pos.newProduct.labels", "Labels")}
               </label>
-              <input
-                inputMode="numeric"
-                value={labels}
-                onChange={(event) => setLabels(sanitizeInteger(event.target.value))}
-                className="w-20 border border-slate-700 bg-slate-950 px-2 py-1.5 text-center text-slate-100 outline-none focus:border-cyan-500"
-              />
+              {/* Counted up and down rather than typed. A strip of tickets is
+                  one, two, three — a number of presses, not a number to key
+                  in — and the box still takes a figure for the rare forty. */}
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setLabels((n) => Math.max(1, (Number(n) || 1) - 1))}
+                  disabled={(Number(labels) || 1) <= 1}
+                  className="bg-slate-800 p-2 text-slate-300 transition hover:bg-slate-700 active:scale-90 disabled:opacity-30"
+                  aria-label={t("pos.table.decrease")}
+                >
+                  <FiMinus className="h-3.5 w-3.5" />
+                </button>
+                <input
+                  inputMode="numeric"
+                  value={labels}
+                  onChange={(event) => setLabels(sanitizeInteger(event.target.value))}
+                  // An empty or zero box on the way out of the field becomes
+                  // one, so Print never runs off a sheet of nothing.
+                  onBlur={() =>
+                    setLabels(Math.max(1, Math.min(200, Number(labels) || 1)))
+                  }
+                  className="w-14 border-y border-slate-700 bg-slate-950 px-2 py-1.5 text-center text-slate-100 outline-none focus:border-cyan-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setLabels((n) => Math.min(200, (Number(n) || 1) + 1))}
+                  disabled={(Number(labels) || 1) >= 200}
+                  className="bg-slate-800 p-2 text-slate-300 transition hover:bg-slate-700 active:scale-90 disabled:opacity-30"
+                  aria-label={t("pos.table.increase")}
+                >
+                  <FiPlus className="h-3.5 w-3.5" />
+                </button>
+              </div>
               <button
                 type="button"
-                onClick={printLabels}
+                onClick={saveAndPrint}
                 className="ms-auto flex items-center gap-2 bg-cyan-700 px-4 py-2 text-sm font-bold uppercase text-white hover:bg-cyan-600"
               >
                 <FiPrinter className="h-4 w-4" />
@@ -493,7 +572,18 @@ function VoucherModal({
               </button>
               <button
                 type="button"
-                onClick={() => setMade(null)}
+                onClick={() => {
+                  setMade(null);
+                  setSavedBarcode(null);
+                  setProduct({
+                    name: "",
+                    Price: "",
+                    wasPrice: "",
+                    Category: "",
+                    quantity: "",
+                    barcode: "",
+                  });
+                }}
                 className="bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700"
               >
                 {t("pos.newProduct.another", "Add Another")}
@@ -502,14 +592,17 @@ function VoucherModal({
 
             {/* The sheet, hidden until it prints. */}
             <div id="barcode-sheet" className="hidden">
-              <div className="bc-grid">
+              <div className="bc-grid bc-grid-shelf">
                 {Array.from({
                   length: Math.max(1, Math.min(200, Number(labels) || 1)),
                 }).map((_, index) => (
                   <BarcodeLabel
                     key={index}
+                    variant="shelf"
                     code={made.barcode}
                     price={made.Price}
+                    wasPrice={made.wasPrice}
+                    name={made.name}
                     symbol={symbol}
                   />
                 ))}
@@ -517,7 +610,7 @@ function VoucherModal({
             </div>
           </div>
         ) : (
-          <form onSubmit={createProduct} className="space-y-3">
+          <form onSubmit={reviewProduct} className="space-y-3">
             <div>
               <label className={label}>{t("pos.newProduct.name", "Product Name")}</label>
               <input
@@ -546,14 +639,14 @@ function VoucherModal({
                 />
               </div>
               <div>
-                <label className={label}>{t("pos.newProduct.cost", "Cost Price")}</label>
+                <label className={label}>{t("pos.newProduct.wasPrice", "Was Price")}</label>
                 <input
                   inputMode="decimal"
-                  value={product.costPrice}
+                  value={product.wasPrice}
                   onChange={(event) =>
                     setProduct((current) => ({
                       ...current,
-                      costPrice: sanitizeDecimal(event.target.value),
+                      wasPrice: sanitizeDecimal(event.target.value),
                     }))
                   }
                   placeholder="0.0"
@@ -561,9 +654,6 @@ function VoucherModal({
                 />
                 {/* Not required, but the reports say so if it is missing: with
                     no cost there is no profit figure to report. */}
-                <p className="mt-1 text-[11px] text-slate-500">
-                  {t("pos.newProduct.costHint", "Without it, profit cannot be reported")}
-                </p>
               </div>
             </div>
 
@@ -619,15 +709,6 @@ function VoucherModal({
                   {t("pos.newProduct.generate", "Generate")}
                 </button>
               </div>
-              {/* Scanning the supplier's own barcode is better than inventing
-                  one — it is already on the box. Generate is for loose stock
-                  and own-brand items that carry none. */}
-              <p className="mt-1 text-[11px] text-slate-500">
-                {t(
-                  "pos.newProduct.barcodeHint",
-                  "Scan the one on the box if it has one. Generated codes use the in-store range, so they never clash with a real product.",
-                )}
-              </p>
             </div>
 
             <button
@@ -646,7 +727,6 @@ function VoucherModal({
             <input
               value={form.code}
               onChange={(event) => setForm({ ...form, code: event.target.value })}
-              placeholder="SAVE10"
               className={`${field} font-mono uppercase`}
             />
           </div>
@@ -675,6 +755,7 @@ function VoucherModal({
                 onChange={(event) =>
                   setForm({ ...form, value: sanitizeDecimal(event.target.value) })
                 }
+                placeholder="0.0"
                 className={field}
               />
             </div>
@@ -682,7 +763,7 @@ function VoucherModal({
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className={label}>{t("pos.voucher.minSpend")}</label>
+              <label className={label}>{t("pos.voucher.minSpendLabel")}</label>
               <input
                 type="text"
                 inputMode="decimal"
@@ -691,6 +772,7 @@ function VoucherModal({
                 onChange={(event) =>
                   setForm({ ...form, minSpend: sanitizeDecimal(event.target.value) })
                 }
+                placeholder="0.0"
                 className={field}
               />
             </div>
@@ -704,6 +786,7 @@ function VoucherModal({
                 onChange={(event) =>
                   setForm({ ...form, usageLimit: sanitizeInteger(event.target.value) })
                 }
+                placeholder="0"
                 className={field}
               />
             </div>

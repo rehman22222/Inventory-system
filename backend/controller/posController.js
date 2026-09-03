@@ -497,19 +497,33 @@ module.exports.checkout = async (req, res) => {
           .json({ message: `That email does not look right: ${email}` });
       }
 
-      // The run the shop gave them. A fortnight by default — long enough to be
-      // a real term, short enough that nobody forgets it exists.
-      const termDays = Math.max(
-        1,
-        Math.min(365, Math.floor(Number(creditTerms?.termDays || 14))),
-      );
+      // The run the shop gave them. A number of days is a term this can put a
+      // date on. The till can also agree a term with no date behind it ("2W+"),
+      // or none at all, and neither may be quietly rounded up into a fortnight:
+      // a due date nobody agreed is one the credit book goes on to chase, and
+      // marks the customer overdue for missing it.
+      const rawTerm = creditTerms?.termDays;
+      const termDays =
+        rawTerm === null || rawTerm === undefined || !Number.isFinite(Number(rawTerm))
+          ? null
+          : Math.max(1, Math.min(365, Math.floor(Number(rawTerm))));
+
+      // Only there when no run was given, e.g. "2W+". Text, because it is
+      // printed on the slip rather than counted with.
+      const termLabel =
+        String(creditTerms?.termLabel || "").trim().slice(0, 12) || undefined;
 
       creditBlock = {
         email: email || undefined,
         phone: phone || undefined,
         amount: onAccount,
-        termDays,
-        dueAt: new Date(Date.now() + termDays * 24 * 60 * 60 * 1000),
+        termDays: termDays ?? undefined,
+        termLabel,
+        // No run, no date. Everything downstream already treats a missing
+        // dueAt as "nothing to chase yet" rather than as overdue.
+        dueAt: termDays
+          ? new Date(Date.now() + termDays * 24 * 60 * 60 * 1000)
+          : undefined,
         payments: [],
       };
     }
@@ -923,6 +937,17 @@ module.exports.checkout = async (req, res) => {
         total: receipt.total,
         amountTendered: receipt.amountTendered,
         changeDue: receipt.changeDue,
+        // What went on the book, so the slip can print the term that was
+        // agreed. A credit sale whose receipt does not say when it falls due is
+        // the one that gets argued about at the counter later.
+        credit: receipt.credit
+          ? {
+              amount: receipt.credit.amount,
+              termDays: receipt.credit.termDays,
+              termLabel: receipt.credit.termLabel,
+              dueAt: receipt.credit.dueAt,
+            }
+          : undefined,
         createdAt: receipt.createdAt,
       },
     });
@@ -2327,6 +2352,7 @@ const creditRow = (receipt) => ({
   ),
   outstanding: creditOutstanding(receipt),
   termDays: receipt.credit?.termDays || null,
+  termLabel: receipt.credit?.termLabel || null,
   dueAt: receipt.credit?.dueAt || null,
   // Past its date and still owed. The one thing worth colouring on the screen.
   overdue:
