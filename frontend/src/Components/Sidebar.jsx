@@ -23,6 +23,7 @@ const dashboardPath = {
   admin: "/AdminDashboard",
   manager: "/ManagerDashboard",
   staff: "/StaffDashboard",
+  report: "/ReportDashboard",
 };
 
 // `label` is an i18n key under the `sidebar` namespace, resolved at render.
@@ -31,7 +32,6 @@ const menuByRole = {
   // the shop's own details, approvals, direct user management and the inbox.
   superadmin: [
     { label: "sidebar.dashboard", path: "", icon: RxDashboard },
-    { label: "sidebar.ghost", path: "ghost", icon: FiEye },
     { label: "sidebar.pos", to: "/pos", icon: FiCreditCard },
     { label: "sidebar.products", path: "product", icon: AiOutlineProduct },
     { label: "sidebar.categories", path: "category", icon: MdOutlineCategory },
@@ -88,6 +88,9 @@ const menuByRole = {
     { label: "sidebar.dashboard", path: "", icon: RxDashboard },
     // POS opens as a standalone full-screen terminal (same tab, so browser Back works).
     { label: "sidebar.pos", to: "/pos", icon: FiCreditCard },
+  ],
+  report: [
+    { label: "sidebar.report", path: "", icon: FiEye },
   ],
 };
 

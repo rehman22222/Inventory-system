@@ -71,6 +71,14 @@ module.exports.superadminmiddleware = (req, res, next) => {
   next();
 };
 
+module.exports.reportAccess = (req, res, next) => {
+  if (req.user?.role !== "report") {
+    return res.status(403).json({ message: "Access denied. Report account only." });
+  }
+
+  next();
+};
+
 
 
 // The owner side of the shop: admins raise tickets and requests, superadmin

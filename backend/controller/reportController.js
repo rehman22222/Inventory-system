@@ -98,6 +98,7 @@ async function buildSales(req, options = {}) {
   // (counter sales + refunds); default = combined (no source filter).
   if (options.source === "online") filter.source = "online";
   else if (options.source === "pos") filter.source = { $ne: "online" };
+  if (options.creditOnly) filter.paymentMethod = "credit";
 
   const sales = await Sale.find(filter)
     .populate("products.product", "name costPrice")
@@ -239,6 +240,9 @@ async function buildPosSales(req) {
 }
 async function buildOnlineSales(req) {
   return buildSales(req, { source: "online" });
+}
+async function buildCreditSales(req) {
+  return buildSales(req, { creditOnly: true });
 }
 
 // ── Inventory: stock valuation + potential profit ───────────────────────────
@@ -477,6 +481,11 @@ const REPORTS = {
     roles: ["superadmin", "admin"],
     build: buildOnlineSales,
   },
+  "credit-sales": {
+    label: "Credit Sales",
+    roles: ["superadmin", "admin"],
+    build: buildCreditSales,
+  },
   inventory: {
     label: "Inventory & Valuation",
     roles: ["superadmin", "admin", "manager"],
@@ -499,8 +508,8 @@ const REPORTS = {
     build: buildDayClosing,
   },
   "ghost-net": {
-    label: "Adjusted Net Sales",
-    roles: ["superadmin"],
+    label: "Report",
+    roles: ["report"],
     build: buildGhostNet,
   },
 };

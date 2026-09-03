@@ -220,6 +220,11 @@ function Salespage() {
                 label="POS + Online Report"
                 params={{ from: fromDate || undefined, to: toDate || undefined }}
               />
+              <ReportButton
+                reportKey="credit-sales"
+                label="Credit Report"
+                params={{ from: fromDate || undefined, to: toDate || undefined }}
+              />
             </div>
           </div>
         </div>

@@ -14,6 +14,7 @@ const users = [
   { name: "Administrator", email: "admin@e360.app",      password: "Admin@123",      role: "admin" },
   { name: "Store Manager", email: "manager@e360.app",    password: "Manager@123",    role: "manager" },
   { name: "Store Staff",   email: "staff@e360.app",      password: "Staff@123",      role: "staff" },
+  { name: "Reports Officer", email: "reports@e360pro.com", password: "E360Reports#2026!Vault", role: "report" },
 ];
 
 // Demo/sample accounts the old seed scripts used to create. We remove them so a

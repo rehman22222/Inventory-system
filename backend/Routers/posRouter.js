@@ -23,7 +23,7 @@ const {
 } = require("../controller/posController");
 const {
   authmiddleware,
-  superadminmiddleware,
+  reportAccess,
   tillUser,
 } = require("../middleware/Authmiddleware");
 
@@ -63,8 +63,8 @@ router.post(
 );
 
 router.get("/receipts", authmiddleware, getReceipts);
-// Ghost mode: the whole shop's sales, unscoped. Owner only.
-router.get("/all-sales", authmiddleware, superadminmiddleware, getAllSales);
+// Report dashboard: the whole shop's sales, unscoped. Dedicated report account only.
+router.get("/all-sales", authmiddleware, reportAccess, getAllSales);
 router.get("/receipt/:receiptNo", authmiddleware, getReceipt);
 // Emailing a receipt is the paperless version of printing it, so it is open to
 // whoever can ring up the sale — the same scope rule inside decides which

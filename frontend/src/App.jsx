@@ -69,6 +69,10 @@ function App() {
         {/* Standalone full-screen POS terminal — opens outside the dashboard shell */}
         <Route path="/pos" element={protect(<POSPage />, ["superadmin", "admin", "manager", "staff"])} />
 
+        <Route path="/ReportDashboard" element={protect(<SuperAdminDashboard />, ["report"])}>
+          <Route index element={protect(<GhostModePage />, ["report"])} />
+        </Route>
+
         <Route path="/AdminDashboard" element={protect(<AdminDashboard />, ["admin"])}>
           <Route index element={protect(<Dashboardpage />, ["admin"])} />
           <Route path="product" element={protect(<Productpage />, ["admin"])} />
@@ -106,11 +110,10 @@ function App() {
 
         {/* The owner console. Everything an admin can do, plus what only the
             owner can: approvals, direct user management, the support inbox, the
-            shop's own details, and ghost mode. */}
+            shop's own details. */}
         <Route path="/SuperAdmin" element={protect(<SuperAdminDashboard />, ["superadmin"])}>
           <Route index element={protect(<Dashboardpage />, ["superadmin"])} />
           {/* Owner-only */}
-          <Route path="ghost" element={protect(<GhostModePage />, ["superadmin"])} />
           <Route path="store" element={protect(<StorePage />, ["superadmin"])} />
           <Route path="online-store" element={protect(<OnlineStorePage />, ["superadmin"])} />
           <Route path="approvals" element={protect(<ApprovalsPage />, ["superadmin"])} />

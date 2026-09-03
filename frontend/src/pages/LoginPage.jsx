@@ -70,6 +70,8 @@ function LoginPage() {
         const role = response?.user?.role || response?.savedUser?.role;
         if (role === "superadmin") {
           navigator("/SuperAdmin");
+        } else if (role === "report") {
+          navigator("/ReportDashboard");
         } else if (role === "staff") {
           navigator("/StaffDashboard");
         } else if (role === "admin") {

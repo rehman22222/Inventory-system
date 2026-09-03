@@ -219,6 +219,7 @@
     "dayClosings": "Day Closings",
     "store": "Store",
     "ghost": "Ghost Mode",
+    "report": "Report",
     "onlineStore": "Online Store"
   },
   "topnav": {
@@ -1427,7 +1428,7 @@
     }
   },
   "ghost": {
-    "title": "Ghost Mode",
+    "title": "Report",
     "sub": "Every sale in the shop — all cashiers, all days, including batches already handed over.",
     "sales": "Sales",
     "gross": "Gross",

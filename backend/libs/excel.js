@@ -189,6 +189,8 @@ async function buildWorkbookBuffer({
   );
   const moneyCols = headers.map((header) => MONEY_HEADER.test(String(header)));
   const dateCols = headers.map((header) => DATE_HEADER.test(String(header)));
+  const paymentColumn = headers.findIndex((header) => /^payment$/i.test(String(header)));
+  const shouldMarkCreditRows = reportType === "combined-sales" && paymentColumn >= 0;
 
   const ws = wb.addWorksheet(safeWorksheetName(title, reportType), {
     properties: {
@@ -496,6 +498,23 @@ async function buildWorkbookBuffer({
           type: "pattern",
           pattern: "solid",
           fgColor: { argb: COLORS.surface },
+        };
+      });
+    }
+    if (
+      shouldMarkCreditRows &&
+      String(typedRows[rowNumber - firstDataRow]?.[paymentColumn] || "").toLowerCase() === "credit"
+    ) {
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: COLORS.redSoft },
+        };
+        cell.font = {
+          ...(cell.font || {}),
+          bold: true,
+          color: { argb: COLORS.red },
         };
       });
     }

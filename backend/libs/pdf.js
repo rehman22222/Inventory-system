@@ -21,6 +21,8 @@ const RULE = "#d1d5db";
 const HEAD_BG = "#1e293b";
 const ZEBRA = "#f8fafc";
 const ACCENT = "#1d4ed8";
+const CREDIT_BG = "#fee2e2";
+const CREDIT_INK = "#b91c1c";
 
 // Columns holding money or counts. They are right-aligned, because digits only
 // line up for comparison when their last digit does.
@@ -67,6 +69,7 @@ const buildPdfBuffer = ({
   shop = {},
   currency = "EUR",
   timezone = "UTC",
+  reportType,
 }) =>
   new Promise((resolve, reject) => {
     const doc = new PDFDocument({
@@ -139,6 +142,8 @@ const buildPdfBuffer = ({
     const widths = columnWidths(doc, headers, rows, available);
     const rowHeight = 14;
     const align = headers.map((h) => (NUMERIC_HEADER.test(h) ? "right" : "left"));
+    const paymentColumn = headers.findIndex((header) => /^payment$/i.test(String(header)));
+    const shouldMarkCreditRows = reportType === "combined-sales" && paymentColumn >= 0;
 
     const drawHeader = () => {
       const y = doc.y;
@@ -170,11 +175,14 @@ const buildPdfBuffer = ({
       }
 
       const y = doc.y;
-      if (rowIndex % 2 === 1) {
-        doc.rect(left, y, available, rowHeight).fill(ZEBRA);
+      const isCreditRow =
+        shouldMarkCreditRows &&
+        String(row[paymentColumn] || "").toLowerCase() === "credit";
+      if (isCreditRow || rowIndex % 2 === 1) {
+        doc.rect(left, y, available, rowHeight).fill(isCreditRow ? CREDIT_BG : ZEBRA);
       }
 
-      doc.fillColor(INK);
+      doc.fillColor(isCreditRow ? CREDIT_INK : INK);
       let x = left;
       row.forEach((cell, index) => {
         doc.text(truncate(doc, cell, widths[index] - 8), x + 4, y + 4, {

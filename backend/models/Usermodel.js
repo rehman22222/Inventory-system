@@ -32,7 +32,7 @@ const UserSchema= new mongoose.Schema({
         // approvals queue and user management. Admin must request sensitive
         // actions (like user management) and superadmin approves them.
         // Created only by script, never through the app.
-        enum:['superadmin','admin','manager','staff'],
+        enum:['superadmin','admin','manager','staff','report'],
         default:'staff',
 
     },
