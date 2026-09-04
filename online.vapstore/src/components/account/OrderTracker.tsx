@@ -104,60 +104,29 @@ export function OrderTracker({
         </div>
       </div>
 
-      <ol className="grid grid-cols-2 gap-y-7 bg-surface px-4 pb-6 pt-5 sm:grid-cols-4 sm:gap-y-0 sm:px-7">
+      <ol className="grid grid-cols-4 bg-surface px-2 pb-5 pt-4 sm:px-7 sm:pb-6 sm:pt-5">
         {steps.map((step, index) => {
           const reached = step.done || step.current || index <= currentIndex;
           const connectorReached =
             index < currentIndex || (index === currentIndex && step.done);
           const Icon = STEP_ICONS[step.status] || PackageCheck;
-          const mobilePosition =
-            [
-              "max-sm:col-start-1 max-sm:row-start-1",
-              "max-sm:col-start-2 max-sm:row-start-1",
-              "max-sm:col-start-2 max-sm:row-start-2",
-              "max-sm:col-start-1 max-sm:row-start-2",
-            ][index] || "";
 
           return (
             <li
               key={step.status}
-              className={`relative flex min-w-0 flex-col items-center px-2 text-center ${mobilePosition}`}
+              className="relative flex min-w-0 flex-col items-center px-1 text-center sm:px-2"
             >
               {index < steps.length - 1 && (
                 <span
                   aria-hidden
-                  className={`absolute left-1/2 top-[17px] hidden h-1 w-full sm:block ${
-                    connectorReached ? "bg-accent" : "bg-border"
-                  }`}
-                />
-              )}
-              {index === 0 && (
-                <span
-                  aria-hidden
-                  className={`absolute left-1/2 top-[17px] h-1 w-full sm:hidden ${
-                    connectorReached ? "bg-accent" : "bg-border"
-                  }`}
-                />
-              )}
-              {index === 1 && (
-                <span
-                  aria-hidden
-                  className={`absolute left-1/2 top-[17px] h-[calc(100%+1.75rem)] w-1 -translate-x-1/2 sm:hidden ${
-                    connectorReached ? "bg-accent" : "bg-border"
-                  }`}
-                />
-              )}
-              {index === 2 && (
-                <span
-                  aria-hidden
-                  className={`absolute right-1/2 top-[17px] h-1 w-full sm:hidden ${
+                  className={`absolute left-1/2 top-[14px] h-0.5 w-full sm:top-[17px] sm:h-1 ${
                     connectorReached ? "bg-accent" : "bg-border"
                   }`}
                 />
               )}
 
               <span
-                className={`relative z-10 grid h-9 w-9 place-items-center rounded-full border-2 text-sm font-semibold sm:h-10 sm:w-10 ${
+                className={`relative z-10 grid h-7 w-7 place-items-center rounded-full border-2 text-sm font-semibold sm:h-10 sm:w-10 ${
                   reached
                     ? "border-accent bg-accent text-accent-foreground"
                     : "border-border bg-surface text-ink-muted"
@@ -168,44 +137,44 @@ export function OrderTracker({
                 }`}
               >
                 {reached ? (
-                  <Check className="h-5 w-5" aria-hidden />
+                  <Check className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
                 ) : (
                   ""
                 )}
               </span>
 
               <div
-                className={`mt-4 grid h-12 w-12 place-items-center rounded-md border bg-background ${
+                className={`mt-3 grid h-9 w-9 place-items-center rounded-md border bg-background sm:mt-4 sm:h-12 sm:w-12 ${
                   reached ? "border-accent/45" : "border-border opacity-55"
                 }`}
               >
                 <Icon
-                  className={`h-7 w-7 ${
+                  className={`h-5 w-5 sm:h-7 sm:w-7 ${
                     reached ? "text-accent-foreground" : "text-ink-muted"
                   }`}
                   aria-hidden
                 />
               </div>
 
-              <div className="mt-3 min-w-0">
+              <div className="mt-2 min-w-0 sm:mt-3">
                 <div
-                  className={`text-sm font-bold leading-5 sm:text-[15px] ${
+                  className={`text-[11px] font-bold leading-4 sm:text-[15px] sm:leading-5 ${
                     reached ? "text-accent-foreground" : "text-ink"
                   }`}
                 >
                   {stepLabel(step)}
                 </div>
                 {(step.at || step.current) && (
-                  <div className="mx-auto mt-2 max-w-[120px] text-xs leading-5 text-ink-muted">
+                  <div className="mx-auto mt-1 max-w-[72px] text-[10px] leading-4 text-ink-muted sm:mt-2 sm:max-w-[120px] sm:text-xs sm:leading-5">
                     {step.at ? stampFor(step.at) : "Happening now"}
                   </div>
                 )}
                 {!step.at && !step.current && !reached && (
-                  <div className="mx-auto mt-2 max-w-[120px] text-xs leading-5 text-ink-muted">
-                    Expected delivery date
+                  <div className="mx-auto mt-1 max-w-[72px] text-[10px] leading-4 text-ink-muted sm:mt-2 sm:max-w-[120px] sm:text-xs sm:leading-5">
+                    Expected
                   </div>
                 )}
-                <p className="mx-auto mt-2 max-w-[132px] text-xs leading-5 text-ink-muted">
+                <p className="mx-auto mt-1 hidden max-w-[132px] text-xs leading-5 text-ink-muted sm:block">
                   {stepCopy(step, index)}
                 </p>
               </div>
