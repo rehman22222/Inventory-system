@@ -104,7 +104,7 @@ export function OrderTracker({
         </div>
       </div>
 
-      <ol className="grid min-w-[680px] grid-cols-4 bg-surface px-5 pb-6 pt-5 sm:min-w-0 sm:px-7">
+      <ol className="grid grid-cols-2 gap-y-7 bg-surface px-4 pb-6 pt-5 sm:grid-cols-4 sm:gap-y-0 sm:px-7">
         {steps.map((step, index) => {
           const reached = step.done || step.current || index <= currentIndex;
           const connectorReached =
@@ -119,7 +119,7 @@ export function OrderTracker({
               {index < steps.length - 1 && (
                 <span
                   aria-hidden
-                  className={`absolute left-1/2 top-[17px] h-1 w-full ${
+                  className={`absolute left-1/2 top-[17px] hidden h-1 w-full sm:block ${
                     connectorReached ? "bg-accent" : "bg-border"
                   }`}
                 />

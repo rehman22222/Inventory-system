@@ -41,7 +41,7 @@ function SignIn() {
     setError("");
     try {
       await loginAccount({ data: { email: email.trim(), password } });
-      window.location.assign("/account");
+      window.location.assign("/account/");
     } catch (loginError) {
       setError(
         loginError instanceof Error

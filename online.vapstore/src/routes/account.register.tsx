@@ -97,7 +97,7 @@ function Register() {
         data: { email: otpSent.email, otp: cleanOtp },
       });
       const claimed = result.claimedOrders ? `?claimed=${result.claimedOrders}` : "";
-      window.location.assign(`/account${claimed}`);
+      window.location.assign(`/account/${claimed}`);
     } catch (verifyError) {
       setError(
         verifyError instanceof Error
