@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getCookie } from "@tanstack/react-start/server";
 import { z } from "zod";
 import type {
   Category,
@@ -9,6 +10,7 @@ import type {
   StorefrontSettings,
 } from "./catalog";
 import { cldAuto, cldProductImage } from "./img";
+import { SESSION_COOKIE_NAME } from "./account-api";
 
 const defaultStorefrontSettings: StorefrontSettings = {
   social: { instagram: "", facebook: "", twitter: "", tiktok: "" },
@@ -98,6 +100,27 @@ const defaultStorefrontSettings: StorefrontSettings = {
     refunds: "",
     cookies: "",
     about: "",
+  },
+  accounts: {
+    enabled: true,
+    guestCheckout: true,
+    signupHeading: "Create your account",
+    signupBlurb:
+      "Track your orders, save your delivery details and collect points every time you shop.",
+  },
+  // Off by default. A shop that has not set a programme up must not have the
+  // storefront inventing one and promising shoppers points it never agreed to.
+  loyalty: {
+    enabled: false,
+    programName: "Rewards",
+    pointsName: "points",
+    earnRate: 1,
+    redeemRate: 100,
+    minRedeemPoints: 0,
+    maxRedeemPercent: 50,
+    signupBonus: 0,
+    tiers: [],
+    terms: "",
   },
 };
 
@@ -190,12 +213,16 @@ async function fetchBackend<T>(path: string, fallback: T): Promise<T> {
   }
 }
 
-async function post<T>(path: string, body: unknown): Promise<T> {
+async function post<T>(path: string, body: unknown, customerToken = ""): Promise<T> {
   const res = await fetch(`${API()}/api/storefront${path}`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       ...(KEY() ? { "x-storefront-key": KEY() } : {}),
+      // Present only when the shopper is signed in. The backend treats it as
+      // optional at checkout: it links the order to their account and moves
+      // their points, and its absence is simply a guest buying something.
+      ...(customerToken ? { "x-customer-token": customerToken } : {}),
     },
     body: JSON.stringify(body),
   });
@@ -394,6 +421,14 @@ const mergeSettings = (settings?: StorefrontSettings): StorefrontSettings => {
       ...defaultStorefrontSettings.policies,
       ...(settings?.policies || {}),
     },
+    accounts: {
+      ...defaultStorefrontSettings.accounts!,
+      ...(settings?.accounts || {}),
+    },
+    loyalty: {
+      ...defaultStorefrontSettings.loyalty!,
+      ...(settings?.loyalty || {}),
+    },
   };
 };
 
@@ -487,6 +522,10 @@ const checkoutSchema = z.object({
   }),
   note: z.string().trim().max(500).default(""),
   voucherCode: z.string().trim().max(40).optional().default(""),
+  // Loyalty points the shopper chose to put against this order. A request, not
+  // an instruction — the backend clamps it to what they actually hold and what
+  // the programme allows, and ignores it entirely for a guest.
+  redeemPoints: z.number().int().min(0).max(10_000_000).optional().default(0),
   paymentMethod: z.literal("cash_on_delivery"),
 });
 
@@ -499,9 +538,18 @@ export const placeStorefrontOrder = createServerFn({ method: "POST" })
       data,
     }): Promise<{
       message: string;
-      order: { orderNo: string; total: number; status: string };
+      order: {
+        orderNo: string;
+        total: number;
+        status: string;
+        loyalty?: { earned: number; redeemed: number; redeemedValue: number };
+      };
       idempotent?: boolean;
-    }> => post("/orders", data),
+    }> =>
+      // Read inside the handler, which is server-only and stripped from the
+      // client bundle. Absent for a guest, and the backend treats it as
+      // optional at checkout.
+      post("/orders", data, getCookie(SESSION_COOKIE_NAME) || ""),
   );
 
 const voucherSchema = z.object({

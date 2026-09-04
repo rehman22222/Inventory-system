@@ -54,10 +54,39 @@ const {
   importCategories,
   uploadListingImage,
   createInventoryProduct,
+  storefrontLoyaltyQuote,
 } = require("../controller/onlineStoreController");
+const {
+  // Storefront — the shopper's own account
+  register,
+  verifyRegistration,
+  login,
+  me,
+  updateProfile,
+  changePassword,
+  saveAddress,
+  deleteAddress,
+  myOrders,
+  myOrder,
+  myRewards,
+  forgotPassword,
+  resetPassword,
+  // Admin — the shop's view of its customers and its rewards programme
+  listCustomers,
+  getCustomer,
+  setCustomerStatus,
+  adjustPoints,
+  recalculatePoints,
+  listLoyaltyRules,
+  createLoyaltyRule,
+  updateLoyaltyRule,
+  deleteLoyaltyRule,
+} = require("../controller/onlineCustomerController");
 const {
   authmiddleware,
   adminOrSuperadmin,
+  customerAuth,
+  optionalCustomerAuth,
 } = require("../middleware/Authmiddleware");
 const { upload } = require("../middleware/upload");
 
@@ -116,6 +145,28 @@ adminRouter.get("/reviews", listReviews);
 adminRouter.patch("/reviews/:id", updateReview);
 adminRouter.delete("/reviews/:id", deleteReview);
 
+/* The people who shop on the website, and what the shop owes them.
+ *
+ * Read-heavy by design: the shop can look at anything, block an account and
+ * move a balance by hand, but it cannot sign in as somebody, cannot read a
+ * password (there is nothing to read — only a hash) and cannot edit anybody's
+ * order history. */
+adminRouter.get("/customers", listCustomers);
+adminRouter.get("/customers/:id", getCustomer);
+adminRouter.patch("/customers/:id/status", setCustomerStatus);
+// The one route that can create points out of nothing. Logged, signed with the
+// name of whoever did it, and the reason is shown to the customer.
+adminRouter.post("/customers/:id/points", adjustPoints);
+// Put a drifted cache back in step with the ledger.
+adminRouter.post("/customers/:id/recalculate", recalculatePoints);
+
+// The rewards programme's own rules — "double points on e-liquid", "200 points
+// on this kit", "spend €50, get 100". The base rate lives in Settings.
+adminRouter.get("/loyalty/rules", listLoyaltyRules);
+adminRouter.post("/loyalty/rules", createLoyaltyRule);
+adminRouter.put("/loyalty/rules/:id", updateLoyaltyRule);
+adminRouter.delete("/loyalty/rules/:id", deleteLoyaltyRule);
+
 adminRouter.get("/blog", listBlogPosts);
 adminRouter.post("/blog", createBlogPost);
 adminRouter.put("/blog/:id", updateBlogPost);
@@ -164,7 +215,41 @@ storefrontRouter.get("/reviews/context", storefrontReviewContext);
 storefrontRouter.post("/reviews", submitStorefrontReview);
 storefrontRouter.get("/hero", storefrontHero);
 storefrontRouter.post("/vouchers/validate", validateStorefrontVoucher);
-storefrontRouter.post("/orders", placeOrder);
+// Checkout knows who is buying when they are signed in — for the address it
+// prefills, the points it spends and the points it awards — but never REQUIRES
+// it. An expired token has to hand somebody a guest checkout, not an error page
+// with a full basket behind it.
+storefrontRouter.post("/orders", optionalCustomerAuth, placeOrder);
+// "What will this basket earn, and how much of my balance can I put against
+// it?" Read-only; every figure is recomputed for real when the order is placed.
+storefrontRouter.post("/loyalty/quote", optionalCustomerAuth, storefrontLoyaltyQuote);
+
+/* ── The shopper's own account ───────────────────────────────────────────────
+ * Everything below identifies the customer from their token and nothing else.
+ * No route here takes a customer id from the caller, because an id that arrives
+ * in a request is an id that can be changed in a request.
+ *
+ * These sit behind the storefront key like the rest of this router, so they are
+ * reachable only from the website's own server — a shopper's browser never
+ * talks to this API directly.
+ * ------------------------------------------------------------------------- */
+storefrontRouter.post("/account/register", register);
+storefrontRouter.post("/account/register/verify", verifyRegistration);
+storefrontRouter.post("/account/login", login);
+storefrontRouter.post("/account/forgot-password", forgotPassword);
+storefrontRouter.post("/account/reset-password", resetPassword);
+
+storefrontRouter.get("/account/me", customerAuth, me);
+storefrontRouter.put("/account/profile", customerAuth, updateProfile);
+storefrontRouter.put("/account/password", customerAuth, changePassword);
+
+storefrontRouter.post("/account/addresses", customerAuth, saveAddress);
+storefrontRouter.put("/account/addresses/:addressId", customerAuth, saveAddress);
+storefrontRouter.delete("/account/addresses/:addressId", customerAuth, deleteAddress);
+
+storefrontRouter.get("/account/orders", customerAuth, myOrders);
+storefrontRouter.get("/account/orders/:orderNo", customerAuth, myOrder);
+storefrontRouter.get("/account/rewards", customerAuth, myRewards);
 storefrontRouter.post("/newsletter", subscribeNewsletter);
 storefrontRouter.post("/contact", submitContactMessage);
 storefrontRouter.get("/blog", storefrontBlogPosts);

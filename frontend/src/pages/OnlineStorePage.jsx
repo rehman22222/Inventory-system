@@ -28,6 +28,8 @@ import {
   FiTrash2,
   FiLayers,
   FiUpload,
+  FiUsers,
+  FiAward,
   FiX,
 } from "react-icons/fi";
 import {
@@ -58,6 +60,7 @@ import {
   getOnlineSettings,
   getOnlineSummary,
   getOnlineVouchers,
+  getLoyaltyRules,
   getNewsletterSubscribers,
   importInventoryCategories,
   saveOnlineListing,
@@ -65,7 +68,6 @@ import {
   saveOnlineVoucher,
   searchInventoryProducts,
   setOnlineListingStock,
-  setOrderStatus,
   downloadOnlineReport,
   toggleOnlineListing,
   updateHeroSlide,
@@ -75,6 +77,12 @@ import {
   uploadListingImages,
 } from "../features/onlineStoreSlice";
 import { gettingallCategory } from "../features/categorySlice";
+import CustomersTab from "../Components/onlineStore/CustomersTab";
+import LoyaltyTab from "../Components/onlineStore/LoyaltyTab";
+import FulfilmentModal, {
+  FulfilmentTrack,
+  statusLabel,
+} from "../Components/onlineStore/FulfilmentModal";
 import { isDemoMode } from "../lib/demoMode";
 
 const TABS = [
@@ -87,6 +95,8 @@ const TABS = [
   { id: "blog", label: "Blog", icon: FiBookOpen },
   { id: "promotions", label: "Vouchers", icon: FiTag },
   { id: "orders", label: "Orders", icon: FiShoppingCart },
+  { id: "customers", label: "Customers", icon: FiUsers },
+  { id: "loyalty", label: "Rewards", icon: FiAward },
   { id: "newsletter", label: "Emails for newsletter", icon: FiMail },
   { id: "emergency-alert", label: "Emergency alert", icon: FiAlertTriangle },
   { id: "reviews", label: "Reviews", icon: FiStar },
@@ -137,6 +147,7 @@ export default function OnlineStorePage() {
     dispatch(getNewsletterSubscribers());
     dispatch(getOnlineReviews());
     dispatch(getOnlineBlogPosts());
+    dispatch(getLoyaltyRules());
     dispatch(gettingallCategory());
     setLoadedTabs(
       Object.fromEntries(TABS.map((item) => [item.id, true])),
@@ -184,6 +195,17 @@ export default function OnlineStorePage() {
       dispatch(getOnlineCategories());
     } else if (tab === "orders") {
       dispatch(getOnlineOrders());
+    } else if (tab === "customers") {
+      // The list fetches itself (it is searched and paged inside the tab); the
+      // settings come along for the points name shown in its column headings.
+      dispatch(getOnlineSettings());
+    } else if (tab === "loyalty") {
+      dispatch(getLoyaltyRules());
+      dispatch(getOnlineSettings());
+      // The rule editor picks targets from these, so they have to be here
+      // before somebody opens it.
+      dispatch(getOnlineListings());
+      dispatch(getOnlineCategories());
     } else if (tab === "newsletter") {
       dispatch(getNewsletterSubscribers());
       dispatch(getOnlineSettings());
@@ -229,23 +251,49 @@ export default function OnlineStorePage() {
         </button>
       </header>
 
+      {/* Fifteen sections.
+          On a wide screen they are tabs. On a phone a fifteen-tab strip is a
+          horizontal scroll with most of itself off the edge — you cannot see
+          what is available, and you cannot tell how far along you are. A native
+          select shows the whole list at once, in the platform's own picker,
+          and takes one tap to open. */}
       {!showNoStoreAttached && (
-        <div className="tabs tabs-boxed w-fit max-w-full flex-nowrap overflow-x-auto">
-          {TABS.map((item) => (
-            <button
-              key={item.id}
-              className={`tab h-auto shrink-0 flex-nowrap gap-2 whitespace-nowrap py-2 ${tab === item.id ? "tab-active" : ""}`}
-              onClick={() => setTab(item.id)}
+        <>
+          <label className="form-control w-full lg:hidden">
+            <span className="sr-only">Choose a section</span>
+            <select
+              className="select select-bordered w-full font-medium"
+              value={tab}
+              onChange={(event) => setTab(event.target.value)}
             >
-              <item.icon /> {item.label}
-              {item.id === "orders" && online.pendingOrders > 0 && (
-                <span className="badge badge-sm badge-warning">
-                  {online.pendingOrders}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+              {TABS.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                  {item.id === "orders" && online.pendingOrders > 0
+                    ? ` (${online.pendingOrders} to action)`
+                    : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="tabs tabs-boxed hidden w-fit max-w-full flex-nowrap overflow-x-auto lg:flex">
+            {TABS.map((item) => (
+              <button
+                key={item.id}
+                className={`tab h-auto shrink-0 flex-nowrap gap-2 whitespace-nowrap py-2 ${tab === item.id ? "tab-active" : ""}`}
+                onClick={() => setTab(item.id)}
+              >
+                <item.icon /> {item.label}
+                {item.id === "orders" && online.pendingOrders > 0 && (
+                  <span className="badge badge-sm badge-warning">
+                    {online.pendingOrders}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
       {showNoStoreAttached ? (
@@ -306,6 +354,16 @@ export default function OnlineStorePage() {
           )}
           {tab === "orders" && (
             <Orders orders={online.orders} isActing={online.isActing} />
+          )}
+          {tab === "customers" && <CustomersTab />}
+          {tab === "loyalty" && (
+            <LoyaltyTab
+              settings={online.settings}
+              rules={online.loyaltyRules}
+              listings={online.listings}
+              categories={online.categories}
+              isActing={online.isActing}
+            />
           )}
           {tab === "newsletter" && (
             <NewsletterEmails
@@ -5286,13 +5344,6 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
 // One-click happy path. A Pick & Pay shop fulfils in a single step, so a processing
 // order goes straight to "delivered" (which is also what triggers the customer's
 // review email). "shipped" remains a valid status for already-shipped orders.
-const NEXT_STATUS = {
-  pending_payment: "paid",
-  paid: "processing",
-  processing: "delivered",
-  shipped: "delivered",
-};
-
 const orderUnitCount = (order) =>
   (order.items || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
 
@@ -5304,6 +5355,9 @@ const orderLineAmount = (item) => {
 
 function Orders({ orders, isActing }) {
   const dispatch = useDispatch();
+  // The order currently being moved along. One at a time, deliberately: this is
+  // the screen where stock goes back on shelves and points change hands.
+  const [fulfilling, setFulfilling] = useState(null);
   const downloadReport = async () => {
     const result = await dispatch(
       downloadOnlineReport({
@@ -5314,12 +5368,6 @@ function Orders({ orders, isActing }) {
     result.error
       ? toast.error(result.payload || "Could not download orders report")
       : toast.success("Orders report downloaded");
-  };
-  const setStatus = async (order, status) => {
-    const result = await dispatch(setOrderStatus({ id: order._id, status }));
-    result.error
-      ? toast.error(result.payload)
-      : toast.success(`Order marked ${status}`);
   };
   return (
     <div className="space-y-3">
@@ -5332,7 +5380,90 @@ function Orders({ orders, isActing }) {
           <FiDownloadCloud /> Generate orders report
         </button>
       </div>
-      <div className="overflow-x-auto rounded-xl border bg-base-100">
+      {/* The shop fulfils from whatever is to hand, and that is often a phone
+          on the packing bench. A nine-column table cannot be worked from one,
+          so below lg the same orders are cards: the reference and the money
+          where the eye lands, the progress rail, and one button that opens the
+          same sheet the table's Update button does. */}
+      <div className="space-y-3 lg:hidden">
+        {orders.map((order) => (
+          <div key={order._id} className="rounded-xl border bg-base-100 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="font-mono font-bold">{order.orderNo}</div>
+                <div className="text-xs text-base-content/50">
+                  {new Date(order.createdAt).toLocaleString()}
+                </div>
+              </div>
+              <div className="shrink-0 text-right">
+                <div className="font-semibold tabular-nums">
+                  €{money(order.total)}
+                </div>
+                <div className="text-xs text-base-content/50">
+                  {orderUnitCount(order)} item
+                  {orderUnitCount(order) === 1 ? "" : "s"}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 text-sm">
+              <div className="font-medium">{order.customer?.name}</div>
+              <div className="truncate text-xs text-base-content/50">
+                {order.customer?.email}
+              </div>
+            </div>
+
+            {order.items?.length > 0 && (
+              <ul className="mt-3 space-y-0.5 border-t pt-3 text-sm">
+                {order.items.slice(0, 3).map((item, index) => (
+                  <li
+                    key={`${order._id}-m-${item.product || item.name || index}`}
+                    className="flex justify-between gap-3"
+                  >
+                    <span className="min-w-0 truncate">
+                      {item.name || "Product"}
+                    </span>
+                    <span className="shrink-0 text-xs text-base-content/60">
+                      x{item.quantity || 0}
+                    </span>
+                  </li>
+                ))}
+                {order.items.length > 3 && (
+                  <li className="text-xs text-base-content/50">
+                    +{order.items.length - 3} more
+                  </li>
+                )}
+              </ul>
+            )}
+
+            <div className="mt-3 flex items-center justify-between gap-3 border-t pt-3">
+              <div className="min-w-0">
+                <FulfilmentTrack order={order} compact />
+                <div className="mt-1 text-xs text-base-content/60">
+                  {statusLabel(order.status)} ·{" "}
+                  {order.payment?.method === "cash_on_delivery"
+                    ? "Pick & Pay"
+                    : order.payment?.provider || "Manual"}
+                </div>
+              </div>
+              <button
+                className="btn btn-primary btn-sm shrink-0"
+                disabled={isActing}
+                onClick={() => setFulfilling(order)}
+              >
+                Update
+              </button>
+            </div>
+          </div>
+        ))}
+        {!orders.length && (
+          <div className="rounded-xl border bg-base-100 py-8 text-center text-base-content/50">
+            No online orders yet.
+          </div>
+        )}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-xl border bg-base-100 lg:block">
         <table className="table table-sm">
         <thead>
           <tr>
@@ -5343,7 +5474,7 @@ function Orders({ orders, isActing }) {
             <th>Voucher</th>
             <th className="text-right">Total</th>
             <th>Payment</th>
-            <th>Status</th>
+            <th>Fulfilment</th>
             <th />
           </tr>
         </thead>
@@ -5404,39 +5535,21 @@ function Orders({ orders, isActing }) {
                 </div>
               </td>
               <td>
-                <span className="badge badge-sm">
-                  {order.status?.replaceAll("_", " ")}
-                </span>
+                <div className="flex flex-col gap-1">
+                  <FulfilmentTrack order={order} compact />
+                  <span className="text-xs text-base-content/60">
+                    {statusLabel(order.status)}
+                  </span>
+                </div>
               </td>
               <td className="whitespace-nowrap text-right">
-                {NEXT_STATUS[order.status] && (
-                  <button
-                    className="btn btn-primary btn-xs"
-                    disabled={isActing}
-                    onClick={() => setStatus(order, NEXT_STATUS[order.status])}
-                  >
-                    Mark {NEXT_STATUS[order.status]}
-                  </button>
-                )}
-                {!["cancelled", "refunded", "delivered"].includes(
-                  order.status,
-                ) && (
-                  <button
-                    className="btn btn-ghost btn-xs text-error"
-                    disabled={isActing}
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          "Cancel order and restore its shared stock?",
-                        )
-                      ) {
-                        setStatus(order, "cancelled");
-                      }
-                    }}
-                  >
-                    Cancel
-                  </button>
-                )}
+                <button
+                  className="btn btn-primary btn-xs"
+                  disabled={isActing}
+                  onClick={() => setFulfilling(order)}
+                >
+                  Update
+                </button>
               </td>
             </tr>
           ))}
@@ -5450,6 +5563,14 @@ function Orders({ orders, isActing }) {
         </tbody>
         </table>
       </div>
+
+      {fulfilling && (
+        <FulfilmentModal
+          order={fulfilling}
+          isActing={isActing}
+          onClose={() => setFulfilling(null)}
+        />
+      )}
     </div>
   );
 }

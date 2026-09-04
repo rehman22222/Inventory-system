@@ -26,9 +26,18 @@ import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as WhyECigarettesRouteImport } from './routes/why-e-cigarettes'
+import { Route as AccountIndexRouteImport } from './routes/account.index'
+import { Route as AccountDetailsRouteImport } from './routes/account.details'
+import { Route as AccountForgotRouteImport } from './routes/account.forgot'
+import { Route as AccountLoginRouteImport } from './routes/account.login'
+import { Route as AccountRegisterRouteImport } from './routes/account.register'
+import { Route as AccountResetRouteImport } from './routes/account.reset'
+import { Route as AccountRewardsRouteImport } from './routes/account.rewards'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as CategorySlugRouteImport } from './routes/category.$slug'
 import { Route as ProductIdRouteImport } from './routes/product.$id'
+import { Route as AccountOrdersIndexRouteImport } from './routes/account.orders.index'
+import { Route as AccountOrdersOrderNoRouteImport } from './routes/account.orders.$orderNo'
 import { Route as ReviewOrderNoTokenRouteImport } from './routes/review.$orderNo.$token'
 
 const IndexRoute = IndexRouteImport.update({
@@ -116,6 +125,41 @@ const WhyECigarettesRoute = WhyECigarettesRouteImport.update({
   path: '/why-e-cigarettes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountIndexRoute = AccountIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AccountRoute,
+} as any)
+const AccountDetailsRoute = AccountDetailsRouteImport.update({
+  id: '/details',
+  path: '/details',
+  getParentRoute: () => AccountRoute,
+} as any)
+const AccountForgotRoute = AccountForgotRouteImport.update({
+  id: '/forgot',
+  path: '/forgot',
+  getParentRoute: () => AccountRoute,
+} as any)
+const AccountLoginRoute = AccountLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AccountRoute,
+} as any)
+const AccountRegisterRoute = AccountRegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => AccountRoute,
+} as any)
+const AccountResetRoute = AccountResetRouteImport.update({
+  id: '/reset',
+  path: '/reset',
+  getParentRoute: () => AccountRoute,
+} as any)
+const AccountRewardsRoute = AccountRewardsRouteImport.update({
+  id: '/rewards',
+  path: '/rewards',
+  getParentRoute: () => AccountRoute,
+} as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
@@ -131,6 +175,16 @@ const ProductIdRoute = ProductIdRouteImport.update({
   path: '/product/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountOrdersIndexRoute = AccountOrdersIndexRouteImport.update({
+  id: '/orders/',
+  path: '/orders/',
+  getParentRoute: () => AccountRoute,
+} as any)
+const AccountOrdersOrderNoRoute = AccountOrdersOrderNoRouteImport.update({
+  id: '/orders/$orderNo',
+  path: '/orders/$orderNo',
+  getParentRoute: () => AccountRoute,
+} as any)
 const ReviewOrderNoTokenRoute = ReviewOrderNoTokenRouteImport.update({
   id: '/review/$orderNo/$token',
   path: '/review/$orderNo/$token',
@@ -140,7 +194,7 @@ const ReviewOrderNoTokenRoute = ReviewOrderNoTokenRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/account': typeof AccountRoute
+  '/account': typeof AccountRouteWithChildren
   '/blog': typeof BlogRouteWithChildren
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
@@ -155,15 +209,23 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/why-e-cigarettes': typeof WhyECigarettesRoute
+  '/account/details': typeof AccountDetailsRoute
+  '/account/forgot': typeof AccountForgotRoute
+  '/account/login': typeof AccountLoginRoute
+  '/account/register': typeof AccountRegisterRoute
+  '/account/reset': typeof AccountResetRoute
+  '/account/rewards': typeof AccountRewardsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/category/$slug': typeof CategorySlugRoute
   '/product/$id': typeof ProductIdRoute
+  '/account/': typeof AccountIndexRoute
+  '/account/orders/$orderNo': typeof AccountOrdersOrderNoRoute
   '/review/$orderNo/$token': typeof ReviewOrderNoTokenRoute
+  '/account/orders/': typeof AccountOrdersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/account': typeof AccountRoute
   '/blog': typeof BlogRouteWithChildren
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
@@ -178,16 +240,25 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/why-e-cigarettes': typeof WhyECigarettesRoute
+  '/account/details': typeof AccountDetailsRoute
+  '/account/forgot': typeof AccountForgotRoute
+  '/account/login': typeof AccountLoginRoute
+  '/account/register': typeof AccountRegisterRoute
+  '/account/reset': typeof AccountResetRoute
+  '/account/rewards': typeof AccountRewardsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/category/$slug': typeof CategorySlugRoute
   '/product/$id': typeof ProductIdRoute
+  '/account': typeof AccountIndexRoute
+  '/account/orders/$orderNo': typeof AccountOrdersOrderNoRoute
   '/review/$orderNo/$token': typeof ReviewOrderNoTokenRoute
+  '/account/orders': typeof AccountOrdersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/account': typeof AccountRoute
+  '/account': typeof AccountRouteWithChildren
   '/blog': typeof BlogRouteWithChildren
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
@@ -202,10 +273,19 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/why-e-cigarettes': typeof WhyECigarettesRoute
+  '/account/details': typeof AccountDetailsRoute
+  '/account/forgot': typeof AccountForgotRoute
+  '/account/login': typeof AccountLoginRoute
+  '/account/register': typeof AccountRegisterRoute
+  '/account/reset': typeof AccountResetRoute
+  '/account/rewards': typeof AccountRewardsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/category/$slug': typeof CategorySlugRoute
   '/product/$id': typeof ProductIdRoute
+  '/account/': typeof AccountIndexRoute
+  '/account/orders/$orderNo': typeof AccountOrdersOrderNoRoute
   '/review/$orderNo/$token': typeof ReviewOrderNoTokenRoute
+  '/account/orders/': typeof AccountOrdersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -227,15 +307,23 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terms'
     | '/why-e-cigarettes'
+    | '/account/details'
+    | '/account/forgot'
+    | '/account/login'
+    | '/account/register'
+    | '/account/reset'
+    | '/account/rewards'
     | '/blog/$slug'
     | '/category/$slug'
     | '/product/$id'
+    | '/account/'
+    | '/account/orders/$orderNo'
     | '/review/$orderNo/$token'
+    | '/account/orders/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
-    | '/account'
     | '/blog'
     | '/cart'
     | '/checkout'
@@ -250,10 +338,19 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terms'
     | '/why-e-cigarettes'
+    | '/account/details'
+    | '/account/forgot'
+    | '/account/login'
+    | '/account/register'
+    | '/account/reset'
+    | '/account/rewards'
     | '/blog/$slug'
     | '/category/$slug'
     | '/product/$id'
+    | '/account'
+    | '/account/orders/$orderNo'
     | '/review/$orderNo/$token'
+    | '/account/orders'
   id:
     | '__root__'
     | '/'
@@ -273,16 +370,25 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terms'
     | '/why-e-cigarettes'
+    | '/account/details'
+    | '/account/forgot'
+    | '/account/login'
+    | '/account/register'
+    | '/account/reset'
+    | '/account/rewards'
     | '/blog/$slug'
     | '/category/$slug'
     | '/product/$id'
+    | '/account/'
+    | '/account/orders/$orderNo'
     | '/review/$orderNo/$token'
+    | '/account/orders/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
-  AccountRoute: typeof AccountRoute
+  AccountRoute: typeof AccountRouteWithChildren
   BlogRoute: typeof BlogRouteWithChildren
   CartRoute: typeof CartRoute
   CheckoutRoute: typeof CheckoutRoute
@@ -423,6 +529,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WhyECigarettesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/account/': {
+      id: '/account/'
+      path: '/'
+      fullPath: '/account/'
+      preLoaderRoute: typeof AccountIndexRouteImport
+      parentRoute: typeof AccountRoute
+    }
+    '/account/details': {
+      id: '/account/details'
+      path: '/details'
+      fullPath: '/account/details'
+      preLoaderRoute: typeof AccountDetailsRouteImport
+      parentRoute: typeof AccountRoute
+    }
+    '/account/forgot': {
+      id: '/account/forgot'
+      path: '/forgot'
+      fullPath: '/account/forgot'
+      preLoaderRoute: typeof AccountForgotRouteImport
+      parentRoute: typeof AccountRoute
+    }
+    '/account/login': {
+      id: '/account/login'
+      path: '/login'
+      fullPath: '/account/login'
+      preLoaderRoute: typeof AccountLoginRouteImport
+      parentRoute: typeof AccountRoute
+    }
+    '/account/register': {
+      id: '/account/register'
+      path: '/register'
+      fullPath: '/account/register'
+      preLoaderRoute: typeof AccountRegisterRouteImport
+      parentRoute: typeof AccountRoute
+    }
+    '/account/reset': {
+      id: '/account/reset'
+      path: '/reset'
+      fullPath: '/account/reset'
+      preLoaderRoute: typeof AccountResetRouteImport
+      parentRoute: typeof AccountRoute
+    }
+    '/account/rewards': {
+      id: '/account/rewards'
+      path: '/rewards'
+      fullPath: '/account/rewards'
+      preLoaderRoute: typeof AccountRewardsRouteImport
+      parentRoute: typeof AccountRoute
+    }
     '/blog/$slug': {
       id: '/blog/$slug'
       path: '/$slug'
@@ -444,6 +599,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProductIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/account/orders/': {
+      id: '/account/orders/'
+      path: '/orders'
+      fullPath: '/account/orders/'
+      preLoaderRoute: typeof AccountOrdersIndexRouteImport
+      parentRoute: typeof AccountRoute
+    }
+    '/account/orders/$orderNo': {
+      id: '/account/orders/$orderNo'
+      path: '/orders/$orderNo'
+      fullPath: '/account/orders/$orderNo'
+      preLoaderRoute: typeof AccountOrdersOrderNoRouteImport
+      parentRoute: typeof AccountRoute
+    }
     '/review/$orderNo/$token': {
       id: '/review/$orderNo/$token'
       path: '/review/$orderNo/$token'
@@ -453,6 +622,33 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AccountRouteChildren {
+  AccountDetailsRoute: typeof AccountDetailsRoute
+  AccountForgotRoute: typeof AccountForgotRoute
+  AccountLoginRoute: typeof AccountLoginRoute
+  AccountRegisterRoute: typeof AccountRegisterRoute
+  AccountResetRoute: typeof AccountResetRoute
+  AccountRewardsRoute: typeof AccountRewardsRoute
+  AccountIndexRoute: typeof AccountIndexRoute
+  AccountOrdersOrderNoRoute: typeof AccountOrdersOrderNoRoute
+  AccountOrdersIndexRoute: typeof AccountOrdersIndexRoute
+}
+
+const AccountRouteChildren: AccountRouteChildren = {
+  AccountDetailsRoute: AccountDetailsRoute,
+  AccountForgotRoute: AccountForgotRoute,
+  AccountLoginRoute: AccountLoginRoute,
+  AccountRegisterRoute: AccountRegisterRoute,
+  AccountResetRoute: AccountResetRoute,
+  AccountRewardsRoute: AccountRewardsRoute,
+  AccountIndexRoute: AccountIndexRoute,
+  AccountOrdersOrderNoRoute: AccountOrdersOrderNoRoute,
+  AccountOrdersIndexRoute: AccountOrdersIndexRoute,
+}
+
+const AccountRouteWithChildren =
+  AccountRoute._addFileChildren(AccountRouteChildren)
 
 interface BlogRouteChildren {
   BlogSlugRoute: typeof BlogSlugRoute
@@ -467,7 +663,7 @@ const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
-  AccountRoute: AccountRoute,
+  AccountRoute: AccountRouteWithChildren,
   BlogRoute: BlogRouteWithChildren,
   CartRoute: CartRoute,
   CheckoutRoute: CheckoutRoute,

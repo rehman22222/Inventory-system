@@ -504,16 +504,149 @@ export const getOnlineOrders = createAsyncThunk(
   },
 );
 
+// Move an order along the fulfilment cycle.
+//
+// `note` and `tracking` ride with the status change rather than living on their
+// own endpoint, because that is how the shop actually works: you mark it
+// dispatched AND type the courier reference in the same breath. The customer
+// sees both on their order page the moment it lands.
 export const setOrderStatus = createAsyncThunk(
   "online/orders/status",
-  async ({ id, status }, { rejectWithValue }) => {
+  async ({ id, status, note = "", tracking = null }, { rejectWithValue }) => {
     try {
       const { data } = await axiosInstance.patch(`online/orders/${id}/status`, {
         status,
+        note,
+        ...(tracking ? { tracking } : {}),
       });
       return data.order;
     } catch (error) {
       return rejectWithValue(fail(error, "Could not update the order"));
+    }
+  },
+);
+
+/* ── Customers ──────────────────────────────────────────────────────────────
+ * The people with accounts on the website. Paged and searched on the server: a
+ * shop with ten thousand customers must not ship all ten thousand to a browser
+ * to draw one screen of them.
+ * ------------------------------------------------------------------------- */
+export const getOnlineCustomers = createAsyncThunk(
+  "online/customers/get",
+  async (
+    { search = "", status = "", sort = "newest", page = 1 } = {},
+    { rejectWithValue },
+  ) => {
+    try {
+      const qs = new URLSearchParams({ page: String(page), limit: "50", sort });
+      if (search) qs.set("search", search);
+      if (status) qs.set("status", status);
+      const { data } = await axiosInstance.get(`online/customers?${qs}`);
+      return data;
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not load customers"));
+    }
+  },
+);
+
+// One customer in full — their orders and their whole points statement. Handed
+// straight back to the caller for the detail panel rather than kept in the
+// slice, so opening somebody never disturbs the list behind them.
+export const getOnlineCustomer = createAsyncThunk(
+  "online/customers/one",
+  async (id, { rejectWithValue }) => {
+    try {
+      const { data } = await axiosInstance.get(`online/customers/${id}`);
+      return data;
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not load that customer"));
+    }
+  },
+);
+
+export const setCustomerStatus = createAsyncThunk(
+  "online/customers/status",
+  async ({ id, status }, { rejectWithValue }) => {
+    try {
+      const { data } = await axiosInstance.patch(
+        `online/customers/${id}/status`,
+        { status },
+      );
+      return { id, status, message: data.message };
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not update that customer"));
+    }
+  },
+);
+
+export const adjustCustomerPoints = createAsyncThunk(
+  "online/customers/points",
+  async ({ id, points, reason }, { rejectWithValue }) => {
+    try {
+      const { data } = await axiosInstance.post(
+        `online/customers/${id}/points`,
+        { points, reason },
+      );
+      return { id, balance: data.balance, message: data.message };
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not adjust those points"));
+    }
+  },
+);
+
+export const recalculateCustomerPoints = createAsyncThunk(
+  "online/customers/recalculate",
+  async (id, { rejectWithValue }) => {
+    try {
+      const { data } = await axiosInstance.post(
+        `online/customers/${id}/recalculate`,
+      );
+      return { id, points: data.points, message: data.message };
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not recalculate that balance"));
+    }
+  },
+);
+
+/* ── Reward rules ───────────────────────────────────────────────────────────
+ * The exceptions to the base earn rate — by category, by product, by brand, on
+ * best sellers, or as a bonus on the order as a whole. The base rate itself is
+ * part of the store settings.
+ * ------------------------------------------------------------------------- */
+export const getLoyaltyRules = createAsyncThunk(
+  "online/loyalty/rules/get",
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await axiosInstance.get("online/loyalty/rules");
+      return data.rules;
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not load the reward rules"));
+    }
+  },
+);
+
+export const saveLoyaltyRule = createAsyncThunk(
+  "online/loyalty/rules/save",
+  async ({ id, ...payload }, { rejectWithValue }) => {
+    try {
+      const { data } = id
+        ? await axiosInstance.put(`online/loyalty/rules/${id}`, payload)
+        : await axiosInstance.post("online/loyalty/rules", payload);
+      return data.rule;
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not save the rule"));
+    }
+  },
+);
+
+export const deleteLoyaltyRule = createAsyncThunk(
+  "online/loyalty/rules/delete",
+  async (id, { rejectWithValue }) => {
+    try {
+      await axiosInstance.delete(`online/loyalty/rules/${id}`);
+      return id;
+    } catch (error) {
+      return rejectWithValue(fail(error, "Could not delete the rule"));
     }
   },
 );
@@ -531,6 +664,11 @@ const initialState = {
   orders: [],
   pendingOrders: 0,
   reviews: [],
+  // Website customers: one page of the list, plus the shop-wide headline
+  // figures (how many there are, what they have spent, what the points
+  // balance outstanding is actually worth).
+  customers: { rows: [], page: 1, pages: 1, total: 0, summary: null },
+  loyaltyRules: [],
   // The picker's paged view of the inventory catalogue.
   catalogue: { products: [], total: 0, page: 1, pages: 1 },
   isLoading: false,
@@ -776,7 +914,80 @@ const onlineStoreSlice = createSlice({
       })
       .addCase(setOrderStatus.rejected, (s) => {
         s.isActing = false;
+      })
+
+      // Customers
+      .addCase(getOnlineCustomers.pending, (s) => {
+        s.isLoading = true;
+      })
+      .addCase(getOnlineCustomers.fulfilled, (s, a) => {
+        s.isLoading = false;
+        s.customers = {
+          rows: a.payload.customers || [],
+          page: a.payload.page || 1,
+          pages: a.payload.pages || 1,
+          total: a.payload.total || 0,
+          summary: a.payload.summary || null,
+        };
+      })
+      .addCase(getOnlineCustomers.rejected, (s, a) => {
+        s.isLoading = false;
+        s.error = a.payload;
+      })
+      .addCase(setCustomerStatus.pending, (s) => {
+        s.isActing = true;
+      })
+      .addCase(setCustomerStatus.fulfilled, (s, a) => {
+        s.isActing = false;
+        // Patch the row in place. Refetching the whole page to change one badge
+        // would scroll the shop back to the top of a list they were reading.
+        s.customers.rows = s.customers.rows.map((row) =>
+          row._id === a.payload.id ? { ...row, status: a.payload.status } : row,
+        );
+      })
+      .addCase(setCustomerStatus.rejected, (s) => {
+        s.isActing = false;
+      })
+      .addCase(adjustCustomerPoints.pending, (s) => {
+        s.isActing = true;
+      })
+      .addCase(adjustCustomerPoints.fulfilled, (s, a) => {
+        s.isActing = false;
+        s.customers.rows = s.customers.rows.map((row) =>
+          row._id === a.payload.id
+            ? { ...row, points: { ...row.points, balance: a.payload.balance } }
+            : row,
+        );
+      })
+      .addCase(adjustCustomerPoints.rejected, (s) => {
+        s.isActing = false;
+      })
+      .addCase(recalculateCustomerPoints.fulfilled, (s, a) => {
+        s.customers.rows = s.customers.rows.map((row) =>
+          row._id === a.payload.id ? { ...row, points: a.payload.points } : row,
+        );
+      })
+
+      // Reward rules
+      .addCase(getLoyaltyRules.fulfilled, (s, a) => {
+        s.loyaltyRules = a.payload;
+      })
+      .addCase(saveLoyaltyRule.pending, (s) => {
+        s.isActing = true;
+      })
+      .addCase(saveLoyaltyRule.fulfilled, (s, a) => {
+        s.isActing = false;
+        s.loyaltyRules = upsert(s.loyaltyRules, a.payload).sort(
+          (x, y) => (y.priority || 0) - (x.priority || 0),
+        );
+      })
+      .addCase(saveLoyaltyRule.rejected, (s) => {
+        s.isActing = false;
+      })
+      .addCase(deleteLoyaltyRule.fulfilled, (s, a) => {
+        s.loyaltyRules = s.loyaltyRules.filter((r) => r._id !== a.payload);
       });
+
   },
 });
 

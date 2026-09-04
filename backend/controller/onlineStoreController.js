@@ -9,6 +9,7 @@ const OnlineVoucher = require("../models/OnlineVouchermodel");
 const OnlineStoreSetting = require("../models/OnlineStoreSettingmodel");
 const OnlineBlogPost = require("../models/OnlineBlogPostmodel");
 const OnlineReview = require("../models/OnlineReviewmodel");
+const OnlineCustomer = require("../models/OnlineCustomermodel");
 const Product = require("../models/Productmodel");
 const Sale = require("../models/Salesmodel");
 const StockTransaction = require("../models/StockTranscationmodel");
@@ -17,6 +18,8 @@ const Category = require("../models/ Categorymodel");
 const { nextSequence } = require("../models/Countermodel");
 const logActivity = require("../libs/logger");
 const { emitStockChanged } = require("../libs/stockEvents");
+const loyalty = require("../libs/loyalty");
+const { refreshOrderStats } = require("../libs/customerStats");
 const { sendMail, brandedHtml, esc } = require("../libs/mailer");
 
 // Same rounding the till uses, so a web total and a counter total can never
@@ -2322,6 +2325,102 @@ module.exports.updateStoreSettings = async (req, res) => {
           .slice(0, 20000);
       }
     }
+    /* ── Customer accounts ─────────────────────────────────────────────────
+     * `settings.accounts` and `settings.loyalty` are newer than most of this
+     * document, so on a settings row written before they existed they are only
+     * hydrated defaults — real-looking objects that Mongoose does not consider
+     * part of the document. Writing into one and calling save() silently keeps
+     * the old values. Hence both the `if (!settings.x)` guards and the
+     * markModified calls below, exactly as every other nested block here does.
+     * ------------------------------------------------------------------- */
+    const accounts = req.body.accounts || {};
+    if (!settings.accounts) settings.accounts = {};
+    for (const key of ["enabled", "guestCheckout"]) {
+      if (Object.prototype.hasOwnProperty.call(accounts, key)) {
+        settings.accounts[key] = Boolean(accounts[key]);
+      }
+    }
+    for (const [key, maxLength] of [
+      ["signupHeading", 120],
+      ["signupBlurb", 400],
+    ]) {
+      if (Object.prototype.hasOwnProperty.call(accounts, key)) {
+        settings.accounts[key] = String(accounts[key] || "")
+          .trim()
+          .slice(0, maxLength);
+      }
+    }
+    settings.markModified("accounts");
+
+    /* ── Rewards programme ─────────────────────────────────────────────────
+     * The base rules. Every number is clamped to something the programme can
+     * survive, because these are the figures that decide what the shop owes
+     * its customers and a typo here is expensive in a way a typo in a footer
+     * heading is not.
+     * ------------------------------------------------------------------- */
+    const loyaltySettings = req.body.loyalty || {};
+    if (!settings.loyalty) settings.loyalty = {};
+    if (Object.prototype.hasOwnProperty.call(loyaltySettings, "enabled")) {
+      settings.loyalty.enabled = Boolean(loyaltySettings.enabled);
+    }
+    if (Object.prototype.hasOwnProperty.call(loyaltySettings, "earnOnShipping")) {
+      settings.loyalty.earnOnShipping = Boolean(loyaltySettings.earnOnShipping);
+    }
+    for (const [key, maxLength] of [
+      ["programName", 60],
+      ["pointsName", 30],
+    ]) {
+      if (Object.prototype.hasOwnProperty.call(loyaltySettings, key)) {
+        settings.loyalty[key] = String(loyaltySettings[key] || "")
+          .trim()
+          .slice(0, maxLength);
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(loyaltySettings, "terms")) {
+      settings.loyalty.terms = String(loyaltySettings.terms || "")
+        .trim()
+        .slice(0, 8000);
+    }
+    // [field, minimum, maximum]. The redeem rate's floor is 1 and not 0 on
+    // purpose: it is a divisor, and zero would make every point worth an
+    // unbounded amount of the shop's money.
+    for (const [key, min, max] of [
+      ["earnRate", 0, 1000],
+      ["redeemRate", 1, 100000],
+      ["minRedeemPoints", 0, 1000000],
+      ["maxRedeemPercent", 0, 100],
+      ["signupBonus", 0, 1000000],
+      ["reviewBonus", 0, 1000000],
+      ["expiryMonths", 0, 120],
+    ]) {
+      if (Object.prototype.hasOwnProperty.call(loyaltySettings, key)) {
+        const value = Number(loyaltySettings[key]);
+        settings.loyalty[key] = Number.isFinite(value)
+          ? Math.min(max, Math.max(min, value))
+          : min;
+      }
+    }
+    if (Array.isArray(loyaltySettings.tiers)) {
+      settings.loyalty.tiers = loyaltySettings.tiers
+        // A tier with no name cannot be shown to anybody, so it is not a tier.
+        .filter((tier) => tier && String(tier.name || "").trim())
+        .slice(0, 8)
+        .map((tier) => ({
+          name: String(tier.name).trim().slice(0, 40),
+          threshold: Math.max(0, Number(tier.threshold) || 0),
+          multiplier: Math.min(
+            10,
+            Math.max(0, Number(tier.multiplier) || 1),
+          ),
+          perk: String(tier.perk || "").trim().slice(0, 160),
+        }))
+        // Stored in the order they are reached, so the admin's list and the
+        // customer's ladder always read the same way round however the shop
+        // happened to type them in.
+        .sort((a, b) => a.threshold - b.threshold);
+    }
+    settings.markModified("loyalty");
+
     settings.updatedBy = req.user?._id;
     await settings.save();
     emit(req, "onlineSettingsChanged", {});
@@ -2519,7 +2618,7 @@ module.exports.listOrders = async (req, res) => {
 
     const orders = await OnlineOrder.find(filter)
       .select(
-        "orderNo createdAt customer.name customer.email items.product items.name items.price items.quantity items.lineTotal voucher.code total payment.method payment.provider payment.status status",
+        "orderNo createdAt customer.name customer.email customer.phone customer.account shippingAddress items.product items.name items.price items.quantity items.lineTotal voucher.code subtotal shipping discount total payment.method payment.provider payment.status status timeline tracking loyalty note",
       )
       .sort({ createdAt: -1 })
       .limit(500)
@@ -2528,7 +2627,7 @@ module.exports.listOrders = async (req, res) => {
       orders,
       pending: await OnlineOrder.countDocuments({
         store,
-        status: { $in: ["pending_payment", "paid", "processing"] },
+        status: { $in: ["pending_payment", "paid", "processing", "ready"] },
       }),
     });
   } catch (error) {
@@ -2603,6 +2702,7 @@ module.exports.updateOrderStatus = async (req, res) => {
     const allowed = [
       "paid",
       "processing",
+      "ready",
       "shipped",
       "delivered",
       "cancelled",
@@ -2623,12 +2723,19 @@ module.exports.updateOrderStatus = async (req, res) => {
         throw Object.assign(new Error("Order not found"), { statusCode: 404 });
       }
 
+      // The fulfilment path, and every legal shortcut through it.
+      //
+      // "ready" (packed, waiting to go out) sits between processing and
+      // dispatch, because that is the step the shop actually works through and
+      // the one a customer most wants to see. It is not compulsory: a small
+      // shop that picks and hands over in one motion can still go straight from
+      // processing to delivered, and the customer's tracker shows the skipped
+      // step as skipped rather than pretending it happened.
       const transitions = {
         pending_payment: ["paid", "cancelled"],
-        paid: ["processing", "cancelled", "refunded"],
-        // A small Pick & Pay shop fulfils in one step, so processing can go straight to
-        // delivered; "shipped" stays available for anyone who tracks that leg.
-        processing: ["shipped", "delivered", "cancelled", "refunded"],
+        paid: ["processing", "ready", "cancelled", "refunded"],
+        processing: ["ready", "shipped", "delivered", "cancelled", "refunded"],
+        ready: ["shipped", "delivered", "cancelled", "refunded"],
         shipped: ["delivered", "refunded"],
         delivered: ["refunded"],
         cancelled: [],
@@ -2659,10 +2766,16 @@ module.exports.updateOrderStatus = async (req, res) => {
             },
             // Shipping/tax are order-level figures. Attach them to the first
             // ledger line so the Sale rows reconcile exactly to order.total.
+            // Shipping, tax and any points spent are order-level figures.
+            // They all hang off the FIRST ledger line so the Sale rows still
+            // add up to exactly order.total — points included, because a
+            // basket part-paid with points brought in less real money and the
+            // revenue report has to say so.
             totalAmount: money(
               item.lineTotal +
                 (index === 0 ? Number(order.shipping || 0) : 0) +
-                (index === 0 ? Number(order.tax || 0) : 0),
+                (index === 0 ? Number(order.tax || 0) : 0) -
+                (index === 0 ? Number(order.loyalty?.redeemedValue || 0) : 0),
             ),
             discount: item.discount,
             tax: index === 0 ? Number(order.tax || 0) : 0,
@@ -2733,10 +2846,14 @@ module.exports.updateOrderStatus = async (req, res) => {
               quantity: item.quantity,
               price: item.price,
             },
+            // Mirrors the sale rows above exactly, points and all, so a
+            // refunded order nets to zero in the ledger rather than leaving
+            // the points discount behind as phantom revenue.
             totalAmount: -money(
               item.lineTotal +
                 (index === 0 ? Number(order.shipping || 0) : 0) +
-                (index === 0 ? Number(order.tax || 0) : 0),
+                (index === 0 ? Number(order.tax || 0) : 0) -
+                (index === 0 ? Number(order.loyalty?.redeemedValue || 0) : 0),
             ),
             discount: item.discount,
             tax: index === 0 ? Number(order.tax || 0) : 0,
@@ -2755,6 +2872,70 @@ module.exports.updateOrderStatus = async (req, res) => {
         order.payment.status = "refunded";
         order.refundRecordedAt = new Date();
       }
+
+      /* ── Loyalty ───────────────────────────────────────────────────────
+       * Delivery is what makes an earning real: the goods are with the
+       * customer and the money (Pick & Pay) is in the till. Cancelling or
+       * refunding undoes both directions — the earning comes back off, and
+       * anything they PAID with points is handed back, because they paid for
+       * something they did not end up receiving.
+       *
+       * Both guards are stamps on the order, written inside this transaction,
+       * so a retried status change cannot pay anybody twice or claw back the
+       * same points again.
+       * ---------------------------------------------------------------- */
+      if (order.customer?.account) {
+        const settings = await getOrCreateSettings(store);
+
+        if (status === "delivered" && !order.loyalty?.confirmedAt) {
+          await loyalty.confirmPending({ order, settings }, session);
+          order.loyalty.confirmedAt = new Date();
+        }
+
+        if (
+          ["cancelled", "refunded"].includes(status) &&
+          !order.loyalty?.reversedAt
+        ) {
+          await loyalty.reverseOrder({ store, order, settings }, session);
+          order.loyalty.reversedAt = new Date();
+        }
+      }
+
+      // Tracking details, when the shop is dispatching. Accepted on any
+      // transition so a courier reference that arrives late can still be added
+      // by moving the order along, but only ever added to — an empty field in
+      // the form means "nothing new", not "delete what is there".
+      const tracking = req.body?.tracking;
+      if (tracking && typeof tracking === "object") {
+        const keep = (value, max) =>
+          String(value ?? "").trim().slice(0, max);
+        if (keep(tracking.carrier, 80)) order.tracking.carrier = keep(tracking.carrier, 80);
+        if (keep(tracking.number, 120)) order.tracking.number = keep(tracking.number, 120);
+        if (keep(tracking.estimate, 120)) order.tracking.estimate = keep(tracking.estimate, 120);
+        const url = keep(tracking.url, 500);
+        // Only a real http(s) link. This is rendered as an anchor on the
+        // customer's own order page, and a "javascript:" tracking URL typed
+        // into an admin field would run there.
+        if (url) {
+          if (!/^https?:\/\//i.test(url)) {
+            throw Object.assign(
+              new Error("A tracking link must start with http:// or https://"),
+              { statusCode: 400 },
+            );
+          }
+          order.tracking.url = url;
+        }
+      }
+
+      // The step itself, appended to the history. Written for the customer:
+      // `note` appears on their order page, so it is the shop talking to them.
+      order.timeline.push({
+        status,
+        at: new Date(),
+        by: req.user?._id || null,
+        byName: req.user?.name || "",
+        note: String(req.body?.note ?? "").trim().slice(0, 300),
+      });
 
       order.status = status;
       await order.save({ session });
@@ -2782,6 +2963,25 @@ module.exports.updateOrderStatus = async (req, res) => {
       }
     }
     emit(req, "onlineOrderChanged", { orderNo: order.orderNo, status });
+
+    // The customer's cached order count and spend only move when an order
+    // reaches — or leaves — the set that counts as real trade. Best effort:
+    // these are a convenience on the admin's customer list, and a hiccup here
+    // must never fail a status change that has already been committed.
+    if (order.customer?.account) {
+      refreshOrderStats(order.customer.account).catch((error) =>
+        console.error("[account] stats refresh failed:", error.message),
+      );
+    }
+
+    // Tell the customer their order has moved. Only for the steps that are
+    // actually news to somebody waiting on a parcel — nobody needs an email
+    // saying their order is still being prepared.
+    if (["ready", "shipped", "delivered"].includes(status)) {
+      sendOrderStatusEmail(store, order).catch((error) =>
+        console.error("[online] status email failed:", error.message),
+      );
+    }
     // Once delivered, invite the customer to review what they bought. Fires for
     // ANY payment method (Pick & Pay today, online payment later) — delivery, not
     // payment, is what makes a review meaningful. Best effort: a mail hiccup
@@ -2827,7 +3027,7 @@ module.exports.salesSummary = async (req, res) => {
 
     const paidOnline = {
       store,
-      status: { $in: ["paid", "processing", "shipped", "delivered"] },
+      status: { $in: ["paid", "processing", "ready", "shipped", "delivered"] },
       createdAt: { $gte: from },
     };
 
@@ -2977,6 +3177,35 @@ const publicStorefrontSettings = (settings) => ({
   blog: settings.blog,
   business: settings.business,
   policies: settings.policies,
+  // Whether the storefront shows sign-in links at all, and whether it may
+  // check somebody out as a guest.
+  accounts: {
+    enabled: settings.accounts?.enabled !== false,
+    guestCheckout: settings.accounts?.guestCheckout !== false,
+    signupHeading: settings.accounts?.signupHeading || "Create your account",
+    signupBlurb: settings.accounts?.signupBlurb || "",
+  },
+  // The programme as a SHOPPER may see it: what it is called, what a point is
+  // worth, what the ladder looks like. Deliberately not the whole settings
+  // block — the shop's internal ceilings (per-order caps, expiry policy) are
+  // its own business and belong nowhere near a page a customer can read.
+  loyalty: {
+    enabled: Boolean(settings.loyalty?.enabled),
+    programName: settings.loyalty?.programName || "Rewards",
+    pointsName: settings.loyalty?.pointsName || "points",
+    earnRate: Number(settings.loyalty?.earnRate ?? 1),
+    redeemRate: Number(settings.loyalty?.redeemRate ?? 100),
+    minRedeemPoints: Number(settings.loyalty?.minRedeemPoints ?? 0),
+    maxRedeemPercent: Number(settings.loyalty?.maxRedeemPercent ?? 50),
+    signupBonus: Number(settings.loyalty?.signupBonus ?? 0),
+    tiers: (settings.loyalty?.tiers || []).map((tier) => ({
+      name: tier.name,
+      threshold: tier.threshold,
+      multiplier: tier.multiplier,
+      perk: tier.perk || "",
+    })),
+    terms: settings.loyalty?.terms || "",
+  },
 });
 
 const BLOG_BLOCK_TYPES = new Set([
@@ -3540,6 +3769,120 @@ module.exports.storefrontHero = async (req, res) => {
  * Idempotent on `clientRef`: replaying the request (a retry, a webhook firing
  * twice) returns the original order instead of charging the shelf twice.
  */
+/**
+ * What this basket is worth in points, before it is bought.
+ *
+ * Called by the checkout page as the basket changes, so a shopper is told what
+ * they will earn and how much of it they may spend BEFORE they commit — rather
+ * than discovering it on a confirmation screen when it is too late to add the
+ * one more item that would have tipped them over a bonus.
+ *
+ * Reads only. Every figure is recomputed for real when the order is actually
+ * placed, so nothing a browser does with this response can change what it pays.
+ */
+module.exports.storefrontLoyaltyQuote = async (req, res) => {
+  try {
+    const store = await storeId();
+    const settings = await getOrCreateSettings(store);
+    const config = loyalty.programme(settings);
+
+    if (!config.enabled) {
+      return res.status(200).json({ enabled: false });
+    }
+
+    const items = Array.isArray(req.body?.items) ? req.body.items.slice(0, 50) : [];
+    if (!items.length) {
+      return res.status(200).json({ enabled: true, earn: 0, redeem: null });
+    }
+
+    const lines = await resolveOrderLines(store, items);
+    const subtotal = money(lines.reduce((sum, line) => sum + line.subtotal, 0));
+
+    // The voucher, if one is applied, changes what the lines are worth and so
+    // changes what they earn. Failing to price it is not a reason to refuse the
+    // quote — the shopper simply sees the earning on the undiscounted basket,
+    // and the real figure is worked out at checkout either way.
+    let discount = 0;
+    if (String(req.body?.voucherCode || "").trim()) {
+      try {
+        const voucher = await OnlineVoucher.findOne({
+          store,
+          code: String(req.body.voucherCode).trim().toUpperCase(),
+        });
+        if (voucher) {
+          const result = await evaluateVoucher(
+            voucher,
+            lines,
+            req.customer?.email || "",
+          );
+          allocateDiscount(lines, result.eligibleLines, result.discount);
+          discount = money(result.discount);
+        }
+      } catch {
+        /* an invalid voucher is the checkout's problem, not the quote's */
+      }
+    }
+
+    const merchandiseTotal = money(subtotal - discount);
+    const shipping = shippingFor(settings, merchandiseTotal);
+
+    const account = req.customer || null;
+    const tier = loyalty.tierFor(settings, account?.points?.lifetime || 0);
+    const earning = loyalty.quoteEarning({
+      settings,
+      rules: await loyalty.activeRules(store),
+      lines,
+      shipping,
+      tierMultiplier: account ? tier.multiplier : 1,
+    });
+
+    // The most this basket could absorb, so the page can cap its own slider
+    // instead of guessing and being corrected by the server.
+    const balance = Math.max(0, Number(account?.points?.balance || 0));
+    const ceiling = Math.min(
+      balance,
+      Math.floor(
+        ((merchandiseTotal * config.maxRedeemPercent) / 100) * config.redeemRate,
+      ),
+    );
+    const requested = Math.max(0, Math.trunc(Number(req.body?.redeemPoints) || 0));
+    const chosen = requested
+      ? loyalty.quoteRedemption({
+          settings,
+          balance,
+          merchandiseTotal,
+          requestedPoints: requested,
+        })
+      : { points: 0, value: 0, reason: "" };
+
+    return res.status(200).json({
+      enabled: true,
+      pointsName: config.pointsName,
+      programName: config.programName,
+      // Signed out, this is still the honest answer: it is what they WOULD earn,
+      // which is the whole argument for creating an account at this moment.
+      earn: earning.points,
+      breakdown: earning.breakdown,
+      signedIn: Boolean(account),
+      tier: account ? tier.current : null,
+      redeem: {
+        balance,
+        max: Math.max(0, ceiling),
+        minPoints: config.minRedeemPoints,
+        rate: config.redeemRate,
+        maxPercent: config.maxRedeemPercent,
+        points: chosen.points,
+        value: chosen.value,
+        reason: chosen.reason,
+      },
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : "Could not price those points",
+    });
+  }
+};
+
 module.exports.validateStorefrontVoucher = async (req, res) => {
   try {
     const store = await storeId();
@@ -4142,6 +4485,105 @@ const shopAlertBody = (order) => `
   ${orderItemsTable(order)}
   ${shippingAddressBlock(order)}`;
 
+/* ── "Where is my order?" ───────────────────────────────────────────────────
+ * One email per meaningful step, sent from the shop's own mailbox.
+ *
+ * Only three steps get one: packed, dispatched, delivered. A message for every
+ * internal state change trains people to ignore the ones that matter, and the
+ * only question a customer is actually asking is whether the parcel has moved.
+ * ------------------------------------------------------------------------- */
+
+const STATUS_EMAIL = {
+  ready: {
+    subject: (order) => `Your order ${order.orderNo} is packed and ready`,
+    heading: "Your order is packed",
+    body: "We've picked and packed everything. It's waiting to go out with our next collection.",
+  },
+  shipped: {
+    subject: (order) => `Your order ${order.orderNo} is on its way`,
+    heading: "Your order is on its way",
+    body: "It has left us and is with the courier now.",
+  },
+  delivered: {
+    subject: (order) => `Your order ${order.orderNo} has been delivered`,
+    heading: "Delivered",
+    body: "Your order has been marked as delivered. We hope everything is as you expected.",
+  },
+};
+
+const sendOrderStatusEmail = async (store, order) => {
+  const copy = STATUS_EMAIL[order.status];
+  if (!copy || !order.customer?.email) return;
+
+  const settings = await getOrCreateSettings(store);
+  const brand = {
+    name:
+      settings?.business?.tradingName ||
+      settings?.business?.legalName ||
+      "Online Store",
+    addressLines: settings?.footer?.address ? [settings.footer.address] : [],
+    phone: settings?.footer?.supportPhone || "",
+  };
+  const firstName = String(order.customer.name || "there").trim().split(/\s+/)[0];
+  const shopUrl = storefrontBase();
+
+  // The last note the shop left on this order, if it left one. It was written
+  // for the customer, so it belongs in the email they actually read rather than
+  // only on a page they have to go and find.
+  const lastNote = [...(order.timeline || [])]
+    .reverse()
+    .find((entry) => entry.status === order.status && entry.note)?.note;
+
+  const tracking = order.tracking || {};
+  const trackingRows = [
+    tracking.carrier ? ["Carrier", tracking.carrier] : null,
+    tracking.number ? ["Tracking number", tracking.number] : null,
+    tracking.estimate ? ["Expected", tracking.estimate] : null,
+  ].filter(Boolean);
+
+  const trackingBlock = trackingRows.length
+    ? `<div style="margin:20px 0;padding:14px 16px;background:#f0fbcf;">
+         ${trackingRows
+           .map(
+             ([label, value]) =>
+               `<div style="font-size:14px;line-height:1.7;"><span style="color:#6f685b;">${esc(label)}:</span> <strong>${esc(value)}</strong></div>`,
+           )
+           .join("")}
+         ${
+           tracking.url
+             ? `<div style="margin-top:10px;"><a href="${esc(tracking.url)}" style="color:#181410;font-weight:600;">Track your parcel</a></div>`
+             : ""
+         }
+       </div>`
+    : "";
+
+  const points = Number(order.loyalty?.earned || 0);
+  const pointsBlock =
+    order.status === "delivered" && points > 0
+      ? `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;">You've earned <strong>${points}</strong> ${esc(loyalty.programme(settings).pointsName)} on this order — they're in your account now.</p>`
+      : "";
+
+  return sendMail({
+    to: order.customer.email,
+    subject: copy.subject(order),
+    account: "store",
+    fromName: brand.name,
+    html: brandedHtml(
+      brand,
+      `<h2 style="margin:0 0 12px;font-size:20px;">${esc(copy.heading)}</h2>
+       <p style="margin:0 0 14px;font-size:15px;line-height:1.6;">Hi ${esc(firstName)}, ${esc(copy.body)}</p>
+       <p style="margin:0 0 6px;font-size:13px;color:#6f685b;text-transform:uppercase;letter-spacing:.06em;">Order</p>
+       <p style="margin:0 0 14px;font-size:18px;font-weight:700;">${esc(order.orderNo)}</p>
+       ${lastNote ? `<p style="margin:0 0 14px;padding:12px 14px;background:#f7f5ef;font-size:14px;line-height:1.6;">${esc(lastNote)}</p>` : ""}
+       ${trackingBlock}
+       ${pointsBlock}
+       <p style="margin:0;font-size:15px;line-height:1.6;">
+         <a href="${shopUrl}/account/orders/${encodeURIComponent(order.orderNo)}" style="color:#181410;font-weight:600;">Track this order</a>
+       </p>`,
+    ),
+  });
+};
+
 const sendOrderEmails = async (store, order) => {
   try {
     const [shop, settings] = await Promise.all([
@@ -4269,6 +4711,12 @@ const reviewRequestEmail = (order, link, brand, settings) => {
 };
 
 // Exposed so scripts (resend / preview) build the identical branded emails.
+// Shared with controller/onlineCustomerController: the tenant scope and the
+// settings document are the same two things every online route needs, and there
+// is no version of this feature where the customer side should resolve them
+// differently from the store side.
+module.exports.storeId = storeId;
+module.exports.getOrCreateSettings = getOrCreateSettings;
 module.exports.reviewRequestEmail = reviewRequestEmail;
 module.exports.professionalOrderEmail = professionalOrderEmail;
 module.exports.formatOrderNo = formatOrderNo;
@@ -4476,7 +4924,45 @@ module.exports.submitStorefrontReview = async (req, res) => {
         verified: true,
         status: "published",
       });
-      return res.status(201).json({ message: "Thanks for your review!", id: String(review._id) });
+      // A thank-you in points, if the shop offers one. Paid once per review,
+      // which the unique index above already enforces — the duplicate is caught
+      // as a 11000 below and never reaches this line, so nobody can farm the
+      // bonus by submitting the same review twice.
+      //
+      // Only for a signed-in shopper: the bonus has to land in an account, and
+      // a guest who reviewed through an emailed link does not have one. Best
+      // effort either way — a review is worth having whether or not the points
+      // went through.
+      let bonusAwarded = 0;
+      if (order.customer?.account) {
+        try {
+          const settings = await getOrCreateSettings(store);
+          const config = loyalty.programme(settings);
+          if (config.enabled && config.reviewBonus > 0) {
+            await loyalty.postEntry({
+              store,
+              customer: order.customer.account,
+              kind: "bonus",
+              points: config.reviewBonus,
+              reason: `Thanks for reviewing ${item.name}`,
+              order: order._id,
+              orderNo: order.orderNo,
+              settings,
+            });
+            bonusAwarded = config.reviewBonus;
+          }
+        } catch (error) {
+          console.error("[loyalty] review bonus failed:", error.message);
+        }
+      }
+
+      return res.status(201).json({
+        message: bonusAwarded
+          ? `Thanks for your review! ${bonusAwarded} points are on your account.`
+          : "Thanks for your review!",
+        id: String(review._id),
+        pointsAwarded: bonusAwarded,
+      });
     } catch (error) {
       if (error.code === 11000)
         return res.status(409).json({ message: "You've already reviewed this item." });
@@ -4565,6 +5051,20 @@ module.exports.deleteReview = async (req, res) => {
 
 // Voucher-aware checkout. This supersedes the original implementation above
 // while preserving its guarded, shared-inventory decrement behavior.
+// Put back stock that was taken for an order that then failed to complete.
+// Checkout takes stock one line at a time so it can fail fast on a sold-out
+// item; every failure path after that point has to hand back exactly what it
+// took, and doing it in one place means a new failure path cannot forget to.
+const releaseStock = (taken) =>
+  Promise.all(
+    (taken || []).map((item) =>
+      Product.updateOne(
+        { _id: item.product },
+        { $inc: { quantity: item.quantity } },
+      ),
+    ),
+  );
+
 module.exports.placeOrder = async (req, res) => {
   try {
     const store = await storeId();
@@ -4575,7 +5075,15 @@ module.exports.placeOrder = async (req, res) => {
       clientRef,
       voucherCode,
       paymentMethod,
+      // Points the shopper asked to spend on this basket. A request, not an
+      // instruction: what is actually allowed comes off their real balance and
+      // the programme's own limits, never off this number.
+      redeemPoints = 0,
     } = req.body;
+
+    // Set by optionalCustomerAuth when the shopper was signed in. Null is a
+    // guest checkout, which stays a first-class way to buy.
+    const account = req.customer || null;
 
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: "The order has no items" });
@@ -4623,8 +5131,32 @@ module.exports.placeOrder = async (req, res) => {
     const tax = 0;
     const merchandiseTotal = money(subtotal - discount);
     const settings = await getOrCreateSettings(store);
+    // Shipping is worked out on the merchandise value BEFORE any points are
+    // spent. Spending a reward should never cost somebody their free delivery —
+    // that turns the reward into a trap, and it is the kind of thing a customer
+    // notices exactly once and never forgets.
     const shipping = shippingFor(settings, merchandiseTotal);
-    const total = money(merchandiseTotal + shipping);
+
+    /* ── Points ───────────────────────────────────────────────────────────
+     * Only a signed-in shopper can spend them, and only what they actually
+     * hold. The quote clamps the request against the balance, the programme's
+     * per-order ceiling and its minimum; the atomic reservation below is what
+     * makes it safe against the same account checking out twice at once.
+     * ------------------------------------------------------------------- */
+    let pointsSpent = 0;
+    let pointsValue = 0;
+    if (account && Number(redeemPoints) > 0) {
+      const quote = loyalty.quoteRedemption({
+        settings,
+        balance: account.points?.balance || 0,
+        merchandiseTotal,
+        requestedPoints: redeemPoints,
+      });
+      pointsSpent = quote.points;
+      pointsValue = quote.value;
+    }
+
+    const total = money(merchandiseTotal + shipping - pointsValue);
 
     // POS and web compete on this exact Product.quantity guard. If either
     // channel buys the final unit first, the other channel receives a conflict.
@@ -4649,14 +5181,7 @@ module.exports.placeOrder = async (req, res) => {
         });
       }
     } catch (error) {
-      await Promise.all(
-        taken.map((item) =>
-          Product.updateOne(
-            { _id: item.product },
-            { $inc: { quantity: item.quantity } },
-          ),
-        ),
-      );
+      await releaseStock(taken);
       throw error;
     }
 
@@ -4677,17 +5202,37 @@ module.exports.placeOrder = async (req, res) => {
         { new: true },
       );
       if (!reserved) {
-        await Promise.all(
-          taken.map((item) =>
-            Product.updateOne(
-              { _id: item.product },
-              { $inc: { quantity: item.quantity } },
-            ),
-          ),
-        );
+        await releaseStock(taken);
         throw requestError(409, "This voucher is no longer available");
       }
       voucherReserved = true;
+    }
+
+    // Take the points off the balance BEFORE the order exists, under a
+    // condition on the balance itself. This is the same guard the stock take
+    // above uses, for the same reason: two checkouts on one account at the same
+    // moment must not both be told they can spend the same 500 points.
+    let pointsReserved = false;
+    if (pointsSpent > 0) {
+      const charged = await OnlineCustomer.findOneAndUpdate(
+        { _id: account._id, "points.balance": { $gte: pointsSpent } },
+        { $inc: { "points.balance": -pointsSpent } },
+        { new: true },
+      );
+      if (!charged) {
+        await releaseStock(taken);
+        if (voucherReserved) {
+          await OnlineVoucher.updateOne(
+            { _id: voucher._id, usedCount: { $gt: 0 } },
+            { $inc: { usedCount: -1 } },
+          ).catch(() => {});
+        }
+        throw requestError(
+          409,
+          "Those points are no longer available — refresh and try again",
+        );
+      }
+      pointsReserved = true;
     }
 
     let order;
@@ -4711,6 +5256,11 @@ module.exports.placeOrder = async (req, res) => {
           name: customer.name.trim(),
           email: customer.email.trim().toLowerCase(),
           phone: customer.phone || "",
+          // Set only when the shopper was signed in. The name/email/phone above
+          // stay a snapshot of what was typed at checkout — somebody who later
+          // renames their profile has not changed who this parcel was addressed
+          // to.
+          account: account?._id || null,
         },
         shippingAddress,
         subtotal,
@@ -4739,6 +5289,17 @@ module.exports.placeOrder = async (req, res) => {
         // Pick & Pay is confirmed immediately for fulfilment. Revenue is posted to
         // the shared Sale ledger only when the order is marked delivered.
         status: "processing",
+        // The first step of the customer's tracker. Written here rather than
+        // inferred from createdAt, so the timeline has one shape from the very
+        // first entry and the tracker never has to special-case its own start.
+        timeline: [{ status: "processing", at: new Date(), note: "" }],
+        loyalty: {
+          // Filled in below, once the earning has been priced against the
+          // order that now exists.
+          earned: 0,
+          redeemed: pointsSpent,
+          redeemedValue: pointsValue,
+        },
         stockDecrementedAt: new Date(),
         clientRef: clientRef || null,
       });
@@ -4751,6 +5312,73 @@ module.exports.placeOrder = async (req, res) => {
           reference: `Online order ${orderNo}`,
         })),
       ).catch(() => {});
+
+      /* ── The order's loyalty movements ─────────────────────────────────
+       * Both rows are written only now, once the order exists to point at —
+       * a ledger entry attached to nothing is a ledger entry nobody can
+       * explain later.
+       *
+       * The redemption is recorded as already spent, because the balance was
+       * charged before the order was created. The earning is written PENDING:
+       * the customer sees it as "on the way" and cannot spend it until the
+       * goods have actually arrived.
+       * --------------------------------------------------------------- */
+      if (account) {
+        if (pointsSpent > 0) {
+          await loyalty.postEntry({
+            store,
+            customer: account,
+            kind: "redeem",
+            points: -pointsSpent,
+            status: "confirmed",
+            // The reservation above already took these off the balance under a
+            // condition, so the row records the movement without repeating it.
+            alreadyApplied: true,
+            order: order._id,
+            orderNo,
+            reason: `Spent on order ${orderNo}`,
+            value: pointsValue,
+            settings,
+          }).catch((error) =>
+            console.error("[loyalty] redeem row failed:", error.message),
+          );
+        }
+
+        try {
+          const rules = await loyalty.activeRules(store);
+          const tier = loyalty.tierFor(settings, account.points?.lifetime || 0);
+          const earning = loyalty.quoteEarning({
+            settings,
+            rules,
+            lines,
+            shipping,
+            tierMultiplier: tier.multiplier,
+          });
+          if (earning.points > 0) {
+            await loyalty.postEntry({
+              store,
+              customer: account,
+              kind: "earn",
+              points: earning.points,
+              status: "pending",
+              order: order._id,
+              orderNo,
+              reason: `Earned on order ${orderNo}`,
+              breakdown: earning.breakdown,
+              settings,
+            });
+            order.loyalty.earned = earning.points;
+            await order.save();
+          }
+        } catch (error) {
+          // The sale is done and the goods are gone. A loyalty programme that
+          // could refuse an order it has already taken payment for would be a
+          // worse feature than one that occasionally needs a point adjustment.
+          console.error("[loyalty] earning failed:", error.message);
+        }
+
+        refreshOrderStats(account._id).catch(() => {});
+      }
 
       for (const item of taken) {
         emit(req, "stockChanged", {
@@ -4793,6 +5421,21 @@ module.exports.placeOrder = async (req, res) => {
         ).catch(() => {
           console.error(
             "[online] CRITICAL: could not restore voucher usage",
+            error?.message,
+          );
+        });
+      }
+      // Points were taken off the balance before the order was written. If the
+      // order never happened, they were never spent — give them straight back,
+      // and shout about it in the log if even that fails, because the customer
+      // is now short of something they can see on their own account page.
+      if (pointsReserved) {
+        await OnlineCustomer.updateOne(
+          { _id: account._id },
+          { $inc: { "points.balance": pointsSpent } },
+        ).catch(() => {
+          console.error(
+            "[online] CRITICAL: could not restore loyalty points",
             error?.message,
           );
         });

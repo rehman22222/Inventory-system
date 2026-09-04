@@ -28,6 +28,12 @@ const ActivityLogSchema = new mongoose.Schema(
         "onlineCategory",
         "onlineListing",
         "onlineOrder",
+        // A website customer's account, and the rewards rules the shop writes.
+        // Both are things staff can change on somebody else's behalf, so both
+        // have to be nameable here — an audit trail that cannot record an
+        // action is one that quietly loses it.
+        "onlineCustomer",
+        "loyaltyRule",
       ],
     },
     entityId: {

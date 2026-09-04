@@ -6,7 +6,7 @@
     "node": ">=18 <=24"
   },
   "scripts": {
-    "test": "node scripts/verifyPosCredit.js && node scripts/verifyOnlinePromotions.js",
+    "test": "node scripts/verifyPosCredit.js && node scripts/verifyOnlinePromotions.js && node scripts/verifyLoyaltyAccounts.js",
     "start": "node server",
     "build": "cd ../frontend && npm install && npm run build",
     "postinstall": "node scripts/postinstall.js",
@@ -18,7 +18,8 @@
     "set-barcoded-stock": "node scripts/setBarcodedStock.js",
     "clear-trading": "node scripts/clearTradingRecords.js",
     "verify:pos-credit": "node scripts/verifyPosCredit.js",
-    "verify:online": "node scripts/verifyOnlinePromotions.js"
+    "verify:online": "node scripts/verifyOnlinePromotions.js",
+    "verify:loyalty": "node scripts/verifyLoyaltyAccounts.js"
   },
   "author": "",
   "license": "ISC",

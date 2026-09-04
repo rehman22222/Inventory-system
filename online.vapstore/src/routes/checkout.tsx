@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { Banknote, CheckCircle2, Lock, Loader2 } from "lucide-react";
+import { Award, Banknote, CheckCircle2, Lock, Loader2, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
@@ -9,6 +9,8 @@ import { useCatalog } from "@/lib/catalog-context";
 import { placeStorefrontOrder, validateStorefrontVoucher } from "@/lib/catalog-api";
 import { formatPrice } from "@/lib/format";
 import { cldProductThumbImage } from "@/lib/img";
+import { getLoyaltyQuote, type LoyaltyQuote } from "@/lib/account-api";
+import { useAccount } from "@/lib/account-context";
 
 export const Route = createFileRoute("/checkout")({
   component: Checkout,
@@ -28,6 +30,12 @@ function Checkout() {
   const { t, i18n } = useTranslation();
   const { lines, subtotal, clear, ready, unitPriceFor } = useCart();
   const { settings } = useCatalog();
+  const { customer } = useAccount();
+  // What this basket earns, and how much of a balance may go against it. Priced
+  // by the server as the basket changes; every figure is worked out again for
+  // real when the order is placed, so nothing here can change what is charged.
+  const [quote, setQuote] = useState<LoyaltyQuote | null>(null);
+  const [redeemPoints, setRedeemPoints] = useState(0);
   const { flatRate, freeThreshold } = settings.shipping;
   const clientRef = useRef("");
   const [busy, setBusy] = useState(false);
@@ -42,6 +50,7 @@ function Checkout() {
   const [confirmed, setConfirmed] = useState<{
     orderNo: string;
     total: number;
+    earned: number;
   } | null>(null);
   const [form, setForm] = useState({
     name: "",
@@ -58,9 +67,12 @@ function Checkout() {
 
   const discount = appliedVoucher?.discount || 0;
   const merchandiseTotal = Math.max(0, subtotal - discount);
+  // Free shipping is judged BEFORE points are spent, matching the server.
+  // Spending a reward must never cost somebody their free delivery.
   const shipping =
     merchandiseTotal === 0 || merchandiseTotal >= freeThreshold ? 0 : flatRate;
-  const total = merchandiseTotal + shipping;
+  const pointsValue = quote?.redeem?.value ?? 0;
+  const total = Math.max(0, merchandiseTotal + shipping - pointsValue);
   const missingReferences = lines.some((line) => !line.listingId || !line.productId);
   const cartSignature = lines
     .map((line) => `${line.listingId}:${line.productId}:${line.qty}:${line.eventId || ""}`)
@@ -69,6 +81,70 @@ function Checkout() {
   useEffect(() => {
     setAppliedVoucher(null);
   }, [cartSignature, form.email]);
+
+  /* Fill the form in for somebody we already know.
+   *
+   * Only into fields they have not touched: a shopper who has started typing a
+   * different delivery address must not have it overwritten when their session
+   * resolves. That is why every branch below checks the current value first. */
+  useEffect(() => {
+    if (!customer) return;
+    const address =
+      customer.addresses.find((entry) => entry.isDefault) || customer.addresses[0];
+    setForm((current) => ({
+      ...current,
+      name: current.name || customer.name,
+      email: current.email || customer.email,
+      phone: current.phone || customer.phone,
+      ...(address && !current.line1
+        ? {
+            line1: address.line1,
+            line2: address.line2,
+            city: address.city,
+            region: address.region,
+            postcode: address.postcode,
+            country: address.country || current.country,
+          }
+        : {}),
+    }));
+  }, [customer]);
+
+  /* Re-price the points whenever the basket, the voucher or the amount they
+   * want to spend changes. Debounced, because dragging the slider would
+   * otherwise fire a request per pixel. */
+  useEffect(() => {
+    if (!ready || lines.length === 0 || missingReferences) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      getLoyaltyQuote({
+        data: {
+          items: orderItems(),
+          voucherCode: appliedVoucher?.voucher.code || "",
+          redeemPoints,
+        },
+      })
+        .then((result) => {
+          if (!cancelled) setQuote(result);
+        })
+        // A quote is a nicety. If it fails, checkout carries on without it
+        // rather than blocking a sale over a points preview.
+        .catch(() => {
+          if (!cancelled) setQuote(null);
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartSignature, ready, missingReferences, appliedVoucher, redeemPoints]);
+
+  // Never leave a slider sitting above what the basket can now absorb — a
+  // removed item can drop the ceiling under a choice already made.
+  const redeemMax = quote?.redeem?.max ?? 0;
+  useEffect(() => {
+    if (redeemPoints > redeemMax) setRedeemPoints(redeemMax);
+  }, [redeemMax, redeemPoints]);
 
   useEffect(() => {
     setForm((current) => {
@@ -145,12 +221,16 @@ function Checkout() {
           },
           note: form.note,
           voucherCode: appliedVoucher?.voucher.code || "",
+          // Ignored entirely for a guest, and clamped on the server to what
+          // this account actually holds.
+          redeemPoints: customer ? redeemPoints : 0,
           paymentMethod: "cash_on_delivery",
         },
       });
       setConfirmed({
         orderNo: result.order.orderNo,
         total: result.order.total,
+        earned: result.order.loyalty?.earned || 0,
       });
       clear();
     } catch (checkoutError) {
@@ -188,9 +268,39 @@ function Checkout() {
               {t("checkout.pickAndPaySelected", { total: formatPrice(confirmed.total) })}
             </p>
           </div>
-          <Link to="/shop" className="mt-8 inline-flex btn-primary">
-            {t("checkout.continueShopping")}
-          </Link>
+
+          {confirmed.earned > 0 && (
+            <div className="mt-4 flex items-start gap-3 border border-accent bg-accent/15 p-5">
+              <Award className="mt-0.5 h-5 w-5 shrink-0" />
+              <div className="text-sm">
+                <div className="font-medium">
+                  {confirmed.earned.toLocaleString()}{" "}
+                  {settings.loyalty?.pointsName || "points"} on the way
+                </div>
+                <p className="mt-0.5 text-ink-muted">
+                  They land in your balance once this order is delivered.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-8 flex flex-wrap gap-3">
+            {customer && (
+              <Link
+                to="/account/orders/$orderNo"
+                params={{ orderNo: confirmed.orderNo }}
+                className="inline-flex btn-primary"
+              >
+                Track this order
+              </Link>
+            )}
+            <Link
+              to="/shop"
+              className={customer ? "inline-flex items-center border hair px-6 py-3 text-sm transition-colors hover:border-ink" : "inline-flex btn-primary"}
+            >
+              {t("checkout.continueShopping")}
+            </Link>
+          </div>
         </main>
         <Footer />
       </div>
@@ -223,6 +333,22 @@ function Checkout() {
         <h1 className="mt-3 font-display text-4xl md:text-6xl leading-none">
           {t("checkout.deliveryDetails")}
         </h1>
+
+        {/* Offered, never demanded. A checkout that stops to ask a shopper to
+            make an account is a checkout that loses some of them — so this is
+            one quiet line, and the form below it works either way. */}
+        {!customer && settings.accounts?.enabled !== false && (
+          <p className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 border hair bg-surface px-4 py-3 text-sm">
+            <span className="text-ink-muted">Already have an account?</span>
+            <Link to="/account/login" className="font-medium underline">
+              Sign in
+            </Link>
+            <span className="text-ink-muted">
+              — your details fill themselves in
+              {settings.loyalty?.enabled ? " and your points come with you" : ""}.
+            </span>
+          </p>
+        )}
 
         <form onSubmit={submit} className="mt-10 grid gap-10 lg:grid-cols-[1.4fr_0.8fr] lg:gap-14">
           <div className="space-y-8">
@@ -385,6 +511,111 @@ function Checkout() {
                 )}
               </div>
 
+              {/* ── Rewards ──────────────────────────────────────────────
+                  Signed in: spend what you have. Signed out: see what you'd be
+                  collecting, which is the only moment that argument lands. */}
+              {quote?.enabled && (
+                <div className="mt-6 border-t hair pt-5">
+                  {quote.signedIn && quote.redeem && quote.redeem.balance > 0 ? (
+                    <>
+                      <div className="flex items-baseline justify-between">
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                          Your {quote.pointsName}
+                        </span>
+                        <span className="font-mono text-xs">
+                          {quote.redeem.balance.toLocaleString()} available
+                        </span>
+                      </div>
+
+                      {quote.redeem.max >= quote.redeem.minPoints ? (
+                        <>
+                          <div className="mt-3 flex items-baseline justify-between">
+                            <span className="font-display text-lg">
+                              {redeemPoints.toLocaleString()}
+                            </span>
+                            <span className="text-sm text-ink-muted">
+                              {pointsValue > 0 ? `−${formatPrice(pointsValue)}` : "nothing yet"}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={quote.redeem.max}
+                            /* Steps of the redemption rate, so every stop is a
+                               whole unit of currency off. A slider that lands on
+                               €1.37 is one nobody can aim. */
+                            step={Math.max(1, Math.round(quote.redeem.rate))}
+                            value={redeemPoints}
+                            onChange={(event) =>
+                              setRedeemPoints(Number(event.target.value))
+                            }
+                            aria-label={`How many ${quote.pointsName} to spend`}
+                            className="mt-2 w-full accent-[color:var(--ink)]"
+                          />
+                          <div className="mt-1 flex justify-between font-mono text-[10px] text-ink-muted">
+                            <button
+                              type="button"
+                              onClick={() => setRedeemPoints(0)}
+                              className="underline-offset-2 hover:underline"
+                            >
+                              none
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setRedeemPoints(quote.redeem!.max)}
+                              className="underline-offset-2 hover:underline"
+                            >
+                              use {quote.redeem.max.toLocaleString()}
+                            </button>
+                          </div>
+                          {quote.redeem.reason && (
+                            <p className="mt-2 text-xs text-ink-muted">
+                              {quote.redeem.reason}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="mt-2 text-xs text-ink-muted">
+                          {quote.redeem.balance < quote.redeem.minPoints
+                            ? `You can start spending your ${quote.pointsName} at ${quote.redeem.minPoints.toLocaleString()}.`
+                            : `This order is too small to put ${quote.pointsName} against.`}
+                        </p>
+                      )}
+                    </>
+                  ) : null}
+
+                  {(quote.earn ?? 0) > 0 && (
+                    <div className="mt-4 flex items-start gap-2 bg-accent/20 p-3 text-xs">
+                      <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      {quote.signedIn ? (
+                        <span>
+                          This order earns{" "}
+                          <strong>{quote.earn!.toLocaleString()}</strong>{" "}
+                          {quote.pointsName}
+                          {quote.tier && quote.tier.multiplier > 1
+                            ? ` at your ${quote.tier.name} rate`
+                            : ""}
+                          , once it's delivered.
+                        </span>
+                      ) : (
+                        <span>
+                          You'd collect{" "}
+                          <strong>{quote.earn!.toLocaleString()}</strong>{" "}
+                          {quote.pointsName} on this order.{" "}
+                          <Link
+                            to="/account/register"
+                            className="font-medium underline"
+                          >
+                            Create an account
+                          </Link>{" "}
+                          to start keeping them.
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <dl className="mt-6 space-y-3 border-t hair pt-5 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-ink-muted">{t("checkout.subtotal")}</dt>
@@ -400,6 +631,15 @@ function Checkout() {
                   <div className="flex justify-between text-[color:var(--sale)]">
                     <dt>{t("checkout.voucher")} ({appliedVoucher?.voucher.code})</dt>
                     <dd className="font-display">−{formatPrice(discount)}</dd>
+                  </div>
+                )}
+                {pointsValue > 0 && (
+                  <div className="flex justify-between text-[color:var(--sale)]">
+                    <dt>
+                      {(quote?.redeem?.points ?? 0).toLocaleString()}{" "}
+                      {quote?.pointsName || "points"}
+                    </dt>
+                    <dd className="font-display">−{formatPrice(pointsValue)}</dd>
                   </div>
                 )}
                 <div className="flex justify-between border-t hair pt-3 text-lg">

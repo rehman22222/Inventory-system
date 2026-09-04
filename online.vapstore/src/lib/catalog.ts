@@ -193,6 +193,29 @@ export interface StorefrontSettings {
     cookies: string;
     about: string;
   };
+  /** Customer accounts. Optional so an older cached settings payload still
+   *  type-checks; every reader treats a missing block as "on". */
+  accounts?: {
+    enabled: boolean;
+    guestCheckout: boolean;
+    signupHeading: string;
+    signupBlurb: string;
+  };
+  /** The rewards programme as a SHOPPER may see it. The shop's own ceilings
+   *  and expiry policy are deliberately not here — they are its business, and
+   *  this object is served to a public page. */
+  loyalty?: {
+    enabled: boolean;
+    programName: string;
+    pointsName: string;
+    earnRate: number;
+    redeemRate: number;
+    minRedeemPoints: number;
+    maxRedeemPercent: number;
+    signupBonus: number;
+    tiers: { name: string; threshold: number; multiplier: number; perk: string }[];
+    terms: string;
+  };
 }
 
 /* Announcement/marketing copy can use placeholders that always reflect the

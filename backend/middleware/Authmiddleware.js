@@ -175,4 +175,65 @@ module.exports.managermiddleware=async(req,res,next)=>{
 }
 
 
+/* ── Website customers ──────────────────────────────────────────────────────
+ * Everything above this line guards the shop's own people. These two guard a
+ * SHOPPER, who is a different kind of thing entirely: they have no role, they
+ * reach us through the storefront's server (which has already presented the
+ * shared storefront key), and they may only ever see their own records.
+ *
+ * The token rides in `x-customer-token`, not in a cookie. The storefront holds
+ * the cookie — httpOnly, on its own domain — and passes the value through on
+ * the server side, so a shopper's browser never talks to this API directly and
+ * the token never reaches a script on either domain.
+ * ------------------------------------------------------------------------- */
 
+const { verifyCustomerToken } = require("../libs/customerToken");
+const OnlineCustomer = require("../models/OnlineCustomermodel");
+
+const resolveCustomer = async (req) => {
+  const header = req.headers["x-customer-token"];
+  const bearer = (req.headers.authorization || "").startsWith("Bearer ")
+    ? req.headers.authorization.slice(7)
+    : null;
+  const customerId = verifyCustomerToken(header || bearer);
+  if (!customerId) return null;
+
+  const customer = await OnlineCustomer.findById(customerId);
+  // A blocked account is refused here rather than at each route, so blocking
+  // somebody takes effect on their very next request without anybody having to
+  // remember to check for it again.
+  if (!customer || customer.status !== "active") return null;
+
+  return customer;
+};
+
+// The shopper must be signed in. Used by everything under /account.
+module.exports.customerAuth = async (req, res, next) => {
+  try {
+    const customer = await resolveCustomer(req);
+    if (!customer) {
+      return res
+        .status(401)
+        .json({ message: "Please sign in to your account.", signedOut: true });
+    }
+    req.customer = customer;
+    return next();
+  } catch (error) {
+    return res
+      .status(401)
+      .json({ message: "Please sign in to your account.", signedOut: true });
+  }
+};
+
+// The shopper MAY be signed in. Used at checkout, where an account earns points
+// and prefills an address but is never required to buy — an expired token must
+// hand somebody a guest checkout, not an error page with a full basket behind
+// it.
+module.exports.optionalCustomerAuth = async (req, _res, next) => {
+  try {
+    req.customer = await resolveCustomer(req);
+  } catch {
+    req.customer = null;
+  }
+  return next();
+};

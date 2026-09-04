@@ -333,9 +333,61 @@ const authLimiter = rateLimit({
   message: { message: "Too many login attempts — please wait a few minutes and try again." },
 });
 
+// Website customers signing in.
+//
+// This one cannot be capped by IP, and that is the whole point of it. Every
+// storefront request reaches this API from the WEBSITE'S OWN SERVER, so all the
+// shop's shoppers share a single source address — an IP cap here would either
+// be loose enough to be useless or would lock out the entire public the moment
+// the site got busy.
+//
+// So it is keyed on the account being attacked instead. Twenty attempts per
+// email per fifteen minutes, whoever they come from and however many machines
+// they are spread across. That is the half an IP limit cannot see; the other
+// half — how many DIFFERENT accounts one attacker can work through — is the
+// per-account lockout in the customer model, which trips at eight.
+const emailKey = (req, res) => {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  // Falls back to the caller when there is no email to key on (a malformed
+  // request), through the library's own helper so an IPv6 caller is grouped by
+  // subnet rather than by a single address they can trivially change.
+  return email || rateLimit.ipKeyGenerator(req, res);
+};
+
+const customerLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.CUSTOMER_LOGIN_RATE_LIMIT_MAX) || 20,
+  keyGenerator: emailKey,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true, // only failures count — a busy shopper is fine
+  message: {
+    message: "Too many attempts — please wait a few minutes and try again.",
+  },
+});
+
+// Password resets, keyed the same way. The cap here is not about guessing at
+// all: without it, this endpoint is a button that sends somebody else email,
+// and anybody could hold it down.
+const customerResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: Number(process.env.CUSTOMER_RESET_RATE_LIMIT_MAX) || 5,
+  keyGenerator: emailKey,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    message: "Too many reset requests — please try again later.",
+  },
+});
+
 app.use("/api", apiLimiter);
 TILL_PREFIXES.forEach((prefix) => app.use(prefix, tillLimiter));
 app.use("/api/auth/login", authLimiter);
+// Mounted after the till ceiling so both apply; these are far tighter and are
+// what actually decides whether a customer sign-in attempt goes through.
+app.use("/api/storefront/account/login", customerLoginLimiter);
+app.use("/api/storefront/account/register", customerLoginLimiter);
+app.use("/api/storefront/account/forgot-password", customerResetLimiter);
 
 if (useLocalStorage) {
   app.use("/api", localStorageRouter(app));

@@ -8,6 +8,7 @@ import {
   X,
   ArrowRight,
   ChevronDown,
+  User,
 } from "lucide-react";
 import {
   productsByCategory,
@@ -22,6 +23,7 @@ import logo from "@/assets/logo-cop.png";
 import { formatPrice, truncateProductName } from "@/lib/format";
 import { useCart } from "@/lib/cart";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { useAccount } from "@/lib/account-context";
 
 export function Header() {
   const { t } = useTranslation();
@@ -30,6 +32,7 @@ export function Header() {
   // menu, so a two-deep catalogue doesn't flatten out into one long row.
   const topLevel = useMemo(() => topLevelCategories(categories), [categories]);
   const { count, ready } = useCart();
+  const { customer } = useAccount();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [hidden, setHidden] = useState(false);
@@ -234,6 +237,31 @@ export function Header() {
           >
             <Search className="h-5 w-5" />
           </button>
+          {/* Straight to the account when signed in, to the sign-in page when
+              not. One control either way: a header that grows a second link
+              depending on who is looking is a header people stop reading.
+              Hidden entirely when the shop has switched accounts off. */}
+          {settings.accounts?.enabled !== false && (
+            <Link
+              to={customer ? "/account" : "/account/login"}
+              className="group inline-flex items-center justify-center"
+              aria-label={customer ? `Your account, ${customer.name}` : "Sign in"}
+              title={customer ? "My account" : "Login / Register"}
+            >
+              {/* Mobile keeps the compact account mark; desktop gets a named,
+                  quiet button so the action is obvious without shouting. */}
+              <span className="relative grid h-10 w-10 place-items-center border hair bg-surface transition-colors group-hover:bg-ink group-hover:text-primary-foreground sm:hidden">
+                <User className="h-5 w-5" />
+                {customer && (
+                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-accent ring-2 ring-background" />
+                )}
+              </span>
+              <span className="hidden items-center gap-2 border hair bg-surface px-4 py-2.5 text-sm font-medium transition-colors hover:bg-ink hover:text-primary-foreground sm:inline-flex">
+                <User className="h-4 w-4" />
+                {customer ? "My Account" : "Login / Register"}
+              </span>
+            </Link>
+          )}
           <Link
             to="/cart"
             className="relative p-2 inline-flex items-center gap-2"

@@ -408,6 +408,111 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
       cookies: { type: String, default: DEFAULT_COOKIES, trim: true, maxlength: 20000 },
       about: { type: String, default: DEFAULT_ABOUT, trim: true, maxlength: 20000 },
     },
+    // Customer accounts on the website. Switched off, the storefront hides
+    // every sign-in link and checks out exactly as it did before — this whole
+    // feature is opt-in, and turning it off is not supposed to break a shop.
+    accounts: {
+      enabled: { type: Boolean, default: true },
+      // Guests can still buy. A shop that turns this off is telling shoppers
+      // to register before it will take their money, which is a real trade-off
+      // and therefore the shop's decision to make, not ours.
+      guestCheckout: { type: Boolean, default: true },
+      // Shown above the sign-up form. The shop's own reason to join.
+      signupHeading: {
+        type: String,
+        default: "Create your account",
+        trim: true,
+        maxlength: 120,
+      },
+      signupBlurb: {
+        type: String,
+        default:
+          "Track your orders, save your delivery details and collect points every time you shop.",
+        trim: true,
+        maxlength: 400,
+      },
+    },
+
+    /* ── Loyalty programme ────────────────────────────────────────────────
+     * The base rules. Anything that applies to EVERYTHING lives here; the
+     * exceptions — this category, that product, best sellers — are rows in
+     * OnlineLoyaltyRule, which the shop writes itself.
+     *
+     * The two rates are deliberately separate numbers and not one "point
+     * value", because they are two different decisions: how generous the shop
+     * is when you spend, and what a point is worth when you cash it in. A shop
+     * that wants 1 point per euro and 100 points off a euro is being clear
+     * with itself about a 1% programme.
+     * ------------------------------------------------------------------- */
+    loyalty: {
+      enabled: { type: Boolean, default: false },
+      // What the shop calls it. Appears on the rewards page and in emails.
+      programName: {
+        type: String,
+        default: "Rewards",
+        trim: true,
+        maxlength: 60,
+      },
+      // What it calls a point — "points", "puffs", "stars".
+      pointsName: {
+        type: String,
+        default: "points",
+        trim: true,
+        maxlength: 30,
+      },
+
+      // Points earned per 1 unit of currency spent, before any rule overrides.
+      earnRate: { type: Number, default: 1, min: 0 },
+      // Whether shipping counts towards earning. Off by default: a shopper
+      // should not collect points on the courier's fee.
+      earnOnShipping: { type: Boolean, default: false },
+
+      // Points needed to take 1 unit of currency off an order.
+      redeemRate: { type: Number, default: 100, min: 1 },
+      // The smallest redemption allowed, so the till of the website is not
+      // handed a 3-point discount worth three cents.
+      minRedeemPoints: { type: Number, default: 200, min: 0 },
+      // Ceiling on how much of one order points may pay for. 100 means points
+      // can clear the whole basket; 50 keeps half the order in real money.
+      maxRedeemPercent: { type: Number, default: 50, min: 0, max: 100 },
+
+      // Given once, when an account is created.
+      signupBonus: { type: Number, default: 0, min: 0 },
+      // Given when a delivered order is reviewed through the emailed link.
+      reviewBonus: { type: Number, default: 0, min: 0 },
+
+      // Points go stale this many months after they are confirmed. 0 = never.
+      // A programme with no expiry is a liability that only ever grows, which
+      // is fine for a small shop and not fine for a big one — so it is theirs
+      // to choose.
+      expiryMonths: { type: Number, default: 0, min: 0, max: 120 },
+
+      /* Tiers. Purely a function of LIFETIME points, so spending never demotes
+       * anybody — being knocked down a tier for using the reward is the fastest
+       * way to teach somebody not to use it.
+       *
+       * `multiplier` applies on top of whatever a line would otherwise have
+       * earned, base rate or rule alike. 1 means the tier is recognition only,
+       * which is a perfectly good tier. */
+      tiers: [
+        {
+          _id: false,
+          name: { type: String, default: "", trim: true, maxlength: 40 },
+          // Lifetime points needed to reach it.
+          threshold: { type: Number, default: 0, min: 0 },
+          multiplier: { type: Number, default: 1, min: 0 },
+          // Shown on the customer's rewards page under the tier name.
+          perk: { type: String, default: "", trim: true, maxlength: 160 },
+        },
+      ],
+
+      // The programme's own small print, shown on the rewards page. Markdown-
+      // ish: "## " starts a heading, blank lines separate paragraphs — the same
+      // shape the policy pages use, so the storefront renders it with the
+      // component it already has.
+      terms: { type: String, default: "", trim: true, maxlength: 8000 },
+    },
+
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
