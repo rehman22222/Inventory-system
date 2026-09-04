@@ -284,6 +284,26 @@ function Checkout() {
             </div>
           )}
 
+          {/* The shop's terms, shown at the one moment the shopper has just
+              committed to an order and is most likely to read them. Plain
+              text, one rule per line, set in admin → Settings. */}
+          {settings.checkout?.orderTerms?.trim() && (
+            <div className="mt-6 border hair p-5">
+              <div className="font-mono text-[11px] uppercase tracking-widest text-ink-muted">
+                Please note
+              </div>
+              <div className="mt-3 space-y-1.5 text-sm leading-relaxed text-ink-muted">
+                {settings.checkout.orderTerms
+                  .split("\n")
+                  .map((line) => line.trim())
+                  .filter(Boolean)
+                  .map((line, index) => (
+                    <p key={index}>{line}</p>
+                  ))}
+              </div>
+            </div>
+          )}
+
           <div className="mt-8 flex flex-wrap gap-3">
             {customer && (
               <Link
@@ -450,6 +470,20 @@ function Checkout() {
                   <span className="mt-1 block text-sm text-ink-muted">
                     {t("checkout.pickAndPayCopy")}
                   </span>
+                  {/* What the shop promises about delivery. The radius line is
+                      the shop's own words (admin → Settings); the threshold
+                      line is built from shipping.freeThreshold so the promise
+                      and the arithmetic can never drift apart. */}
+                  {settings.checkout?.deliveryNote && (
+                    <span className="mt-1 block text-sm text-ink-muted">
+                      {settings.checkout.deliveryNote}
+                    </span>
+                  )}
+                  {settings.shipping?.freeThreshold > 0 && (
+                    <span className="mt-1 block text-sm text-ink-muted">
+                      Free delivery on orders over {formatPrice(settings.shipping.freeThreshold)}.
+                    </span>
+                  )}
                 </span>
               </label>
             </section>

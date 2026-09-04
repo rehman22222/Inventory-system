@@ -61,6 +61,14 @@ export const defaultStorefrontSettings: StorefrontSettings = {
     tone: "maintenance",
   },
   shipping: { flatRate: 4.99, freeThreshold: 100 },
+  checkout: {
+    deliveryNote: "Delivery is free within a 5 mile radius.",
+    orderTerms: [
+      "18+ only. Valid ID may be required.",
+      "7-day returns with receipt; unused & unopened items only.",
+      "Statutory consumer rights remain unaffected.",
+    ].join("\n"),
+  },
   promises: {
     dispatch: "Fast dispatch",
     returnsDays: 14,

@@ -144,6 +144,13 @@ export interface StorefrontSettings {
     flatRate: number;
     freeThreshold: number;
   };
+  /** What the checkout says about delivery, and the terms shown once an order
+   *  is placed. Copy only — never used to work anything out. Either may be "",
+   *  which means the shop has cleared it and the line is not rendered. */
+  checkout: {
+    deliveryNote: string;
+    orderTerms: string;
+  };
   /** Trust badges on the product page, set by the shop owner in admin. */
   promises: {
     dispatch: string;

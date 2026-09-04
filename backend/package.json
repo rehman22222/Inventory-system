@@ -6,7 +6,7 @@
     "node": ">=18 <=24"
   },
   "scripts": {
-    "test": "node scripts/verifyBlogSecurity.js && node scripts/verifyPosCredit.js && node scripts/verifyOnlinePromotions.js && node scripts/verifyLoyaltyAccounts.js",
+    "test": "node scripts/verifyBlogSecurity.js && node scripts/verifyOrderEmails.js && node scripts/verifyPosCredit.js && node scripts/verifyOnlinePromotions.js && node scripts/verifyLoyaltyAccounts.js",
     "start": "node server",
     "build": "cd ../frontend && npm install && npm run build",
     "postinstall": "node scripts/postinstall.js",
@@ -20,6 +20,7 @@
     "clear-trading": "node scripts/clearTradingRecords.js",
     "migrate-blog": "node scripts/migrateBlogToRichText.js",
     "verify:blog": "node scripts/verifyBlogSecurity.js",
+    "verify:emails": "node scripts/verifyOrderEmails.js",
     "verify:pos-credit": "node scripts/verifyPosCredit.js",
     "verify:online": "node scripts/verifyOnlinePromotions.js",
     "verify:loyalty": "node scripts/verifyLoyaltyAccounts.js"

@@ -268,6 +268,42 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
       flatRate: { type: Number, default: 4.99, min: 0 },
       freeThreshold: { type: Number, default: 100, min: 0 },
     },
+    /* What the shopper is told at the checkout, in the shop's own words.
+     *
+     * Both of these are copy, not rules. Nothing here decides what anybody is
+     * charged or what may be returned — shipping.freeThreshold still does the
+     * one, and the refund policy the other. They are settings rather than
+     * hardcoded strings because this codebase is deployed one shop per
+     * install, and a delivery radius and a returns window are exactly the
+     * things that differ between them. A shop that edits its terms must not
+     * need a developer.
+     *
+     * Left blank, neither line is rendered at all. */
+    checkout: {
+      // Shown under the payment method. The free-delivery threshold is NOT
+      // repeated here — the storefront builds that line from
+      // shipping.freeThreshold so the promise and the arithmetic cannot drift
+      // apart.
+      deliveryNote: {
+        type: String,
+        default: "Delivery is free within a 5 mile radius.",
+        trim: true,
+        maxlength: 300,
+      },
+      // Shown on the order confirmation screen once an order is placed. The
+      // age restriction and the returns window, in the shop's own words.
+      orderTerms: {
+        type: String,
+        // One line per rule; the storefront renders each on its own line.
+        default: [
+          "18+ only. Valid ID may be required.",
+          "7-day returns with receipt; unused & unopened items only.",
+          "Statutory consumer rights remain unaffected.",
+        ].join("\n"),
+        trim: true,
+        maxlength: 1200,
+      },
+    },
     // The trust badges shown on every product page (and echoed in the shipping
     // copy). Editable so the owner keeps them true to how they actually trade —
     // change the dispatch wording or the returns window once and it updates

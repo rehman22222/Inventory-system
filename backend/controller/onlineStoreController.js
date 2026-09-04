@@ -2297,6 +2297,22 @@ module.exports.updateStoreSettings = async (req, res) => {
       }
       settings.deals.limit = limit;
     }
+    /* Checkout copy. Plain text, not markup — it is rendered as text on the
+     * storefront, so it needs no sanitising, only bounding. */
+    const checkout = req.body.checkout || {};
+    if (!settings.checkout) settings.checkout = {};
+    for (const [key, maxLength] of [
+      ["deliveryNote", 300],
+      ["orderTerms", 1200],
+    ]) {
+      if (Object.prototype.hasOwnProperty.call(checkout, key)) {
+        settings.checkout[key] = String(checkout[key] || "")
+          .trim()
+          .slice(0, maxLength);
+      }
+    }
+    settings.markModified("checkout");
+
     const blog = req.body.blog || {};
     if (!settings.blog) settings.blog = {};
     for (const [key, maxLength] of [
@@ -2995,24 +3011,15 @@ module.exports.updateOrderStatus = async (req, res) => {
       );
     }
 
-    // Tell the customer their order has moved. Only for the steps that are
-    // actually news to somebody waiting on a parcel — nobody needs an email
-    // saying their order is still being prepared.
-    if (["ready", "shipped", "delivered"].includes(status)) {
+    /* Tell the customer their order has moved — dispatched, then delivered,
+     * and nothing in between. The delivered one carries the review invitation
+     * inside it, so this is the only place either is sent.
+     *
+     * Best effort throughout: a mail hiccup must never fail a status change
+     * that has already been committed. */
+    if (["shipped", "delivered"].includes(status)) {
       sendOrderStatusEmail(store, order).catch((error) =>
         console.error("[online] status email failed:", error.message),
-      );
-    }
-    // Once delivered, invite the customer to review what they bought. Fires for
-    // ANY payment method (Pick & Pay today, online payment later) — delivery, not
-    // payment, is what makes a review meaningful. Best effort: a mail hiccup
-    // must never fail the status change, and the guard sends it at most once.
-    if (status === "delivered" && !order.reviewRequestedAt) {
-      console.log(
-        `[reviews] order ${order.orderNo} delivered — sending review request email…`,
-      );
-      sendReviewRequestEmail(order).catch((error) =>
-        console.error("[reviews] request email failed:", error.message),
       );
     }
     return res.status(200).json({ message: `Order marked ${status}`, order });
@@ -3196,6 +3203,12 @@ const publicStorefrontSettings = (settings) => ({
   bestSellers: settings.bestSellers,
   deals: settings.deals,
   blog: settings.blog,
+  // What the checkout tells a shopper about delivery, and the terms shown once
+  // an order is placed. Copy only — the money is worked out server-side.
+  checkout: {
+    deliveryNote: settings.checkout?.deliveryNote || "",
+    orderTerms: settings.checkout?.orderTerms || "",
+  },
   business: settings.business,
   policies: settings.policies,
   // Whether the storefront shows sign-in links at all, and whether it may
@@ -4544,19 +4557,21 @@ const shopAlertBody = (order) => `
   ${shippingAddressBlock(order)}`;
 
 /* ── "Where is my order?" ───────────────────────────────────────────────────
- * One email per meaningful step, sent from the shop's own mailbox.
+ * A shopper gets exactly three emails per order, and no more:
  *
- * Only three steps get one: packed, dispatched, delivered. A message for every
- * internal state change trains people to ignore the ones that matter, and the
- * only question a customer is actually asking is whether the parcel has moved.
+ *   1. placed     — "your order is confirmed"  (sendOrderEmails)
+ *   2. dispatched — "your order is on its way" (here)
+ *   3. delivered  — "delivered" + the invitation to review it (here)
+ *
+ * Three, because a message for every internal state change trains people to
+ * ignore the ones that matter. "Packed and ready" used to send a fourth: it is
+ * news to the shop, not to somebody waiting on a parcel, so it is gone. And
+ * delivery used to send two — a status email and a separate review request,
+ * back to back, from the same address about the same order. They are one email
+ * now, with the review as its call to action.
  * ------------------------------------------------------------------------- */
 
 const STATUS_EMAIL = {
-  ready: {
-    subject: (order) => `Your order ${order.orderNo} is packed and ready`,
-    heading: "Your order is packed",
-    body: "We've picked and packed everything. It's waiting to go out with our next collection.",
-  },
   shipped: {
     subject: (order) => `Your order ${order.orderNo} is on its way`,
     heading: "Your order is on its way",
@@ -4569,11 +4584,38 @@ const STATUS_EMAIL = {
   },
 };
 
-const sendOrderStatusEmail = async (store, order) => {
+/* Claim the right to ask this customer for a review, once.
+ *
+ * Returns the tokenised link, or "" if the invitation has already gone out —
+ * the update only matches an order whose reviewRequestedAt is still null, so a
+ * retried or duplicated delivered-transition cannot invite twice. The caller
+ * MUST release it (releaseReviewClaim) if the send then fails, or the order is
+ * left marked as invited for an email nobody received.
+ */
+const claimReviewLink = async (order) => {
+  const token = crypto.randomBytes(24).toString("hex");
+  const claimed = await OnlineOrder.findOneAndUpdate(
+    { _id: order._id, reviewRequestedAt: null },
+    { $set: { reviewToken: token, reviewRequestedAt: new Date() } },
+    { new: true },
+  ).lean();
+  if (!claimed) return "";
+  return `${storefrontBase()}/review/${encodeURIComponent(claimed.orderNo)}/${token}`;
+};
+
+// The token is deliberately kept, so the link already generated stays valid if
+// the same invitation is sent later.
+const releaseReviewClaim = (order) =>
+  OnlineOrder.updateOne({ _id: order._id }, { $set: { reviewRequestedAt: null } });
+
+// `injectedSettings` is only ever passed by scripts/verifyOrderEmails.js, so
+// the email flow can be exercised without a database. Production always leaves
+// it out and the settings are fetched as before.
+const sendOrderStatusEmail = async (store, order, injectedSettings = null) => {
   const copy = STATUS_EMAIL[order.status];
   if (!copy || !order.customer?.email) return;
 
-  const settings = await getOrCreateSettings(store);
+  const settings = injectedSettings || (await getOrCreateSettings(store));
   const brand = {
     name:
       settings?.business?.tradingName ||
@@ -4621,7 +4663,19 @@ const sendOrderStatusEmail = async (store, order) => {
       ? `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;">You've earned <strong>${points}</strong> ${esc(loyalty.programme(settings).pointsName)} on this order — they're in your account now.</p>`
       : "";
 
-  return sendMail({
+  /* The review invitation, folded into the delivered email rather than sent as
+   * a second one. Claimed before the send so a duplicate transition cannot ask
+   * twice; released below if the send fails. */
+  const reviewLink =
+    order.status === "delivered" ? await claimReviewLink(order) : "";
+  const reviewBlock = reviewLink
+    ? `<div style="margin:24px 0 4px;padding:20px;background:#f7f5ef;text-align:center;">
+         <p style="margin:0 0 14px;font-size:15px;line-height:1.6;">How did we do? A quick review helps other shoppers and takes less than a minute.</p>
+         <a href="${esc(reviewLink)}" style="display:inline-block;background:#c5ff32;color:#181410;text-decoration:none;font-size:15px;font-weight:800;padding:14px 34px;border-radius:8px;">Write a review</a>
+       </div>`
+    : "";
+
+  const sent = await sendMail({
     to: order.customer.email,
     subject: copy.subject(order),
     account: "store",
@@ -4637,9 +4691,18 @@ const sendOrderStatusEmail = async (store, order) => {
        ${pointsBlock}
        <p style="margin:0;font-size:15px;line-height:1.6;">
          <a href="${shopUrl}/account/orders/${encodeURIComponent(order.orderNo)}" style="color:#181410;font-weight:600;">Track this order</a>
-       </p>`,
+       </p>
+       ${reviewBlock}`,
     ),
   });
+
+  // If the mail did not go out, the customer has not been invited to review
+  // anything — give the claim back so a retry can still ask them.
+  if (reviewLink && !sent?.ok) {
+    await releaseReviewClaim(order).catch(() => {});
+  }
+
+  return sent;
 };
 
 const sendOrderEmails = async (store, order) => {
@@ -4775,55 +4838,25 @@ const reviewRequestEmail = (order, link, brand, settings) => {
 // differently from the store side.
 module.exports.storeId = storeId;
 module.exports.getOrCreateSettings = getOrCreateSettings;
+/* Exposed for scripts/verifyOrderEmails.js, which checks that a shopper still
+ * gets exactly three emails per order. Not part of the controller's API — the
+ * app never reaches for this. */
+module.exports.__emailInternals = { STATUS_EMAIL, sendOrderStatusEmail };
+
 module.exports.reviewRequestEmail = reviewRequestEmail;
 module.exports.professionalOrderEmail = professionalOrderEmail;
 module.exports.formatOrderNo = formatOrderNo;
 
-// Best-effort "review your purchase" email. Claims the send atomically so a
-// retried/duplicate delivered-transition cannot email the customer twice.
-async function sendReviewRequestEmail(order) {
-  const token = crypto.randomBytes(24).toString("hex");
-  const claimed = await OnlineOrder.findOneAndUpdate(
-    { _id: order._id, reviewRequestedAt: null },
-    { $set: { reviewToken: token, reviewRequestedAt: new Date() } },
-    { new: true },
-  ).lean();
-  if (!claimed || !claimed.customer?.email) return; // already sent, or no email
+/* The standalone "leave a review" email is gone.
+ *
+ * It used to be sent on delivery, immediately after the delivered status email
+ * — two messages from the same address about the same order, seconds apart.
+ * The invitation now rides inside the delivered email (see sendOrderStatusEmail),
+ * which is where somebody who has just received their parcel will actually read
+ * it. The reviewRequestEmail TEMPLATE is still exported above, because
+ * scripts/resendReviewEmails.js sends it by hand to orders that were delivered
+ * before any of this existed. */
 
-  const settings = await getOrCreateSettings(order.store);
-  const brand = onlineBrand(settings);
-  const base = storefrontBase();
-  const link = `${base}/review/${encodeURIComponent(claimed.orderNo)}/${token}`;
-
-  const html = reviewRequestEmail(claimed, link, brand, settings);
-
-  // Same "store" mailbox that sends order confirmations, so the review email
-  // comes from the shop's own address, not a different one.
-  const result = await sendMail({
-    to: claimed.customer.email,
-    subject: `How was your order? Leave a review · ${brand.name}`,
-    html,
-    fromName: brand.name,
-    account: "store",
-  });
-  if (result.ok) {
-    console.log(
-      `[reviews] review email sent to ${claimed.customer.email} for order ${claimed.orderNo}`,
-    );
-  } else {
-    console.warn(
-      `[reviews] review email NOT sent for order ${claimed.orderNo}:`,
-      result.skipped ? result.reason : result.error,
-    );
-    // The send failed (e.g. SMTP down): release the claim so a later retry can
-    // send it, rather than leaving the order marked as "review requested" for a
-    // mail that never went out. The token is kept so the same link stays valid.
-    await OnlineOrder.updateOne(
-      { _id: order._id },
-      { $set: { reviewRequestedAt: null } },
-    );
-  }
-}
 
 // Resolve the OnlineListing for an order item — items usually carry it, but
 // legacy rows may only have the product, so fall back to a lookup.

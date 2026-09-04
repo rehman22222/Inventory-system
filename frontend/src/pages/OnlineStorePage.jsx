@@ -3999,6 +3999,14 @@ function Promotions({ vouchers, listings, categories, isActing }) {
   );
 }
 
+// Shown greyed-out in the order-terms box when a shop has cleared it, so the
+// wording this shipped with stays recoverable from the form itself.
+const CHECKOUT_TERMS_PLACEHOLDER = [
+  "18+ only. Valid ID may be required.",
+  "7-day returns with receipt; unused & unopened items only.",
+  "Statutory consumer rights remain unaffected.",
+].join("\n");
+
 const BLANK_SETTINGS = {
   logo: "",
   social: { instagram: "", facebook: "", twitter: "", tiktok: "" },
@@ -4037,6 +4045,7 @@ const BLANK_SETTINGS = {
     tone: "maintenance",
   },
   shipping: { flatRate: 4.99, freeThreshold: 100 },
+  checkout: { deliveryNote: "", orderTerms: "" },
   promises: {
     dispatch: "Fast dispatch",
     returnsDays: 14,
@@ -4280,6 +4289,7 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
         },
         blog: { ...BLANK_SETTINGS.blog, ...(settings.blog || {}) },
         shipping: { ...BLANK_SETTINGS.shipping, ...(settings.shipping || {}) },
+        checkout: { ...BLANK_SETTINGS.checkout, ...(settings.checkout || {}) },
         promises: { ...BLANK_SETTINGS.promises, ...(settings.promises || {}) },
         business: { ...BLANK_SETTINGS.business, ...(settings.business || {}) },
         policies: { ...BLANK_SETTINGS.policies, ...(settings.policies || {}) },
@@ -4739,6 +4749,45 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
               }
             />
           </Field>
+        </div>
+        {/* Wording only — neither of these changes what anybody is charged or
+            what may be returned. They sit under Shipping because that is the
+            subject a shopper reads them about. */}
+        <div className="mt-5 border-t border-base-300 pt-5">
+          <h4 className="font-display font-bold">What the checkout says</h4>
+          <p className="mt-1 text-xs text-base-content/50">
+            Wording shown to the shopper. The free-delivery amount above is added
+            automatically — do not repeat it here, or it will be said twice and
+            can end up disagreeing with what is actually charged.
+          </p>
+          <div className="mt-4 grid gap-3">
+            <Field label="Delivery note — shown under the payment method">
+              <input
+                maxLength={300}
+                className="input input-sm input-bordered w-full"
+                placeholder="Delivery is free within a 5 mile radius."
+                value={draft.checkout.deliveryNote}
+                onChange={(event) =>
+                  set("checkout", "deliveryNote", event.target.value)
+                }
+              />
+            </Field>
+            <Field label="Order terms — shown once an order is placed">
+              <textarea
+                rows={4}
+                maxLength={1200}
+                className="textarea textarea-sm textarea-bordered w-full leading-relaxed"
+                placeholder={CHECKOUT_TERMS_PLACEHOLDER}
+                value={draft.checkout.orderTerms}
+                onChange={(event) =>
+                  set("checkout", "orderTerms", event.target.value)
+                }
+              />
+              <span className="mt-1 block text-[11px] text-base-content/45">
+                One rule per line. Leave blank to show nothing.
+              </span>
+            </Field>
+          </div>
         </div>
       </section>
       <section className="hidden">
