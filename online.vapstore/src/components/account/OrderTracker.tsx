@@ -92,10 +92,10 @@ export function OrderTracker({
 
   return (
     <section
-      className="overflow-hidden rounded-[14px] border border-[#dfe6f3] bg-white shadow-[0_16px_44px_rgba(45,71,121,0.12)]"
+      className="overflow-hidden rounded-[14px] border hair bg-surface shadow-[0_16px_44px_rgba(24,20,16,0.08)]"
       aria-label="Order tracking"
     >
-      <div className="border-b border-[#e5e7eb] bg-[#f3f4f6] px-5 py-3 text-center">
+      <div className="border-b hair bg-muted px-5 py-3 text-center">
         <div className="font-display text-lg leading-tight tracking-tight text-ink">
           {stepLabel(current) || statusLabel}
         </div>
@@ -104,7 +104,7 @@ export function OrderTracker({
         </div>
       </div>
 
-      <ol className="grid min-w-[680px] grid-cols-4 bg-white px-5 pb-6 pt-5 sm:min-w-0 sm:px-7">
+      <ol className="grid min-w-[680px] grid-cols-4 bg-surface px-5 pb-6 pt-5 sm:min-w-0 sm:px-7">
         {steps.map((step, index) => {
           const reached = step.done || step.current || index <= currentIndex;
           const connectorReached =
@@ -120,7 +120,7 @@ export function OrderTracker({
                 <span
                   aria-hidden
                   className={`absolute left-1/2 top-[17px] h-1 w-full ${
-                    connectorReached ? "bg-[#75ad5d]" : "bg-[#d7d7d7]"
+                    connectorReached ? "bg-accent" : "bg-border"
                   }`}
                 />
               )}
@@ -128,11 +128,11 @@ export function OrderTracker({
               <span
                 className={`relative z-10 grid h-9 w-9 place-items-center rounded-full border-2 text-sm font-semibold sm:h-10 sm:w-10 ${
                   reached
-                    ? "border-[#75ad5d] bg-[#75ad5d] text-white"
-                    : "border-[#d7d7d7] bg-white text-[#9a9a9a]"
+                    ? "border-accent bg-accent text-accent-foreground"
+                    : "border-border bg-surface text-ink-muted"
                 } ${
                   step.current
-                    ? "outline outline-4 outline-[rgba(117,173,93,0.2)]"
+                    ? "outline outline-4 outline-accent/25"
                     : ""
                 }`}
               >
@@ -144,13 +144,13 @@ export function OrderTracker({
               </span>
 
               <div
-                className={`mt-4 grid h-12 w-12 place-items-center rounded-md border bg-white ${
-                  reached ? "border-[#e5edf5]" : "border-[#ececec] opacity-55"
+                className={`mt-4 grid h-12 w-12 place-items-center rounded-md border bg-background ${
+                  reached ? "border-accent/45" : "border-border opacity-55"
                 }`}
               >
                 <Icon
                   className={`h-7 w-7 ${
-                    reached ? "text-[#6fa65a]" : "text-[#9a9a9a]"
+                    reached ? "text-accent-foreground" : "text-ink-muted"
                   }`}
                   aria-hidden
                 />
@@ -159,7 +159,7 @@ export function OrderTracker({
               <div className="mt-3 min-w-0">
                 <div
                   className={`text-sm font-bold leading-5 sm:text-[15px] ${
-                    reached ? "text-[#6fa65a]" : "text-ink"
+                    reached ? "text-accent-foreground" : "text-ink"
                   }`}
                 >
                   {stepLabel(step)}

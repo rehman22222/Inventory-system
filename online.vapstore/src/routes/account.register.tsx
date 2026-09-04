@@ -1,4 +1,4 @@
-import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { Award, MailCheck, Package, Zap } from "lucide-react";
 import {
@@ -8,7 +8,6 @@ import {
   AuthSubmit,
 } from "@/components/account/AuthLayout";
 import { registerAccount, verifyRegistration } from "@/lib/account-api";
-import { useAccount } from "@/lib/account-context";
 import { useCatalog } from "@/lib/catalog-context";
 
 export const Route = createFileRoute("/account/register")({
@@ -29,8 +28,6 @@ export const Route = createFileRoute("/account/register")({
 });
 
 function Register() {
-  const router = useRouter();
-  const { refresh } = useAccount();
   const { settings } = useCatalog();
   const accounts = settings.accounts;
   const loyalty = settings.loyalty;
@@ -99,11 +96,8 @@ function Register() {
       const result = await verifyRegistration({
         data: { email: otpSent.email, otp: cleanOtp },
       });
-      await refresh();
-      await router.navigate({
-        to: "/account",
-        search: result.claimedOrders ? { claimed: result.claimedOrders } : {},
-      });
+      const claimed = result.claimedOrders ? `?claimed=${result.claimedOrders}` : "";
+      window.location.assign(`/account${claimed}`);
     } catch (verifyError) {
       setError(
         verifyError instanceof Error

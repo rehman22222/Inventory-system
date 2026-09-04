@@ -1,4 +1,4 @@
-import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { Lock, Mail } from "lucide-react";
 import {
@@ -8,7 +8,6 @@ import {
   AuthSubmit,
 } from "@/components/account/AuthLayout";
 import { loginAccount } from "@/lib/account-api";
-import { useAccount } from "@/lib/account-context";
 import { useCatalog } from "@/lib/catalog-context";
 
 export const Route = createFileRoute("/account/login")({
@@ -29,8 +28,6 @@ export const Route = createFileRoute("/account/login")({
 });
 
 function SignIn() {
-  const router = useRouter();
-  const { refresh } = useAccount();
   const { settings } = useCatalog();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,8 +41,7 @@ function SignIn() {
     setError("");
     try {
       await loginAccount({ data: { email: email.trim(), password } });
-      await refresh();
-      await router.navigate({ to: "/account" });
+      window.location.assign("/account");
     } catch (loginError) {
       setError(
         loginError instanceof Error
