@@ -4353,6 +4353,34 @@ const storefrontBase = () => {
 // + payment, next steps, and a footer with the shop's own contact/business/social
 // details. Everything is pulled from the online-store settings, so it's the
 // website's identity end to end.
+/* The shop's order terms, as an email block.
+ *
+ * Same words as the order confirmation screen, from the same setting
+ * (settings.checkout.orderTerms), so a shop that edits its terms edits them
+ * once and every place a customer reads them changes together. One rule per
+ * line; blank means the shop has cleared them and nothing is rendered.
+ *
+ * Deliberately plain and quiet — this is the small print, not a banner. It is
+ * escaped rather than sanitised because the field is plain text, and the admin
+ * form offers no formatting for it.
+ */
+const orderTermsEmailBlock = (settings, { muted = "#6f685b", line = "#e8e3d7" } = {}) => {
+  const rules = String(settings?.checkout?.orderTerms || "")
+    .split("\n")
+    .map((rule) => rule.trim())
+    .filter(Boolean);
+  if (!rules.length) return "";
+
+  return `<div style="border-top:1px solid ${line};margin-top:22px;padding-top:16px;">
+      ${rules
+        .map(
+          (rule) =>
+            `<div style="font-size:12px;line-height:1.6;color:${muted};">${esc(rule)}</div>`,
+        )
+        .join("")}
+    </div>`;
+};
+
 const professionalOrderEmail = (order, settings) => {
   // Palette — a clean, professional look: dark header, one teal accent, and a
   // soft highlight for the order-number strip.
@@ -4363,6 +4391,7 @@ const professionalOrderEmail = (order, settings) => {
   const INK = "#181410";
   const MUTED = "#6f685b";
   const LINE = "#e8e3d7";
+  const termsBlock = orderTermsEmailBlock(settings, { muted: MUTED, line: LINE });
   const business = settings?.business || {};
   const footer = settings?.footer || {};
   const social = settings?.social || {};
@@ -4534,7 +4563,12 @@ const professionalOrderEmail = (order, settings) => {
               ${footer.address ? `<div style="font-size:12px;color:${MUTED};margin-top:5px;">${esc(footer.address)}</div>` : ""}
               ${socialLinks ? `<div style="margin-top:11px;font-size:12px;">${socialLinks}</div>` : ""}
               ${businessBits ? `<div style="font-size:11px;color:${MUTED};margin-top:11px;">${businessBits}</div>` : ""}
-              <div style="font-size:11px;color:${MUTED};margin-top:13px;line-height:1.5;">18+ only &middot; Contains nicotine, a highly addictive substance. You received this email to confirm your order.</div>
+              ${termsBlock}
+              <!-- The age notice is not optional on a vape order, so it is
+                   carried here whenever the shop's own terms are not already
+                   stating it. Clearing a copy field must not quietly drop a
+                   compliance line from every order email. -->
+              <div style="font-size:11px;color:${MUTED};margin-top:13px;line-height:1.5;">${termsBlock ? "" : "18+ only &middot; "}Contains nicotine, a highly addictive substance. You received this email to confirm your order.</div>
             </div>
           </td></tr>
         </table>
@@ -4692,7 +4726,8 @@ const sendOrderStatusEmail = async (store, order, injectedSettings = null) => {
        <p style="margin:0;font-size:15px;line-height:1.6;">
          <a href="${shopUrl}/account/orders/${encodeURIComponent(order.orderNo)}" style="color:#181410;font-weight:600;">Track this order</a>
        </p>
-       ${reviewBlock}`,
+       ${reviewBlock}
+       ${orderTermsEmailBlock(settings)}`,
     ),
   });
 

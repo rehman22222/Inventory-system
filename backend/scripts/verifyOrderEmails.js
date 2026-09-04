@@ -78,11 +78,17 @@ Module._load = originalLoad;
 /* The controller resolves settings and the shop's brand from the database.
  * Neither decides how many emails go out, so they are stubbed to something
  * plausible and the test stays focused on the count. */
+const ORDER_TERMS = [
+  "18+ only. Valid ID may be required.",
+  "7-day returns with receipt; unused & unopened items only.",
+  "Statutory consumer rights remain unaffected.",
+].join("\n");
+
 const settingsStub = {
   business: { tradingName: "Cliffs of Puff" },
   footer: { address: "Longford", supportPhone: "", supportEmail: "" },
   loyalty: { enabled: true, pointsName: "points" },
-  checkout: {},
+  checkout: { orderTerms: ORDER_TERMS },
 };
 
 const makeOrder = (status) => ({
@@ -174,6 +180,70 @@ const run = async () => {
   check(
     "a repeated delivered transition does not invite a review twice",
     !/write a review/i.test(deliveredAgain[0]?.html || ""),
+  );
+
+  /* The shop's terms belong on every email a customer keeps, not only the
+   * confirmation — the returns window matters most on the delivered one, which
+   * is when it starts running. */
+  console.log("\nOrder terms reach every customer email");
+
+  const plain = (html) =>
+    String(html || "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&middot;/g, "·")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const confirmationOrder = {
+    ...makeOrder("pending"),
+    items: [],
+    subtotal: 0,
+    shipping: 0,
+    createdAt: new Date(),
+  };
+  const confirmation = plain(
+    controller.professionalOrderEmail(confirmationOrder, settingsStub),
+  );
+
+  for (const [label, body] of [
+    ["confirmation", confirmation],
+    ["dispatch", plain(shipped[0]?.html)],
+    ["delivered", plain(delivered[0]?.html)],
+  ]) {
+    check(`${label} email carries the age restriction`, /18\+ only/.test(body));
+    check(`${label} email carries the returns window`, /7-day returns/.test(body));
+    check(
+      `${label} email carries the statutory-rights line`,
+      /Statutory consumer rights/.test(body),
+    );
+  }
+
+  // Said twice in one email, it reads like boilerplate nobody proofread.
+  const ageMentions = (confirmation.match(/18\+/g) || []).length;
+  check(
+    "the confirmation email does not say 18+ twice",
+    ageMentions === 1,
+    `said ${ageMentions} times`,
+  );
+
+  /* And the failure that would go unnoticed: a shop that clears its terms must
+   * not lose the age notice from its order emails. It falls back to the
+   * footer. */
+  const cleared = plain(
+    controller.professionalOrderEmail(confirmationOrder, {
+      ...settingsStub,
+      checkout: { orderTerms: "" },
+    }),
+  );
+  check(
+    "clearing the terms does NOT drop the age notice",
+    /18\+ only/.test(cleared),
+    "a compliance line would vanish from every order email",
+  );
+  check(
+    "clearing the terms keeps the nicotine warning",
+    /Contains nicotine/.test(cleared),
   );
 
   console.log("\nTotal for one order's whole life");
