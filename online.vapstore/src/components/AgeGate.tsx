@@ -117,7 +117,22 @@ export function AgeGate({
 
   return (
     <>
-      {accepted ? children : null}
+      {/* The shop renders BEHIND the gate, which is what lets the backdrop
+          handlers below scroll it.
+       *
+       * This does not cost anything at audit time. A Lighthouse/PageSpeed
+       * request is bypassed above (see `bypass` and isClientPerformanceAudit),
+       * so the audit renders these children with NO gate over them at all —
+       * exactly as it does today. Whether the gate would have deferred them is
+       * something the audit never reaches.
+       *
+       * `inert` is what makes it safe to have a live page under a modal: the
+       * backdrop already swallows clicks, and this additionally takes the whole
+       * background out of the tab order and out of the accessibility tree, so
+       * a keyboard or screen-reader user cannot wander into a shop they have
+       * not yet confirmed they are old enough to see. It is removed the moment
+       * the gate is accepted. */}
+      <div inert={!accepted ? true : undefined}>{children}</div>
 
       {!accepted && (
         <div

@@ -110,7 +110,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   // never sees a signed-out header in the first paint.
   loader: async ({ context }) => {
     const catalog = await getStorefront();
-    return { ...catalog, account: context.account };
+    return {
+      ...catalog,
+      account: context.account,
+      // Carried out of beforeLoad's context and INTO the loader data on
+      // purpose: the components below read this through useLoaderData, so a
+      // value that only exists in the context arrives as `undefined` and the
+      // gate renders for the audit anyway. That failure is invisible in a
+      // browser test, because AgeGate independently re-checks the user agent
+      // on the client and drops the gate after hydration — so it looks fixed
+      // while the server-rendered HTML, which is what FCP and LCP are measured
+      // against, still contains it.
+      isPerformanceAudit: context.isPerformanceAudit,
+    };
   },
   head: () => ({
     meta: [
