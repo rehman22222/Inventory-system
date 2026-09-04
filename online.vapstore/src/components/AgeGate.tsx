@@ -9,7 +9,7 @@ import {
 } from "react";
 import { getCookie, setCookie } from "@/lib/cookies";
 import { getSessionId } from "@/lib/session";
-import logo from "@/assets/logo-cop.png";
+import logoSmall from "@/assets/logo-cop-180.png";
 
 // Consent lives in a first-party cookie tied to the visitor's session id. It
 // expires after 24 hours, so regular customers are not asked on every visit.
@@ -125,10 +125,13 @@ export function AgeGate({ children }: { children: ReactNode }) {
               <div className="flex items-center justify-center border-b hair bg-accent p-6 sm:border-b-0 sm:border-r">
                 <div className="text-center">
                   <img
-                    src={logo}
+                    src={logoSmall}
                     alt="Cliffs of Puff"
-                    width={640}
-                    height={640}
+                    width={180}
+                    height={180}
+                    loading="eager"
+                    decoding="async"
+                    fetchPriority="high"
                     className="mx-auto h-28 w-auto"
                   />
                   <div className="mx-auto mt-4 grid h-16 w-16 place-items-center rounded-full bg-ink font-display text-2xl text-primary-foreground">

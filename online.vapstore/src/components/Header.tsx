@@ -19,11 +19,11 @@ import {
   type CategorySlug,
 } from "@/lib/catalog";
 import { useCatalog } from "@/lib/catalog-context";
-import logo from "@/assets/logo-cop.png";
 import { formatPrice, truncateProductName } from "@/lib/format";
 import { useCart } from "@/lib/cart";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useAccount } from "@/lib/account-context";
+import logoSmall from "@/assets/logo-cop-180.png";
 
 export function Header() {
   const { t } = useTranslation();
@@ -160,9 +160,13 @@ export function Header() {
             {[0, 1, 2, 3].map((item) => (
               <span key={item} className="mx-8 inline-flex shrink-0 items-center gap-4">
                 <img
-                  src={logo}
+                  src={logoSmall}
                   alt=""
                   aria-hidden="true"
+                  width={40}
+                  height={40}
+                  loading="lazy"
+                  decoding="async"
                   className="h-5 w-auto object-contain"
                 />
                 <span>{ticker}</span>
@@ -197,10 +201,14 @@ export function Header() {
           </button>
           <Link to="/" className="flex items-center" aria-label="Cliffs of Puff — home">
             <img
-              src={logo}
+              src={logoSmall}
+              sizes="(min-width: 1024px) 91px, (min-width: 640px) 76px, 61px"
               alt="Cliffs of Puff"
-              width={2430}
-              height={2430}
+              width={180}
+              height={180}
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
               className="h-[61px] w-auto object-contain sm:h-[76px] lg:h-[91px]"
             />
           </Link>

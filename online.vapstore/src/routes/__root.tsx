@@ -125,15 +125,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       // Transparent PNGs cut from the COP badge. The supplied artwork was a
       // JPEG, which cannot hold transparency — its white square was flood-
       // filled out, so the mark now sits cleanly on light or dark tab chrome.
-      { rel: "icon", href: "/logo-cop.png", type: "image/png" },
-      { rel: "apple-touch-icon", href: "/logo-cop.png" },
+      { rel: "icon", href: "/icon-32.png", type: "image/png" },
+      { rel: "apple-touch-icon", href: "/icon-180.png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap",
-      },
     ],
   }),
   shellComponent: RootShell,
