@@ -220,6 +220,23 @@ const OnlineOrderSchema = new mongoose.Schema(
     // the order can leave a review for it.
     reviewToken: { type: String, default: null },
     reviewRequestedAt: { type: Date, default: null },
+
+    /* Which "where is my order?" emails actually reached the mail server, and
+     * when.
+     *
+     * There was no record of this at all, and the send is fire-and-forget:
+     * sendMail resolves { ok: false } rather than throwing, so the caller's
+     * .catch() never fired and a refused or timed-out message left no trace on
+     * the order and nothing in the log the shop would ever see. "Did the
+     * customer get told it was dispatched?" was unanswerable — which is the
+     * worst state for a question support gets asked directly.
+     *
+     * Stamped only on a confirmed send, so an empty slot means the email did
+     * NOT go out, not that nobody looked. */
+    statusEmails: {
+      shipped: { type: Date, default: null },
+      delivered: { type: Date, default: null },
+    },
   },
   { timestamps: true },
 );

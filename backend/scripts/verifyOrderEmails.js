@@ -35,6 +35,10 @@ const check = (name, condition, detail = "") => {
 const outbox = [];
 // Orders whose review invitation has already been claimed.
 const reviewClaimed = new Set();
+// Which status-email stamps were written back to the order.
+const stamped = [];
+// Flips the stubbed mailer into refusing every send.
+let failSends = false;
 
 const originalLoad = Module._load;
 Module._load = function (request, parent) {
@@ -43,7 +47,11 @@ Module._load = function (request, parent) {
       isMailConfigured: () => true,
       esc: (v) => String(v ?? ""),
       brandedHtml: (_brand, body) => body,
+      /* The controller destructures sendMail at require time, so it cannot be
+       * swapped later — a refused send has to be simulated from inside the
+       * stub via this flag. */
       sendMail: async (message) => {
+        if (failSends) return { ok: false, error: "connection refused" };
         outbox.push(message);
         return { ok: true };
       },
@@ -60,8 +68,18 @@ Module._load = function (request, parent) {
           return { ...currentOrder, orderNo: currentOrder.orderNo };
         },
       }),
-      updateOne: async (filter) => {
-        reviewClaimed.delete(String(filter._id));
+      /* Two different writes land here, and they must not be confused:
+       *   - releasing the review claim   ($set reviewRequestedAt: null)
+       *   - stamping a sent status email ($set statusEmails.<status>)
+       * Only the first gives the invitation back. Treating every updateOne as
+       * a release made a second delivered-transition able to invite twice. */
+      updateOne: async (filter, update) => {
+        const set = update?.$set || {};
+        if ("reviewRequestedAt" in set && set.reviewRequestedAt === null) {
+          reviewClaimed.delete(String(filter._id));
+        } else {
+          stamped.push(Object.keys(set)[0]);
+        }
         return { acknowledged: true };
       },
       find: () => ({ lean: async () => [] }),
@@ -140,6 +158,7 @@ const run = async () => {
 
   const send = async (status) => {
     outbox.length = 0;
+    stamped.length = 0;
     currentOrder = makeOrder(status);
     await sendOrderStatusEmail("store1", currentOrder, settingsStub);
     return [...outbox];
@@ -245,6 +264,56 @@ const run = async () => {
     "clearing the terms keeps the nicotine warning",
     /Contains nicotine/.test(cleared),
   );
+
+  /* Every send has to leave a record on the order.
+   *
+   * sendMail resolves { ok: false } instead of throwing, so a refused message
+   * used to look exactly like a delivered one: nothing on the order, nothing
+   * in a log anybody would find. "Did the customer get told it was
+   * dispatched?" had no answer. */
+  console.log("\nEvery sent email is recorded on the order");
+
+  await send("shipped");
+  check(
+    "a sent dispatch email stamps statusEmails.shipped",
+    stamped.includes("statusEmails.shipped"),
+    `stamped: ${stamped.join(", ") || "nothing"}`,
+  );
+
+  reviewClaimed.clear();
+  await send("delivered");
+  check(
+    "a sent delivered email stamps statusEmails.delivered",
+    stamped.includes("statusEmails.delivered"),
+    `stamped: ${stamped.join(", ") || "nothing"}`,
+  );
+
+  /* The case that matters most: a refused send must NOT be recorded as sent.
+   * A stamp that lies is worse than no stamp — the shop stops looking for the
+   * real problem. */
+  failSends = true;
+  stamped.length = 0;
+  reviewClaimed.clear();
+  currentOrder = makeOrder("shipped");
+  await sendOrderStatusEmail("store1", currentOrder, settingsStub);
+  check(
+    "a REFUSED dispatch email is not recorded as sent",
+    !stamped.includes("statusEmails.shipped"),
+    `stamped: ${stamped.join(", ") || "nothing"}`,
+  );
+
+  // And a refused DELIVERED send must give the review invitation back, so the
+  // customer can still be asked once the mail problem is fixed.
+  stamped.length = 0;
+  reviewClaimed.clear();
+  currentOrder = makeOrder("delivered");
+  await sendOrderStatusEmail("store1", currentOrder, settingsStub);
+  check(
+    "a REFUSED delivered email releases the review claim",
+    !reviewClaimed.has("order1"),
+    "the customer could never be asked to review it",
+  );
+  failSends = false;
 
   console.log("\nTotal for one order's whole life");
   // placed (sendOrderEmails) + shipped + delivered

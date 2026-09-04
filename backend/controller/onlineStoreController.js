@@ -4737,6 +4737,32 @@ const sendOrderStatusEmail = async (store, order, injectedSettings = null) => {
     await releaseReviewClaim(order).catch(() => {});
   }
 
+  /* Say plainly what happened, and record it on the order.
+   *
+   * sendMail resolves { ok: false } rather than throwing, so the caller's
+   * .catch() cannot see a refused or timed-out message. Without this, a
+   * dispatch email that never left the building looked exactly like one that
+   * arrived, and "did the customer get told?" had no answer anywhere.
+   *
+   * The stamp is written only on a confirmed send, and best-effort: failing to
+   * record an email that DID go out must not make the shop send it again. */
+  if (sent?.ok) {
+    console.log(
+      `[online] ${order.status} email sent to ${order.customer.email} for order ${order.orderNo}`,
+    );
+    await OnlineOrder.updateOne(
+      { _id: order._id },
+      { $set: { [`statusEmails.${order.status}`]: new Date() } },
+    ).catch((error) =>
+      console.error("[online] could not stamp status email:", error.message),
+    );
+  } else {
+    console.error(
+      `[online] ${order.status} email NOT sent for order ${order.orderNo}:`,
+      sent?.skipped ? sent.reason : sent?.error || "unknown",
+    );
+  }
+
   return sent;
 };
 
