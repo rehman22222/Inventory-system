@@ -70,13 +70,17 @@ module.exports.createRequest = async (req, res) => {
     }
 
     // Validate enough up front that the superadmin isn't approving junk. Admins
-    // may only ever request manager/staff accounts.
+    // may only ever request manager/staff accounts, plus the content-only "seo"
+    // account — that one reaches the blog and nothing else, so letting an admin
+    // ask for one costs the shop nothing it would not already grant.
     if (type === "create_user") {
       if (!payload.name?.trim() || !payload.email?.trim() || !payload.password) {
         return res.status(400).json({ message: "Name, email and password are required" });
       }
-      if (payload.role !== "manager" && payload.role !== "staff") {
-        return res.status(400).json({ message: "You can only request manager or staff accounts" });
+      if (!["manager", "staff", "seo"].includes(payload.role)) {
+        return res.status(400).json({
+          message: "You can only request manager, staff or SEO accounts",
+        });
       }
       if (String(payload.password).length < 10) {
         return res.status(400).json({ message: "Password must be at least 10 characters" });
@@ -239,7 +243,7 @@ module.exports.approveRequest = async (req, res) => {
     let result;
 
     if (request.type === "create_user") {
-      result = await createUserRecord(request.payload, ["manager", "staff"], actor);
+      result = await createUserRecord(request.payload, ["manager", "staff", "seo"], actor);
     } else if (request.type === "delete_user") {
       result = await deleteUserRecord(request.payload.userId, actor);
     } else if (request.type === "create_supplier") {

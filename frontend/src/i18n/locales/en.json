@@ -220,7 +220,8 @@
     "store": "Store",
     "ghost": "Ghost Mode",
     "report": "Report",
-    "onlineStore": "Online Store"
+    "onlineStore": "Online Store",
+    "blogStudio": "Blog studio"
   },
   "topnav": {
     "welcome": "Welcome, {{name}}",
@@ -1028,7 +1029,8 @@
     "requesting": "Submitting…",
     "requestDeleteConfirm": "Ask the super admin to delete {{name}}?",
     "manageTitle": "Manage Users",
-    "manageSub": "Create and remove accounts directly — no approval needed."
+    "manageSub": "Create and remove accounts directly — no approval needed.",
+    "seo": "SEO / blog only"
   },
   "activity": {
     "systemUser": "System",

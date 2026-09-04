@@ -126,6 +126,10 @@ function Userstatus() {
           >
             <option value="staff">{t("users.staff")}</option>
             <option value="manager">{t("users.manager")}</option>
+            {/* Blog only — no till, no sales, no customers. Still goes to the
+                superadmin for approval like every other account an admin asks
+                for. */}
+            <option value="seo">{t("users.seo")}</option>
           </select>
         </div>
 

@@ -217,7 +217,8 @@
     "store": "Siopa",
     "ghost": "Mód Taibhse",
     "report": "Report",
-    "onlineStore": "Siopa Ar Líne"
+    "onlineStore": "Siopa Ar Líne",
+    "blogStudio": "Stiúideo Blag"
   },
   "topnav": {
     "welcome": "Fáilte, {{name}}",
@@ -830,7 +831,8 @@
     "requesting": "Á sheoladh…",
     "requestDeleteConfirm": "Iarr ar an ard-riarthóir {{name}} a scriosadh?",
     "manageTitle": "Bainistíocht úsáideoirí",
-    "manageSub": "Cruthaigh nó bain cuntaí go díreach — gan cead."
+    "manageSub": "Cruthaigh nó bain cuntaí go díreach — gan cead.",
+    "seo": "SEO / blag amháin"
   },
   "activity": {
     "systemUser": "Córas",

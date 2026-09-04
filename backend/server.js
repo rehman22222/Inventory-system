@@ -27,7 +27,11 @@ const ticketrouter = require("./Routers/ticketRouter");
 const approvalrouter = require("./Routers/approvalRouter");
 const reorderrouter = require("./Routers/reorderRouter");
 const reportrouter = require("./Routers/reportRouter");
-const { adminRouter: onlineAdminRouter, storefrontRouter } = require("./Routers/onlineStoreRouter");
+const {
+  adminRouter: onlineAdminRouter,
+  blogRouter: onlineBlogRouter,
+  storefrontRouter,
+} = require("./Routers/onlineStoreRouter");
 const localStorageRouter = require("./localStorageRouter");
 
 
@@ -413,6 +417,10 @@ if (useLocalStorage) {
   // The online store: /api/online is the shop's own admin, /api/storefront is
   // what the website's server calls. Both read and write the SAME product
   // stock the till uses — see controller/onlineStoreController.js.
+  // Mounted first, and at the same path: /api/online/blog is matched by the
+  // blog router (admins plus content accounts) before the admin router's
+  // blanket adminOrSuperadmin guard can refuse it. Order matters here.
+  app.use("/api/online", onlineBlogRouter);
   app.use("/api/online", onlineAdminRouter);
   app.use("/api/storefront", storefrontRouter);
 }

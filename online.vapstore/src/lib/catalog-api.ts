@@ -623,11 +623,23 @@ export interface BlogPostSummary {
   titleAlign?: "left" | "center";
   seoTitle?: string;
   seoDescription?: string;
+  readingMinutes?: number;
+  /* Legacy. Articles are `content` now; the index endpoint still sends blocks
+   * so a post written under the old editor and not yet migrated can have a
+   * cover image pulled out of it. It does NOT send `content` — the index shows
+   * cards, and shipping every article body to draw a card is how the listing
+   * payload used to grow without limit. */
   blocks?: BlogBlock[];
 }
 
 export interface BlogPost extends BlogPostSummary {
-  blocks: BlogBlock[];
+  /* The article: HTML written in the back-office editor and sanitised on the
+   * server before it was stored. Render it through <RichText>, never raw. */
+  content?: string;
+  blocks?: BlogBlock[];
+  updatedAt?: string;
+  canonicalUrl?: string;
+  noindex?: boolean;
 }
 
 export const getBlogPosts = createServerFn({ method: "GET" }).handler(

@@ -7,6 +7,7 @@ const dashboardByRole = {
   manager: "/ManagerDashboard",
   staff: "/StaffDashboard",
   report: "/ReportDashboard",
+  seo: "/BlogStudio",
 };
 
 const getStoredUser = () => {

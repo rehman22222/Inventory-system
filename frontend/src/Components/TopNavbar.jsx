@@ -16,6 +16,8 @@ function TopNavbar() {
     admin: "/AdminDashboard",
     manager: "/ManagerDashboard",
     staff: "/StaffDashboard",
+    report: "/ReportDashboard",
+    seo: "/BlogStudio",
   };
   const dashboardPath = dashboardByRole[Authuser?.role] || "/ManagerDashboard";
 

@@ -217,7 +217,8 @@
     "store": "স্টোর",
     "ghost": "ঘোস্ট মোড",
     "report": "Report",
-    "onlineStore": "অনলাইন স্টোর"
+    "onlineStore": "অনলাইন স্টোর",
+    "blogStudio": "ব্লগ স্টুডিও"
   },
   "topnav": {
     "welcome": "স্বাগতম, {{name}}",
@@ -830,7 +831,8 @@
     "requesting": "পাঠানো হচ্ছে…",
     "requestDeleteConfirm": "সুপার অ্যাডমিনকে {{name}} মুছতে বলবেন?",
     "manageTitle": "ইউজার ব্যবস্থাপনা",
-    "manageSub": "সরাসরি অ্যাকাউন্ট তৈরি বা মুছুন — অনুমোদন লাগে না।"
+    "manageSub": "সরাসরি অ্যাকাউন্ট তৈরি বা মুছুন — অনুমোদন লাগে না।",
+    "seo": "SEO / শুধু ব্লগ"
   },
   "activity": {
     "systemUser": "সিস্টেম",

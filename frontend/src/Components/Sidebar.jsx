@@ -1,7 +1,7 @@
 import React from "react";
 import { AiOutlineProduct } from "react-icons/ai";
 import { RiStockLine } from "react-icons/ri";
-import { FiCheckSquare, FiCreditCard, FiEye, FiInbox, FiLifeBuoy, FiLock, FiLogOut, FiRefreshCw, FiShoppingBag, FiShoppingCart, FiTag } from "react-icons/fi";
+import { FiBookOpen, FiCheckSquare, FiCreditCard, FiEye, FiInbox, FiLifeBuoy, FiLock, FiLogOut, FiRefreshCw, FiShoppingBag, FiShoppingCart, FiTag } from "react-icons/fi";
 import { MdOutlineCategory, MdPointOfSale } from "react-icons/md";
 import { TfiSupport } from "react-icons/tfi";
 import { IoNotificationsOutline } from "react-icons/io5";
@@ -24,6 +24,7 @@ const dashboardPath = {
   manager: "/ManagerDashboard",
   staff: "/StaffDashboard",
   report: "/ReportDashboard",
+  seo: "/BlogStudio",
 };
 
 // `label` is an i18n key under the `sidebar` namespace, resolved at render.
@@ -91,6 +92,11 @@ const menuByRole = {
   ],
   report: [
     { label: "sidebar.report", path: "", icon: FiEye },
+  ],
+  // An outside agency writing the blog. One page, because there is exactly one
+  // thing this account can do — see the fence in backend Authmiddleware.
+  seo: [
+    { label: "sidebar.blogStudio", path: "", icon: FiBookOpen },
   ],
 };
 

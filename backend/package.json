@@ -6,7 +6,7 @@
     "node": ">=18 <=24"
   },
   "scripts": {
-    "test": "node scripts/verifyPosCredit.js && node scripts/verifyOnlinePromotions.js && node scripts/verifyLoyaltyAccounts.js",
+    "test": "node scripts/verifyBlogSecurity.js && node scripts/verifyPosCredit.js && node scripts/verifyOnlinePromotions.js && node scripts/verifyLoyaltyAccounts.js",
     "start": "node server",
     "build": "cd ../frontend && npm install && npm run build",
     "postinstall": "node scripts/postinstall.js",
@@ -18,6 +18,8 @@
     "diagnose-login": "node scripts/diagnoseLogin.js",
     "set-barcoded-stock": "node scripts/setBarcodedStock.js",
     "clear-trading": "node scripts/clearTradingRecords.js",
+    "migrate-blog": "node scripts/migrateBlogToRichText.js",
+    "verify:blog": "node scripts/verifyBlogSecurity.js",
     "verify:pos-credit": "node scripts/verifyPosCredit.js",
     "verify:online": "node scripts/verifyOnlinePromotions.js",
     "verify:loyalty": "node scripts/verifyLoyaltyAccounts.js"
@@ -43,6 +45,7 @@
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^9.0.3",
     "pdfkit": "^0.19.1",
+    "sanitize-html": "^2.17.7",
     "saxes": "^5.0.1",
     "socket.io": "^4.8.3",
     "web-push": "^3.6.7"

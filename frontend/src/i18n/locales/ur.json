@@ -217,7 +217,8 @@
     "store": "اسٹور",
     "ghost": "گھوسٹ موڈ",
     "report": "Report",
-    "onlineStore": "آن لائن اسٹور"
+    "onlineStore": "آن لائن اسٹور",
+    "blogStudio": "بلاگ اسٹوڈیو"
   },
   "topnav": {
     "welcome": "خوش آمدید، {{name}}",
@@ -830,7 +831,8 @@
     "requesting": "بھیجی جا رہی ہے…",
     "requestDeleteConfirm": "سپر ایڈمن سے {{name}} کو حذف کرنے کی درخواست کریں؟",
     "manageTitle": "یوزر مینجمنٹ",
-    "manageSub": "اکاؤنٹ براہِ راست بنائیں یا حذف کریں — منظوری کی ضرورت نہیں۔"
+    "manageSub": "اکاؤنٹ براہِ راست بنائیں یا حذف کریں — منظوری کی ضرورت نہیں۔",
+    "seo": "SEO / صرف بلاگ"
   },
   "activity": {
     "systemUser": "سسٹم",

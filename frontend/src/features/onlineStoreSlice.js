@@ -352,6 +352,29 @@ export const saveOnlineSettings = createAsyncThunk(
   },
 );
 
+/* Article artwork.
+ *
+ * Deliberately NOT uploadListingImages, even though the two hit the same
+ * handler and the same Cloudinary folder. Product photography lives under
+ * /online/upload, which is admin-only; this one is under /online/blog/upload,
+ * which content-only ("seo") accounts can reach. An SEO user calling the
+ * listing endpoint gets a 403 and cannot illustrate their article. */
+export const uploadBlogImages = createAsyncThunk(
+  "online/blog/upload",
+  async (files, { rejectWithValue }) => {
+    try {
+      const form = new FormData();
+      Array.from(files || []).forEach((file) => form.append("images", file));
+      const { data } = await axiosInstance.post("online/blog/upload", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return data.images || (data.image ? [data.image] : []);
+    } catch (error) {
+      return rejectWithValue(fail(error, "Image upload failed"));
+    }
+  },
+);
+
 // Blog content is store-scoped and intentionally separate from inventory.
 export const getOnlineBlogPosts = createAsyncThunk(
   "online/blog/get",

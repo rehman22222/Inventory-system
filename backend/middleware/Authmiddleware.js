@@ -35,11 +35,89 @@ module.exports.authmiddleware = async (req, res, next) => {
 
     
     req.user = user;
+
+    // Content-only accounts are fenced here, at the single point every
+    // protected route passes through. See CONTENT_ROLE_ALLOWLIST below.
+    const fenced = contentRoleRefusal(user, req);
+    if (fenced) return res.status(403).json(fenced);
+
     next();
   } catch (error) {
     console.error("Token verification error:", error.message);
     return res.status(401).json({ message: "Unauthorized: Invalid or expired token." });
   }
+};
+
+
+/* ── The fence around content-only accounts ─────────────────────────────────
+ *
+ * Most routes in this app are guarded by `authmiddleware` and nothing else —
+ * /api/pos/checkout, /api/sales, /api/product, /api/reports, the day closings.
+ * That was fine while every account was a shop account: the question those
+ * routes ask is "is somebody signed in", and everybody signed in worked here.
+ *
+ * The "seo" role broke that assumption. It is given to an outside agency to
+ * write blog articles, and it must not be able to ring up a sale or read the
+ * shop's takings — but it IS a signed-in user, so every one of those bare
+ * routes would have let it straight through.
+ *
+ * Rather than add a role check to forty routes and hope nobody forgets on the
+ * forty-first, the fence is deny-by-default and lives here, at the one place
+ * every protected request already stops. A content account may reach exactly
+ * the paths named below; anything else — including any route added later — is
+ * refused. New capability for these accounts is a deliberate edit to this
+ * list, never an accident of where a route happened to be mounted.
+ *
+ * This does not replace the per-route role guards; it sits under them.
+ * ------------------------------------------------------------------------ */
+
+// Roles whose reach is defined by an allowlist instead of by role guards.
+const CONTENT_ONLY_ROLES = new Set(["seo"]);
+
+const CONTENT_ROLE_ALLOWLIST = [
+  // The blog itself — list, create, edit, delete, and images for articles.
+  /^\/api\/online\/blog(\/|$|\?)/,
+  // Signing in and out, and their own name, password and avatar.
+  /^\/api\/auth\/(logout|updateProfile|checkauth|me)(\/|$|\?)/,
+];
+
+/**
+ * Decide whether this request is one a content-only account may make.
+ *
+ * @returns {object|null} a JSON body to refuse with, or null to allow
+ */
+const contentRoleRefusal = (user, req) => {
+  if (!CONTENT_ONLY_ROLES.has(user?.role)) return null;
+
+  // originalUrl is the whole path as it arrived, including the router's mount
+  // point — req.path inside a mounted router is relative to that mount and
+  // would make every rule here silently match nothing.
+  const path = String(req.originalUrl || req.url || "").split("?")[0];
+
+  if (CONTENT_ROLE_ALLOWLIST.some((allowed) => allowed.test(path))) return null;
+
+  return {
+    message:
+      "This account can only manage blog content. Ask an administrator if you need anything else.",
+    contentOnly: true,
+  };
+};
+
+module.exports.CONTENT_ONLY_ROLES = CONTENT_ONLY_ROLES;
+
+/* Who may write the blog: the shop's own admins, plus the content accounts the
+ * shop hands out for exactly this. Used by the blog router; the fence above
+ * still applies on top of it. */
+module.exports.blogEditorAccess = (req, res, next) => {
+  const role = req.user?.role;
+
+  if (role === "superadmin" || role === "admin" || CONTENT_ONLY_ROLES.has(role)) {
+    return next();
+  }
+
+  return res
+    .status(403)
+    .json({ message: "Access denied. Blog editor access required." });
 };
 
   module.exports.adminmiddleware=async(req,res,next)=>{
@@ -150,6 +228,17 @@ module.exports.adminOrManager = (req, res, next) => {
 module.exports.tillUser = (req, res, next) => {
   if (!req.user) {
     return res.status(403).json({ message: "Access denied." });
+  }
+
+  // ...with one exception. "Somebody is signed in" stopped meaning "somebody
+  // who works here" when content-only accounts arrived. The fence in
+  // authmiddleware already refuses these accounts every till path; this is the
+  // same answer given a second time, so that a route which somehow reaches
+  // tillUser without the fence still cannot be worked by an outside agency.
+  if (CONTENT_ONLY_ROLES.has(req.user.role)) {
+    return res
+      .status(403)
+      .json({ message: "Access denied. This account can only manage blog content." });
   }
 
   next();

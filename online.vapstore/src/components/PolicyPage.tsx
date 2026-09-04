@@ -1,12 +1,26 @@
 import type { ReactNode } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { RichText } from "@/components/RichText";
+import { looksLikeHtml } from "@/lib/rich-text";
 
-/* Renders the shop's own policy text (edited from the admin "Online store →
- * Settings" tab). The copy is plain text: blank lines separate paragraphs, and a
- * line beginning "## " is a section heading. We do NOT run a full markdown
- * parser — this keeps the admin editor simple and the output predictable. */
-function renderPolicy(content: string): ReactNode {
+/* Renders the shop's own policy text, edited from the admin "Online store →
+ * Settings" tab.
+ *
+ * There are two shapes to deal with, and both are live:
+ *
+ *   1. Rich text — HTML from the WYSIWYG editor, sanitised on the server. This
+ *      is what a policy becomes once somebody edits it, and it is the only one
+ *      that can carry links.
+ *   2. Plain text — the original format, where a blank line separated
+ *      paragraphs and a line beginning "## " was a section heading. Every shop
+ *      that has not touched its policies since is still on this.
+ *
+ * The second is not converted on the fly. Reinterpreting a shop's legal wording
+ * as markup, unasked, is not a call to make on their behalf — the admin editor
+ * offers a "Convert" button instead, and until somebody presses it the page
+ * renders exactly as it always has. */
+function renderPlainPolicy(content: string): ReactNode {
   const blocks = content
     .split(/\n\s*\n/)
     .map((block) => block.trim())
@@ -48,6 +62,8 @@ export function PolicyPage({
   title: string;
   content: string;
 }) {
+  const text = String(content || "");
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -62,7 +78,13 @@ export function PolicyPage({
       </section>
 
       <section className="container-x py-10 md:py-14">
-        <div className="max-w-3xl text-[15px]">{renderPolicy(content)}</div>
+        <div className="max-w-3xl text-[15px]">
+          {looksLikeHtml(text) ? (
+            <RichText html={text} />
+          ) : (
+            renderPlainPolicy(text)
+          )}
+        </div>
       </section>
 
       <Footer />

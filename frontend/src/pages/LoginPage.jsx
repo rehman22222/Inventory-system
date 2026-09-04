@@ -72,6 +72,8 @@ function LoginPage() {
           navigator("/SuperAdmin");
         } else if (role === "report") {
           navigator("/ReportDashboard");
+        } else if (role === "seo") {
+          navigator("/BlogStudio");
         } else if (role === "staff") {
           navigator("/StaffDashboard");
         } else if (role === "admin") {

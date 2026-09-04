@@ -1150,3 +1150,177 @@ body.osk-open .admin-drawer {
     animation: none;
   }
 }
+
+/* ── Rich text ───────────────────────────────────────────────────────────────
+   Shared by the WYSIWYG editor (.prose-editor, the live editing surface) and
+   by the preview that shows what the storefront will render (.rich-content).
+
+   They are styled together on purpose: an editor whose output looks nothing
+   like the published page is the main reason people stop trusting a WYSIWYG
+   and go back to pasting from Word. The type scale here mirrors the
+   storefront's article page rather than the admin's own UI.
+   ------------------------------------------------------------------------ */
+.prose-editor,
+.rich-content {
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: hsl(var(--bc) / 0.85);
+  word-break: break-word;
+}
+
+.prose-editor > * + *,
+.rich-content > * + * {
+  margin-top: 1rem;
+}
+
+.prose-editor h2,
+.rich-content h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-top: 2rem;
+  color: hsl(var(--bc));
+}
+.prose-editor h3,
+.rich-content h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-top: 1.75rem;
+  color: hsl(var(--bc));
+}
+.prose-editor h4,
+.rich-content h4 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-top: 1.5rem;
+  color: hsl(var(--bc));
+}
+
+.prose-editor a,
+.rich-content a {
+  color: hsl(var(--p));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose-editor ul,
+.rich-content ul,
+.prose-editor ol,
+.rich-content ol {
+  padding-left: 1.5rem;
+}
+.prose-editor ul,
+.rich-content ul {
+  list-style: disc;
+}
+.prose-editor ol,
+.rich-content ol {
+  list-style: decimal;
+}
+.prose-editor li,
+.rich-content li {
+  margin-top: 0.35rem;
+}
+
+.prose-editor blockquote,
+.rich-content blockquote {
+  border-left: 3px solid hsl(var(--p));
+  padding-left: 1rem;
+  font-style: italic;
+  color: hsl(var(--bc) / 0.7);
+}
+
+.prose-editor img,
+.rich-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+.prose-editor figcaption,
+.rich-content figcaption {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: hsl(var(--bc) / 0.5);
+}
+
+.prose-editor iframe,
+.rich-content iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border: 0;
+  border-radius: 0.5rem;
+  background: #000;
+}
+
+.prose-editor hr,
+.rich-content hr {
+  border: 0;
+  border-top: 1px solid hsl(var(--bc) / 0.15);
+  margin: 2rem 0;
+}
+
+.prose-editor code,
+.rich-content code {
+  background: hsl(var(--b2));
+  border-radius: 0.25rem;
+  padding: 0.1em 0.35em;
+  font-size: 0.85em;
+}
+
+/* Tables can be wider than the column they sit in. Let the table scroll inside
+   its own box rather than pushing the whole editor sideways. */
+.prose-editor table,
+.rich-content table {
+  width: 100%;
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+.prose-editor :is(th, td),
+.rich-content :is(th, td) {
+  border: 1px solid hsl(var(--bc) / 0.18);
+  padding: 0.5rem 0.65rem;
+  min-width: 6rem;
+}
+.prose-editor th,
+.rich-content th {
+  background: hsl(var(--b2));
+  font-weight: 600;
+  text-align: left;
+}
+
+/* TipTap's placeholder: shown on the first line while the document is empty. */
+.prose-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: hsl(var(--bc) / 0.35);
+}
+
+/* The column-resize handle TipTap draws between table cells. */
+.prose-editor .column-resize-handle {
+  background: hsl(var(--p));
+  width: 2px;
+  position: absolute;
+  right: -1px;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+.prose-editor .selectedCell::after {
+  background: hsl(var(--p) / 0.12);
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.prose-editor table {
+  position: relative;
+}
+.prose-editor :is(th, td) {
+  position: relative;
+}

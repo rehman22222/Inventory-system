@@ -395,18 +395,27 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
     // Legal pages, editable by the shop. Rendered on /terms, /privacy,
     // /shipping-returns and /cookies and linked from the footer. Seeded with the
     // starter templates above; the owner edits them to match their business.
+    /* Authored in the WYSIWYG editor, so these hold sanitised HTML — headings,
+     * links, lists — rather than the plain text with a "## " convention they
+     * started as. Both forms render: the storefront sniffs for tags and falls
+     * back to the old plain-text renderer, so a shop that never opens the
+     * editor keeps exactly the pages it had.
+     *
+     * 80k because the same policy costs about three times as many characters
+     * once it carries markup. Matches POLICY_MAX_LENGTH in the controller,
+     * which is what actually truncates on write. */
     policies: {
-      terms: { type: String, default: DEFAULT_TERMS, trim: true, maxlength: 20000 },
-      privacy: { type: String, default: DEFAULT_PRIVACY, trim: true, maxlength: 20000 },
+      terms: { type: String, default: DEFAULT_TERMS, trim: true, maxlength: 80000 },
+      privacy: { type: String, default: DEFAULT_PRIVACY, trim: true, maxlength: 80000 },
       shippingReturns: {
         type: String,
         default: DEFAULT_SHIPPING_RETURNS,
         trim: true,
-        maxlength: 20000,
+        maxlength: 80000,
       },
-      refunds: { type: String, default: DEFAULT_REFUNDS, trim: true, maxlength: 20000 },
-      cookies: { type: String, default: DEFAULT_COOKIES, trim: true, maxlength: 20000 },
-      about: { type: String, default: DEFAULT_ABOUT, trim: true, maxlength: 20000 },
+      refunds: { type: String, default: DEFAULT_REFUNDS, trim: true, maxlength: 80000 },
+      cookies: { type: String, default: DEFAULT_COOKIES, trim: true, maxlength: 80000 },
+      about: { type: String, default: DEFAULT_ABOUT, trim: true, maxlength: 80000 },
     },
     // Customer accounts on the website. Switched off, the storefront hides
     // every sign-in link and checks out exactly as it did before — this whole

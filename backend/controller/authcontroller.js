@@ -104,7 +104,10 @@ module.exports.deleteUserRecord = async (userId, actor) => {
 module.exports.createUser = async (req, res) => {
   const result = await module.exports.createUserRecord(
     req.body,
-    ["admin", "manager", "staff"],
+    // "seo" is a content-only account for an outside agency — it can write the
+    // blog and nothing else (see the fence in Authmiddleware). Safe to hand out
+    // directly for the same reason it is safe to exist at all.
+    ["admin", "manager", "staff", "seo"],
     { _id: req.user?._id, ip: req.ip }
   );
 

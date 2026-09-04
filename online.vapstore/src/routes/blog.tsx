@@ -111,6 +111,13 @@ function FeaturedPost({ post }: { post: BlogPostSummary }) {
           </h3>
         </Link>
         <PostPreview post={post} className="mt-5 max-w-xl" />
+        <Link
+          to="/blog/$slug"
+          params={{ slug: post.slug }}
+          className="mt-6 w-fit font-mono text-[10px] uppercase tracking-widest underline underline-offset-4 hover:text-[#6aa7c2]"
+        >
+          Read article
+        </Link>
       </div>
     </article>
   );
@@ -132,11 +139,25 @@ function PostCard({ post, reverse }: { post: BlogPostSummary; reverse: boolean }
           </h2>
         </Link>
         <PostPreview post={post} className="mt-4 max-w-2xl" />
+        <Link
+          to="/blog/$slug"
+          params={{ slug: post.slug }}
+          className="mt-5 w-fit font-mono text-[10px] uppercase tracking-widest underline underline-offset-4 hover:text-[#6aa7c2]"
+        >
+          Read article
+        </Link>
       </div>
     </article>
   );
 }
 
+/* The card's blurb.
+ *
+ * This used to render EVERY paragraph and quote block in the article, which
+ * meant the blog index printed each post in full — the excerpt was only a
+ * fallback for a post with no prose. Show the excerpt, which is what it is
+ * for; the server writes one from the article when an author leaves it blank,
+ * so there is always something here. */
 function PostPreview({
   post,
   className = "",
@@ -144,21 +165,12 @@ function PostPreview({
   post: BlogPostSummary;
   className?: string;
 }) {
-  const paragraphs =
-    post.blocks
-      ?.filter((block) => ["paragraph", "quote"].includes(block.type) && block.text?.trim())
-      .map((block) => block.text.trim()) || [];
-  const copy = paragraphs.length ? paragraphs : post.excerpt ? [post.excerpt] : [];
-  if (!copy.length) return null;
+  if (!post.excerpt?.trim()) return null;
 
   return (
-    <div className={`${className} space-y-3 text-sm leading-7 text-ink-muted`}>
-      {copy.map((text, index) => (
-        <p key={`${post._id}-preview-${index}`}>
-          {text}
-        </p>
-      ))}
-    </div>
+    <p className={`${className} text-sm leading-7 text-ink-muted`}>
+      {post.excerpt.trim()}
+    </p>
   );
 }
 
@@ -189,6 +201,7 @@ function PostDate({ post }: { post: BlogPostSummary }) {
     <p className="flex items-center gap-2 font-mono text-[9px] uppercase text-ink-muted">
       <CalendarDays className="h-3.5 w-3.5" />
       {new Date(post.publishedAt).toLocaleDateString("en-IE", { day: "2-digit", month: "short", year: "numeric" })}
+      {post.readingMinutes ? ` · ${post.readingMinutes} min read` : ""}
     </p>
   );
 }

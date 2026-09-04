@@ -38,6 +38,7 @@ const StorePage = lazy(() => import("./pages/StorePage"));
 const GhostModePage = lazy(() => import("./pages/GhostModePage"));
 const NotificationPageRead = lazy(() => import("./pages/Notificationpageread"));
 const OnlineStorePage = lazy(() => import("./pages/OnlineStorePage"));
+const BlogStudioPage = lazy(() => import("./pages/BlogStudioPage"));
 
 const protect = (element, allowedRoles) => (
   <ProtectedRoute element={element} allowedRoles={allowedRoles} />
@@ -71,6 +72,14 @@ function App() {
 
         <Route path="/ReportDashboard" element={protect(<SuperAdminDashboard />, ["report"])}>
           <Route index element={protect(<GhostModePage />, ["report"])} />
+        </Route>
+
+        {/* An outside agency that writes the blog and can do nothing else here.
+            The route list is short because the account's reach is short: the
+            server refuses it every path but the blog and its own profile. */}
+        <Route path="/BlogStudio" element={protect(<StaffDashboard />, ["seo"])}>
+          <Route index element={protect(<BlogStudioPage />, ["seo"])} />
+          <Route path="Profilepage" element={protect(<Profilepage />, ["seo"])} />
         </Route>
 
         <Route path="/AdminDashboard" element={protect(<AdminDashboard />, ["admin"])}>

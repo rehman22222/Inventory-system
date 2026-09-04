@@ -128,6 +128,9 @@ function SuperAdminUsers() {
             <option value="staff">{t("users.staff")}</option>
             <option value="manager">{t("users.manager")}</option>
             <option value="admin">{t("users.admin")}</option>
+            {/* Not a shop role: this account reaches the blog and nothing
+                else — no till, no sales, no customers. */}
+            <option value="seo">{t("users.seo")}</option>
           </select>
         </div>
         <div className="flex items-end">

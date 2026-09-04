@@ -85,6 +85,7 @@ const {
 const {
   authmiddleware,
   adminOrSuperadmin,
+  blogEditorAccess,
   customerAuth,
   optionalCustomerAuth,
 } = require("../middleware/Authmiddleware");
@@ -167,10 +168,34 @@ adminRouter.post("/loyalty/rules", createLoyaltyRule);
 adminRouter.put("/loyalty/rules/:id", updateLoyaltyRule);
 adminRouter.delete("/loyalty/rules/:id", deleteLoyaltyRule);
 
-adminRouter.get("/blog", listBlogPosts);
-adminRouter.post("/blog", createBlogPost);
-adminRouter.put("/blog/:id", updateBlogPost);
-adminRouter.delete("/blog/:id", deleteBlogPost);
+/* ── Blog router — /api/online/blog ──────────────────────────────────────────
+ * Mounted at /api/online alongside the admin router, but with its own, wider
+ * guard. This is the one part of the website's back office that somebody who
+ * does not work in the shop can be given.
+ *
+ * It is a separate router rather than four routes inside the admin one because
+ * the admin router applies `adminOrSuperadmin` to everything under it in a
+ * single `.use()`. Carving an exception out of that would mean the blog's
+ * permissions depended on where its routes sat in the file — true today,
+ * quietly untrue after somebody moves a line. A different guard belongs on a
+ * different router.
+ *
+ * server.js mounts this BEFORE the admin router so /blog is matched here.
+ *
+ * Note what is NOT here: settings, listings, orders, customers. A content
+ * account writes articles and uploads pictures for them. The blog landing
+ * page's own headings stay with the shop, in Settings.
+ * ------------------------------------------------------------------------- */
+const blogRouter = express.Router();
+blogRouter.use(authmiddleware, blogEditorAccess);
+
+blogRouter.get("/blog", listBlogPosts);
+blogRouter.post("/blog", createBlogPost);
+blogRouter.put("/blog/:id", updateBlogPost);
+blogRouter.delete("/blog/:id", deleteBlogPost);
+// Article artwork. Same handler and same Cloudinary folder as product
+// photography — the difference is only who is allowed to call it.
+blogRouter.post("/blog/upload", upload.array("images", 8), uploadListingImage);
 
 /* ── Storefront router — /api/storefront ─────────────────────────────────────
  * Called server-to-server by the website's SSR layer, never from a shopper's
@@ -255,4 +280,4 @@ storefrontRouter.post("/contact", submitContactMessage);
 storefrontRouter.get("/blog", storefrontBlogPosts);
 storefrontRouter.get("/blog/:slug", storefrontBlogPost);
 
-module.exports = { adminRouter, storefrontRouter };
+module.exports = { adminRouter, blogRouter, storefrontRouter };

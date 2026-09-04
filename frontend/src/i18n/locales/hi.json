@@ -217,7 +217,8 @@
     "store": "स्टोर",
     "ghost": "घोस्ट मोड",
     "report": "Report",
-    "onlineStore": "ऑनलाइन स्टोर"
+    "onlineStore": "ऑनलाइन स्टोर",
+    "blogStudio": "ब्लॉग स्टूडियो"
   },
   "topnav": {
     "welcome": "स्वागत है, {{name}}",
@@ -830,7 +831,8 @@
     "requesting": "भेजी जा रही है…",
     "requestDeleteConfirm": "सुपर एडमिन से {{name}} को हटाने का अनुरोध करें?",
     "manageTitle": "यूज़र प्रबंधन",
-    "manageSub": "खाते सीधे बनाएँ या हटाएँ — अनुमोदन की ज़रूरत नहीं।"
+    "manageSub": "खाते सीधे बनाएँ या हटाएँ — अनुमोदन की ज़रूरत नहीं।",
+    "seo": "SEO / केवल ब्लॉग"
   },
   "activity": {
     "systemUser": "सिस्टम",

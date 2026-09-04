@@ -8,6 +8,17 @@ const OnlineNewsletterSubscriber = require("../models/OnlineNewsletterSubscriber
 const OnlineVoucher = require("../models/OnlineVouchermodel");
 const OnlineStoreSetting = require("../models/OnlineStoreSettingmodel");
 const OnlineBlogPost = require("../models/OnlineBlogPostmodel");
+const {
+  sanitizeRichText,
+  readingMinutes,
+  excerptFrom,
+} = require("../libs/richText");
+
+/* Legal pages hold markup now, not bare text. The same words cost roughly
+ * three times as many characters once they carry headings, links and lists, so
+ * the old 20k ceiling would have started truncating real policies mid-sentence.
+ * Kept in step with `maxlength` on OnlineStoreSetting.policies. */
+const POLICY_MAX_LENGTH = 80000;
 const OnlineReview = require("../models/OnlineReviewmodel");
 const OnlineCustomer = require("../models/OnlineCustomermodel");
 const Product = require("../models/Productmodel");
@@ -2310,6 +2321,15 @@ module.exports.updateStoreSettings = async (req, res) => {
           .slice(0, 200);
       }
     }
+    /* Legal pages.
+     *
+     * These are authored in the same WYSIWYG editor as blog articles now, so
+     * they arrive as HTML and have to go through the same allowlist before
+     * being stored — the storefront renders them straight onto a public page.
+     *
+     * Text written under the old plain-text editor is left exactly as it was:
+     * it contains no tags, so sanitising is a no-op on it, and the storefront
+     * still recognises and renders it with the old "## heading" convention. */
     const policies = req.body.policies || {};
     for (const key of [
       "terms",
@@ -2320,9 +2340,10 @@ module.exports.updateStoreSettings = async (req, res) => {
       "about",
     ]) {
       if (Object.prototype.hasOwnProperty.call(policies, key)) {
-        settings.policies[key] = String(policies[key] || "")
-          .trim()
-          .slice(0, 20000);
+        const raw = String(policies[key] || "");
+        settings.policies[key] = /<[a-z][\s\S]*>/i.test(raw)
+          ? sanitizeRichText(raw, POLICY_MAX_LENGTH)
+          : raw.trim().slice(0, POLICY_MAX_LENGTH);
       }
     }
     /* ── Customer accounts ─────────────────────────────────────────────────
@@ -3271,8 +3292,36 @@ const applyBlogPayload = async (post, payload, store) => {
   if (Object.prototype.hasOwnProperty.call(payload, "coverImage")) {
     post.coverImage = blogMediaUrl(payload.coverImage);
   }
+  /* The article body.
+   *
+   * This is the only assignment to post.content in the codebase and it is
+   * always sanitised — see libs/richText. Saving a post that carries `content`
+   * also drops any legacy `blocks`, so a migrated article does not keep a
+   * stale second copy of itself that the storefront might fall back to. */
+  if (Object.prototype.hasOwnProperty.call(payload, "content")) {
+    post.content = sanitizeRichText(payload.content);
+    post.readingMinutes = readingMinutes(post.content);
+    if (post.content) post.blocks = [];
+  }
+  // Still accepted so an older client, or a payload replayed from a backup,
+  // does not lose its body. Nothing in the app sends this any more.
   if (Object.prototype.hasOwnProperty.call(payload, "blocks")) {
     post.blocks = cleanBlogBlocks(payload.blocks);
+  }
+  // An article with no excerpt gets a mechanical one rather than shipping a
+  // blank meta description and an empty card on the blog index.
+  if (!post.excerpt && post.content) {
+    post.excerpt = excerptFrom(post.content, 220).slice(0, 600);
+  }
+  if (Object.prototype.hasOwnProperty.call(payload, "canonicalUrl")) {
+    const canonical = String(payload.canonicalUrl || "").trim().slice(0, 2000);
+    if (canonical && !/^https?:\/\//i.test(canonical)) {
+      throw requestError(400, "Canonical URL must be a full http(s) address");
+    }
+    post.canonicalUrl = canonical;
+  }
+  if (Object.prototype.hasOwnProperty.call(payload, "noindex")) {
+    post.noindex = Boolean(payload.noindex);
   }
   if (Object.prototype.hasOwnProperty.call(payload, "featured")) {
     post.featured = Boolean(payload.featured);
@@ -3355,7 +3404,16 @@ module.exports.storefrontBlogPosts = async (req, res) => {
       status: "published",
       publishedAt: { $lte: new Date() },
     })
-      .select("title slug excerpt coverImage coverAlt author publishedAt seoTitle seoDescription featured titleAlign blocks")
+      /* Deliberately NOT `content`.
+       *
+       * The index page shows a card per article — cover, title, excerpt — so
+       * shipping every article body here meant the listing payload grew with
+       * every post published and the cards printed whole articles. `blocks`
+       * comes along only so a post written before the WYSIWYG editor, and not
+       * yet migrated, can still show a cover image pulled out of its blocks. */
+      .select(
+        "title slug excerpt coverImage coverAlt author publishedAt seoTitle seoDescription featured titleAlign readingMinutes blocks",
+      )
       .sort({ featured: -1, publishedAt: -1 })
       .lean();
     return res.status(200).json({ posts });
@@ -3375,7 +3433,7 @@ module.exports.storefrontBlogPost = async (req, res) => {
       publishedAt: { $lte: new Date() },
     })
       .select(
-        "title slug excerpt coverImage coverAlt author publishedAt seoTitle seoDescription blocks featured titleAlign",
+        "title slug excerpt coverImage coverAlt author publishedAt updatedAt seoTitle seoDescription content blocks featured titleAlign readingMinutes canonicalUrl noindex",
       )
       .lean();
     if (!post) return res.status(404).json({ message: "Blog post not found" });

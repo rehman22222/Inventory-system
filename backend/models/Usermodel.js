@@ -32,7 +32,12 @@ const UserSchema= new mongoose.Schema({
         // approvals queue and user management. Admin must request sensitive
         // actions (like user management) and superadmin approves them.
         // Created only by script, never through the app.
-        enum:['superadmin','admin','manager','staff','report'],
+        //
+        // "seo" is the odd one out: it is not a shop role at all. It exists so
+        // the shop can hand an outside agency the blog and nothing else. It
+        // cannot open the till, see a sale, or read a customer — enforced by
+        // an allowlist in Authmiddleware, not by hiding buttons.
+        enum:['superadmin','admin','manager','staff','report','seo'],
         default:'staff',
 
     },
