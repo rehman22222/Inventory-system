@@ -1,14 +1,33 @@
 import {
   Check,
+  ClipboardClock,
+  Handshake,
+  PackageCheck,
+  ShoppingCart,
   XCircle,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { TrackerStep } from "@/lib/account-api";
 
 const STEP_COPY: Record<string, string> = {
-  processing: "Your order is being prepared.",
-  ready: "Packed and ready to leave the store.",
-  shipped: "Your order is with the courier.",
+  processing: "Your order is in pending status.",
+  ready: "Your order has been confirmed.",
+  shipped: "Your order has been packed and processed.",
   delivered: "Your order has been delivered.",
+};
+
+const DISPLAY_LABELS: Record<string, string> = {
+  processing: "Pending",
+  ready: "Order Confirm",
+  shipped: "Packed and Processed",
+  delivered: "Delivered",
+};
+
+const STEP_ICONS: Record<string, LucideIcon> = {
+  processing: ClipboardClock,
+  ready: ShoppingCart,
+  shipped: PackageCheck,
+  delivered: Handshake,
 };
 
 const stampFor = (value: string | null) =>
@@ -33,8 +52,11 @@ const currentIndexFor = (steps: TrackerStep[]) => {
 };
 
 function stepCopy(step: TrackerStep, index: number) {
-  if (index === 0) return "We received your order.";
   return STEP_COPY[step.status] || "We will update this step soon.";
+}
+
+function stepLabel(step: TrackerStep) {
+  return DISPLAY_LABELS[step.status] || step.label;
 }
 
 export function OrderTracker({
@@ -66,78 +88,95 @@ export function OrderTracker({
   }
 
   const currentIndex = currentIndexFor(steps);
+  const current = steps[currentIndex];
 
   return (
     <section
-      className="overflow-hidden rounded-[18px] border border-border/80 bg-surface shadow-[0_14px_40px_rgba(15,23,42,0.07)]"
+      className="overflow-hidden rounded-[14px] border border-[#dfe6f3] bg-white shadow-[0_16px_44px_rgba(45,71,121,0.12)]"
       aria-label="Order tracking"
     >
-      <div className="border-b border-border/70 px-5 py-4 sm:px-6">
-        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-muted">
+      <div className="border-b border-[#e5e7eb] bg-[#f3f4f6] px-5 py-3 text-center">
+        <div className="font-display text-lg leading-tight tracking-tight text-ink">
+          {stepLabel(current) || statusLabel}
+        </div>
+        <div className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-ink-muted">
           Delivery progress
         </div>
-        <h2 className="mt-1 font-display text-2xl leading-tight tracking-tight">
-          {statusLabel}
-        </h2>
       </div>
 
-      <ol className="bg-background px-5 py-6 sm:px-6">
+      <ol className="grid min-w-[680px] grid-cols-4 bg-white px-5 pb-6 pt-5 sm:min-w-0 sm:px-7">
         {steps.map((step, index) => {
           const reached = step.done || step.current || index <= currentIndex;
           const connectorReached =
             index < currentIndex || (index === currentIndex && step.done);
+          const Icon = STEP_ICONS[step.status] || PackageCheck;
 
           return (
             <li
               key={step.status}
-              className="relative grid grid-cols-[42px_1fr] gap-4 pb-8 last:pb-0"
+              className="relative flex min-w-0 flex-col items-center px-2 text-center"
             >
               {index < steps.length - 1 && (
                 <span
                   aria-hidden
-                  className={`absolute left-[20px] top-11 h-[calc(100%-2.75rem)] w-0.5 ${
-                    connectorReached ? "bg-ink" : "bg-border"
+                  className={`absolute left-1/2 top-[17px] h-1 w-full ${
+                    connectorReached ? "bg-[#75ad5d]" : "bg-[#d7d7d7]"
                   }`}
                 />
               )}
 
               <span
-                className={`relative z-10 grid h-10 w-10 place-items-center border text-sm font-semibold ${
+                className={`relative z-10 grid h-9 w-9 place-items-center rounded-full border-2 text-sm font-semibold sm:h-10 sm:w-10 ${
                   reached
-                    ? "border-ink bg-ink text-background"
-                    : "border-border bg-surface text-ink"
+                    ? "border-[#75ad5d] bg-[#75ad5d] text-white"
+                    : "border-[#d7d7d7] bg-white text-[#9a9a9a]"
                 } ${
                   step.current
-                    ? "outline outline-4 outline-[color:var(--accent)]"
+                    ? "outline outline-4 outline-[rgba(117,173,93,0.2)]"
                     : ""
                 }`}
               >
-                {index === 0 && reached ? (
+                {reached ? (
                   <Check className="h-5 w-5" aria-hidden />
                 ) : (
-                  index + 1
+                  ""
                 )}
               </span>
 
-              <div className="min-w-0 pt-1">
-                <div className="text-base font-semibold leading-6 text-ink">
-                  {step.label}
+              <div
+                className={`mt-4 grid h-12 w-12 place-items-center rounded-md border bg-white ${
+                  reached ? "border-[#e5edf5]" : "border-[#ececec] opacity-55"
+                }`}
+              >
+                <Icon
+                  className={`h-7 w-7 ${
+                    reached ? "text-[#6fa65a]" : "text-[#9a9a9a]"
+                  }`}
+                  aria-hidden
+                />
+              </div>
+
+              <div className="mt-3 min-w-0">
+                <div
+                  className={`text-sm font-bold leading-5 sm:text-[15px] ${
+                    reached ? "text-[#6fa65a]" : "text-ink"
+                  }`}
+                >
+                  {stepLabel(step)}
                 </div>
-                <p className="mt-1 text-sm leading-5 text-ink-muted">
-                  {stepCopy(step, index)}
-                </p>
                 {(step.at || step.current) && (
-                  <div
-                    className={`mt-2 text-xs font-semibold ${
-                      step.current ? "text-ink" : "text-ink-muted"
-                    }`}
-                  >
+                  <div className="mx-auto mt-2 max-w-[120px] text-xs leading-5 text-ink-muted">
                     {step.at ? stampFor(step.at) : "Happening now"}
                   </div>
                 )}
                 {!step.at && !step.current && !reached && (
-                  <div className="mt-2 text-xs text-ink-muted">Waiting</div>
+                  <div className="mx-auto mt-2 max-w-[120px] text-xs leading-5 text-ink-muted">
+                    Expected delivery date
+                  </div>
                 )}
+                <p className="mx-auto mt-2 max-w-[132px] text-xs leading-5 text-ink-muted">
+                  {stepCopy(step, index)}
+                </p>
               </div>
             </li>
           );
