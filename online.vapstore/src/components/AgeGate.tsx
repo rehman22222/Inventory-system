@@ -102,7 +102,7 @@ export function AgeGate({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <div aria-hidden={!accepted}>{children}</div>
+      {accepted ? children : null}
 
       {!accepted && (
         <div

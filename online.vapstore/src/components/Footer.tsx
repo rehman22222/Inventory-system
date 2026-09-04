@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { Facebook, Instagram } from "lucide-react";
 import { useCatalog } from "@/lib/catalog-context";
 import { subscribeNewsletter } from "@/lib/catalog-api";
-import logo from "@/assets/logo-cop.png";
+import logoSmall from "@/assets/logo-cop-180.png";
 
 type SocialIcon = (props: { className?: string }) => ReactNode;
 
@@ -114,10 +114,13 @@ export function Footer() {
             aria-label="Cliffs of Puff home"
           >
             <img
-              src={logo}
+              src={logoSmall}
               alt="Cliffs of Puff"
+              width={180}
+              height={180}
               className="h-20 w-auto object-contain drop-shadow-[0_10px_30px_rgba(198,255,46,0.18)] md:h-28"
               loading="lazy"
+              decoding="async"
             />
           </Link>
           {settings.footer.supportEmail && (
@@ -227,8 +230,11 @@ export function Footer() {
             <img
               src={settings.footer.paymentImage}
               alt="Accepted payment methods"
+              width={220}
+              height={48}
               className="h-9 w-auto object-contain"
               loading="lazy"
+              decoding="async"
             />
           )}
         </div>
@@ -237,8 +243,11 @@ export function Footer() {
             <img
               src={settings.footer.restrictionImage}
               alt="Age restricted product warnings"
+              width={220}
+              height={48}
               className="h-9 w-auto object-contain"
               loading="lazy"
+              decoding="async"
             />
           )}
         </div>
@@ -273,10 +282,13 @@ function FooterBrandMarquee() {
               <img
                 src={brand.src}
                 alt={brand.alt}
+                width={132}
+                height={44}
                 className={`max-h-full max-w-full object-contain opacity-90 grayscale-[8%] contrast-110 transition duration-300 hover:opacity-100 hover:grayscale-0 ${
                   brand.featured ? "scale-[1.12]" : ""
                 }`}
                 loading="lazy"
+                decoding="async"
               />
             </div>
           ))}
