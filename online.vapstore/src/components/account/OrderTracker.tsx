@@ -23,6 +23,13 @@ const DISPLAY_LABELS: Record<string, string> = {
   delivered: "Delivered",
 };
 
+const MOBILE_LABELS: Record<string, string> = {
+  processing: "Pending",
+  ready: "Confirm",
+  shipped: "Packed",
+  delivered: "Delivered",
+};
+
 const STEP_ICONS: Record<string, LucideIcon> = {
   processing: ClipboardClock,
   ready: ShoppingCart,
@@ -57,6 +64,10 @@ function stepCopy(step: TrackerStep, index: number) {
 
 function stepLabel(step: TrackerStep) {
   return DISPLAY_LABELS[step.status] || step.label;
+}
+
+function mobileStepLabel(step: TrackerStep) {
+  return MOBILE_LABELS[step.status] || stepLabel(step);
 }
 
 export function OrderTracker({
@@ -95,16 +106,16 @@ export function OrderTracker({
       className="overflow-hidden rounded-[14px] border hair bg-surface shadow-[0_16px_44px_rgba(24,20,16,0.08)]"
       aria-label="Order tracking"
     >
-      <div className="border-b hair bg-muted px-5 py-3 text-center">
-        <div className="font-display text-lg leading-tight tracking-tight text-ink">
+      <div className="border-b hair bg-muted px-3 py-2.5 text-center sm:px-5 sm:py-3">
+        <div className="font-display text-base leading-tight tracking-tight text-ink sm:text-lg">
           {stepLabel(current) || statusLabel}
         </div>
-        <div className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-ink-muted">
+        <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted sm:text-xs sm:tracking-[0.18em]">
           Delivery progress
         </div>
       </div>
 
-      <ol className="grid grid-cols-4 bg-surface px-2 pb-5 pt-4 sm:px-7 sm:pb-6 sm:pt-5">
+      <ol className="grid grid-cols-4 bg-surface px-1.5 pb-3 pt-3 sm:px-7 sm:pb-6 sm:pt-5">
         {steps.map((step, index) => {
           const reached = step.done || step.current || index <= currentIndex;
           const connectorReached =
@@ -119,14 +130,14 @@ export function OrderTracker({
               {index < steps.length - 1 && (
                 <span
                   aria-hidden
-                  className={`absolute left-1/2 top-[14px] h-0.5 w-full sm:top-[17px] sm:h-1 ${
+                  className={`absolute left-1/2 top-[11px] h-0.5 w-full sm:top-[17px] sm:h-1 ${
                     connectorReached ? "bg-accent" : "bg-border"
                   }`}
                 />
               )}
 
               <span
-                className={`relative z-10 grid h-7 w-7 place-items-center rounded-full border-2 text-sm font-semibold sm:h-10 sm:w-10 ${
+                className={`relative z-10 grid h-6 w-6 place-items-center rounded-full border-2 text-sm font-semibold sm:h-10 sm:w-10 ${
                   reached
                     ? "border-accent bg-accent text-accent-foreground"
                     : "border-border bg-surface text-ink-muted"
@@ -137,14 +148,14 @@ export function OrderTracker({
                 }`}
               >
                 {reached ? (
-                  <Check className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
+                  <Check className="h-3.5 w-3.5 sm:h-5 sm:w-5" aria-hidden />
                 ) : (
                   ""
                 )}
               </span>
 
               <div
-                className={`mt-3 grid h-9 w-9 place-items-center rounded-md border bg-background sm:mt-4 sm:h-12 sm:w-12 ${
+                className={`mt-3 hidden h-9 w-9 place-items-center rounded-md border bg-background sm:mt-4 sm:grid sm:h-12 sm:w-12 ${
                   reached ? "border-accent/45" : "border-border opacity-55"
                 }`}
               >
@@ -156,21 +167,22 @@ export function OrderTracker({
                 />
               </div>
 
-              <div className="mt-2 min-w-0 sm:mt-3">
+              <div className="mt-1.5 min-w-0 sm:mt-3">
                 <div
-                  className={`text-[11px] font-bold leading-4 sm:text-[15px] sm:leading-5 ${
+                  className={`whitespace-nowrap text-[10px] font-bold leading-3 sm:whitespace-normal sm:text-[15px] sm:leading-5 ${
                     reached ? "text-accent-foreground" : "text-ink"
                   }`}
                 >
-                  {stepLabel(step)}
+                  <span className="sm:hidden">{mobileStepLabel(step)}</span>
+                  <span className="hidden sm:inline">{stepLabel(step)}</span>
                 </div>
                 {(step.at || step.current) && (
-                  <div className="mx-auto mt-1 max-w-[72px] text-[10px] leading-4 text-ink-muted sm:mt-2 sm:max-w-[120px] sm:text-xs sm:leading-5">
+                  <div className="mx-auto mt-1 hidden max-w-[72px] text-[10px] leading-4 text-ink-muted sm:mt-2 sm:block sm:max-w-[120px] sm:text-xs sm:leading-5">
                     {step.at ? stampFor(step.at) : "Happening now"}
                   </div>
                 )}
                 {!step.at && !step.current && !reached && (
-                  <div className="mx-auto mt-1 max-w-[72px] text-[10px] leading-4 text-ink-muted sm:mt-2 sm:max-w-[120px] sm:text-xs sm:leading-5">
+                  <div className="mx-auto mt-1 hidden max-w-[72px] text-[10px] leading-4 text-ink-muted sm:mt-2 sm:block sm:max-w-[120px] sm:text-xs sm:leading-5">
                     Expected
                   </div>
                 )}
