@@ -110,16 +110,47 @@ export function OrderTracker({
           const connectorReached =
             index < currentIndex || (index === currentIndex && step.done);
           const Icon = STEP_ICONS[step.status] || PackageCheck;
+          const mobilePosition =
+            [
+              "max-sm:col-start-1 max-sm:row-start-1",
+              "max-sm:col-start-2 max-sm:row-start-1",
+              "max-sm:col-start-2 max-sm:row-start-2",
+              "max-sm:col-start-1 max-sm:row-start-2",
+            ][index] || "";
 
           return (
             <li
               key={step.status}
-              className="relative flex min-w-0 flex-col items-center px-2 text-center"
+              className={`relative flex min-w-0 flex-col items-center px-2 text-center ${mobilePosition}`}
             >
               {index < steps.length - 1 && (
                 <span
                   aria-hidden
                   className={`absolute left-1/2 top-[17px] hidden h-1 w-full sm:block ${
+                    connectorReached ? "bg-accent" : "bg-border"
+                  }`}
+                />
+              )}
+              {index === 0 && (
+                <span
+                  aria-hidden
+                  className={`absolute left-1/2 top-[17px] h-1 w-full sm:hidden ${
+                    connectorReached ? "bg-accent" : "bg-border"
+                  }`}
+                />
+              )}
+              {index === 1 && (
+                <span
+                  aria-hidden
+                  className={`absolute left-1/2 top-[17px] h-[calc(100%+1.75rem)] w-1 -translate-x-1/2 sm:hidden ${
+                    connectorReached ? "bg-accent" : "bg-border"
+                  }`}
+                />
+              )}
+              {index === 2 && (
+                <span
+                  aria-hidden
+                  className={`absolute right-1/2 top-[17px] h-1 w-full sm:hidden ${
                     connectorReached ? "bg-accent" : "bg-border"
                   }`}
                 />
