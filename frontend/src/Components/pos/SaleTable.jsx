@@ -9,7 +9,11 @@ import emptyCartArt from "../../images/category-icons/empty-cart.png";
 // three small controls, a price and a cross — so everything left over goes to
 // the name. They used to reserve 306px between them, which left the product
 // column about 120px on a narrow panel and broke names one word to a line.
-const COLS = "grid-cols-[1fr_56px_84px_76px] sm:grid-cols-[1fr_64px_88px_84px]";
+//
+// The figures are set a size up from the rest of the till, so the panel now
+// gives each column the room that size actually needs. Reserving the old widths
+// against the larger type is what puts a price on two lines.
+const COLS = "grid-cols-[1fr_72px_104px_96px] sm:grid-cols-[1fr_80px_112px_108px]";
 
 // The shop's own trolley, for a basket with nothing in it yet. Masked like the
 // category marks, so it sits in the same muted grey as the line beneath it
@@ -71,7 +75,7 @@ function SaleTable({
       <div
         key={`${item.productId}-${item.part}`}
         onClick={() => onSelect(item.productId)}
-        className={`grid ${COLS} cursor-pointer items-center gap-1.5 border-b border-slate-900 px-3 py-2.5 text-sm transition ${
+        className={`grid ${COLS} cursor-pointer items-center gap-1.5 border-b border-slate-900 px-3 py-3 text-base transition ${
           active
             ? "bg-cyan-950/50 shadow-[inset_3px_0_0_0_theme(colors.cyan.500)]"
             : "hover:bg-slate-900/60"
@@ -82,12 +86,14 @@ function SaleTable({
             strength — "Mentos M…" identifies nothing, and this catalogue puts
             what distinguishes two lines at the END of the name. */}
         <div className="min-w-0">
-          <p className="text-[13px] font-medium leading-snug text-slate-100">
+          <p className="text-[15px] font-medium leading-snug text-slate-100">
             <span className="break-words">{item.name}</span>
           </p>
         </div>
 
-        <span className="text-end font-mono tabular-nums text-slate-400">{currency(item.price)}</span>
+        <span className="text-end font-mono text-[15px] tabular-nums text-slate-400">
+          {currency(item.price)}
+        </span>
 
         <div className="flex items-center justify-center gap-1">
           <button
@@ -99,12 +105,12 @@ function SaleTable({
               // what the customer is buying.
               onQuantityChange(item.productId, item.line - 1);
             }}
-            className="bg-slate-800 p-1.5 text-slate-400 transition hover:bg-slate-700 hover:text-slate-100 active:scale-90"
+            className="bg-slate-800 p-2 text-slate-400 transition hover:bg-slate-700 hover:text-slate-100 active:scale-90"
             aria-label={t("pos.table.decrease")}
           >
-            <FiMinus className="h-3 w-3" />
+            <FiMinus className="h-3.5 w-3.5" />
           </button>
-          <span className="pos-plain-num w-7 text-center font-mono font-semibold tabular-nums text-slate-100">
+          <span className="pos-plain-num w-8 text-center font-mono text-[17px] font-semibold tabular-nums text-slate-100">
             {item.quantity}
           </span>
           <button
@@ -113,10 +119,10 @@ function SaleTable({
               event.stopPropagation();
               onQuantityChange(item.productId, item.line + 1);
             }}
-            className="bg-slate-800 p-1.5 text-slate-400 transition hover:bg-slate-700 hover:text-slate-100 active:scale-90"
+            className="bg-slate-800 p-2 text-slate-400 transition hover:bg-slate-700 hover:text-slate-100 active:scale-90"
             aria-label={t("pos.table.increase")}
           >
-            <FiPlus className="h-3 w-3" />
+            <FiPlus className="h-3.5 w-3.5" />
           </button>
         </div>
 
@@ -126,7 +132,7 @@ function SaleTable({
               same kind of number they just tapped on the grid — not as another
               piece of the row's furniture. The unit price beside it stays grey:
               two cyan columns and neither one leads. */}
-          <span className="font-mono font-semibold tabular-nums text-cyan-400">
+          <span className="font-mono text-[17px] font-semibold tabular-nums text-cyan-400">
             {currency(item.price * item.quantity)}
           </span>
           <button
@@ -148,7 +154,7 @@ function SaleTable({
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-slate-950">
       <div
-        className={`grid ${COLS} gap-1.5 border-b border-slate-800 bg-slate-900/80 px-3 py-2.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500`}
+        className={`grid ${COLS} gap-1.5 border-b border-slate-800 bg-slate-900/80 px-3 py-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500`}
       >
         <span>{t("pos.table.product")}</span>
         <span className="text-end">{t("pos.table.rate")}</span>
@@ -175,8 +181,8 @@ function SaleTable({
                 key={String(group.dealId)}
                 className="m-1.5 border-2 border-fuchsia-700 bg-fuchsia-950/20"
               >
-                <div className="flex min-w-0 items-center gap-1.5 border-b border-fuchsia-900/60 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-fuchsia-300">
-                  <FiTag className="h-2.5 w-2.5" />
+                <div className="flex min-w-0 items-center gap-1.5 border-b border-fuchsia-900/60 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-fuchsia-300">
+                  <FiTag className="h-3 w-3" />
                   <span className="min-w-0 flex-1 truncate">{group.name}</span>
                   {group.sets > 1 && (
                     <span className="shrink-0 rounded-sm bg-fuchsia-600 px-1.5 py-0.5 font-mono text-[10px] leading-none text-white ring-1 ring-fuchsia-400/50">

@@ -17,6 +17,7 @@ import ticketReducer from "../features/ticketSlice"
 import approvalReducer from "../features/approvalSlice"
 import reorderReducer from "../features/reorderSlice"
 import onlineStoreReducer from "../features/onlineStoreSlice"
+import quickSellReducer from "../features/quickSellSlice"
 
 const store=configureStore({
     reducer:{
@@ -36,7 +37,8 @@ const store=configureStore({
         ticket:ticketReducer,
         approval:approvalReducer,
         reorder:reorderReducer,
-        onlineStore:onlineStoreReducer
+        onlineStore:onlineStoreReducer,
+        quickSell:quickSellReducer
     }
 })
 export default store;

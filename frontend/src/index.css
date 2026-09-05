@@ -654,15 +654,16 @@ input[inputmode="decimal"],
   padding: 0;
 }
 .simple-keyboard.osk-dark .hg-row {
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 }
 .simple-keyboard.osk-dark .hg-button {
-  height: 52px;
+  height: 50px;
   background: #1e293b;
   color: #f1f5f9;
   border: 1px solid #0f172a;
   border-radius: 8px;
-  font-size: 18px;
+  font-size: 20px;
+  font-weight: 600;
   box-shadow: 0 1px 0 #0f172a;
 }
 .simple-keyboard.osk-dark .hg-button:active,
@@ -674,20 +675,20 @@ input[inputmode="decimal"],
 .pos-numeric-keypad {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   border-radius: 18px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   background:
     radial-gradient(circle at top left, rgba(34, 211, 238, 0.1), transparent 32%),
     rgba(15, 23, 42, 0.72);
-  padding: 12px;
+  padding: 10px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .pos-numeric-keypad-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 
 .pos-numeric-keypad-row-single {
@@ -695,12 +696,12 @@ input[inputmode="decimal"],
 }
 
 .pos-numeric-key {
-  min-height: 50px;
-  border-radius: 12px;
+  min-height: 52px;
+  border-radius: 10px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   background: linear-gradient(180deg, #263246 0%, #1d2738 100%);
   color: #f8fafc;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
   line-height: 1;
   box-shadow:
@@ -720,13 +721,13 @@ input[inputmode="decimal"],
 
 .pos-numeric-key-action {
   color: #bae6fd;
-  font-size: 24px;
+  font-size: 26px;
 }
 
 .pos-numeric-key-done {
-  min-height: 46px;
+  min-height: 48px;
   background: linear-gradient(180deg, #0e7490 0%, #155e75 100%);
-  font-size: 15px;
+  font-size: 16px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -825,58 +826,36 @@ body.osk-open .pos-modal-panel .unknown-barcode-summary {
   padding-bottom: 0.35rem;
 }
 
+/* The letter keyboard, sized for a finger on a till monitor rather than for a
+   cursor on a laptop.
+
+   46px is a FIXED size, not a step in a ladder, and that is deliberate. It used
+   to be the value a `max-height: 900px` query dropped to, with a taller 58px
+   size above it — which meant the shop saw one keyboard on the till's own
+   screen and a noticeably bigger one on any display with more vertical room.
+   A cashier learns where the keys are; they should not move because somebody
+   opened the browser on a different monitor. This is the size that was signed
+   off, so it is the size at every height that can fit it.
+
+   The one step that remains is below, and it is not a preference — under about
+   790px there is genuinely not enough screen for both this and the field being
+   typed into, so the keys give way rather than cover it.
+
+   This block only sizes the letters. The pad that replaces them on a number
+   field is .pos-numeric-key above; which of the two appears is decided in
+   VirtualKeyboard.jsx and is not affected by anything here. */
 .osk-text .simple-keyboard.osk-dark .hg-row {
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .osk-text .simple-keyboard.osk-dark .hg-button {
-  height: 38px;
-  font-size: 14px;
-  border-radius: 7px;
+  height: 58px;
+  font-size: 24px;
+  font-weight: 600;
+  border-radius: 8px;
 }
 
-@media (max-height: 760px) {
-  .simple-keyboard.osk-dark .hg-row {
-    margin-bottom: 3px;
-  }
-
-  .simple-keyboard.osk-dark .hg-button {
-    height: 34px;
-    font-size: 13px;
-    border-radius: 6px;
-  }
-
-  .osk-text .simple-keyboard.osk-dark .hg-button {
-    height: 34px;
-    font-size: 13px;
-  }
-
-  .pos-numeric-keypad {
-    gap: 6px;
-    padding: 10px;
-  }
-
-  .pos-numeric-keypad-row {
-    gap: 6px;
-  }
-
-  .pos-numeric-key {
-    min-height: 42px;
-    border-radius: 10px;
-    font-size: 17px;
-  }
-
-  .pos-numeric-key-action {
-    font-size: 21px;
-  }
-
-  .pos-numeric-key-done {
-    min-height: 40px;
-    font-size: 13px;
-  }
-}
-
-@media (max-height: 700px) {
+@media (max-height: 790px) {
   body.osk-open .pos-modal-panel .unknown-barcode-form input,
   body.osk-open .pos-modal-panel .unknown-barcode-form select,
   body.osk-open .pos-modal-panel .unknown-barcode-summary {
@@ -885,8 +864,8 @@ body.osk-open .pos-modal-panel .unknown-barcode-summary {
   }
 
   .osk-text .simple-keyboard.osk-dark .hg-button {
-    height: 30px;
-    font-size: 12px;
+    height: 46px;
+    font-size: 19px;
   }
 }
 

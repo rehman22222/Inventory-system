@@ -705,7 +705,8 @@
       "notSynced": "Not synced yet",
       "heldLocally": "No connection — sale suspended on this till",
       "heldOnThisTill": "Suspended while offline — only this till can resume it",
-      "thisTill": "This Till"
+      "thisTill": "This Till",
+      "tookLocally": "Saved on this till — it will finish syncing in the background"
     },
     "deal": {
       "apply": "Apply",
@@ -754,15 +755,17 @@
       "tendered": "Amount Tendered",
       "noReceipt": "No Receipt",
       "goGreen": "Go Green",
+      "goGreenHint": "No receipt",
       "print": "Print Receipt",
+      "printHint": "On paper",
       "customerEmail": "Customer Email",
       "send": "Send",
       "emailed": "Receipt sent to {{email}}",
       "emailFailed": "Could not send the receipt",
+      "emailNeeded": "Enter an email address first",
       "paidBy": "Paid by",
       "onAccount": "Credit — not yet paid",
-      "emailOptional": "Email (Optional)",
-      "proceed": "Proceed"
+      "emailOptional": "Email (Optional)"
     },
     "tile": {
       "outOfStock": "Out of Stock"
@@ -827,11 +830,28 @@
       "wasPrice": "Was Price",
       "savesOnPrint": "Saves when you print"
     },
-    "clearCategory": "Clear",
+    "clearCategory": "Show all categories",
     "greeting": {
       "morning": "Good morning",
       "afternoon": "Good afternoon",
       "evening": "Good evening"
+    },
+    "allCategories": "All categories",
+    "quickSell": {
+      "title": "Quick Sell",
+      "new": "New",
+      "edit": "Edit",
+      "done": "Done",
+      "remove": "Remove card",
+      "confirmRemove": "Remove the \"{{name}}\" card? Sales already rung up on it are not affected.",
+      "empty": "No cards yet. Add one for anything you sell often that has no barcode.",
+      "newTitle": "New Quick-Sell Card",
+      "newSubtitle": "For something you sell often that has no barcode",
+      "name": "Name",
+      "namePlaceholder": "e.g. Coil",
+      "price": "Price",
+      "create": "Add Card",
+      "notCounted": "This is not counted as stock — it can never run out, and it will not appear in the stock report."
     }
   },
   "sales": {

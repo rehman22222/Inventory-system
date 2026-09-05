@@ -809,3 +809,169 @@ module.exports.generateRandomBarcodes = async (req, res) => {
 
   
 
+
+
+/* ── Quick-sell cards ────────────────────────────────────────────────────────
+ *
+ * The counter's shortcuts for the things it sells constantly and cannot scan.
+ *
+ * The problem they exist for is a real one and it happens every day: a customer
+ * is holding something with no barcode, there is a queue, and putting a label
+ * on the box and scanning it is a job for later. Without a card the cashier's
+ * only options are to keep the customer waiting or to ring the item up as
+ * something it is not — and the second one is what actually happens, which is
+ * how a shop ends up with sales figures nobody trusts.
+ *
+ * A card is an ordinary Product with two flags:
+ *
+ *   nonStock  — never counted, so it cannot be out of stock and cannot make the
+ *               till refuse a sale it should have made (see Productmodel).
+ *   quickSell — draw it on the till's rail.
+ *
+ * It is deliberately NOT a separate collection. A card is rung up, refunded,
+ * reported and day-closed exactly like every other line, and giving it its own
+ * table would mean every one of those paths needing to know about two kinds of
+ * thing that behave identically.
+ *
+ * No barcode, ever. A quick-sell card is the answer to "this has no barcode";
+ * giving it one would put it in the scanner's index and in the till's product
+ * grid, where it would sit beside the real item it stands in for.
+ * ------------------------------------------------------------------------- */
+
+// Everything the till needs to draw a card, and nothing else.
+const quickSellShape = (product) => ({
+  _id: product._id,
+  name: product.name,
+  Price: Number(product.Price || 0),
+  // Carried so the till can put the same product object through addToCart that
+  // a scanned one goes through — the cart's stock checks read these.
+  quantity: 0,
+  nonStock: true,
+  quickSell: true,
+  Category: product.Category,
+  createdAt: product.createdAt,
+});
+
+module.exports.listQuickSell = async (req, res) => {
+  try {
+    // Oldest first, so the order the shop created them in is the order they
+    // stay in. A list that re-sorts itself is a list a cashier has to read
+    // rather than reach for.
+    const cards = await Product.find({ quickSell: true })
+      .select("name Price Category createdAt")
+      .sort({ createdAt: 1 })
+      .lean();
+
+    return res.status(200).json({ cards: cards.map(quickSellShape) });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Could not load the quick-sell cards", error: error.message });
+  }
+};
+
+module.exports.createQuickSell = async (req, res) => {
+  try {
+    const name = String(req.body?.name || "").trim();
+    const price = Number(req.body?.Price ?? req.body?.price);
+
+    if (!name) {
+      return res.status(400).json({ message: "Give the card a name" });
+    }
+    if (name.length > 60) {
+      return res.status(400).json({ message: "That name is too long for a card" });
+    }
+    if (!Number.isFinite(price) || price <= 0) {
+      return res.status(400).json({ message: "Enter a price above zero" });
+    }
+    if (price > 100000) {
+      return res.status(400).json({ message: "That price is too high" });
+    }
+
+    // Same name AND same price is the same card. A cashier who taps "add" twice
+    // in a busy moment should end up with one card, not two identical ones they
+    // then have to tell apart on the rail.
+    const existing = await Product.findOne({
+      quickSell: true,
+      name,
+      Price: Math.round(price * 100) / 100,
+    }).lean();
+
+    if (existing) {
+      return res.status(200).json({ card: quickSellShape(existing), existed: true });
+    }
+
+    const misc = await ensureMiscCategory();
+
+    const created = await Product.create({
+      name,
+      Price: Math.round(price * 100) / 100,
+      Category: misc._id,
+      quantity: 0,
+      // The two flags that make it a card. Set here rather than taken from the
+      // request: this endpoint's whole job is to produce exactly this shape,
+      // and a client that could choose would be a client that could turn a
+      // counted product into an uncounted one.
+      nonStock: true,
+      quickSell: true,
+      // A counted figure of zero would be a lie; there is nothing to count.
+      stockCounted: false,
+    });
+
+    void logActivity({
+      action: "Create Quick Sell Card",
+      description: `Quick-sell card "${created.name}" added at ${created.Price}.`,
+      entity: "product",
+      entityId: created._id,
+      userId: req.user?._id,
+      ipAddress: req.ip,
+    });
+
+    return res.status(201).json({ card: quickSellShape(created) });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: "A product with that name already exists" });
+    }
+    return res
+      .status(500)
+      .json({ message: "Could not create the card", error: error.message });
+  }
+};
+
+module.exports.removeQuickSell = async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    if (!mongoose.isValidObjectId(productId)) {
+      return res.status(400).json({ message: "Invalid card id" });
+    }
+
+    // Scoped to quickSell on purpose: this route must never become a way to
+    // delete an ordinary product without the confirmation RemoveProduct asks
+    // for. A card that has been sold keeps its sale rows either way — those
+    // point at the id and read the name off themselves.
+    const removed = await Product.findOneAndDelete({
+      _id: productId,
+      quickSell: true,
+    });
+
+    if (!removed) {
+      return res.status(404).json({ message: "That card no longer exists" });
+    }
+
+    void logActivity({
+      action: "Delete Quick Sell Card",
+      description: `Quick-sell card "${removed.name}" (${removed.Price}) was removed.`,
+      entity: "product",
+      entityId: removed._id,
+      userId: req.user?._id,
+      ipAddress: req.ip,
+    });
+
+    return res.status(200).json({ message: "Card removed", card: removed.name });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Could not remove the card", error: error.message });
+  }
+};

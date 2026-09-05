@@ -25,9 +25,16 @@ import { io } from "socket.io-client";
 import { socketURL } from "../lib/socket";
 import { gettingallCategory } from "../features/categorySlice";
 import { gettingallDeals } from "../features/dealSlice";
+import {
+  getQuickSellCards,
+  createQuickSellCard,
+  removeQuickSellCard,
+} from "../features/quickSellSlice";
 import ActionRail from "../Components/pos/ActionRail";
 import SaleTable, { EmptyCart } from "../Components/pos/SaleTable";
 import CategoryTiles from "../Components/pos/CategoryTiles";
+import QuickSellCards from "../Components/pos/QuickSellCards";
+import QuickSellModal from "../Components/pos/QuickSellModal";
 import { iconForCategory } from "../Components/pos/categoryIcons";
 import NumericKeypad from "../Components/pos/NumericKeypad";
 import StatusBar from "../Components/pos/StatusBar";
@@ -43,6 +50,7 @@ import SaleCompleteModal from "../Components/pos/SaleCompleteModal";
 import RefundHistoryModal from "../Components/pos/RefundHistoryModal";
 import DealsModal from "../Components/DealsModal";
 import ProductSearchModal from "../Components/pos/ProductSearchModal";
+import PosModal from "../Components/pos/PosModal";
 import DayClosingModal from "../Components/pos/DayClosingModal";
 import CreditBookModal from "../Components/pos/CreditBookModal";
 import {
@@ -66,8 +74,7 @@ import {
   queueSale,
   syncQueue,
   startAutoSync,
-  isNetworkError,
-} from "../lib/offlineQueue";
+  isNetworkError, newSaleRefs, checkoutTimeoutMs } from "../lib/offlineQueue";
 import { QRCodeSVG } from "qrcode.react";
 import { gettingStore, hydrateStore } from "../features/storeSlice";
 import e360LogoDark from "../images/e360-logo-dark.png";
@@ -110,6 +117,9 @@ function POSPage() {
   const { getallproduct } = useSelector((state) => state.product);
   const { getallCategory } = useSelector((state) => state.category);
   const { deals: allDeals } = useSelector((state) => state.deal);
+  const { cards: quickSellCards, isSaving: savingCard } = useSelector(
+    (state) => state.quickSell,
+  );
   // The shop's own name/address, set by the owner. Drives the till header and
   // the printed receipt.
   const { store: SHOP } = useSelector((state) => state.store);
@@ -208,6 +218,12 @@ function POSPage() {
   // still worth what it is worth — this is how it was paid for.
   const [refundCredit, setRefundCredit] = useState(null);
   const [pickingExchange, setPickingExchange] = useState(false);
+  // Quick-sell rail: whether the remove crosses are showing, and whether the
+  // "new card" dialog is open. Edit mode is deliberately not sticky — it is
+  // dropped whenever a card is made, so the rail cannot be left armed for
+  // deletion by whoever used it last.
+  const [editingCards, setEditingCards] = useState(false);
+  const [newCardOpen, setNewCardOpen] = useState(false);
 
   // Anything the till rang up while the line was down.
   const [offlineCache, setOfflineCache] = useState(null);
@@ -230,6 +246,7 @@ function POSPage() {
     dispatch(gettingallCategory());
     dispatch(gettingallDeals());
     dispatch(gettingStore());
+    dispatch(getQuickSellCards());
   }, [dispatch]);
 
   useEffect(() => {
@@ -615,7 +632,12 @@ function POSPage() {
 
   const addToCart = useCallback(
     (product, quantity = 1) => {
-      const stock = Number(product.quantity || 0);
+      // A quick-sell card is not counted, so it has no stock to be short of and
+      // no ceiling to clamp against. Treating it as an ordinary product with a
+      // count of zero is exactly what the server refuses to do at checkout, and
+      // the two have to agree or the till offers a sale it cannot complete.
+      const uncounted = Boolean(product.nonStock);
+      const stock = uncounted ? Infinity : Number(product.quantity || 0);
 
       if (stock <= 0) {
         toast.error(t("pos.outOfStock", { name: product.name }));
@@ -669,7 +691,10 @@ function POSPage() {
             category: product.Category?.name,
             price: Number(product.Price || 0),
             quantity,
-            stock,
+            // Never Infinity in state: it survives no JSON round trip and
+            // renders as "Infinity" the moment anything shows it.
+            stock: uncounted ? null : stock,
+            nonStock: uncounted,
           },
         ];
       });
@@ -1116,7 +1141,7 @@ function POSPage() {
   // Sell with no network: build the receipt here, park the sale, print as usual.
   // The customer is served exactly as they would be online; the sale reaches the
   // server the moment the line is back.
-  const checkoutOffline = async (payments) => {
+  const checkoutOffline = async (payments, reuse = {}) => {
     const tendered = payments.reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
 
     const queued = await queueSale({
@@ -1139,7 +1164,7 @@ function POSPage() {
         sets: entry.sets,
         amount: entry.amount,
       })),
-    });
+    }, reuse);
 
     // Stop this till spending the same single-use code twice while it is down.
     if (voucher?.code) {
@@ -1220,7 +1245,7 @@ function POSPage() {
     // Known to be offline — don't even try, just serve the customer.
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
       try {
-        await checkoutOffline(payments);
+        await checkoutOffline(payments, newSaleRefs());
       } catch (error) {
         toast.error(t("pos.offline.queueFailed"));
       } finally {
@@ -1229,8 +1254,24 @@ function POSPage() {
       return;
     }
 
+    /* Minted BEFORE the request goes out, and that ordering is the point.
+     *
+     * The server stores this clientRef and will not ring the same one up
+     * twice, which is what lets the till below give up on a slow reply and
+     * take the sale locally instead: if the request it abandoned lands anyway,
+     * the queued copy carries the same ref and the server hands back the
+     * receipt it already wrote rather than charging the customer again. */
+    const refs = newSaleRefs();
+
     try {
-      const response = await axiosInstance.post("pos/checkout", saleSnapshot(payments, creditTerms));
+      const response = await axiosInstance.post(
+        "pos/checkout",
+        { ...saleSnapshot(payments, creditTerms), ...refs },
+        // Past this, the cashier is standing doing nothing with a queue behind
+        // them. The sale is better taken locally and settled afterwards — see
+        // checkoutTimeoutMs for the number and how a shop can change it.
+        { timeout: checkoutTimeoutMs() },
+      );
 
       finishSale(response.data.receipt);
       toast.success(t("pos.receiptCompleted"));
@@ -1272,7 +1313,15 @@ function POSPage() {
           );
         } else {
           try {
-            await checkoutOffline(payments);
+            // The SAME refs the abandoned request carried, so the two are one
+            // sale as far as the server is concerned.
+            await checkoutOffline(payments, refs);
+            toast.success(
+              t(
+                "pos.offline.tookLocally",
+                "Saved on this till — it will finish syncing in the background",
+              ),
+            );
           } catch {
             toast.error(t("pos.offline.queueFailed"));
           }
@@ -1495,7 +1544,7 @@ function POSPage() {
         <section
           className={`${
             pane === "sale" ? "flex" : "hidden"
-          } min-h-0 w-full shrink-0 flex-col border-e border-slate-800 lg:flex lg:w-[380px] xl:w-[440px]`}
+          } min-h-0 w-full shrink-0 flex-col border-e border-slate-800 lg:flex lg:w-[470px] xl:w-[550px] 2xl:w-[620px]`}
         >
           <SaleTable
             cart={cart}
@@ -1579,7 +1628,7 @@ function POSPage() {
                 refuses to shrink below its content, so an applied deal — a long
                 product name, an EDITED badge and a set stepper — pushed the
                 total clean off the edge of a narrow till. */}
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border border-slate-800 bg-black/40 px-3 py-3 text-sm sm:gap-6 sm:px-4">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border border-slate-800 bg-black/40 px-3 py-3 text-[15px] sm:gap-6 sm:px-4">
               <div className="min-w-0 space-y-1">
                 {/* Subtotal, and how many units it is the sum of, at either
                     end of the line they both describe.
@@ -1779,12 +1828,12 @@ function POSPage() {
                     owed. The two figures a cashier compares sit one under the
                     other in the same column rather than across the panel from
                     each other with a list of deductions in between. */}
-                <p className="font-mono tabular-nums text-slate-300">{currency(subtotal)}</p>
+                <p className="font-mono text-lg tabular-nums text-slate-300">{currency(subtotal)}</p>
 
-                <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
+                <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-600">
                   {creditApplied > 0 ? t("pos.receiptDoc.totalDue", "Total due") : t("pos.total")}
                 </p>
-                <p className="whitespace-nowrap font-mono text-2xl font-bold tabular-nums text-cyan-400 sm:text-3xl">
+                <p className="whitespace-nowrap font-mono text-3xl font-bold tabular-nums text-cyan-400 sm:text-4xl">
                   {currency(due)}
                 </p>
                 {/* The full price stays visible: the customer is buying a
@@ -1817,7 +1866,7 @@ function POSPage() {
                   // uses for money owed: it sends the goods out on a promise,
                   // and three identical buttons is how that gets pressed by
                   // accident.
-                  className={`py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg ring-1 transition active:scale-[0.99] disabled:opacity-35 disabled:shadow-none ${
+                  className={`py-4 text-base font-bold uppercase tracking-wide text-white shadow-lg ring-1 transition active:scale-[0.99] disabled:opacity-35 disabled:shadow-none ${
                     entry.value === "cash"
                       ? "bg-gradient-to-b from-emerald-600 to-emerald-700 shadow-emerald-950/50 ring-emerald-500 hover:from-emerald-500 hover:to-emerald-600"
                       : entry.value === "credit"
@@ -1832,30 +1881,41 @@ function POSPage() {
           </div>
         </section>
 
-        {/* Centre: the products of the selected category */}
-        <section
+        {/* The products and the rail, with the search bar across the top of
+            BOTH of them.
+
+            The box used to sit inside the product column, so its width was
+            whatever was left after the basket and the rail had taken theirs —
+            on a real till monitor that is a couple of hundred pixels, and the
+            one control the cashier types into was the smallest thing on the
+            screen. It now runs the full width of this side.
+
+            Deliberately NOT across the whole page: the basket keeps its own
+            full height on the left, because a search box stretched over the
+            sale as well would push the basket down and separate it from the
+            totals under it. */}
+        <div
           className={`${
             pane === "products" ? "flex" : "hidden"
-          } min-h-0 min-w-0 flex-1 flex-col gap-2.5 bg-slate-900 p-2.5 lg:flex lg:p-3`}
+          } min-h-0 min-w-0 flex-1 flex-col lg:flex`}
         >
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1">
-              <FiSearch className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600" />
-              <input
-                ref={searchRef}
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("pos.searchPlaceholder")}
-                className="w-full border border-slate-800 bg-black py-2.5 ps-9 pe-3 text-sm text-slate-100 outline-none transition focus:border-cyan-600"
-              />
-            </div>
-
-            {/* The category name and its count used to sit here, repeating
-                what the tile on the right already says — and saying it in the
-                one place a cashier is trying to type. The bar is the search
-                box now, and nothing else. */}
+          <div className="relative shrink-0 bg-slate-900 px-2.5 pt-2.5 lg:px-3 lg:pt-3">
+            <FiSearch className="pointer-events-none absolute start-6 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-600 lg:start-7" />
+            <input
+              ref={searchRef}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t("pos.searchPlaceholder")}
+              className="h-12 w-full border border-slate-800 bg-black ps-11 pe-3 text-base text-slate-100 outline-none transition focus:border-cyan-600 lg:ps-12"
+            />
           </div>
 
+          <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+
+        {/* Centre: the products of the selected category */}
+        <section
+          className="flex min-h-0 min-w-0 flex-1 flex-col gap-2.5 bg-slate-900 p-2.5 lg:p-3"
+        >
           {/* The category column is hidden below lg, so the tiles ride along here. */}
           <div className="lg:hidden">
             <CategoryTiles
@@ -2013,20 +2073,67 @@ function POSPage() {
           </div>
         </section>
 
-        {/* Right: categories, then keypad */}
+        {/* Right: category picker, quick-sell cards, then keypad.
+            The categories used to be a grid of tiles here and took most of the
+            rail to say something the cashier reads once per sale at most. As a
+            dropdown they cost one line, and the space they were holding goes to
+            the cards, which are pressed constantly. */}
         <aside className="hidden w-[260px] shrink-0 flex-col gap-2.5 border-s border-slate-800 bg-slate-950 p-2.5 lg:flex xl:w-[300px]">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
-            {t("pos.categories")}
-          </p>
-
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <CategoryTiles
-              categories={categories}
-              selected={category}
-              onSelect={setCategory}
-              onClear={() => setCategory(null)}
-            />
+          <div>
+            <label
+              htmlFor="pos-category"
+              className="mb-1 block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600"
+            >
+              {t("pos.categories")}
+            </label>
+            {/* The cross clears the filter in one tap.
+                Picking "All categories" off the list does the same thing, but
+                it costs opening the dropdown and reading past whatever is at
+                the top of it — and going back to the whole catalogue is the
+                most common thing a cashier does after filtering, not the least.
+                The button is always rendered and disabled instead of appearing
+                and vanishing, so the dropdown beside it never changes width
+                under a thumb that is already reaching for it. */}
+            <div className="flex gap-1.5">
+              <select
+                id="pos-category"
+                value={category || ""}
+                onChange={(event) => setCategory(event.target.value || null)}
+                className="h-11 min-w-0 flex-1 border border-slate-800 bg-black px-2 text-sm text-slate-100 outline-none transition focus:border-cyan-600"
+              >
+                <option value="">{t("pos.allCategories", "All categories")}</option>
+                {(categories || []).map((entry) => (
+                  <option key={entry._id} value={entry._id}>
+                    {entry.name}
+                    {entry.productCount ? ` (${entry.productCount})` : ""}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setCategory(null)}
+                disabled={!category}
+                aria-label={t("pos.clearCategory", "Show all categories")}
+                title={t("pos.clearCategory", "Show all categories")}
+                className="flex h-11 w-11 shrink-0 items-center justify-center border border-slate-800 bg-slate-900 text-slate-400 transition hover:border-red-600 hover:bg-red-950 hover:text-red-300 active:scale-95 disabled:opacity-25 disabled:hover:border-slate-800 disabled:hover:bg-slate-900 disabled:hover:text-slate-400"
+              >
+                <FiX className="h-5 w-5" />
+              </button>
+            </div>
           </div>
+
+          <QuickSellCards
+            cards={quickSellCards}
+            editing={editingCards}
+            onPick={(card) => tapProduct(card)}
+            onNew={() => setNewCardOpen(true)}
+            onToggleEdit={() => setEditingCards((on) => !on)}
+            onRemove={(card) => {
+              if (window.confirm(t("pos.quickSell.confirmRemove", { name: card.name }))) {
+                dispatch(removeQuickSellCard(card._id));
+              }
+            }}
+          />
 
           <NumericKeypad
             buffer={buffer}
@@ -2035,6 +2142,8 @@ function POSPage() {
             onClear={clearKeypad}
           />
         </aside>
+          </div>
+        </div>
       </div>
 
       <div className="no-print">
@@ -2388,8 +2497,34 @@ function POSPage() {
           products={products}
           categories={categories}
           canEdit={false}
-          onPick={(product) => addExchangeItem(product)}
+          // One tap, one product, and back to the refund. An exchange is
+          // normally the one replacement the customer is holding, so leaving
+          // the picker open after the pick meant the cashier had to find and
+          // close it before they could see what the exchange now came to —
+          // with the customer waiting on that figure. Adding a second item is
+          // "+ Add product" again, which is one tap either way.
+          onPick={(product) => {
+            addExchangeItem(product);
+            setPickingExchange(false);
+          }}
           onClose={() => setPickingExchange(false)}
+        />
+      )}
+
+      {newCardOpen && (
+        <QuickSellModal
+          saving={savingCard}
+          onClose={() => setNewCardOpen(false)}
+          onCreate={async (card) => {
+            const result = await dispatch(createQuickSellCard(card));
+            // Only close on success — a rejected create leaves the cashier
+            // looking at what they typed with the reason in a toast, rather
+            // than at a rail that silently did not gain a card.
+            if (createQuickSellCard.fulfilled.match(result)) {
+              setNewCardOpen(false);
+              setEditingCards(false);
+            }
+          }}
         />
       )}
 
@@ -2530,20 +2665,30 @@ function POSPage() {
 }
 
 // Manual entry for a barcode or PLU when the scanner can't reach the item.
+//
+// Built on PosModal rather than on its own overlay, and that is the whole point
+// of the change: every rule that gets a dialog out from under the on-screen
+// keyboard is keyed on `.pos-modal-overlay` / `.pos-modal-panel` (see
+// body.osk-open in index.css). This one was hand-rolled, so it matched none of
+// them — it stayed vertically centred while the keyboard came up over it, and
+// the field, Cancel and Add all disappeared behind the keys.
+//
+// Anything that opens over the till and takes typing belongs in this shell for
+// that reason. A dialog that rolls its own overlay is a dialog that has to
+// remember the keyboard on its own, and this one did not.
 function EnterCodeModal({ onSubmit, onClose }) {
   const { t } = useTranslation();
   const [code, setCode] = useState("");
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+    <PosModal title={t("pos.enterCode.title")} onClose={onClose} width="max-w-sm">
       <form
         onSubmit={(event) => {
           event.preventDefault();
           if (code.trim()) onSubmit(code.trim());
         }}
-        className="w-full max-w-sm space-y-3 border border-slate-700 bg-slate-900 p-5"
+        className="space-y-3"
       >
-        <h2 className="text-lg font-semibold text-slate-100">{t("pos.enterCode.title")}</h2>
         <input
           autoFocus
           value={code}
@@ -2566,7 +2711,7 @@ function EnterCodeModal({ onSubmit, onClose }) {
           </button>
         </div>
       </form>
-    </div>
+    </PosModal>
   );
 }
 

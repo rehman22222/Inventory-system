@@ -462,28 +462,40 @@ module.exports.previewGhostNet = async (req, res) => {
   }
 };
 
+// Who may pull the shop's takings.
+//
+// The manager is on this list because the Sales page already shows them every
+// sale the shop made — controller/salescontroller.js scopes a manager to `{}`,
+// the same as the owner side, since a manager supervising the floor who could
+// only see the sales they personally rang was looking at a broken screen.
+// Being able to READ a figure on the page and NOT being able to print the same
+// figure is not a permission boundary, it is a missing button: the report is
+// the page's own contents in a file.
+//
+// What is still owner-only is everything that is not a sale — the audit trail,
+// day-closing batches handed over to the admin, and the ghost-net report.
+const SALES_REPORT_ROLES = ["superadmin", "admin", "manager"];
+
 const REPORTS = {
-  // Financial takings report — owner/admin only. A manager oversees closings but
-  // does not pull the shop's sales/profit report.
-  sales: { label: "Sales", roles: ["superadmin", "admin"], build: buildSales },
+  sales: { label: "Sales", roles: SALES_REPORT_ROLES, build: buildSales },
   "combined-sales": {
     label: "POS + Online Combined Sales",
-    roles: ["superadmin", "admin"],
+    roles: SALES_REPORT_ROLES,
     build: buildCombinedSales,
   },
   "pos-sales": {
     label: "POS Sales",
-    roles: ["superadmin", "admin"],
+    roles: SALES_REPORT_ROLES,
     build: buildPosSales,
   },
   "online-sales": {
     label: "Online Sales",
-    roles: ["superadmin", "admin"],
+    roles: SALES_REPORT_ROLES,
     build: buildOnlineSales,
   },
   "credit-sales": {
     label: "Credit Sales",
-    roles: ["superadmin", "admin"],
+    roles: SALES_REPORT_ROLES,
     build: buildCreditSales,
   },
   inventory: {

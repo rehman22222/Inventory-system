@@ -39,10 +39,16 @@ const offlineRefFrom = (clientRef) =>
 
 // Park a sale locally. Returns the receipt-shaped object the POS prints from, so
 // an offline sale looks and prints exactly like an online one.
-export const queueSale = async (payload) => {
-  const clientRef = newClientRef();
-  const offlineRef = offlineRefFrom(clientRef);
-  const soldAt = new Date().toISOString();
+// `reuse` carries the refs a sale was ALREADY given before it was sent to the
+// server. It matters when the till gave up waiting on a slow line: that request
+// may still land, so the queued copy has to be the same sale — same clientRef,
+// so the server recognises it and hands back the receipt instead of ringing it
+// up twice, and same printed ref, so the slip in the customer's hand still
+// finds it.
+export const queueSale = async (payload, reuse = {}) => {
+  const clientRef = reuse.clientRef || newClientRef();
+  const offlineRef = reuse.offlineRef || offlineRefFrom(clientRef);
+  const soldAt = reuse.soldAt || new Date().toISOString();
 
   await queueAdd({ ...payload, clientRef, offlineRef, soldAt });
   await notify();
@@ -51,6 +57,44 @@ export const queueSale = async (payload) => {
 };
 
 export const pendingCount = () => queueCount().catch(() => 0);
+
+/* Refs for a sale that is about to be SENT, not queued.
+ *
+ * Every sale gets these up front now. The clientRef goes to the server, which
+ * stores it and refuses to ring the same one up twice — which is the whole
+ * reason the till is allowed to stop waiting for a slow reply and queue the
+ * sale instead. Without it, giving up on a request would risk charging the
+ * customer for it twice.
+ */
+export const newSaleRefs = () => {
+  const clientRef = newClientRef();
+  return {
+    clientRef,
+    offlineRef: offlineRefFrom(clientRef),
+    soldAt: new Date().toISOString(),
+  };
+};
+
+/* How long the till waits for the server before it stops waiting.
+ *
+ * This is not a network setting, it is a decision about a queue of customers:
+ * past about a second and a half the cashier is standing there doing nothing,
+ * and the sale is better taken locally and settled with the server afterwards.
+ * A healthy connection answers in well under this and never sees it.
+ *
+ * Per-till override, for a shop on a genuinely slow line that would rather wait
+ * and keep real receipt numbers:
+ *   localStorage.setItem("pos-checkout-timeout", "4000")
+ */
+export const checkoutTimeoutMs = () => {
+  try {
+    const saved = Number(localStorage.getItem("pos-checkout-timeout"));
+    if (Number.isFinite(saved) && saved >= 500 && saved <= 60000) return saved;
+  } catch {
+    /* private mode — fall through to the default */
+  }
+  return 1500;
+};
 
 // Push everything we have. Safe to call at any time — it no-ops when offline,
 // when the queue is empty, or when a sync is already running.
@@ -101,7 +145,11 @@ export const syncQueue = async () => {
 export const isNetworkError = (error) =>
   !error.response ||
   error.code === "ERR_NETWORK" ||
-  error.code === "ECONNABORTED";
+  // A timeout. Axios reports its own deadline as ECONNABORTED and a socket
+  // one as ETIMEDOUT; both mean the same thing to a cashier — no answer came
+  // back — and both belong in the queue rather than on the screen.
+  error.code === "ECONNABORTED" ||
+  error.code === "ETIMEDOUT";
 
 let started = false;
 

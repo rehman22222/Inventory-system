@@ -522,11 +522,26 @@ function VirtualKeyboard() {
           // is tapped, so typing lands in the right place.
           onMouseDown={(e) => e.preventDefault()}
           ref={keyboardPanel}
-          className={`no-print fixed inset-x-0 bottom-0 z-[55] border-t border-slate-700 bg-slate-900 p-2 shadow-2xl ${
+          className={`no-print fixed inset-x-0 bottom-0 z-[55] border-t border-slate-700 bg-slate-900 px-1 py-2 shadow-2xl ${
             keyboardMode === "numeric" ? "osk-numeric" : "osk-text"
           }`}
         >
-          <div className={`mx-auto ${keyboardMode === "numeric" ? "max-w-md" : "max-w-4xl"}`}>
+          {/* Sizing only — WHICH keyboard appears is decided above by
+              `keyboardMode`, from isNumericField(): a number/decimal field gets
+              the pad, everything else gets the full layout. Both simply run
+              wider here. A POS monitor is a wide screen and the cashier is
+              pressing keys with a thumb, so capping the letters at 4xl left
+              half the bar empty and every key narrower than the finger on it.
+
+              1725px is 1500 + 15%. Note it only bites on a display wide enough
+              to have been hitting the old cap — on a narrower window the row
+              was already running the full width, and the side padding above
+              (px-1, down from p-2) is what buys the last few pixels there. */}
+          <div
+            className={`mx-auto w-full ${
+              keyboardMode === "numeric" ? "max-w-lg" : "max-w-[1725px]"
+            }`}
+          >
             <div className="mb-1 flex justify-end">
               <button
                 type="button"

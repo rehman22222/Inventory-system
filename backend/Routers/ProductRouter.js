@@ -1,6 +1,6 @@
 const express=require("express")
 const router=express.Router()
-const {Addproduct,quickAddProduct,getTopProductsByQuantity,RemoveProduct,SearchProduct,EditProduct,getProduct,getProductById,getProductByBarcode,attachBarcode,generateRandomBarcodes}=require('../controller/productController')
+const {Addproduct,quickAddProduct,getTopProductsByQuantity,RemoveProduct,SearchProduct,EditProduct,getProduct,getProductById,getProductByBarcode,attachBarcode,generateRandomBarcodes,listQuickSell,createQuickSell,removeQuickSell}=require('../controller/productController')
 const {authmiddleware,adminmiddleware,adminOrManager,adminOrSuperadmin,tillUser}=require('../middleware/Authmiddleware')
 const {upload}=require('../middleware/upload')
 
@@ -24,6 +24,18 @@ router.put("/:productId/barcode",authmiddleware,attachBarcode)
 // edit is logged against whoever made it.
 router.put("/editproduct/:productId",authmiddleware,tillUser,upload.single("image"),EditProduct)
 router.get("/getTopProductsByQuantity",authmiddleware,getTopProductsByQuantity)
+
+// The till's quick-sell cards — the shop's own shortcuts for what it cannot
+// scan. Made where they are used, like deals and vouchers: a customer holding
+// an unbarcoded item at the counter is not a reason to fetch a manager. Every
+// card is logged against whoever created or removed it.
+//
+// These MUST stay above the bare "/:productId" below, or Express reads the
+// literal word "quick-sell" as an id — the same trap supplierrouter.js
+// documents and productRouter already warns about.
+router.get("/quick-sell",authmiddleware,tillUser,listQuickSell)
+router.post("/quick-sell",authmiddleware,tillUser,createQuickSell)
+router.delete("/quick-sell/:productId",authmiddleware,tillUser,removeQuickSell)
 
 // One whole product, for the till's edit form. Restricted to the same people who
 // may actually save the edit, because this is the only product read that returns

@@ -69,6 +69,40 @@ const ProductSchema= new mongoose.Schema({
         type:Boolean,
         default:false
     },
+    /* Not counted. Selling this never touches `quantity`, and it can never be
+     * out of stock.
+     *
+     * The counter needs a way to ring up something the catalogue does not know:
+     * a customer is holding an item with no barcode, there is a queue, and
+     * labelling it properly is a job for later, not for now. A card priced at
+     * "€5 coil" is that way — but it has no stock behind it, and the till's
+     * whole safety model is a guarded decrement that REFUSES to sell what is
+     * not there. A card with a count of zero would fail at the last step, in
+     * front of the customer.
+     *
+     * So the count is not zero, it is absent. Nothing is deducted, nothing is
+     * checked, no stock movement is written, and no low-stock alert is raised —
+     * because nothing moved. The sale itself is entirely real: it has a name, a
+     * price, a line on the receipt and a row in the report.
+     *
+     * Deliberately separate from `quickSell` below. This is what the SERVER
+     * does with the product; that is whether the TILL draws a card for it.
+     */
+    nonStock:{
+        type:Boolean,
+        default:false
+    },
+    /* Show this on the till as a one-tap card.
+     *
+     * The shop's own shortcuts for the things it sells constantly and cannot
+     * scan. Kept on the product rather than in a list of its own, because a
+     * card IS a product — it is rung up, refunded and reported like any other,
+     * and a parallel table would be a second place for the same fact to live.
+     */
+    quickSell:{
+        type:Boolean,
+        default:false
+    },
     // Per-product low-stock threshold. Falls back to 10 where unset.
     lowStockThreshold:{
         type:Number,
@@ -114,6 +148,13 @@ const ProductSchema= new mongoose.Schema({
 // SKUs. (barcode already has a unique sparse index on the field.)
 ProductSchema.index({ Category: 1 });
 ProductSchema.index({ quantity: 1 });
+// The till fetches its cards on every load, so this read has to be an index
+// hit and not a scan of the whole catalogue. Partial, because the cards are a
+// handful of rows out of thousands.
+ProductSchema.index(
+  { quickSell: 1, createdAt: 1 },
+  { partialFilterExpression: { quickSell: true } },
+);
 ProductSchema.index({ name: "text", Desciption: "text" });
 ProductSchema.index(
   {

@@ -90,7 +90,13 @@ const receiptNumber = async (session) => {
 const raiseLowStockAlerts = async (products, reference) => {
   try {
     const low = products.filter(
-      (product) => product.quantity <= (product.lowStockThreshold ?? DEFAULT_LOW_STOCK),
+      (product) =>
+        // A non-stock line has no count to be low. Left in, every quick-sell
+        // card would raise an alert and a reorder on every single sale — the
+        // shop would be emailed about running out of "€5 coil", which is not a
+        // thing it can run out of.
+        !product.nonStock &&
+        product.quantity <= (product.lowStockThreshold ?? DEFAULT_LOW_STOCK),
     );
     await Promise.all(
       low.map((product) =>
@@ -148,7 +154,41 @@ module.exports.checkout = async (req, res) => {
       // Who owes it and by when, required whenever any of the basket goes on
       // account: { email, phone, termDays }.
       creditTerms = null,
+      /* The till's own id for this sale, and the ref it printed.
+       *
+       * Every sale carries one now, not just a queued one. That is what makes
+       * the till safe to give up waiting on a slow line: if it stops waiting
+       * and queues the sale, and THIS request lands a second later anyway, the
+       * sync arrives carrying the same clientRef, finds the receipt already
+       * written, and hands back what was stored instead of selling it again.
+       *
+       * Without it, a timeout is a double charge waiting to happen — the very
+       * thing that makes "just retry" unsafe on a payment.
+       */
+      clientRef,
+      offlineRef,
     } = req.body;
+
+    const tillRef = String(clientRef || "").trim().slice(0, 64);
+
+    /* Already rung up? Then this is the same sale arriving twice — a retry, or
+     * a request the till gave up on that got here regardless. Hand back what
+     * was stored; do not sell it again.
+     *
+     * Checked before anything is validated or written, so a duplicate costs one
+     * indexed lookup and touches no stock. */
+    if (tillRef) {
+      const already = await Receipt.findOne({ "offline.clientRef": tillRef }).lean();
+
+      if (already) {
+        return res.status(200).json({
+          success: true,
+          message: "This sale was already completed",
+          duplicate: true,
+          receipt: already,
+        });
+      }
+    }
 
     // Ids only — the amounts stay this server's business.
     const chosenDealIds = (Array.isArray(dealIds) ? dealIds : [])
@@ -271,7 +311,11 @@ module.exports.checkout = async (req, res) => {
     // cart still fails on exactly the message it failed on before.
     const [foundProducts, prefetchedVoucher, activeDeals] = await Promise.all([
       Product.find({ _id: { $in: basketIds } })
-        .select("name Price quantity")
+        // nonStock decides whether this line is counted at all — see the
+        // guarded decrement below. Leaving it out of the projection would make
+        // every quick-sell card read as an ordinary product with no stock, and
+        // the sale would be refused at the last step.
+        .select("name Price quantity nonStock")
         .lean(),
       voucherCode
         ? Voucher.findOne({ code: String(voucherCode).trim().toUpperCase() })
@@ -314,7 +358,9 @@ module.exports.checkout = async (req, res) => {
           .json({ message: `Invalid quantity for ${product.name}` });
       }
 
-      if (Number(product.quantity) < quantity) {
+      // A non-stock line has no count to check against. It is not "in stock" or
+      // "out of stock" — it is not counted at all.
+      if (!product.nonStock && Number(product.quantity) < quantity) {
         return res.status(400).json({
           message: `Only ${product.quantity} items available for ${product.name}`,
           product: product.name,
@@ -617,6 +663,29 @@ module.exports.checkout = async (req, res) => {
         // five-item basket spent well over a second waiting on the network with
         // the cashier watching. The work is identical; only the shape changed.
         const decrement = async (line) => {
+          // A non-stock line is sold without being counted: no guard, no
+          // decrement, and nothing pushed onto `undo.stock`, because there is
+          // nothing to put back if the sale falls over.
+          //
+          // It still has to come back with a real product document — the
+          // receipt reads a name and a barcode off it — so it is fetched, just
+          // not written to.
+          if (line.product.nonStock) {
+            const asIs = await Product.findById(line.product._id, null, opts(session))
+              .select("name barcode quantity supplier lowStockThreshold nonStock")
+              .lean();
+
+            if (!asIs) {
+              throw Object.assign(
+                new Error(`${line.product.name} is no longer in the catalogue`),
+                { statusCode: 409 },
+              );
+            }
+
+            line.product = asIs;
+            return;
+          }
+
           // Guarded decrement: the filter re-checks stock at write time, so two
           // tills selling the last unit can't both succeed.
           const updated = await Product.findOneAndUpdate(
@@ -624,7 +693,7 @@ module.exports.checkout = async (req, res) => {
             { $inc: { quantity: -line.quantity } },
             { new: true, ...opts(session) },
           )
-            .select("name barcode quantity supplier lowStockThreshold")
+            .select("name barcode quantity supplier lowStockThreshold nonStock")
             .lean();
 
           if (!updated) {
@@ -657,14 +726,21 @@ module.exports.checkout = async (req, res) => {
           for (const line of lines) await decrement(line);
         }
 
+        // Movements are written only for what actually moved. A non-stock line
+        // never left a shelf the shop was counting, so inventing a "Stock-out"
+        // for it would put a movement in the ledger with no matching change in
+        // any count — which is exactly the kind of row a stocktake cannot
+        // explain later.
         const createdTx = await StockTransaction.insertMany(
-          lines.map((line) => ({
-            product: line.product._id,
-            type: "Stock-out",
-            quantity: line.quantity,
-            supplier: line.product.supplier,
-            reference: receiptNo,
-          })),
+          lines
+            .filter((line) => !line.product.nonStock)
+            .map((line) => ({
+              product: line.product._id,
+              type: "Stock-out",
+              quantity: line.quantity,
+              supplier: line.product.supplier,
+              reference: receiptNo,
+            })),
           opts(session),
         );
         undo.stockTx.push(...createdTx.map((doc) => doc._id));
@@ -835,6 +911,21 @@ module.exports.checkout = async (req, res) => {
               credit: creditBlock,
               status: "completed",
               saleIds,
+              /* Only the two fields that identify the sale — never `syncedAt`.
+               * That stays the mark of a receipt that actually came through the
+               * queue, so "was this sold offline?" has an answer even though
+               * every sale now carries a clientRef.
+               *
+               * `ref` is stored so that a slip printed after a timeout is still
+               * findable: the cashier hands the customer an OFF- number, and a
+               * refund has to work from it whether the sale landed through this
+               * request or through the queue. */
+              offline: tillRef
+                ? {
+                    clientRef: tillRef,
+                    ref: String(offlineRef || "").trim().slice(0, 64) || undefined,
+                  }
+                : undefined,
             },
           ],
           opts(session),
@@ -952,6 +1043,33 @@ module.exports.checkout = async (req, res) => {
       },
     });
   } catch (error) {
+    /* Two copies of the same sale, in flight at the same moment.
+     *
+     * The check at the top of this function catches the ordinary case, but two
+     * requests carrying one clientRef can both pass it before either has
+     * written anything. The unique index on offline.clientRef is what actually
+     * decides it: one insert wins, the other comes back here as a duplicate
+     * key. That is not a failure — the sale exists — so answer with it.
+     *
+     * The loser's own writes were already unwound by the transaction (or by the
+     * compensation path on a standalone MongoDB), so there is nothing else to
+     * clean up here.
+     */
+    if (error.code === 11000) {
+      const existing = await Receipt.findOne({
+        "offline.clientRef": String(req.body?.clientRef || "").trim(),
+      }).lean();
+
+      if (existing) {
+        return res.status(200).json({
+          success: true,
+          message: "This sale was already completed",
+          duplicate: true,
+          receipt: existing,
+        });
+      }
+    }
+
     const status = error.statusCode || 500;
 
     // A 500 here is a sale that did not happen with a customer standing there,
@@ -1163,8 +1281,20 @@ const performRefund = async ({
     // off — no movement to record, because nothing moved.
     const restock = restocksOnRefund(reason || (isVoid ? "void" : "refund"));
 
+    // Which of the returned lines are counted at all. A non-stock line was
+    // never deducted at the sale, so adding it back would CREATE stock out of a
+    // refund — a €5 coil card refunded ten times would leave the catalogue
+    // believing the shop owns ten coils it never had.
+    const countedLines = await Product.find({
+      _id: { $in: lines.map((line) => line.product) },
+      nonStock: true,
+    })
+      .select("_id")
+      .lean();
+    const notCounted = new Set(countedLines.map((row) => String(row._id)));
+
     for (const line of lines) {
-      if (restock) {
+      if (restock && !notCounted.has(String(line.product))) {
         await Product.findByIdAndUpdate(
           line.product,
           { $inc: { quantity: line.quantity } },
@@ -1947,36 +2077,42 @@ const syncOneSale = async (sale, user, ip) => {
     const saleIds = [];
 
     for (const line of lines) {
-      // Deliberately NOT the guarded decrement used online: stock may already be
-      // gone, but the sale still happened. Let it go negative and flag it — the
-      // admin needs to know the count is wrong, not have the sale disappear.
-      const updated = await Product.findByIdAndUpdate(
-        line.product._id,
-        { $inc: { quantity: -line.quantity } },
-        { new: true, ...opts(session) },
-      );
+      // A non-stock line is not counted here either. The rule is the same one
+      // the online checkout follows: nothing was deducted when it sold, so
+      // there is nothing to deduct now, no count that can go negative, and no
+      // movement to record.
+      if (!line.product.nonStock) {
+        // Deliberately NOT the guarded decrement used online: stock may already be
+        // gone, but the sale still happened. Let it go negative and flag it — the
+        // admin needs to know the count is wrong, not have the sale disappear.
+        const updated = await Product.findByIdAndUpdate(
+          line.product._id,
+          { $inc: { quantity: -line.quantity } },
+          { new: true, ...opts(session) },
+        );
 
-      if (updated && Number(updated.quantity) < 0) {
-        flags.push({
-          type: "negative-stock",
-          product: updated._id,
-          name: updated.name,
-          detail: `Stock is now ${updated.quantity} — a recount is needed`,
-        });
+        if (updated && Number(updated.quantity) < 0) {
+          flags.push({
+            type: "negative-stock",
+            product: updated._id,
+            name: updated.name,
+            detail: `Stock is now ${updated.quantity} — a recount is needed`,
+          });
+        }
+
+        await StockTransaction.create(
+          [
+            {
+              product: line.product._id,
+              type: "Stock-out",
+              quantity: line.quantity,
+              supplier: line.product.supplier,
+              reference: receiptNo,
+            },
+          ],
+          opts(session),
+        );
       }
-
-      await StockTransaction.create(
-        [
-          {
-            product: line.product._id,
-            type: "Stock-out",
-            quantity: line.quantity,
-            supplier: line.product.supplier,
-            reference: receiptNo,
-          },
-        ],
-        opts(session),
-      );
 
       const share = subtotal > 0 ? line.lineTotal / subtotal : 0;
       const lineDiscount = money(totalDiscount * share);

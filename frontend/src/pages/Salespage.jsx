@@ -23,9 +23,18 @@ function Salespage() {
   const { getallsales, searchdata } = useSelector((state) => state.sales);
   const { Authuser } = useSelector((state) => state.auth);
 
-  // Adding/editing sales and pulling the Sales Report are owner/admin actions.
-  // A manager can only view and CLOSE the day here (backend enforces the same).
+  // Two different questions, and they were being answered by one flag.
+  //
+  // Hand-editing takings is an owner/admin action — a manager works the till
+  // and closes the day, they do not rewrite what a sale came to. The backend
+  // enforces that on /sales/createsales and /sales/updatesales.
+  //
+  // Printing is not the same question. A manager already sees every sale on
+  // this page, so withholding the download was not protecting anything; it just
+  // meant the one person who has to hand a day's takings to the owner could not
+  // produce them as a file.
   const canManageSales = ["admin", "superadmin"].includes(Authuser?.role);
+  const canPrintSales = ["admin", "superadmin", "manager"].includes(Authuser?.role);
 
   const { getallproduct } = useSelector(
     (state) => state.product
@@ -176,8 +185,9 @@ function Salespage() {
 
         <SalesChart className=" mb-10" />
 
-        {/* Sales report — date range + profit/loss summary. Owner/admin only. */}
-        {canManageSales && (
+        {/* Sales report — date range + profit/loss summary. Anyone who can see
+            the sales below can print them. */}
+        {canPrintSales && (
         <div className="mr-5 mb-8 rounded-xl border border-base-300 bg-base-100 p-5 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
