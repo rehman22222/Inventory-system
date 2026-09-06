@@ -27,7 +27,8 @@
     "verify:loyalty": "node scripts/verifyLoyaltyAccounts.js",
     "verify:quick-sell": "node scripts/verifyQuickSell.js",
     "diagnose-speed": "node scripts/diagnoseSpeed.js",
-    "verify:idempotency": "node scripts/verifyCheckoutIdempotency.js"
+    "verify:idempotency": "node scripts/verifyCheckoutIdempotency.js",
+    "uppercase-names": "node scripts/uppercaseBarcodedNames.js"
   },
   "author": "",
   "license": "ISC",
