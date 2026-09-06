@@ -6,7 +6,7 @@
     "node": ">=18 <=24"
   },
   "scripts": {
-    "test": "node scripts/verifyBlogSecurity.js && node scripts/verifyOrderEmails.js && node scripts/verifyPosCredit.js && node scripts/verifyQuickSell.js && node scripts/verifyCheckoutIdempotency.js && node scripts/verifyOnlinePromotions.js && node scripts/verifyLoyaltyAccounts.js",
+    "test": "node scripts/verifyBlogSecurity.js && node scripts/verifyOrderEmails.js && node scripts/verifyPosCredit.js && node scripts/verifyTillEndToEnd.js && node scripts/verifyQuickSell.js && node scripts/verifyCheckoutIdempotency.js && node scripts/verifyOnlinePromotions.js && node scripts/verifyLoyaltyAccounts.js",
     "start": "node server",
     "build": "cd ../frontend && npm install && npm run build",
     "postinstall": "node scripts/postinstall.js",
@@ -28,7 +28,8 @@
     "verify:quick-sell": "node scripts/verifyQuickSell.js",
     "diagnose-speed": "node scripts/diagnoseSpeed.js",
     "verify:idempotency": "node scripts/verifyCheckoutIdempotency.js",
-    "uppercase-names": "node scripts/uppercaseBarcodedNames.js"
+    "uppercase-names": "node scripts/uppercaseBarcodedNames.js",
+    "verify:till": "node scripts/verifyTillEndToEnd.js"
   },
   "author": "",
   "license": "ISC",
