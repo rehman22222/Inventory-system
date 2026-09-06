@@ -1,6 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { FiEdit2, FiPlus, FiX } from "react-icons/fi";
+import { FaMoneyBillWave } from "react-icons/fa";
 import { currency } from "./posUtils";
 
 /* One-tap cards for what the shop sells constantly and cannot scan.
@@ -22,46 +23,75 @@ function QuickSellCards({
   cards = [],
   onPick,
   onNew,
+  onEdit,
   onRemove,
   onToggleEdit,
+  onQuickCash,
   editing = false,
 }) {
   const { t } = useTranslation();
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
+      {/* Two groups, and the split is by what they act on.
+          Left: the heading and the two controls that manage THE CARDS —
+          add one, tidy them up. They sit against the word so it reads as
+          "cards: add, edit", and neither is reachable without the label
+          telling you what they belong to.
+          Right, on its own: quick cash. It makes no card and changes none;
+          it puts one price in the basket and closes. Grouping it with the
+          card controls invited a thumb reaching for "add a card" to hit it
+          instead, and the far corner is the cheapest way to say they are
+          different things. */}
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
-          {t("pos.quickSell.title", "Quick sell")}
-        </p>
-        <div className="flex items-center gap-1">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+            {t("pos.quickSell.title", "Cards")}
+          </p>
+
           {/* Only offered once there is something to tidy. */}
           {cards.length > 0 && (
             <button
               type="button"
               onClick={onToggleEdit}
               aria-pressed={editing}
-              className={`flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wide ring-1 transition active:scale-95 ${
+              aria-label={
+                editing ? t("pos.quickSell.done", "Done") : t("pos.quickSell.edit", "Edit")
+              }
+              title={
+                editing ? t("pos.quickSell.done", "Done") : t("pos.quickSell.edit", "Edit")
+              }
+              className={`flex h-9 w-9 items-center justify-center ring-1 transition active:scale-95 ${
                 editing
                   ? "bg-red-900/60 text-red-200 ring-red-700"
                   : "bg-slate-800 text-slate-400 ring-slate-700 hover:text-slate-100"
               }`}
             >
-              <FiEdit2 className="h-3 w-3" />
-              {editing
-                ? t("pos.quickSell.done", "Done")
-                : t("pos.quickSell.edit", "Edit")}
+              <FiEdit2 className="h-4 w-4" />
             </button>
           )}
+          {/* A bare plus. The word "New" beside a heading that already says
+              Cards was saying the same thing twice, and the plus is the one
+              symbol on a till nobody has to read. */}
           <button
             type="button"
             onClick={onNew}
-            className="flex items-center gap-1 bg-slate-800 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-300 ring-1 ring-slate-700 transition hover:bg-slate-700 hover:text-slate-100 active:scale-95"
+            aria-label={t("pos.quickSell.new", "New card")}
+            title={t("pos.quickSell.new", "New card")}
+            className="flex h-9 w-9 items-center justify-center bg-slate-800 text-slate-300 ring-1 ring-slate-700 transition hover:bg-slate-700 hover:text-slate-100 active:scale-95"
           >
-            <FiPlus className="h-3 w-3" />
-            {t("pos.quickSell.new", "New")}
+            <FiPlus className="h-5 w-5" />
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={onQuickCash}
+          className="flex h-9 shrink-0 items-center gap-1.5 bg-amber-700 px-3.5 text-xs font-bold uppercase tracking-wide text-white ring-1 ring-amber-500 transition hover:bg-amber-600 active:scale-95"
+        >
+          <FaMoneyBillWave className="h-4 w-4" />
+          {t("pos.quickCash.short", "Misc")}
+        </button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto pe-0.5">
@@ -69,7 +99,7 @@ function QuickSellCards({
           /* Says what the thing is for, because an empty rail on a new till
              explains nothing and this is the one panel a cashier will not go
              looking for on their own. */
-          <p className="px-1 py-6 text-center text-[11px] leading-relaxed text-slate-600">
+          <p className="px-1 py-6 text-center text-xs leading-relaxed text-slate-600">
             {t(
               "pos.quickSell.empty",
               "No cards yet. Add one for anything you sell often that has no barcode.",
@@ -81,8 +111,17 @@ function QuickSellCards({
               <div key={card._id} className="relative">
                 <button
                   type="button"
-                  onClick={() => onPick(card)}
-                  className="flex h-full w-full flex-col items-center justify-center gap-1 border border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900 px-2 py-3 text-center transition hover:border-amber-500 hover:from-slate-700 active:scale-[0.97]"
+                  /* In edit mode the card stops being something you sell and
+                     becomes something you change. Tapping it opens its price
+                     and name rather than dropping it in the basket — pressing
+                     "edit" and then having the card still ring up a sale is
+                     the surprise that costs a refund. */
+                  onClick={() => (editing ? onEdit(card) : onPick(card))}
+                  className={`flex h-full w-full flex-col items-center justify-center gap-1 border bg-gradient-to-b px-2 py-3 text-center transition active:scale-[0.97] ${
+                    editing
+                      ? "border-dashed border-cyan-700 from-slate-800 to-slate-900 pt-7 hover:border-cyan-400"
+                      : "border-slate-700 from-slate-800 to-slate-900 hover:border-amber-500 hover:from-slate-700"
+                  }`}
                 >
                   {/* Price first and largest. The name tells the cashier which
                       card this is; the price is what they are checking against
@@ -103,9 +142,17 @@ function QuickSellCards({
                     type="button"
                     onClick={() => onRemove(card)}
                     aria-label={t("pos.quickSell.remove", "Remove card")}
-                    className="absolute -end-1 -top-1 bg-red-800 p-1 text-white ring-1 ring-red-500 transition hover:bg-red-700"
+                    title={t("pos.quickSell.remove", "Remove card")}
+                    /* INSIDE the card, not hanging off it.
+                       Sat at -top-1/-end-1 it overhung the tile on two sides,
+                       which put it over the gap into the neighbour on the left
+                       and straight under the scroll container's clip on the
+                       right — so the last column's crosses were cut in half.
+                       Nothing that has to be pressed should live outside the
+                       box it belongs to. */
+                    className="absolute end-1 top-1 flex h-6 w-6 items-center justify-center rounded-sm bg-red-800/90 text-white ring-1 ring-red-500 transition hover:bg-red-600"
                   >
-                    <FiX className="h-3 w-3" />
+                    <FiX className="h-3.5 w-3.5" />
                   </button>
                 )}
               </div>

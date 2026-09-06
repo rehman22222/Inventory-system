@@ -13,10 +13,16 @@ import { sanitizeDecimal } from "./posUtils";
  * answer questions about an item they are holding precisely because nobody has
  * had time to answer them yet.
  */
-function QuickSellModal({ onCreate, onClose, saving = false }) {
+// `card` turns this into an edit rather than a create. Same two fields either
+// way — a card IS a name and a price — so one form serves both instead of a
+// second dialog that would have to be kept in step with this one.
+function QuickSellModal({ card = null, onCreate, onClose, saving = false }) {
   const { t } = useTranslation();
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
+  const editing = Boolean(card);
+  const [name, setName] = useState(card?.name || "");
+  const [price, setPrice] = useState(
+    card?.Price === undefined || card?.Price === null ? "" : String(card.Price),
+  );
 
   const amount = Number(price);
   const ready = name.trim().length > 0 && Number.isFinite(amount) && amount > 0;
@@ -29,7 +35,11 @@ function QuickSellModal({ onCreate, onClose, saving = false }) {
 
   return (
     <PosModal
-      title={t("pos.quickSell.newTitle", "New quick-sell card")}
+      title={
+        editing
+          ? t("pos.quickSell.editTitle", "Edit card")
+          : t("pos.quickSell.newTitle", "New quick-sell card")
+      }
       subtitle={t(
         "pos.quickSell.newSubtitle",
         "For something you sell often that has no barcode",
@@ -100,7 +110,9 @@ function QuickSellModal({ onCreate, onClose, saving = false }) {
           >
             {saving
               ? t("pos.processing", "Working…")
-              : t("pos.quickSell.create", "Add card")}
+              : editing
+                ? t("common.save", "Save")
+                : t("pos.quickSell.create", "Add card")}
           </button>
         </div>
       </form>

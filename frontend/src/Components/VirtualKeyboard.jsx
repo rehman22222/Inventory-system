@@ -83,68 +83,85 @@ const isNumberInput = (el) =>
   el.tagName === "INPUT" &&
   (el.getAttribute("type") || "").toLowerCase() === "number";
 
-// The till's normal rows: CAPITALS WITH DIGITS, plus the everyday punctuation.
-//
-// This is deliberately not a physical keyboard's pairing. There, shift gives you
-// capitals AND the symbol row together — which put "!@#$%" in front of the
-// cashier by default and pushed the digits out of reach. Here letters and numbers
-// share one layout, because a product name and a quantity are what actually get
-// typed, and neither should need a toggle.
-const CAPS_ROWS = [
-  "` 1 2 3 4 5 6 7 8 9 0 - = {bksp}",
-  "{tab} Q W E R T Y U I O P [ ] \\",
-  "{lock} A S D F G H J K L ; ' {enter}",
-  "{shift} Z X C V B N M , . / {shift}",
-  ".com @ {space}",
+/* The till's keyboard, laid out like a phone rather than like a typewriter.
+ *
+ * It used to carry a full desktop row set: a digits row across the top, tab,
+ * caps, brackets and backslash — fourteen columns and five rows. On a bar the
+ * width of a till screen that made every key narrower than the finger pressing
+ * it, which is the one thing an on-screen keyboard cannot afford.
+ *
+ * Eleven columns and four rows instead. The digits move behind a {numbers}
+ * toggle, which is where a phone keeps them and where nobody has ever had
+ * trouble finding them — and paying one tap for a digit buys roughly 30% more
+ * width on every letter, every time. Quantities are typed on the till's own
+ * keypad anyway; this bar is for names.
+ *
+ * Lowercase is the resting state now. Capitals were the default on the argument
+ * that packaging is printed in caps, but what is actually typed here is a
+ * search — and search does not care, while a name typed in caps is stored in
+ * caps and reads as shouting everywhere it appears afterwards.
+ */
+const LETTER_ROWS_LOWER = [
+  "q w e r t y u i o p {bksp}",
+  "a s d f g h j k l ' {enter}",
+  "{shift} z x c v b n m , . ? {shift}",
+  "{numbers} @ {space} {hide}",
 ];
 
-// What caps switches to: lowercase, and the symbols that came off the row above.
-const LOWER_ROWS = [
-  "~ ! @ # $ % ^ & * ( ) _ + {bksp}",
-  "{tab} q w e r t y u i o p { } |",
-  "{lock} a s d f g h j k l : \" {enter}",
-  "{shift} z x c v b n m < > ? {shift}",
-  ".com @ {space}",
+const LETTER_ROWS_UPPER = [
+  "Q W E R T Y U I O P {bksp}",
+  "A S D F G H J K L ' {enter}",
+  "{shift} Z X C V B N M , . ? {shift}",
+  "{numbers} @ {space} {hide}",
+];
+
+// Digits and the punctuation a product name or an email actually needs. Not a
+// full symbol set: every key added here comes back out of the width of the
+// others, and nothing at a counter is typed in APL.
+const SYMBOL_ROWS = [
+  "1 2 3 4 5 6 7 8 9 0 {bksp}",
+  "- _ / : ; ( ) & % {enter}",
+  "{letters} . , ? ! + = ' \" {letters}",
+  "{letters} @ {space} {hide}",
 ];
 
 const KEYBOARD_LAYOUTS = {
-  caps: CAPS_ROWS,
-  lower: LOWER_ROWS,
-  // react-simple-keyboard falls back to a layout called "default" if the name it
-  // is given ever goes missing. Point that at the till's normal rows so the worst
-  // case is the usual keyboard rather than an empty one.
-  default: CAPS_ROWS,
-  numeric: [
-    "1 2 3",
-    "4 5 6",
-    "7 8 9",
-    ". 0 {bksp}",
-    "{enter}",
-  ],
+  lower: LETTER_ROWS_LOWER,
+  upper: LETTER_ROWS_UPPER,
+  symbols: SYMBOL_ROWS,
+  // react-simple-keyboard falls back to a layout called "default" if the name
+  // it is given ever goes missing. Point that at the ordinary letters so the
+  // worst case is the usual keyboard rather than an empty one.
+  default: LETTER_ROWS_LOWER,
 };
 
 const KEYBOARD_DISPLAY = {
-  "{bksp}": "backspace",
-  "{enter}": "< enter",
-  "{tab}": "tab",
-  "{lock}": "caps",
-  "{shift}": "shift",
+  "{bksp}": "⌫",
+  "{enter}": "enter",
+  // Arrows, like a phone. "shift" spelled out took the width of two letters at
+  // each end of the row it sits on, and the arrow is the more legible of the
+  // two at a glance anyway.
+  "{shift}": "↑",
+  "{numbers}": "&123",
+  "{letters}": "abc",
+  "{hide}": "▼",
   "{space}": " ",
 };
 
-// The till opens in CAPITALS. Almost everything a cashier types here is a
-// product name, a brand or a flavour, and those are printed in caps on the
-// packaging — so caps is the common case, not the exception.
-//
-// caps/shift therefore toggles DOWN to lowercase and stays there until pressed
-// again. There is deliberately no one-shot shift release: releasing after a
-// single letter would drop the very next character back out of caps, which is
-// the opposite of what is wanted when caps is the default.
-const TEXT_LAYOUT_CAPS = "caps";
+/* The resting state, and what shift does to it.
+ *
+ * Shift is a straight toggle that STAYS where it is put — there is deliberately
+ * no one-shot release. Releasing after a single letter is right for prose and
+ * wrong here: the thing being typed in capitals at a till is a whole product
+ * name, not the first letter of a sentence.
+ */
 const TEXT_LAYOUT_LOWER = "lower";
+const TEXT_LAYOUT_UPPER = "upper";
+const TEXT_LAYOUT_SYMBOLS = "symbols";
 
-// Which layout a field should open with.
-const layoutFor = (mode) => (mode === "numeric" ? "numeric" : TEXT_LAYOUT_CAPS);
+// Which layout a field should open with. A number field gets the pad instead —
+// that is a separate component entirely, see NUMERIC_KEY_ROWS below.
+const layoutFor = (mode) => (mode === "numeric" ? "numeric" : TEXT_LAYOUT_LOWER);
 
 const NUMERIC_KEY_ROWS = [
   ["1", "2", "3"],
@@ -252,7 +269,7 @@ function VirtualKeyboard() {
     );
   });
   const [visible, setVisible] = useState(false);
-  const [layoutName, setLayoutName] = useState(TEXT_LAYOUT_CAPS);
+  const [layoutName, setLayoutName] = useState(TEXT_LAYOUT_LOWER);
   const [keyboardMode, setKeyboardMode] = useState("text");
 
   const syncKeyboardHeight = useCallback(() => {
@@ -400,15 +417,31 @@ function VirtualKeyboard() {
   const onKeyPress = useCallback((button) => {
     const el = activeEl.current;
 
-    if (layoutName === "numeric" && (button === "{shift}" || button === "{lock}" || button === "{tab}")) {
+    // Hide, from the keyboard itself. The reference bar this layout follows puts
+    // it bottom-left, which is where a thumb already is.
+    if (button === "{hide}") {
+      setVisible(false);
+      if (el) el.blur();
       return;
     }
 
-    if (button === "{shift}" || button === "{lock}") {
-      // A straight toggle between capitals and lowercase, and it stays where it
-      // is put — see TEXT_LAYOUT_CAPS for why there is no one-shot release.
+    if (button === "{numbers}") {
+      setLayoutName(TEXT_LAYOUT_SYMBOLS);
+      return;
+    }
+
+    if (button === "{letters}") {
+      setLayoutName(TEXT_LAYOUT_LOWER);
+      return;
+    }
+
+    if (button === "{shift}") {
+      // A straight toggle, and it stays where it is put — see the note above
+      // TEXT_LAYOUT_LOWER for why there is no one-shot release. Pressed from
+      // the symbol layout it goes back to letters, which is what a thumb that
+      // reached for it there was after.
       setLayoutName((prev) =>
-        prev === TEXT_LAYOUT_CAPS ? TEXT_LAYOUT_LOWER : TEXT_LAYOUT_CAPS,
+        prev === TEXT_LAYOUT_LOWER ? TEXT_LAYOUT_UPPER : TEXT_LAYOUT_LOWER,
       );
       return;
     }
@@ -487,7 +520,7 @@ function VirtualKeyboard() {
 
     const value = mutateActiveValue(el, nextCharacter);
     if (keyboard.current) keyboard.current.setInput(value);
-  }, [layoutName]);
+  }, []);
 
   // Devices with a native soft keyboard (phones/tablets) get nothing from us —
   // not even the toggle — so the OS keyboard is the only one that ever appears.

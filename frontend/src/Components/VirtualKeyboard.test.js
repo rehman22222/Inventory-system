@@ -182,81 +182,97 @@ describe("on-screen keypad — carry-over between fields", () => {
   });
 });
 
-describe("on-screen keypad — capitals by default", () => {
-  // Cashiers type product names, brands and flavours, which are printed in
-  // capitals on the packaging. Caps is the common case here, not the exception.
+describe("on-screen keypad — a phone layout, not a typewriter", () => {
+  /* Eleven columns and four rows, laid out the way a phone is.
+   *
+   * The old bar carried a digits row, tab, caps, brackets and backslash —
+   * fourteen columns across the width of a till screen, which left every key
+   * narrower than the finger pressing it. Digits moved behind a {numbers}
+   * toggle, which is where a phone keeps them, and the letters got the width
+   * back. */
   const textBox = { type: "text" };
 
-  test("a text field opens in capitals", () => {
+  test("a text field opens in lowercase", () => {
     focusField(textBox);
 
+    tap("q");
+
+    expect(field.value).toBe("q");
+  });
+
+  test("shift lifts to capitals and STAYS there", () => {
+    focusField(textBox);
+
+    tap("{shift}");
     tap("Q");
-
-    expect(field.value).toBe("Q");
-  });
-
-  test("caps drops to lowercase and stays there", () => {
-    focusField(textBox);
-
-    tap("{lock}");
-    tap("q");
-    tap("w");
-
-    // Both letters are lowercase: there is no one-shot release putting the
-    // second character back into capitals.
-    expect(field.value).toBe("qw");
-  });
-
-  test("caps toggles back up again", () => {
-    focusField(textBox);
-
-    tap("{lock}");
-    tap("q");
-    tap("{lock}");
     tap("W");
 
-    expect(field.value).toBe("qW");
+    // Both capitals: no one-shot release. What gets typed in capitals at a till
+    // is a whole product name, not the first letter of a sentence.
+    expect(field.value).toBe("QW");
   });
 
-  test("the top row is digits, not symbols", () => {
+  test("shift drops back to lowercase again", () => {
     focusField(textBox);
 
-    // A physical keyboard pairs capitals with the symbol row. Here capitals are
-    // the default, so pairing them that way would have put "!@#$%" in front of
-    // the cashier and hidden the digits behind a toggle.
+    tap("{shift}");
+    tap("Q");
+    tap("{shift}");
+    tap("w");
+
+    expect(field.value).toBe("Qw");
+  });
+
+  test("letters carry no digit row — the digits are behind &123", () => {
+    focusField(textBox);
+
+    expect(container.querySelector('[data-skbtn="q"]')).not.toBeNull();
+    expect(container.querySelector('[data-skbtn="1"]')).toBeNull();
+
+    tap("{numbers}");
+
     expect(container.querySelector('[data-skbtn="1"]')).not.toBeNull();
-    expect(container.querySelector('[data-skbtn="!"]')).toBeNull();
 
     tap("6");
     tap("0");
     tap("0");
-    tap("0");
 
-    expect(field.value).toBe("6000");
+    expect(field.value).toBe("600");
   });
 
-  test("the symbols arrive with lowercase on caps", () => {
+  test("abc comes back from the symbol layout", () => {
     focusField(textBox);
-    tap("{lock}");
 
-    expect(container.querySelector('[data-skbtn="!"]')).not.toBeNull();
-    expect(container.querySelector('[data-skbtn="1"]')).toBeNull();
+    tap("{numbers}");
+    tap("5");
+    tap("{letters}");
+    tap("a");
 
-    tap("@");
-
-    expect(field.value).toBe("@");
+    expect(field.value).toBe("5a");
   });
 
-  test("everyday punctuation stays on the default layout", () => {
+  test("everyday punctuation stays on the letters", () => {
     focusField(textBox);
 
-    // A full stop and a comma are needed far more often at a till than "<" and
-    // ">", so they sit with the capitals rather than behind caps.
-    tap("A");
+    // A full stop and a comma are needed far more often at a till than a
+    // bracket, so they sit with the letters rather than behind the toggle.
+    tap("a");
     tap(".");
-    tap("B");
+    tap("b");
 
-    expect(field.value).toBe("A.B");
+    expect(field.value).toBe("a.b");
+  });
+
+  test("the @ is reachable without leaving the letters", () => {
+    focusField(textBox);
+
+    // Receipts get emailed from this till, and an address typed one toggle at a
+    // time is an address that gets typed wrong.
+    tap("a");
+    tap("@");
+    tap("b");
+
+    expect(field.value).toBe("a@b");
   });
 });
 

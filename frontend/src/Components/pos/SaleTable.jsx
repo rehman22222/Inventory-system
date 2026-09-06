@@ -13,7 +13,7 @@ import emptyCartArt from "../../images/category-icons/empty-cart.png";
 // The figures are set a size up from the rest of the till, so the panel now
 // gives each column the room that size actually needs. Reserving the old widths
 // against the larger type is what puts a price on two lines.
-const COLS = "grid-cols-[1fr_72px_104px_96px] sm:grid-cols-[1fr_80px_112px_108px]";
+const COLS = "grid-cols-[1fr_88px_120px_116px] sm:grid-cols-[1fr_96px_128px_124px]";
 
 // The shop's own trolley, for a basket with nothing in it yet. Masked like the
 // category marks, so it sits in the same muted grey as the line beneath it
@@ -75,7 +75,7 @@ function SaleTable({
       <div
         key={`${item.productId}-${item.part}`}
         onClick={() => onSelect(item.productId)}
-        className={`grid ${COLS} cursor-pointer items-center gap-1.5 border-b border-slate-900 px-3 py-3 text-base transition ${
+        className={`grid ${COLS} cursor-pointer items-center gap-2 border-b border-slate-900 px-4 py-3.5 text-lg transition ${
           active
             ? "bg-cyan-950/50 shadow-[inset_3px_0_0_0_theme(colors.cyan.500)]"
             : "hover:bg-slate-900/60"
@@ -86,12 +86,12 @@ function SaleTable({
             strength — "Mentos M…" identifies nothing, and this catalogue puts
             what distinguishes two lines at the END of the name. */}
         <div className="min-w-0">
-          <p className="text-[15px] font-medium leading-snug text-slate-100">
+          <p className="text-[17px] font-medium leading-snug text-slate-100">
             <span className="break-words">{item.name}</span>
           </p>
         </div>
 
-        <span className="text-end font-mono text-[15px] tabular-nums text-slate-400">
+        <span className="text-end font-mono text-[17px] tabular-nums text-slate-400">
           {currency(item.price)}
         </span>
 
@@ -108,9 +108,9 @@ function SaleTable({
             className="bg-slate-800 p-2 text-slate-400 transition hover:bg-slate-700 hover:text-slate-100 active:scale-90"
             aria-label={t("pos.table.decrease")}
           >
-            <FiMinus className="h-3.5 w-3.5" />
+            <FiMinus className="h-4 w-4" />
           </button>
-          <span className="pos-plain-num w-8 text-center font-mono text-[17px] font-semibold tabular-nums text-slate-100">
+          <span className="pos-plain-num w-9 text-center font-mono text-[20px] font-semibold tabular-nums text-slate-100">
             {item.quantity}
           </span>
           <button
@@ -122,7 +122,7 @@ function SaleTable({
             className="bg-slate-800 p-2 text-slate-400 transition hover:bg-slate-700 hover:text-slate-100 active:scale-90"
             aria-label={t("pos.table.increase")}
           >
-            <FiPlus className="h-3.5 w-3.5" />
+            <FiPlus className="h-4 w-4" />
           </button>
         </div>
 
@@ -132,7 +132,7 @@ function SaleTable({
               same kind of number they just tapped on the grid — not as another
               piece of the row's furniture. The unit price beside it stays grey:
               two cyan columns and neither one leads. */}
-          <span className="font-mono text-[17px] font-semibold tabular-nums text-cyan-400">
+          <span className="font-mono text-[20px] font-semibold tabular-nums text-cyan-400">
             {currency(item.price * item.quantity)}
           </span>
           <button
@@ -144,7 +144,7 @@ function SaleTable({
             className="p-1 text-slate-700 transition hover:bg-red-950 hover:text-red-400"
             aria-label={t("pos.table.remove")}
           >
-            <FiX className="h-4 w-4" />
+            <FiX className="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -154,7 +154,7 @@ function SaleTable({
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-slate-950">
       <div
-        className={`grid ${COLS} gap-1.5 border-b border-slate-800 bg-slate-900/80 px-3 py-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500`}
+        className={`grid ${COLS} gap-2 border-b border-slate-800 bg-slate-900/80 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-500`}
       >
         <span>{t("pos.table.product")}</span>
         <span className="text-end">{t("pos.table.rate")}</span>

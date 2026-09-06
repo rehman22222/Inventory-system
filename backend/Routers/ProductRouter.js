@@ -1,6 +1,6 @@
 const express=require("express")
 const router=express.Router()
-const {Addproduct,quickAddProduct,getTopProductsByQuantity,RemoveProduct,SearchProduct,EditProduct,getProduct,getProductById,getProductByBarcode,attachBarcode,generateRandomBarcodes,listQuickSell,createQuickSell,removeQuickSell}=require('../controller/productController')
+const {Addproduct,quickAddProduct,getTopProductsByQuantity,RemoveProduct,SearchProduct,EditProduct,getProduct,getProductById,getProductByBarcode,attachBarcode,generateRandomBarcodes,listQuickSell,createQuickSell,updateQuickSell,removeQuickSell}=require('../controller/productController')
 const {authmiddleware,adminmiddleware,adminOrManager,adminOrSuperadmin,tillUser}=require('../middleware/Authmiddleware')
 const {upload}=require('../middleware/upload')
 
@@ -35,6 +35,7 @@ router.get("/getTopProductsByQuantity",authmiddleware,getTopProductsByQuantity)
 // documents and productRouter already warns about.
 router.get("/quick-sell",authmiddleware,tillUser,listQuickSell)
 router.post("/quick-sell",authmiddleware,tillUser,createQuickSell)
+router.put("/quick-sell/:productId",authmiddleware,tillUser,updateQuickSell)
 router.delete("/quick-sell/:productId",authmiddleware,tillUser,removeQuickSell)
 
 // One whole product, for the till's edit form. Restricted to the same people who

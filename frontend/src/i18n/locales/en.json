@@ -832,14 +832,14 @@
     },
     "clearCategory": "Show all categories",
     "greeting": {
-      "morning": "Good morning",
-      "afternoon": "Good afternoon",
-      "evening": "Good evening"
+      "morning": "Good Morning",
+      "afternoon": "Good Afternoon",
+      "evening": "Good Evening"
     },
     "allCategories": "All categories",
     "quickSell": {
-      "title": "Quick Sell",
-      "new": "New",
+      "title": "Cards",
+      "new": "New card",
       "edit": "Edit",
       "done": "Done",
       "remove": "Remove card",
@@ -851,7 +851,22 @@
       "namePlaceholder": "e.g. Coil",
       "price": "Price",
       "create": "Add Card",
-      "notCounted": "This is not counted as stock — it can never run out, and it will not appear in the stock report."
+      "notCounted": "This is not counted as stock — it can never run out, and it will not appear in the stock report.",
+      "editTitle": "Edit Card"
+    },
+    "quickCash": {
+      "title": "Quick Cash",
+      "amount": "Amount",
+      "name": "Name (optional)",
+      "add": "Add to basket",
+      "keep": "Also save as a card",
+      "defaultName": "Misc.",
+      "short": "Misc",
+      "addAmount": "Add {{amount}}"
+    },
+    "monitor": {
+      "enter": "Monitor — full screen (F11)",
+      "exit": "Leave full screen (F11)"
     }
   },
   "sales": {

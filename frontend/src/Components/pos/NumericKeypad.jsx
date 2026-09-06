@@ -12,7 +12,7 @@ function NumericKeypad({ buffer, multiplier, onKey, onClear }) {
   return (
     <div className="space-y-1.5">
       <div className="flex gap-1.5">
-        <div className="flex h-10 flex-1 items-center justify-between border border-slate-800 bg-black px-3">
+        <div className="flex h-12 flex-1 items-center justify-between border border-slate-800 bg-black px-3">
           {multiplier ? (
             <span className="bg-cyan-900/60 px-1.5 py-0.5 text-[10px] font-bold uppercase text-cyan-300">
               {t("pos.keypad.qtyPending", { count: multiplier })}
@@ -22,12 +22,12 @@ function NumericKeypad({ buffer, multiplier, onKey, onClear }) {
               {t("pos.keypad.clear")}
             </span>
           )}
-          <span className="pos-numeric-keypad font-mono text-lg tabular-nums text-cyan-300">{buffer}</span>
+          <span className="pos-numeric-keypad font-mono text-xl tabular-nums text-cyan-300">{buffer}</span>
         </div>
         <button
           type="button"
           onClick={onClear}
-          className="h-10 w-14 bg-slate-800 text-xs font-bold uppercase text-slate-300 ring-1 ring-slate-700 transition hover:bg-slate-700 active:scale-95"
+          className="h-12 w-16 bg-slate-800 text-sm font-bold uppercase text-slate-300 ring-1 ring-slate-700 transition hover:bg-slate-700 active:scale-95"
         >
           {t("pos.keypad.clear")}
         </button>
@@ -39,7 +39,7 @@ function NumericKeypad({ buffer, multiplier, onKey, onClear }) {
             key={key}
             type="button"
             onClick={() => onKey(key)}
-            className={`pos-numeric-key h-11 font-mono text-lg font-semibold tabular-nums ring-1 transition active:scale-95 ${
+            className={`pos-numeric-key h-14 font-mono text-2xl font-semibold tabular-nums ring-1 transition active:scale-95 ${
               key === "X"
                 ? "bg-gradient-to-b from-cyan-700 to-cyan-800 text-white ring-cyan-600 hover:from-cyan-600 hover:to-cyan-700"
                 : "bg-gradient-to-b from-slate-800 to-slate-900 text-slate-100 ring-slate-700 hover:from-slate-700 hover:to-slate-800"
@@ -50,7 +50,6 @@ function NumericKeypad({ buffer, multiplier, onKey, onClear }) {
         ))}
       </div>
 
-      <p className="text-center text-[10px] text-slate-600">{t("pos.keypad.hint")}</p>
     </div>
   );
 }

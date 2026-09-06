@@ -847,7 +847,7 @@ const quickSellShape = (product) => ({
   // a scanned one goes through — the cart's stock checks read these.
   quantity: 0,
   nonStock: true,
-  quickSell: true,
+  quickSell: Boolean(product.quickSell),
   Category: product.Category,
   createdAt: product.createdAt,
 });
@@ -888,39 +888,62 @@ module.exports.createQuickSell = async (req, res) => {
       return res.status(400).json({ message: "That price is too high" });
     }
 
-    // Same name AND same price is the same card. A cashier who taps "add" twice
+    /* Pinned to the rail, or sold once and gone?
+     *
+     * "Quick cash" at the till is the second kind: the cashier types a figure
+     * for something nobody has a card for, and it goes straight in the basket.
+     * It still needs to BE a product — checkout prices every line from the
+     * catalogue and will not take a number from a browser — but it has no
+     * business sitting on the rail forever afterwards.
+     *
+     * So `pin` is the one thing about the shape the caller may decide.
+     * `nonStock` is NOT: that is what lets a line be sold without a count
+     * behind it, and a client able to set it could turn a counted product into
+     * an uncounted one. Same for the barcode, which a card never has. */
+    const pin = req.body?.pin === undefined ? true : Boolean(req.body.pin);
+    const amount = Math.round(price * 100) / 100;
+
+    // Same name AND same price is the same thing. A cashier who taps add twice
     // in a busy moment should end up with one card, not two identical ones they
-    // then have to tell apart on the rail.
+    // then have to tell apart on the rail — and a shop that rings up "4.50" ten
+    // times a day should get ten sales of one product, not ten products.
     const existing = await Product.findOne({
-      quickSell: true,
+      nonStock: true,
       name,
-      Price: Math.round(price * 100) / 100,
-    }).lean();
+      Price: amount,
+    });
 
     if (existing) {
-      return res.status(200).json({ card: quickSellShape(existing), existed: true });
+      // Asked to keep something that was previously sold once and forgotten:
+      // pin what is already there rather than making a second copy of it.
+      if (pin && !existing.quickSell) {
+        existing.quickSell = true;
+        await existing.save();
+      }
+      return res
+        .status(200)
+        .json({ card: quickSellShape(existing), existed: true, pinned: existing.quickSell });
     }
 
     const misc = await ensureMiscCategory();
 
     const created = await Product.create({
       name,
-      Price: Math.round(price * 100) / 100,
+      Price: amount,
       Category: misc._id,
       quantity: 0,
-      // The two flags that make it a card. Set here rather than taken from the
-      // request: this endpoint's whole job is to produce exactly this shape,
-      // and a client that could choose would be a client that could turn a
-      // counted product into an uncounted one.
+      // Never from the request — see above.
       nonStock: true,
-      quickSell: true,
+      quickSell: pin,
       // A counted figure of zero would be a lie; there is nothing to count.
       stockCounted: false,
     });
 
     void logActivity({
       action: "Create Quick Sell Card",
-      description: `Quick-sell card "${created.name}" added at ${created.Price}.`,
+      description: created.quickSell
+        ? `Quick-sell card "${created.name}" added at ${created.Price}.`
+        : `Quick cash line "${created.name}" rung up at ${created.Price}.`,
       entity: "product",
       entityId: created._id,
       userId: req.user?._id,
@@ -935,6 +958,64 @@ module.exports.createQuickSell = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Could not create the card", error: error.message });
+  }
+};
+
+module.exports.updateQuickSell = async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    if (!mongoose.isValidObjectId(productId)) {
+      return res.status(400).json({ message: "Invalid card id" });
+    }
+
+    const name = String(req.body?.name || "").trim();
+    const price = Number(req.body?.Price ?? req.body?.price);
+
+    if (!name) return res.status(400).json({ message: "Give the card a name" });
+    if (name.length > 60) {
+      return res.status(400).json({ message: "That name is too long for a card" });
+    }
+    if (!Number.isFinite(price) || price <= 0) {
+      return res.status(400).json({ message: "Enter a price above zero" });
+    }
+    if (price > 100000) return res.status(400).json({ message: "That price is too high" });
+
+    /* Scoped to quickSell, and only name and price are writable.
+     *
+     * This must never become a way to edit an ordinary product without the
+     * checks EditProduct applies, and it must never be able to clear
+     * `nonStock` — that flag is what lets the line be sold with no count
+     * behind it, and a card that lost it would start failing at checkout for
+     * being out of stock it never had. */
+    const card = await Product.findOne({ _id: productId, quickSell: true });
+
+    if (!card) return res.status(404).json({ message: "That card no longer exists" });
+
+    const before = { name: card.name, Price: card.Price };
+    card.name = name;
+    card.Price = Math.round(price * 100) / 100;
+    await card.save();
+
+    void logActivity({
+      action: "Edit Quick Sell Card",
+      description:
+        `Quick-sell card "${before.name}" (${before.Price}) ` +
+        `changed to "${card.name}" (${card.Price}).`,
+      entity: "product",
+      entityId: card._id,
+      userId: req.user?._id,
+      ipAddress: req.ip,
+    });
+
+    return res.status(200).json({ card: quickSellShape(card) });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: "A product with that name already exists" });
+    }
+    return res
+      .status(500)
+      .json({ message: "Could not update the card", error: error.message });
   }
 };
 

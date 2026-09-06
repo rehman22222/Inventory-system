@@ -334,7 +334,38 @@ async function main() {
     `total=${mixedSale.result.body?.receipt?.total} (2x2 + 1x5 = 9 expected)`,
   );
 
-  /* ── 6. Removing a card ───────────────────────────────────────────────── */
+  /* ── 6. Editing a card ────────────────────────────────────────────────── */
+
+  const editRes = response();
+  await products.updateQuickSell(
+    request({ name: "Coil XL", Price: 6.5 }, cashier, { productId: String(cardId) }),
+    editRes,
+  );
+  const edited = await Product.findById(cardId).lean();
+  check(
+    "a card's name and price can be edited",
+    editRes.result.statusCode === 200 && edited.name === "Coil XL" && edited.Price === 6.5,
+    `status=${editRes.result.statusCode} name=${edited.name} price=${edited.Price}`,
+  );
+  check(
+    "editing cannot clear nonStock or the card flag",
+    edited.nonStock === true && edited.quickSell === true && !edited.barcode,
+    `nonStock=${edited.nonStock} quickSell=${edited.quickSell} barcode=${edited.barcode}`,
+  );
+
+  const editNormal = response();
+  await products.updateQuickSell(
+    request({ name: "Hijacked", Price: 1 }, cashier, { productId: String(normal._id) }),
+    editNormal,
+  );
+  const normalUnchanged = await Product.findById(normal._id).lean();
+  check(
+    "the edit route refuses an ordinary product",
+    editNormal.result.statusCode === 404 && normalUnchanged.name === "Ordinary stocked item",
+    `status=${editNormal.result.statusCode} name=${normalUnchanged.name}`,
+  );
+
+  /* ── 7. Removing a card ───────────────────────────────────────────────── */
 
   const listBefore = response();
   await products.listQuickSell(request({}, cashier), listBefore);

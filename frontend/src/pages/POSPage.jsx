@@ -8,6 +8,8 @@ import {
   FiHash,
   FiClipboard,
   FiLogOut,
+  FiMinimize,
+  FiMonitor,
   FiBookOpen,
   FiPercent,
   FiPlay,
@@ -28,12 +30,13 @@ import { gettingallDeals } from "../features/dealSlice";
 import {
   getQuickSellCards,
   createQuickSellCard,
+  updateQuickSellCard,
   removeQuickSellCard,
 } from "../features/quickSellSlice";
 import ActionRail from "../Components/pos/ActionRail";
 import SaleTable, { EmptyCart } from "../Components/pos/SaleTable";
-import CategoryTiles from "../Components/pos/CategoryTiles";
 import QuickSellCards from "../Components/pos/QuickSellCards";
+import QuickCash from "../Components/pos/QuickCash";
 import QuickSellModal from "../Components/pos/QuickSellModal";
 import { iconForCategory } from "../Components/pos/categoryIcons";
 import NumericKeypad from "../Components/pos/NumericKeypad";
@@ -114,6 +117,40 @@ function POSPage() {
   const location = useLocation();
   const searchRef = useRef(null);
 
+  /* Full screen, the way F11 does it.
+   *
+   * A till spends its whole shift on one page, and the browser's own chrome —
+   * tabs, address bar, bookmarks — is a strip of screen the shop paid for and
+   * cannot use, plus a row of things a cashier can wander off into. F11 already
+   * does this; a button does it for the counter staff who do not know that.
+   *
+   * `isFullscreen` is read back from the document rather than remembered from
+   * the click, because it can change without us: pressing F11 or Escape does
+   * not go through this button, and an icon that had only tracked its own
+   * presses would end up showing the opposite of what the screen is doing.
+   */
+  const [isFullscreen, setIsFullscreen] = useState(
+    () => typeof document !== "undefined" && Boolean(document.fullscreenElement),
+  );
+
+  useEffect(() => {
+    const sync = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    // Both sides can be refused — a browser will not go full screen without a
+    // real gesture, and some are configured never to. Nothing to recover from
+    // if it says no, so it fails quietly rather than throwing at the counter.
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+    } else {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    }
+  }, []);
+
+
   const { getallproduct } = useSelector((state) => state.product);
   const { getallCategory } = useSelector((state) => state.category);
   const { deals: allDeals } = useSelector((state) => state.deal);
@@ -142,7 +179,11 @@ function POSPage() {
   const [query, setQuery] = useState("");
   // No "All" tile — the till always has one category open. It defaults to the
   // first one once the list loads.
-  const [category, setCategory] = useState(null);
+  // Kept as a filter the rest of the page still reads, but nothing sets it any
+  // more: the category picker came off the rail, because with the product grid
+  // now behind the search box there is nothing left for it to filter. The value
+  // stays null, which every read below already treats as "the whole catalogue".
+  const [category] = useState(null);
   const [cart, setCart] = useState([]);
   // One entry per unit, in the order it was rung up. The basket merges three of
   // a flavour onto one line, which loses the order the customer put them on the
@@ -224,6 +265,9 @@ function POSPage() {
   // deletion by whoever used it last.
   const [editingCards, setEditingCards] = useState(false);
   const [newCardOpen, setNewCardOpen] = useState(false);
+  const [quickCashOpen, setQuickCashOpen] = useState(false);
+  // The card being edited, or null when the dialog is making a new one.
+  const [cardBeingEdited, setCardBeingEdited] = useState(null);
 
   // Anything the till rang up while the line was down.
   const [offlineCache, setOfflineCache] = useState(null);
@@ -591,6 +635,36 @@ function POSPage() {
         },
       ];
     });
+
+  /* Quick cash: a price the cashier typed, straight into the basket.
+   *
+   * It has to become a real product first, and that is not a detour — checkout
+   * prices every line from the catalogue and refuses a figure sent by a
+   * browser, which is the rule that stops a till being talked into charging
+   * whatever it is told. So the amount is registered as a non-stock product and
+   * the basket gets that, exactly like a card.
+   *
+   * The server returns the existing one when the same name and price come round
+   * again, so a shop ringing up "4.50" all day gets one product with many
+   * sales rather than many products with one sale each.
+   */
+  const addQuickCash = async ({ Price, name, pin }) => {
+    // Nothing typed is the normal case, not the exception — a cashier with a
+    // queue enters a figure and nothing else. It still has to reach the sales
+    // report as SOMETHING, and "Misc." is the word the shop already uses for
+    // the catch-all it lands in.
+    const label = name || t("pos.quickCash.defaultName", "Misc.");
+
+    const result = await dispatch(createQuickSellCard({ name: label, Price, pin }));
+
+    if (!createQuickSellCard.fulfilled.match(result)) return;
+
+    const card = result.payload?.card;
+    if (!card) return;
+
+    tapProduct(card);
+    setQuickCashOpen(false);
+  };
 
   const setExchangeQty = (productId, quantity) =>
     setExchangeItems((current) =>
@@ -1461,12 +1535,20 @@ function POSPage() {
           <span className="hidden text-xs font-bold uppercase tracking-[0.22em] text-slate-500 lg:block">
             {t("pos.title")}
           </span>
-        </div>
 
-        {/* The shop saying hello, in its own time zone. Centred and absolute
-            so it sits in the middle of the header without pushing the shop
-            name or the till controls around as it writes itself on. */}
-        <Greeting className="pointer-events-none absolute inset-x-0 hidden text-center text-lg font-semibold tracking-wide text-cyan-400 lg:block" />
+          {/* The shop saying hello, in its own time zone.
+              It sat absolutely centred in the header, which put it on a line of
+              its own at a size nothing else shared — near the shop's name and
+              the till's label without belonging to either. It reads as part of
+              the same line now: same row, same baseline, one divider along from
+              POINT OF SALE. `pointer-events-none` because it is a label, not a
+              control, and it should never swallow a tap meant for the header. */}
+          <span className="hidden h-5 w-px bg-slate-700 lg:block" />
+          {/* Deliberately NOT uppercase, unlike POINT OF SALE beside it: the
+              capitals in "Good Evening" are the point, and text-transform
+              would flatten them straight back out. */}
+          <Greeting className="pointer-events-none hidden whitespace-nowrap text-base font-medium tracking-wide lg:block" />
+        </div>
 
         {/* The header keeps only what is about the till itself. The basket
             count and the language belong with the other standing facts on the
@@ -1485,6 +1567,41 @@ function POSPage() {
               {currency(sessionCredit)}
             </span>
           )}
+
+          {/* Beside the credit chip, never over it. Both are children of the
+              same flex row, so the chip appearing when a sale goes on account
+              simply moves this along rather than being covered by it — which
+              is what an absolutely positioned button here would have done. */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            title={
+              isFullscreen
+                ? t("pos.monitor.exit", "Leave full screen (F11)")
+                : t("pos.monitor.enter", "Monitor — full screen (F11)")
+            }
+            aria-label={
+              isFullscreen
+                ? t("pos.monitor.exit", "Leave full screen (F11)")
+                : t("pos.monitor.enter", "Monitor — full screen (F11)")
+            }
+            aria-pressed={isFullscreen}
+            className={`flex items-center justify-center p-2 ring-1 transition ${
+              isFullscreen
+                ? "bg-cyan-900/50 text-cyan-300 ring-cyan-700 hover:bg-cyan-800 hover:text-white"
+                : "bg-slate-800/60 text-slate-400 ring-slate-700 hover:bg-slate-700 hover:text-slate-100"
+            }`}
+          >
+            {/* A screen, because that is what the button is about — giving the
+                till the whole monitor. The minimise arrows only appear once it
+                already has it, where they are the way back rather than a second
+                symbol competing with this one. */}
+            {isFullscreen ? (
+              <FiMinimize className="h-4 w-4" />
+            ) : (
+              <FiMonitor className="h-4 w-4" />
+            )}
+          </button>
 
           <Link
             to={dashboardPath}
@@ -1544,7 +1661,7 @@ function POSPage() {
         <section
           className={`${
             pane === "sale" ? "flex" : "hidden"
-          } min-h-0 w-full shrink-0 flex-col border-e border-slate-800 lg:flex lg:w-[470px] xl:w-[550px] 2xl:w-[620px]`}
+          } min-h-0 w-full min-w-0 flex-col border-e border-slate-800 lg:flex lg:flex-1`}
         >
           <SaleTable
             cart={cart}
@@ -1881,52 +1998,53 @@ function POSPage() {
           </div>
         </section>
 
-        {/* The products and the rail, with the search bar across the top of
-            BOTH of them.
+        {/* The right-hand column: search, then whatever the cashier is
+            working with, then the keypad.
 
-            The box used to sit inside the product column, so its width was
-            whatever was left after the basket and the rail had taken theirs —
-            on a real till monitor that is a couple of hundred pixels, and the
-            one control the cashier types into was the smallest thing on the
-            screen. It now runs the full width of this side.
+            One column doing two jobs, never both at once. With nothing typed
+            it shows the shop's own cards — the things it sells constantly and
+            cannot scan. The moment anything is typed it becomes the search
+            results instead, because a cashier who is searching is looking for
+            one specific product and the cards are not it.
 
-            Deliberately NOT across the whole page: the basket keeps its own
-            full height on the left, because a search box stretched over the
-            sale as well would push the basket down and separate it from the
-            totals under it. */}
-        <div
+            The product grid used to have a column of its own in the middle,
+            standing empty for most of a shift. That space is the basket now. */}
+        <aside
           className={`${
             pane === "products" ? "flex" : "hidden"
-          } min-h-0 min-w-0 flex-1 flex-col lg:flex`}
+          } w-full min-h-0 shrink-0 flex-col gap-2.5 border-s border-slate-800 bg-slate-950 p-3 lg:flex lg:w-[360px] xl:w-[400px]`}
         >
-          <div className="relative shrink-0 bg-slate-900 px-2.5 pt-2.5 lg:px-3 lg:pt-3">
-            <FiSearch className="pointer-events-none absolute start-6 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-600 lg:start-7" />
+          <div className="relative shrink-0">
+            {/* No placeholder. The magnifier says what the box is, and the
+                sentence that used to sit in it was too long for the width and
+                arrived cut off mid-word — which reads as a bug rather than as
+                a hint. aria-label carries the same meaning for a screen reader,
+                where it is not competing for space. */}
+            <FiSearch className="pointer-events-none absolute start-3 top-1/2 h-7 w-7 -translate-y-1/2 text-slate-500" />
             <input
               ref={searchRef}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={t("pos.searchPlaceholder")}
-              className="h-12 w-full border border-slate-800 bg-black ps-11 pe-3 text-base text-slate-100 outline-none transition focus:border-cyan-600 lg:ps-12"
+              aria-label={t("pos.searchPlaceholder")}
+              className="h-12 w-full border border-slate-800 bg-black ps-12 pe-10 text-base text-slate-100 outline-none transition focus:border-cyan-600"
             />
+            {/* Clearing the box is what puts the cards back, so it needs to be
+                one tap and not a held backspace. */}
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label={t("common.clear", "Clear")}
+                className="absolute end-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center text-slate-500 transition hover:bg-slate-800 hover:text-slate-200"
+              >
+                <FiX className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-
-        {/* Centre: the products of the selected category */}
-        <section
-          className="flex min-h-0 min-w-0 flex-1 flex-col gap-2.5 bg-slate-900 p-2.5 lg:p-3"
-        >
-          {/* The category column is hidden below lg, so the tiles ride along here. */}
-          <div className="lg:hidden">
-            <CategoryTiles
-              categories={categories}
-              selected={category}
-              onSelect={setCategory}
-              onClear={() => setCategory(null)}
-              layout="row"
-            />
-          </div>
-
+          {/* Searching, or looking at the deals — the results take the column.
+              Otherwise the cards and the cash pad have it. */}
+          {searching || showingDeals ? (
           <div className="min-h-0 flex-1 overflow-y-auto border border-slate-800 bg-slate-950/60 p-2">
             {showingDeals ? (
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))]">
@@ -2060,80 +2178,27 @@ function POSPage() {
               </div>
             )}
           </div>
-
-          {/* Keypad lives in the right column on a till; on narrow screens it
-              follows the products, where the quantity multiplier is used. */}
-          <div className="lg:hidden">
-            <NumericKeypad
-              buffer={buffer}
-              multiplier={multiplier}
-              onKey={onKey}
-              onClear={clearKeypad}
-            />
-          </div>
-        </section>
-
-        {/* Right: category picker, quick-sell cards, then keypad.
-            The categories used to be a grid of tiles here and took most of the
-            rail to say something the cashier reads once per sale at most. As a
-            dropdown they cost one line, and the space they were holding goes to
-            the cards, which are pressed constantly. */}
-        <aside className="hidden w-[260px] shrink-0 flex-col gap-2.5 border-s border-slate-800 bg-slate-950 p-2.5 lg:flex xl:w-[300px]">
-          <div>
-            <label
-              htmlFor="pos-category"
-              className="mb-1 block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600"
-            >
-              {t("pos.categories")}
-            </label>
-            {/* The cross clears the filter in one tap.
-                Picking "All categories" off the list does the same thing, but
-                it costs opening the dropdown and reading past whatever is at
-                the top of it — and going back to the whole catalogue is the
-                most common thing a cashier does after filtering, not the least.
-                The button is always rendered and disabled instead of appearing
-                and vanishing, so the dropdown beside it never changes width
-                under a thumb that is already reaching for it. */}
-            <div className="flex gap-1.5">
-              <select
-                id="pos-category"
-                value={category || ""}
-                onChange={(event) => setCategory(event.target.value || null)}
-                className="h-11 min-w-0 flex-1 border border-slate-800 bg-black px-2 text-sm text-slate-100 outline-none transition focus:border-cyan-600"
-              >
-                <option value="">{t("pos.allCategories", "All categories")}</option>
-                {(categories || []).map((entry) => (
-                  <option key={entry._id} value={entry._id}>
-                    {entry.name}
-                    {entry.productCount ? ` (${entry.productCount})` : ""}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={() => setCategory(null)}
-                disabled={!category}
-                aria-label={t("pos.clearCategory", "Show all categories")}
-                title={t("pos.clearCategory", "Show all categories")}
-                className="flex h-11 w-11 shrink-0 items-center justify-center border border-slate-800 bg-slate-900 text-slate-400 transition hover:border-red-600 hover:bg-red-950 hover:text-red-300 active:scale-95 disabled:opacity-25 disabled:hover:border-slate-800 disabled:hover:bg-slate-900 disabled:hover:text-slate-400"
-              >
-                <FiX className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-
-          <QuickSellCards
-            cards={quickSellCards}
-            editing={editingCards}
-            onPick={(card) => tapProduct(card)}
-            onNew={() => setNewCardOpen(true)}
-            onToggleEdit={() => setEditingCards((on) => !on)}
-            onRemove={(card) => {
-              if (window.confirm(t("pos.quickSell.confirmRemove", { name: card.name }))) {
-                dispatch(removeQuickSellCard(card._id));
-              }
-            }}
-          />
+          ) : (
+            <>
+              <QuickSellCards
+                cards={quickSellCards}
+                editing={editingCards}
+                onPick={(card) => tapProduct(card)}
+                onNew={() => setNewCardOpen(true)}
+                onToggleEdit={() => setEditingCards((on) => !on)}
+                onQuickCash={() => setQuickCashOpen(true)}
+                onEdit={(card) => {
+                  setCardBeingEdited(card);
+                  setNewCardOpen(true);
+                }}
+                onRemove={(card) => {
+                  if (window.confirm(t("pos.quickSell.confirmRemove", { name: card.name }))) {
+                    dispatch(removeQuickSellCard(card._id));
+                  }
+                }}
+              />
+            </>
+          )}
 
           <NumericKeypad
             buffer={buffer}
@@ -2142,8 +2207,6 @@ function POSPage() {
             onClear={clearKeypad}
           />
         </aside>
-          </div>
-        </div>
       </div>
 
       <div className="no-print">
@@ -2511,17 +2574,37 @@ function POSPage() {
         />
       )}
 
+      {quickCashOpen && (
+        <QuickCash
+          busy={savingCard}
+          onAdd={addQuickCash}
+          onClose={() => setQuickCashOpen(false)}
+        />
+      )}
+
       {newCardOpen && (
         <QuickSellModal
+          card={cardBeingEdited}
           saving={savingCard}
-          onClose={() => setNewCardOpen(false)}
+          onClose={() => {
+            setNewCardOpen(false);
+            setCardBeingEdited(null);
+          }}
           onCreate={async (card) => {
-            const result = await dispatch(createQuickSellCard(card));
-            // Only close on success — a rejected create leaves the cashier
+            const result = cardBeingEdited
+              ? await dispatch(
+                  updateQuickSellCard({ productId: cardBeingEdited._id, ...card }),
+                )
+              : await dispatch(createQuickSellCard(card));
+
+            const action = cardBeingEdited ? updateQuickSellCard : createQuickSellCard;
+
+            // Only close on success — a rejected save leaves the cashier
             // looking at what they typed with the reason in a toast, rather
-            // than at a rail that silently did not gain a card.
-            if (createQuickSellCard.fulfilled.match(result)) {
+            // than at a rail that silently did not change.
+            if (action.fulfilled.match(result)) {
               setNewCardOpen(false);
+              setCardBeingEdited(null);
               setEditingCards(false);
             }
           }}

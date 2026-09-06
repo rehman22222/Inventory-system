@@ -48,6 +48,20 @@ export const createQuickSellCard = createAsyncThunk(
   },
 );
 
+export const updateQuickSellCard = createAsyncThunk(
+  "quickSell/update",
+  async ({ productId, ...card }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.put(`product/quick-sell/${productId}`, card);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Could not update the card",
+      );
+    }
+  },
+);
+
 export const removeQuickSellCard = createAsyncThunk(
   "quickSell/remove",
   async (productId, { rejectWithValue }) => {
@@ -90,20 +104,46 @@ const quickSellSlice = createSlice({
         const card = action.payload?.card;
         if (!card) return;
 
+        /* Only a PINNED line belongs on the rail.
+         *
+         * The same endpoint serves two things: making a card, and ringing up a
+         * one-off quick-cash amount. Both produce a real product — checkout
+         * will not price a figure sent by a browser — but the second one is
+         * sold once and is not the shop's shortcut for anything. Pushing it
+         * here would fill the rail with every odd price anybody ever typed.
+         */
+        if (!card.quickSell) return;
+
         // The server answers with the existing card when the same name and
         // price are sent twice, so guard against showing it on the rail twice.
         const already = state.cards.some(
           (entry) => String(entry._id) === String(card._id),
         );
         if (!already) state.cards.push(card);
-
-        toast.success(
-          action.payload?.existed ? "That card is already here" : "Card added",
-        );
       })
       .addCase(createQuickSellCard.rejected, (state, action) => {
         state.isSaving = false;
         toast.error(action.payload || "Could not create the card");
+      })
+
+      .addCase(updateQuickSellCard.pending, (state) => {
+        state.isSaving = true;
+      })
+      .addCase(updateQuickSellCard.fulfilled, (state, action) => {
+        state.isSaving = false;
+        const card = action.payload?.card;
+        if (!card) return;
+        // Replaced in place rather than pushed: the rail keeps its order, so a
+        // card a cashier has learned the position of does not move because
+        // somebody corrected its price.
+        state.cards = state.cards.map((entry) =>
+          String(entry._id) === String(card._id) ? card : entry,
+        );
+        toast.success("Card updated");
+      })
+      .addCase(updateQuickSellCard.rejected, (state, action) => {
+        state.isSaving = false;
+        toast.error(action.payload || "Could not update the card");
       })
 
       .addCase(removeQuickSellCard.fulfilled, (state, action) => {

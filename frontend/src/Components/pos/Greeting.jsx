@@ -52,7 +52,22 @@ export const usePartOfDay = () => {
 //
 // Anyone who has asked their system to stop animating things gets the finished
 // line immediately — the words are the point, the writing is the flourish.
-function Written({ text, className = "", delay = 0, step = 55, duration = 420 }) {
+function Written({
+  text,
+  className = "",
+  // Carried on each LETTER rather than on the line around them, and that is
+  // not a style preference — it is what keeps the gradient and the animation
+  // able to coexist. Clipping a background to text on the parent means the
+  // parent paints the colour and the letters paint nothing, so animating a
+  // letter's opacity would move something already invisible and the writing-on
+  // would simply not happen. Each letter carrying its own clipped gradient
+  // keeps both. The gradient runs top to bottom, so every letter shows the same
+  // sweep and the line still reads as one colour rather than a rainbow.
+  letterClassName = "",
+  delay = 0,
+  step = 55,
+  duration = 420,
+}) {
   const reduced =
     typeof window !== "undefined" &&
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -63,7 +78,11 @@ function Written({ text, className = "", delay = 0, step = 55, duration = 420 })
   // run off the pane rather than wrap.
   const words = useMemo(() => text.split(" "), [text]);
 
-  if (reduced) return <span className={className}>{text}</span>;
+  if (reduced) {
+    return (
+      <span className={`${className} ${letterClassName}`.trim()}>{text}</span>
+    );
+  }
 
   let index = 0;
 
@@ -74,7 +93,7 @@ function Written({ text, className = "", delay = 0, step = 55, duration = 420 })
           <span
             key={letterIndex}
             aria-hidden="true"
-            className="pos-written"
+            className={`pos-written ${letterClassName}`.trim()}
             style={{
               animationDelay: `${delay + index++ * step}ms`,
               animationDuration: `${duration}ms`,
@@ -114,7 +133,16 @@ export function Greeting({ className = "" }) {
     evening: "Good evening",
   }[part]);
 
-  return <Written key={part} text={text} className={className} step={130} duration={900} />;
+  return (
+    <Written
+      key={part}
+      text={text}
+      className={className}
+      letterClassName="pos-greeting-ink"
+      step={130}
+      duration={900}
+    />
+  );
 }
 
 export default Greeting;
