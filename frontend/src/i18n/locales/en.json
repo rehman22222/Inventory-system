@@ -755,9 +755,7 @@
       "tendered": "Amount Tendered",
       "noReceipt": "No Receipt",
       "goGreen": "Go Green",
-      "goGreenHint": "No receipt",
-      "print": "Print Receipt",
-      "printHint": "On paper",
+      "print": "Print",
       "customerEmail": "Customer Email",
       "send": "Send",
       "emailed": "Receipt sent to {{email}}",
@@ -765,7 +763,8 @@
       "emailNeeded": "Enter an email address first",
       "paidBy": "Paid by",
       "onAccount": "Credit — not yet paid",
-      "emailOptional": "Email (Optional)"
+      "emailOptional": "Email (Optional)",
+      "email": "Email"
     },
     "tile": {
       "outOfStock": "Out of Stock"

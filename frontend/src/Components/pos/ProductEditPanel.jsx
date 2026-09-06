@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
-import { FiX } from "react-icons/fi";
+import { FiArrowLeft } from "react-icons/fi";
 import axiosInstance from "../../lib/axios";
 import { EditProduct } from "../../features/productSlice";
 import { sanitizeDecimal, sanitizeInteger } from "./posUtils";
@@ -206,7 +206,11 @@ function ProductEditPanel({ product, categories, onSaved, onClose }) {
           className="flex h-9 w-9 shrink-0 items-center justify-center border border-slate-700 text-slate-300 hover:bg-slate-800"
           aria-label={t("pos.back", { defaultValue: "Back" })}
         >
-          <FiX className="h-4 w-4" />
+          {/* An arrow, not a cross. This panel is REACHED from the product
+             search — the cashier came from a list and is going back to it, not
+             dismissing something that appeared. Same rule PosModal states for
+             its own corner. */}
+          <FiArrowLeft className="h-4 w-4" />
         </button>
       </div>
 

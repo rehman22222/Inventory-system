@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
-import { FiAlertTriangle, FiLock, FiPrinter } from "react-icons/fi";
+import { FiArrowLeft, FiAlertTriangle, FiLock, FiPrinter } from "react-icons/fi";
 import axiosInstance from "../../lib/axios";
 import PosModal from "./PosModal";
 import { currency, printSlip } from "./posUtils";
@@ -532,8 +532,9 @@ function DayClosingModal({ onClosed, onClose }) {
                   <button
                     type="button"
                     onClick={() => setPreviewing(false)}
-                    className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900"
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900"
                   >
+                    <FiArrowLeft className="h-4 w-4" />
                     {t("dayClosing.back")}
                   </button>
                   <button
