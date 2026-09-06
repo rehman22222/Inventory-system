@@ -601,7 +601,12 @@
       "missingFields": "Name, price and category are required",
       "scopeNeeds": "Needs Barcode",
       "scopeOnline": "Online",
-      "scopeAll": "All Products"
+      "scopeAll": "All Products",
+      "alreadyHas": "already has barcode",
+      "countNow": "How many on the shelf?",
+      "noBarcodeYet": "no barcode yet",
+      "replaceAsk": "Replace it with the scanned one?",
+      "webStock": "web stock"
     },
     "history": {
       "title": "Sale History",
@@ -866,6 +871,31 @@
     "monitor": {
       "enter": "Monitor — full screen (F11)",
       "exit": "Leave full screen (F11)"
+    },
+    "back": "Back",
+    "cancel": "Cancel",
+    "productEdit": {
+      "barcode": "Barcode",
+      "barcodePlaceholder": "Scan or enter barcode",
+      "category": "Category",
+      "costPrice": "Cost price",
+      "costSourceHint": "Recorded from a {{currency}} invoice at {{rate}}. Changing it here records the figure in {{shop}} instead.",
+      "description": "Description",
+      "editNamed": "Edit {{name}}",
+      "expiry": "Expiry date",
+      "loadFailed": "Could not load this product.",
+      "lowStock": "Low-stock threshold",
+      "name": "Name",
+      "nameRequired": "Product name is required.",
+      "priceRequired": "Enter a valid selling price.",
+      "quantity": "Quantity",
+      "save": "Update product",
+      "saveFailed": "Could not update the product.",
+      "saved": "Product updated.",
+      "sellingPrice": "Selling price",
+      "shelfLabel": "Shelf label",
+      "shelfLabelInvalid": "Shelf label must be letters and numbers only.",
+      "title": "Edit product"
     }
   },
   "sales": {
@@ -1330,7 +1360,10 @@
     "endsAt": "Ends (Optional)",
     "kindSingle": "Single Product",
     "kindSingleHint": "3 Velo Mint for €12. One product, several of it — the offer never mixes.",
-    "perSetSingleHint": "{{n}} of the one product below. Buy {{n}} more and it is another set."
+    "perSetSingleHint": "{{n}} of the one product below. Buy {{n}} more and it is another set.",
+    "addedCount": "{{n}} products added",
+    "allAlreadyAdded": "All of these are already in the deal",
+    "eligible": "eligible"
   },
   "dayClosing": {
     "title": "Day Closing",
@@ -1509,5 +1542,8 @@
       "safety": "Export only; original Sale and Receipt records stay unchanged.",
       "download": "Download net sales report"
     }
+  },
+  "onlineStore": {
+    "title": "Online Store"
   }
 }
