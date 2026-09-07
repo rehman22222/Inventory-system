@@ -178,11 +178,15 @@ function eventDeckItems(
 const heroPreloadLinks = (slide?: { image?: string; mobileImage?: string }) => {
   if (!slide?.image) return [];
 
+  /* `as const` because the head takes React link attributes, where
+   * fetchPriority is "low" | "high" | "auto" rather than a string. In an object
+   * literal with no annotation to hold it, "high" widens to string and no
+   * longer fits. */
   const desktop = {
     rel: "preload",
     as: "image",
     href: cldHeroDesktopImage(slide.image),
-    fetchPriority: "high",
+    fetchPriority: "high" as const,
   };
 
   if (!slide.mobileImage) return [desktop];
@@ -193,7 +197,7 @@ const heroPreloadLinks = (slide?: { image?: string; mobileImage?: string }) => {
       as: "image",
       href: cldHeroMobileImage(slide.mobileImage),
       media: "(max-width: 767px)",
-      fetchPriority: "high",
+      fetchPriority: "high" as const,
     },
     { ...desktop, media: "(min-width: 768px)" },
   ];
