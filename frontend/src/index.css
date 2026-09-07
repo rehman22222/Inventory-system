@@ -654,7 +654,7 @@ input[inputmode="decimal"],
   padding: 0;
 }
 .simple-keyboard.osk-dark .hg-row {
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 }
 
 /* The gutter between keys, cut from the library's default 5px.
@@ -664,7 +664,7 @@ input[inputmode="decimal"],
  * between keys — and with eleven to a row, every millimetre taken off the
  * gutter is eleven millimetres given back to the letters. */
 .simple-keyboard.osk-dark .hg-button {
-  margin: 0 3px 0 0;
+  margin: 0 2px 0 0;
 }
 .simple-keyboard.osk-dark .hg-button:last-child {
   margin-right: 0;
@@ -676,12 +676,12 @@ input[inputmode="decimal"],
  * A flat fill with a hairline edge reads more cleanly at speed, and the press
  * state below is what actually confirms the tap landed. */
 .simple-keyboard.osk-dark .hg-button {
-  height: 74px;
+  height: 59px;
   background: #262b33;
   color: #f4f6f8;
   border: 1px solid #171b21;
-  border-radius: 6px;
-  font-size: 24px;
+  border-radius: 5px;
+  font-size: 19px;
   font-weight: 500;
   box-shadow: none;
 }
@@ -700,7 +700,7 @@ input[inputmode="decimal"],
 .simple-keyboard.osk-dark .hg-button[data-skbtn="{hide}"] {
   background: #1b1f26;
   color: #aeb6c0;
-  font-size: 21px;
+  font-size: 17px;
 }
 
 /* Enter is the one control worth finding without looking — it is how a
@@ -708,7 +708,7 @@ input[inputmode="decimal"],
 .simple-keyboard.osk-dark .hg-button[data-skbtn="{enter}"] {
   background: #1d4ed8;
   color: #fff;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -722,20 +722,20 @@ input[inputmode="decimal"],
 .pos-numeric-keypad {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  border-radius: 18px;
+  gap: 5px;
+  border-radius: 14px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   background:
     radial-gradient(circle at top left, rgba(34, 211, 238, 0.1), transparent 32%),
     rgba(15, 23, 42, 0.72);
-  padding: 10px;
+  padding: 8px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .pos-numeric-keypad-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: 5px;
 }
 
 .pos-numeric-keypad-row-single {
@@ -743,12 +743,12 @@ input[inputmode="decimal"],
 }
 
 .pos-numeric-key {
-  min-height: 52px;
-  border-radius: 10px;
+  min-height: 42px;
+  border-radius: 8px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   background: linear-gradient(180deg, #263246 0%, #1d2738 100%);
   color: #f8fafc;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 800;
   line-height: 1;
   box-shadow:
@@ -768,13 +768,13 @@ input[inputmode="decimal"],
 
 .pos-numeric-key-action {
   color: #bae6fd;
-  font-size: 26px;
+  font-size: 21px;
 }
 
 .pos-numeric-key-done {
-  min-height: 48px;
+  min-height: 38px;
   background: linear-gradient(180deg, #0e7490 0%, #155e75 100%);
-  font-size: 16px;
+  font-size: 13px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -876,13 +876,21 @@ body.osk-open .pos-modal-panel .unknown-barcode-summary {
 /* The letter keyboard, sized for a finger on a till monitor rather than for a
    cursor on a laptop.
 
-   46px is a FIXED size, not a step in a ladder, and that is deliberate. It used
-   to be the value a `max-height: 900px` query dropped to, with a taller 58px
-   size above it — which meant the shop saw one keyboard on the till's own
-   screen and a noticeably bigger one on any display with more vertical room.
-   A cashier learns where the keys are; they should not move because somebody
-   opened the browser on a different monitor. This is the size that was signed
-   off, so it is the size at every height that can fit it.
+   69px is a FIXED size, not a step in a ladder, and that is deliberate. It used
+   to be the value a `max-height: 900px` query dropped to, with a taller size
+   above it — which meant the shop saw one keyboard on the till's own screen and
+   a noticeably bigger one on any display with more vertical room. A cashier
+   learns where the keys are; they should not move because somebody opened the
+   browser on a different monitor. So it is one size at every height that can
+   fit it.
+
+   That size is the earlier 86px less 20%, asked for because the bar was eating
+   more of the till than the shop wanted to give it. Everything else about the
+   keyboard came down by the same fifth — row gaps, type, and the width caps in
+   VirtualKeyboard.jsx — so it reads as the same keyboard, smaller, rather than
+   as squashed keys. Nothing here needs to tell the page about it: --osk-height
+   is measured off the panel, so the room this gives back is handed over on its
+   own.
 
    The one step that remains is below, and it is not a preference — under about
    790px there is genuinely not enough screen for both this and the field being
@@ -892,14 +900,14 @@ body.osk-open .pos-modal-panel .unknown-barcode-summary {
    field is .pos-numeric-key above; which of the two appears is decided in
    VirtualKeyboard.jsx and is not affected by anything here. */
 .osk-text .simple-keyboard.osk-dark .hg-row {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .osk-text .simple-keyboard.osk-dark .hg-button {
-  height: 86px;
-  font-size: 30px;
+  height: 69px;
+  font-size: 24px;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 @media (max-height: 790px) {
@@ -911,8 +919,8 @@ body.osk-open .pos-modal-panel .unknown-barcode-summary {
   }
 
   .osk-text .simple-keyboard.osk-dark .hg-button {
-    height: 68px;
-    font-size: 26px;
+    height: 54px;
+    font-size: 21px;
   }
 }
 

@@ -561,18 +561,19 @@ function VirtualKeyboard() {
         >
           {/* Sizing only — WHICH keyboard appears is decided above by
               `keyboardMode`, from isNumericField(): a number/decimal field gets
-              the pad, everything else gets the full layout. Both simply run
-              wider here. A POS monitor is a wide screen and the cashier is
-              pressing keys with a thumb, so capping the letters at 4xl left
-              half the bar empty and every key narrower than the finger on it.
+              the pad, everything else gets the full layout.
 
-              1725px is 1500 + 15%. Note it only bites on a display wide enough
-              to have been hitting the old cap — on a narrower window the row
-              was already running the full width, and the side padding above
-              (px-1, down from p-2) is what buys the last few pixels there. */}
+              Both caps are the shop's 20% cut: 1380px is 1725 less a fifth, and
+              the pad's 410px is the same fraction off Tailwind's max-w-lg. The
+              key heights in index.css come down by the same amount, so the bar
+              shrinks in proportion rather than turning into a wide flat strip.
+
+              The letter cap only bites on a display wide enough to reach it; on
+              a narrower window the row already runs the full width, and the side
+              padding above (px-1) is what buys the last few pixels there. */}
           <div
             className={`mx-auto w-full ${
-              keyboardMode === "numeric" ? "max-w-lg" : "max-w-[1725px]"
+              keyboardMode === "numeric" ? "max-w-[410px]" : "max-w-[1380px]"
             }`}
           >
             <div className="mb-1 flex justify-end">
