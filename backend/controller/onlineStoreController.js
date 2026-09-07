@@ -4327,6 +4327,17 @@ const shippingAddressBlock = (order) => {
     </div>`;
 };
 
+// The shop's own name, used when the online-store settings have not been given
+// one. Every customer-facing email resolves its brand as
+// `business.tradingName || business.legalName || DEFAULT_BRAND_NAME`, so this is
+// what a shopper sees in the From line and the subject until the shop fills in
+// its trading name (Online Store -> Settings -> Business & legal).
+//
+// It is the real shop name rather than a placeholder for the same reason the
+// storefront URL below is: one deployment serves one shop, and "Online Store"
+// in a customer's inbox is not a neutral default, it is the wrong name.
+const DEFAULT_BRAND_NAME = "Cliffs Of Puff";
+
 const DEFAULT_STOREFRONT_PUBLIC_URL = "https://cliffsofpuff.com";
 
 // APP_URL belongs to the E360 backend and must never be used for customer
@@ -4395,7 +4406,7 @@ const professionalOrderEmail = (order, settings) => {
   const business = settings?.business || {};
   const footer = settings?.footer || {};
   const social = settings?.social || {};
-  const brandName = business.tradingName || business.legalName || "Our Store";
+  const brandName = business.tradingName || business.legalName || DEFAULT_BRAND_NAME;
   const logo = settings?.logo || "";
   const supportEmail = footer.supportEmail || "";
   const firstName = String(order.customer?.name || "there").trim().split(/\s+/)[0];
@@ -4654,7 +4665,7 @@ const sendOrderStatusEmail = async (store, order, injectedSettings = null) => {
     name:
       settings?.business?.tradingName ||
       settings?.business?.legalName ||
-      "Online Store",
+      DEFAULT_BRAND_NAME,
     addressLines: settings?.footer?.address ? [settings.footer.address] : [],
     phone: settings?.footer?.supportPhone || "",
   };
@@ -4782,7 +4793,7 @@ const sendOrderEmails = async (store, order) => {
       name:
         settings?.business?.tradingName ||
         settings?.business?.legalName ||
-        "Online Store",
+        DEFAULT_BRAND_NAME,
       addressLines: settings?.footer?.address ? [settings.footer.address] : [],
       phone: settings?.footer?.supportPhone || "",
     };
@@ -4826,7 +4837,7 @@ const onlineBrand = (settings) => ({
   name:
     settings?.business?.tradingName ||
     settings?.business?.legalName ||
-    "Online Store",
+    DEFAULT_BRAND_NAME,
   addressLines: settings?.footer?.address ? [settings.footer.address] : [],
   phone: settings?.footer?.supportPhone || "",
 });
@@ -4899,6 +4910,9 @@ const reviewRequestEmail = (order, link, brand, settings) => {
 // differently from the store side.
 module.exports.storeId = storeId;
 module.exports.getOrCreateSettings = getOrCreateSettings;
+// Same reason: the customer emails and the resend script brand themselves the
+// way the order emails do, and must not carry their own copy of the name.
+module.exports.DEFAULT_BRAND_NAME = DEFAULT_BRAND_NAME;
 /* Exposed for scripts/verifyOrderEmails.js, which checks that a shopper still
  * gets exactly three emails per order. Not part of the controller's API — the
  * app never reaches for this. */

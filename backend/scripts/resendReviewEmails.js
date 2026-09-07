@@ -15,7 +15,10 @@ require("dotenv").config();
 const crypto = require("crypto");
 const mongoose = require("mongoose");
 const { sendMail } = require("../libs/mailer");
-const { reviewRequestEmail } = require("../controller/onlineStoreController");
+const {
+  reviewRequestEmail,
+  DEFAULT_BRAND_NAME,
+} = require("../controller/onlineStoreController");
 const OnlineOrder = require("../models/OnlineOrdermodel");
 const OnlineReview = require("../models/OnlineReviewmodel");
 const OnlineStoreSetting = require("../models/OnlineStoreSettingmodel");
@@ -71,7 +74,7 @@ const base = () =>
         name:
           settings?.business?.tradingName ||
           settings?.business?.legalName ||
-          "Online Store",
+          DEFAULT_BRAND_NAME,
         addressLines: settings?.footer?.address ? [settings.footer.address] : [],
         phone: settings?.footer?.supportPhone || "",
       };

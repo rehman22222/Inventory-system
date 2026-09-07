@@ -26,7 +26,11 @@ const { signCustomerToken } = require("../libs/customerToken");
 const { sendMail, brandedHtml, esc } = require("../libs/mailer");
 const logActivity = require("../libs/logger");
 const loyalty = require("../libs/loyalty");
-const { storeId, getOrCreateSettings } = require("./onlineStoreController");
+const {
+  storeId,
+  getOrCreateSettings,
+  DEFAULT_BRAND_NAME,
+} = require("./onlineStoreController");
 const { refreshOrderStats } = require("../libs/customerStats");
 
 const money = (value) => Math.round(Number(value || 0) * 100) / 100;
@@ -920,7 +924,7 @@ const brandFrom = (settings) => ({
   name:
     settings?.business?.tradingName ||
     settings?.business?.legalName ||
-    "Online Store",
+    DEFAULT_BRAND_NAME,
   addressLines: settings?.footer?.address ? [settings.footer.address] : [],
   phone: settings?.footer?.supportPhone || "",
 });
