@@ -263,6 +263,101 @@ describe("a deal never makes the basket dearer", () => {
   });
 });
 
+/* Which sets, not just how many.
+ *
+ * A count can only ever mean "the first n" — the server sanitises dealSets to a
+ * number — so the identity of the chosen sets travels as the units they are
+ * made of, which is what a lock already was. These are the sums the till shows
+ * and the server charges; libs/deals.js mirrors this branch, so a change here
+ * without one there is a till that disagrees with its own receipt. */
+describe("an offer is given on the sets the cashier picked", () => {
+  // Three sets, priced apart so choosing differently cannot come out the same.
+  const cart = [
+    { productId: "A", quantity: 1, price: 10 },
+    { productId: "B", quantity: 1, price: 9 },
+    { productId: "C", quantity: 1, price: 8 },
+    { productId: "D", quantity: 1, price: 7 },
+    { productId: "E", quantity: 1, price: 6 },
+    { productId: "F", quantity: 1, price: 5 },
+    { productId: "G", quantity: 1, price: 4 },
+    { productId: "H", quantity: 1, price: 3 },
+    { productId: "I", quantity: 1, price: 2 },
+  ];
+  const ids = cart.map((line) => line.productId);
+  const deal = [
+    mixDeal({
+      discount: 12, // any three for 12
+      items: ids.map((product) => ({ product })),
+    }),
+  ];
+
+  // The ladder the till lays out: dearest first, cut into threes.
+  const ladder = () => {
+    const [full] = applicableDeals(cart, deal, ["D1"], undefined, undefined, undefined, ids)
+      .applied;
+    const need = Math.round(full.picked.length / full.sets);
+    return Array.from({ length: full.sets }, (_, i) =>
+      full.picked.slice(i * need, (i + 1) * need),
+    );
+  };
+
+  // What the page does: turn chosen positions into the lock that names them.
+  const give = (indices) => {
+    const sets = ladder();
+    const allocation = {};
+    indices.forEach((i) => {
+      sets[i].forEach((id) => {
+        allocation[id] = (allocation[id] || 0) + 1;
+      });
+    });
+    return applicableDeals(
+      cart,
+      deal,
+      ["D1"],
+      undefined,
+      { D1: indices.length },
+      { D1: allocation },
+      ids,
+    ).applied[0];
+  };
+
+  test("the sets fall dearest first", () => {
+    expect(ladder()).toEqual([
+      ["A", "B", "C"],
+      ["D", "E", "F"],
+      ["G", "H", "I"],
+    ]);
+  });
+
+  test("the first and the third are priced, and the second is not", () => {
+    const offer = give([0, 2]);
+    expect(offer.sets).toBe(2);
+    expect(offer.normal).toBe(36); // 10+9+8 and 4+3+2, nothing from the middle
+    expect(offer.amount).toBe(12); // 36 less 12 a set
+    expect(offer.allocation).toEqual({ A: 1, B: 1, C: 1, G: 1, H: 1, I: 1 });
+  });
+
+  test("which is not the same as taking the first two", () => {
+    expect(give([0, 1]).normal).toBe(45);
+    expect(give([0, 1]).amount).toBe(21);
+  });
+
+  test("one set on its own is only that set", () => {
+    expect(give([0]).normal).toBe(27);
+    expect(give([1]).normal).toBe(18);
+  });
+
+  test("the ceiling still counts every set the basket holds", () => {
+    expect(give([0, 2]).maxSets).toBe(3);
+  });
+
+  /* Reachable only now that sets are picked freely: cumulative selection always
+     started at the dearest, so the first set taken was the best one. */
+  test("sets worth less than the offer charges give nothing at all", () => {
+    expect(give([2])).toBeUndefined(); // 4+3+2 = 9, offered at 12
+  });
+});
+
 describe("a deal priced by hand at the till", () => {
   const deal = [mixDeal()]; // 3 for 18, shelf 7 each, normal 21
   const chosen = ["D1"];

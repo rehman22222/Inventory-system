@@ -15,11 +15,17 @@ import { currency, sanitizeDecimal } from "./posUtils";
 function DealPriceModal({
   entry,
   applied,
-  sets,
-  onSets,
+  // Which sets the offer is on, as positions in setPreview. [0, 2] is the first
+  // and the third — the whole reason this is a list and not a count.
+  chosen = [],
+  onToggleSet,
+  // Whether the deal still gives anything on the sets chosen. False when they
+  // are worth less than the offer charges, which is a selection the cashier can
+  // only reach now that sets are picked freely.
+  applies = true,
   // Every set the basket holds, each as a list of what is in it. Built by the
-  // page from a match at the full count, because the entry on screen only knows
-  // about the sets currently being given.
+  // page with no lock and no count, because the entry on screen only knows about
+  // the sets currently being given and this has to show the rest too.
   setPreview = [],
   onApply,
   onReset,
@@ -33,15 +39,19 @@ function DealPriceModal({
 
   const [value, setValue] = useState(current.toFixed(2));
 
-  // Giving one set instead of two changes what the deal comes to, so the figure
-  // in the box follows it. Only on an actual change: reopening an already
-  // hand-priced deal must not quietly throw that price away.
-  const [lastSets, setLastSets] = useState(sets);
+  // Changing which sets are given changes what the deal comes to, so the figure
+  // in the box follows it. Keyed on the selection itself, not on how many were
+  // picked: swapping the second set for the third is the same count and a
+  // different set of goods, and the price has to move with it. Only on an actual
+  // change — reopening an already hand-priced deal must not quietly throw that
+  // price away.
+  const key = chosen.join(",");
+  const [lastKey, setLastKey] = useState(key);
   useEffect(() => {
-    if (sets === lastSets) return;
-    setLastSets(sets);
+    if (key === lastKey) return;
+    setLastKey(key);
     setValue((Number(entry.normal) - Number(entry.configuredAmount)).toFixed(2));
-  }, [sets, lastSets, entry.normal, entry.configuredAmount]);
+  }, [key, lastKey, entry.normal, entry.configuredAmount]);
 
   const typed = Number(value);
   const valid = value !== "" && Number.isFinite(typed) && typed >= 0;
@@ -97,10 +107,11 @@ function DealPriceModal({
     >
       <div className="space-y-4">
         {/* Each set the basket holds, laid out with what is in it. A number on
-            its own says nothing about which items the customer is getting the
-            offer on; these cards do, and tapping one gives that many.
-            Cumulative on purpose — a set is filled before the next is started,
-            so taking set two means taking set one with it. */}
+            its own says nothing about WHICH items the customer is getting the
+            offer on; these cards do, and each one is its own switch.
+            Independent on purpose — the counter can give the first set and the
+            third and leave the second at shelf price, which a count could never
+            express. */}
         {setPreview.length > 1 && (
           <div>
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -109,31 +120,49 @@ function DealPriceModal({
             <div className="flex flex-wrap gap-2">
               {setPreview.map((set, index) => {
                 const number = index + 1;
-                const on = number <= sets;
+                const on = chosen.includes(index);
+                // Turning the last one off would leave an offer on nothing,
+                // which reads as the discount disappearing by itself. The X on
+                // the rail is how an offer is given back.
+                const locked = on && chosen.length === 1;
 
                 return (
                   <button
                     key={number}
                     type="button"
-                    onClick={() => onSets(on && number === sets ? number - 1 || 1 : number)}
+                    role="switch"
+                    aria-checked={on}
+                    aria-label={t("pos.deal.setNumber", "Set {{n}}", { n: number })}
+                    title={
+                      locked
+                        ? t("pos.deal.lastSet", "At least one set has to be given")
+                        : undefined
+                    }
+                    onClick={() => !locked && onToggleSet(index)}
                     className={`min-w-[7.5rem] flex-1 border p-2 text-start transition ${
                       on
                         ? "border-fuchsia-500 bg-fuchsia-950/50"
                         : "border-slate-700 bg-slate-950 hover:border-slate-500"
-                    }`}
+                    } ${locked ? "cursor-default" : ""}`}
                   >
                     <span
-                      className={`block text-[10px] font-bold uppercase tracking-wide ${
+                      className={`flex items-center justify-between gap-1 text-[10px] font-bold uppercase tracking-wide ${
                         on ? "text-fuchsia-300" : "text-slate-500"
                       }`}
                     >
                       {t("pos.deal.setNumber", "Set {{n}}", { n: number })}
+                      {/* A tick, because a card that is merely brighter than its
+                          neighbour does not survive a glance at arm_s length on
+                          a till. */}
+                      <span aria-hidden="true">{on ? "✓" : "+"}</span>
                     </span>
                     <span className="mt-1 block space-y-0.5">
                       {set.map((line, i) => (
                         <span
                           key={`${line}-${i}`}
-                          className="block truncate text-[11px] leading-snug text-slate-300"
+                          className={`block truncate text-[11px] leading-snug ${
+                            on ? "text-slate-300" : "text-slate-500"
+                          }`}
                         >
                           {line}
                         </span>
@@ -143,9 +172,17 @@ function DealPriceModal({
                 );
               })}
             </div>
+            {!applies && (
+              <p className="mt-1 border border-amber-900/60 bg-amber-950/30 px-2 py-1 text-xs text-amber-300">
+                {t(
+                  "pos.deal.setsWorthless",
+                  "These sets are worth less than the offer charges for them, so it gives nothing. Tick another set, or type a price below.",
+                )}
+              </p>
+            )}
             <p className="mt-1 text-xs text-slate-500">
               {t("pos.deal.setsChosen", "{{given}} of {{max}} — the rest stay at their normal price", {
-                given: sets,
+                given: chosen.length,
                 max: entry.maxSets,
               })}
             </p>

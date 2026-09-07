@@ -374,30 +374,43 @@ describe("DealPriceModal — a set priced by hand at the counter", () => {
   const entry = {
     dealId: "d1",
     name: "Any 3 for 15",
-    sets: 1,
-    maxSets: 2,
-    normal: 18,
-    amount: 3,
-    configuredAmount: 3,
+    sets: 2,
+    maxSets: 3,
+    normal: 36,
+    amount: 6,
+    configuredAmount: 6,
     edited: false,
     products: ["p1"],
-    allocation: { p1: 3 },
+    allocation: { p1: 6 },
   };
 
-  test("Reset puts the shop's own price back", () => {
-    const onReset = jest.fn();
-    const onApply = jest.fn();
+  // Three sets on offer, each naming what is in it.
+  const setPreview = [
+    ["Cuba Black Apple", "Cuba Black Double", "Cuba Black Mango"],
+    ["Cuba Black Straw", "Cuba White Ice", "Iceberg Berries"],
+    ["Iceberg Coconut", "Cuba Black Lolli", "Iceberg Gummy"],
+  ];
+
+  const cards = () => [...container.querySelectorAll('[role="switch"]')];
+  const open = (props) =>
     mount(
       <DealPriceModal
         entry={entry}
         applied
-        sets={1}
-        onSets={() => {}}
-        onApply={onApply}
-        onReset={onReset}
+        chosen={[0]}
+        setPreview={setPreview}
+        onToggleSet={() => {}}
+        onApply={() => {}}
+        onReset={() => {}}
         onClose={() => {}}
+        {...props}
       />,
     );
+
+  test("Reset puts the shop's own price back", () => {
+    const onReset = jest.fn();
+    const onApply = jest.fn();
+    open({ onReset, onApply });
 
     const reset = byText("reset");
     if (reset) {
@@ -407,27 +420,65 @@ describe("DealPriceModal — a set priced by hand at the counter", () => {
     }
   });
 
-  test("the number of sets can be changed without applying anything", () => {
-    const onSets = jest.fn();
-    const onApply = jest.fn();
-    mount(
-      <DealPriceModal
-        entry={entry}
-        applied
-        sets={1}
-        onSets={onSets}
-        onApply={onApply}
-        onReset={() => {}}
-        onClose={() => {}}
-      />,
-    );
+  test("every set the basket holds gets a card of its own", () => {
+    open({});
+    expect(cards()).toHaveLength(3);
+    expect(text()).toContain("Iceberg Coconut");
+  });
 
-    const plus = buttons().find((b) => (b.textContent || "").trim() === "+");
-    if (plus) {
-      click(plus);
-      expect(onSets).toHaveBeenCalled();
-      expect(onApply).not.toHaveBeenCalled();
-    }
+  test("only the chosen sets read as chosen", () => {
+    open({ chosen: [0, 2] });
+
+    expect(cards().map((c) => c.getAttribute("aria-checked"))).toEqual([
+      "true",
+      "false",
+      "true",
+    ]);
+  });
+
+  /* The point of the whole arrangement. Selection used to be cumulative, so
+     asking for the third set silently took the second with it, and a cashier
+     who wanted the first and the last had no way to say so. */
+  test("taking the third set does not take the second", () => {
+    const onToggleSet = jest.fn();
+    const onApply = jest.fn();
+    open({ chosen: [0], onToggleSet, onApply });
+
+    click(cards()[2]);
+
+    expect(onToggleSet).toHaveBeenCalledTimes(1);
+    expect(onToggleSet).toHaveBeenCalledWith(2);
+    expect(onApply).not.toHaveBeenCalled();
+  });
+
+  test("a chosen set can be given back", () => {
+    const onToggleSet = jest.fn();
+    open({ chosen: [0, 2], onToggleSet });
+
+    click(cards()[0]);
+
+    expect(onToggleSet).toHaveBeenCalledWith(0);
+  });
+
+  /* An offer on no sets reads as the discount vanishing by itself. The X on the
+     rail is how an offer is given back. */
+  test("the last set standing cannot be unticked", () => {
+    const onToggleSet = jest.fn();
+    open({ chosen: [1], onToggleSet });
+
+    click(cards()[1]);
+
+    expect(onToggleSet).not.toHaveBeenCalled();
+  });
+
+  test("it says so when the chosen sets are worth less than the offer", () => {
+    open({ chosen: [2], applies: false });
+    expect(text()).toContain("worth less than the offer");
+  });
+
+  test("and says nothing of the sort when the offer still stands", () => {
+    open({ chosen: [0, 2] });
+    expect(text()).not.toContain("worth less than the offer");
   });
 });
 

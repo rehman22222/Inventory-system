@@ -211,6 +211,11 @@ function POSPage() {
   // The units each applied offer is being given on, fixed at the moment it was
   // given. See applyDeal.
   const [dealLocks, setDealLocks] = useState({});
+  // WHICH of the basket sets each offer is on, as positions in the ladder the
+  // matcher forms: [0, 2] is the first and the third. Screen state only — it
+  // leaves as the two things the server already understands, a count in
+  // dealSets and the units it works out to in dealLocks.
+  const [dealSetPicks, setDealSetPicks] = useState({});
   const [editingDeal, setEditingDeal] = useState(null);
   const [taxEnabled, setTaxEnabled] = useState(false);
   // The tax rate is the shop's call, not ours — no hardcoded percentage. The
@@ -511,6 +516,12 @@ function POSPage() {
   // Anything it finds that is not already applied is an offer to show. Asking
   // the one function twice keeps the offer and the charge in step by
   // construction — a second code path would eventually disagree with the first.
+  //
+  // The locks are handed over as well, and they have to be. An offer can be
+  // opened and its sets chosen BEFORE it is applied, and a lock is the only
+  // thing that says which ones — without it this tile would quote the first n
+  // sets while the dialog above it showed the third, and the cashier would
+  // watch the figure change on Apply. A deal with no lock is unaffected.
   const dealOffers = useMemo(
     () =>
       applicableDeals(
@@ -519,40 +530,105 @@ function POSPage() {
         allDealIds(allDeals),
         undefined,
         dealSets,
-        undefined,
+        dealLocks,
         scanOrder
       ).applied.filter((entry) => !appliedDealIds.includes(String(entry.dealId))),
-    [cart, allDeals, appliedDealIds, dealSets, scanOrder]
+    [cart, allDeals, appliedDealIds, dealSets, dealLocks, scanOrder]
   );
   // Deals live in the sidebar as their own tile; see dealsCategoryId below.
   const dealRoom = Math.max(subtotal - voucherDiscount - manualDiscount, 0);
   const dealDiscount = Math.min(dealMatch.total, dealRoom);
-  // Which units an offer is being given on, worked out fresh and then held.
-  // Asked of the matcher with the lock deliberately absent, because this is the
-  // moment the set is chosen — everything after this holds it still.
-  const chooseSet = (dealId, sets) => {
-    const id = String(dealId);
-    const picked = applicableDeals(
+  // Every set the basket holds for an offer, each as the units inside it, in
+  // the order the matcher forms them. Asked with the lock and the count both
+  // deliberately absent: this is the whole ladder the cashier is choosing FROM,
+  // so it must not shrink as they choose. The cards in the dialog are these,
+  // and a selection is positions in this list.
+  //
+  // The size of a set is read back from the answer rather than from the deal.
+  // A mix deal names it in groupQuantity, but a bundle does not — its set is
+  // however many units its recipe adds up to — and picked.length / sets is
+  // right for both.
+  const dealSetUnits = (dealId) => {
+    const full = applicableDeals(
       cart,
       allDeals,
-      [id],
+      [String(dealId)],
       undefined,
-      sets ? { [id]: sets } : undefined,
+      undefined,
       undefined,
       scanOrder
     ).applied[0];
-    return picked?.allocation || null;
+    const picked = full?.picked || [];
+    if (!full?.sets || picked.length === 0) return [];
+    const need = Math.round(picked.length / full.sets);
+    if (need <= 0) return [];
+    return Array.from({ length: full.sets }, (_, i) =>
+      picked.slice(i * need, (i + 1) * need)
+    );
   };
 
-  // Change how many sets an applied offer gives, in place. The set is chosen
-  // again at the new count: going from one to two has to reach further into the
-  // basket, and the old lock only names enough units for one.
-  const setDealSetCount = (dealId, next) => {
+  // What a handful of chosen sets comes to, as the productId -> count map both
+  // this till and the server already take as a lock.
+  //
+  // This is how "the first set and the third" is said in a form that survives
+  // the wire. The count on its own could only ever mean the first n — the
+  // server sanitises dealSets to a number — so the identity of the sets has to
+  // travel as the units they are made of, which is exactly what a lock is.
+  const allocationForSets = (dealId, indices) => {
+    const units = dealSetUnits(dealId);
+    const allocation = {};
+    indices.forEach((index) => {
+      (units[index] || []).forEach((productId) => {
+        allocation[productId] = (allocation[productId] || 0) + 1;
+      });
+    });
+    return Object.keys(allocation).length ? allocation : null;
+  };
+
+  // Which sets an offer is on right now. Nothing chosen by hand yet means the
+  // offer stands where it was put: on the first n if a count was set, and
+  // otherwise on every set the basket holds.
+  const dealSelection = (dealId) => {
     const id = String(dealId);
+    if (dealSetPicks[id]?.length) return dealSetPicks[id];
+    const total = dealSetUnits(id).length;
+    const count = Number(dealSets[id]);
+    const take = Number.isFinite(count) && count > 0 ? Math.min(count, total) : total;
+    return Array.from({ length: Math.max(1, take) }, (_, i) => i);
+  };
+
+  // The one way in for every change to which sets an offer is on, so the three
+  // pieces that describe it cannot drift apart: the positions (this screen),
+  // the count (what the server is told) and the lock (which units).
+  const setDealSelection = (dealId, indices) => {
+    const id = String(dealId);
+    const chosen = [...new Set(indices)]
+      .filter((index) => Number.isInteger(index) && index >= 0)
+      .sort((a, b) => a - b);
+    // An offer on no sets is not an offer, and silently becoming one would read
+    // as the discount vanishing on its own. Taking it off is what the X is for.
+    if (chosen.length === 0) return;
+    setDealSetPicks((current) => ({ ...current, [id]: chosen }));
+    setDealSets((current) => ({ ...current, [id]: chosen.length }));
+    setDealLocks((current) => ({ ...current, [id]: allocationForSets(id, chosen) }));
+  };
+
+  // Add or drop ONE set and leave the others where they are. This is the point
+  // of the whole arrangement: two sets out of three can be the first and the
+  // last, not just the first two.
+  const toggleDealSet = (dealId, index) => {
+    const chosen = dealSelection(dealId);
+    setDealSelection(
+      dealId,
+      chosen.includes(index) ? chosen.filter((i) => i !== index) : [...chosen, index]
+    );
+  };
+
+  // The rail asks in counts — its minus, its plus and "apply all" — and a count
+  // means the first n, which is what it meant before any of this.
+  const setDealSetCount = (dealId, next) => {
     const wanted = Math.max(1, Math.floor(Number(next) || 1));
-    setDealSets((current) => ({ ...current, [id]: wanted }));
-    const picked = chooseSet(id, wanted);
-    setDealLocks((current) => ({ ...current, [id]: picked }));
+    setDealSelection(dealId, Array.from({ length: wanted }, (_, i) => i));
   };
 
   const applyDeal = (dealId) => {
@@ -565,7 +641,9 @@ function POSPage() {
     // than quietly reshuffling which items are in the offer — the box on
     // screen is a promise the cashier has already made out loud.
     setDealLocks((current) =>
-      current[id] ? current : { ...current, [id]: chooseSet(id, dealSets[id]) }
+      current[id]
+        ? current
+        : { ...current, [id]: allocationForSets(id, dealSelection(id)) }
     );
   };
 
@@ -586,6 +664,10 @@ function POSPage() {
     // And forgets which units it was on, so giving it again chooses afresh.
     setDealLocks((current) => {
       const { [String(dealId)]: _dropped, ...rest } = current;
+      return rest;
+    });
+    setDealSetPicks((current) => {
+      const { [String(dealId)]: _forgotten, ...rest } = current;
       return rest;
     });
   };
@@ -979,6 +1061,7 @@ function POSPage() {
     setDealOverrides({});
     setDealSets({});
     setDealLocks({});
+    setDealSetPicks({});
     setTaxEnabled(false);
     setBuffer("");
     setMultiplier(0);
@@ -1195,6 +1278,7 @@ function POSPage() {
     setDealOverrides({});
     setDealSets({});
     setDealLocks({});
+    setDealSetPicks({});
     setTaxEnabled(false);
   };
 
@@ -2613,44 +2697,39 @@ function POSPage() {
       {editingDeal &&
         (() => {
           const id = String(editingDeal.dealId);
-          const live =
+          const matched =
             dealMatch.applied.find((e) => String(e.dealId) === id) ||
-            dealOffers.find((e) => String(e.dealId) === id) ||
-            editingDeal;
+            dealOffers.find((e) => String(e.dealId) === id);
+          const live = matched || editingDeal;
+          // A deal gives nothing when the sets chosen are worth less than it
+          // charges for them, and then it is in neither list. Reachable only now
+          // that sets can be picked freely: cumulative selection always started
+          // at the dearest set, so the first one taken was the best one. The
+          // figures below are the last ones that stood, so the dialog has to say
+          // so rather than let them read as current.
+          const applies = Boolean(matched);
 
-          // Every set the basket holds, each as the names in it. Asked at the
-          // full count and with no lock, because the entry on screen only knows
-          // about the sets currently being given — the dialog has to show the
-          // ones on offer as well as the ones taken.
-          const need = Math.max(
-            2,
-            Math.floor(
-              Number(allDeals.find((d) => String(d._id) === id)?.groupQuantity || 0)
-            )
-          );
-          const full = applicableDeals(
-            cart,
-            allDeals,
-            [id],
-            undefined,
-            undefined,
-            undefined,
-            scanOrder
-          ).applied[0];
+          // Every set the basket holds, each as the names in it. The dialog has
+          // to show the sets on OFFER as well as the ones taken, so this comes
+          // from dealSetUnits, which asks with no lock and no count.
+          //
+          // It also reads the set size back off the answer. This used to work it
+          // out from groupQuantity with a floor of two, which only a mix deal
+          // fills in — on a bundle it cut every card at two names no matter what
+          // the recipe actually was.
           const nameOf = (productId) =>
             cart.find((line) => String(line.productId) === String(productId))?.name ||
             productId;
-          const setPreview = Array.from({ length: full?.sets || 0 }, (_, i) =>
-            (full.picked || []).slice(i * need, (i + 1) * need).map(nameOf)
-          );
+          const setPreview = dealSetUnits(id).map((set) => set.map(nameOf));
 
           return (
             <DealPriceModal
               entry={live}
               applied={appliedDealIds.includes(id)}
-              sets={dealSets[id] ?? live.sets}
+              chosen={dealSelection(id)}
+              applies={applies}
               setPreview={setPreview}
-              onSets={(n) => setDealSetCount(id, n)}
+              onToggleSet={(index) => toggleDealSet(id, index)}
               onApply={(price) => priceDeal(live, price)}
               onReset={() => resetDealPrice(id)}
               onClose={() => setEditingDeal(null)}
