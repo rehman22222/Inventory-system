@@ -29,11 +29,19 @@ input[inputmode="decimal"],
 .pos-root .font-mono,
 .slip .s-line > span:last-child,
 .slip .s-row-top > span:last-child,
-.slip .s-row-sub > span:last-child,
+/* Only when there IS a second span. This row is a sale summary line —
+   "14:32 · Cash · 3 items" — with a refund figure beside it only when
+   something came back. With no refund the summary is the only child, so it
+   is also the last, and the whole sentence was being set in the digit face. */
+.slip .s-row-sub > span:last-child:not(:first-child),
 .slip .s-item > span:last-child,
 .slip .s-total > span:last-child,
-#receipt .r-num,
-#receipt .r-line > span:last-child,
+/* td, not th: the Price COLUMN is money, its heading is the word "Price"
+   and belongs in the receipt's own face like every other heading. */
+#receipt td.r-num,
+/* Every line on the slip ends in a figure except the VAT breakdown's
+   heading row, whose last cell is the words "VAT value". */
+#receipt .r-line:not(.r-vathead) > span:last-child,
 #receipt .r-vatrow,
 #receipt .r-total > span:last-child {
   font-family: var(--font-money) !important;
@@ -241,9 +249,13 @@ input[inputmode="decimal"],
     gap: 6px;
     font-size: 9px;
   }
+  /* The same weight as the value it labels. At 400 beside a 700 these read
+     as greyed out rather than as the pair they are — and a thermal head,
+     which has one ink and no greys, only thins them further. */
   #receipt .r-meta span:first-child {
     text-transform: uppercase;
     letter-spacing: 0.04em;
+    font-weight: 700;
   }
   #receipt .r-meta span:last-child {
     font-weight: 700;
