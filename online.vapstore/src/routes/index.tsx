@@ -17,7 +17,7 @@ import { getHero } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
 import { HeroCarousel } from "@/components/HeroCarousel";
 import { formatPrice, truncateProductName } from "@/lib/format";
-import { cldProductCardImage } from "@/lib/img";
+import { cldHeroDesktopImage, cldHeroMobileImage, cldProductCardImage } from "@/lib/img";
 
 function EventsHeading({
   heading,
@@ -159,10 +159,51 @@ function eventDeckItems(
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
 }
 
+/* The banner the visitor is about to see, told to the browser in the <head>.
+ *
+ * The hero is this page's largest element, and it lives on Cloudinary. Left in
+ * the body it is not even discovered until the parser reaches it, by which time
+ * the connection has to be opened and the download queued behind every script
+ * the head already asked for. Naming it up here moves the request to the front
+ * of the page instead of the middle of it.
+ *
+ * The two entries mirror the <picture> exactly — the same media query, and the
+ * same helper building the same URL — so precisely one of them matches any
+ * given viewport and the banner is still fetched once. A slide with no separate
+ * mobile artwork has only one URL to preload, the same one the <img> carries at
+ * every width.
+ *
+ * This is where fetchPriority="high" belongs: on the element the page is
+ * measured by, rather than on the logo in the header. */
+const heroPreloadLinks = (slide?: { image?: string; mobileImage?: string }) => {
+  if (!slide?.image) return [];
+
+  const desktop = {
+    rel: "preload",
+    as: "image",
+    href: cldHeroDesktopImage(slide.image),
+    fetchPriority: "high",
+  };
+
+  if (!slide.mobileImage) return [desktop];
+
+  return [
+    {
+      rel: "preload",
+      as: "image",
+      href: cldHeroMobileImage(slide.mobileImage),
+      media: "(max-width: 767px)",
+      fetchPriority: "high",
+    },
+    { ...desktop, media: "(min-width: 768px)" },
+  ];
+};
+
 export const Route = createFileRoute("/")({
   component: Home,
   loader: async () => ({ hero: await getHero() }),
-  head: () => ({
+  head: ({ loaderData }) => ({
+    links: heroPreloadLinks(loaderData?.hero?.[0]),
     meta: [
       { title: "Cliffs of Puff — Premium Vapes, Pods & E-Liquid" },
       {

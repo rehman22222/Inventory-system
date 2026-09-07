@@ -3,17 +3,11 @@ import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import type { HeroSlide } from "@/lib/catalog";
-import { cldImage } from "@/lib/img";
+import { cldHeroDesktopImage, cldHeroMobileImage } from "@/lib/img";
 
 const AUTOPLAY_MS = 6500;
 const HERO_CTA_CLASS =
   "group inline-flex max-w-[58vw] items-center justify-center gap-1 rounded-full border border-white/35 bg-black/58 px-2.5 py-1.5 font-display text-[7px] font-bold uppercase tracking-[0.105em] text-white shadow-[0_10px_22px_rgba(0,0,0,0.42)] ring-1 ring-black/15 backdrop-blur-xl transition-all hover:border-white/70 hover:bg-white hover:text-ink hover:shadow-[0_22px_55px_rgba(0,0,0,0.5)] active:scale-[0.98] md:max-w-[82vw] md:gap-2 md:px-6 md:py-3 md:text-xs";
-
-const heroDesktopImage = (url: string) =>
-  cldImage(url, "f_auto,q_auto,c_fill,w_1600,h_572,dpr_auto");
-
-const heroMobileImage = (url: string) =>
-  cldImage(url, "f_auto,q_auto,c_fill,w_768,h_384,dpr_auto");
 
 function HeroButton({ slide, active }: { slide: HeroSlide; active: boolean }) {
   const { t } = useTranslation();
@@ -175,10 +169,13 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
               >
                 <picture className="block h-full w-full">
                   {slide.mobileImage && (
-                    <source media="(max-width: 767px)" srcSet={heroMobileImage(slide.mobileImage)} />
+                    <source
+                      media="(max-width: 767px)"
+                      srcSet={cldHeroMobileImage(slide.mobileImage)}
+                    />
                   )}
                   <img
-                    src={heroDesktopImage(slide.image)}
+                    src={cldHeroDesktopImage(slide.image)}
                     alt={slide.imageAlt || t("hero.promoAlt")}
                     draggable={false}
                     loading={slideIndex === 0 ? "eager" : "lazy"}

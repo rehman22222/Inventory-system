@@ -145,6 +145,24 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      /* Open the connection to Cloudinary before anything asks for an image.
+       *
+       * The homepage's largest element — the hero banner — is served from
+       * res.cloudinary.com, a third origin. Left to itself the browser cannot
+       * begin DNS, TCP or TLS to that host until the parser has reached the
+       * <picture> in the body, and on a phone that handshake measures about
+       * half a second of doing nothing. Started here it overlaps with the HTML
+       * and the stylesheet instead, and the image request goes out the moment
+       * it is discovered.
+       *
+       * Deliberately WITHOUT crossOrigin: the <img> tags that use this host
+       * carry no crossorigin attribute, so they open an ordinary connection. A
+       * preconnect with crossOrigin opens a separate CORS one that those images
+       * cannot reuse, which would leave the handshake to be paid twice — the
+       * exact cost this is here to remove. */
+      { rel: "preconnect", href: "https://res.cloudinary.com" },
+      // For browsers that ignore preconnect; resolves the name at least.
+      { rel: "dns-prefetch", href: "https://res.cloudinary.com" },
       // Transparent PNGs cut from the COP badge. The supplied artwork was a
       // JPEG, which cannot hold transparency — its white square was flood-
       // filled out, so the mark now sits cleanly on light or dark tab chrome.

@@ -54,6 +54,21 @@ export function cldProductThumbImage(url: string): string {
   return withCloudinaryTransform(url, "f_auto,q_auto,c_pad,b_white,w_180,h_180,dpr_auto");
 }
 
+/* The homepage banner, in its two crops.
+ *
+ * These live here rather than inside HeroCarousel because the homepage's <head>
+ * needs them too — it preloads the first slide, and a preload only helps when
+ * its URL is byte-for-byte the one the <picture> goes on to request. One
+ * definition, imported by both, is what keeps that true: change a width here
+ * and the preload follows, with no second place to remember. */
+export function cldHeroDesktopImage(url: string): string {
+  return withCloudinaryTransform(url, "f_auto,q_auto,c_fill,w_1600,h_572,dpr_auto");
+}
+
+export function cldHeroMobileImage(url: string): string {
+  return withCloudinaryTransform(url, "f_auto,q_auto,c_fill,w_768,h_384,dpr_auto");
+}
+
 export function cldCategoryImage(url: string): string {
   return withCloudinaryTransform(url, "f_auto,q_auto,c_fill,w_640,h_480,dpr_auto");
 }

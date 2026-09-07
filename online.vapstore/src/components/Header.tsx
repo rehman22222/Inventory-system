@@ -208,7 +208,20 @@ export function Header() {
               height={180}
               loading="eager"
               decoding="async"
-              fetchPriority="high"
+              /* Eager, but NOT high priority — and that distinction is the
+               * whole point.
+               *
+               * React hoists a high-priority <img> into a
+               * `<link rel=preload as=image fetchpriority=high>` in the head.
+               * This mark is 57KB and paints at 61 CSS pixels; the hero banner
+               * below it is what the page is actually measured on. With the
+               * flag set, the head told the browser the logo mattered MORE than
+               * the banner, and the two then shared a phone's bandwidth with
+               * the wrong one in front.
+               *
+               * Without it the logo still loads immediately — it is eager, and
+               * it is in the first HTML — it simply stops outranking the
+               * largest element on the page. */
               className="h-[61px] w-auto object-contain sm:h-[76px] lg:h-[91px]"
             />
           </Link>
