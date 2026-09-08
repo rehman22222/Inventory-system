@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { archivable } = require("../libs/archivable");
 
 // A Receipt is the source of truth for one POS transaction (the whole basket).
 // The per-line Sale documents are still written for the existing sales/report
@@ -254,6 +255,12 @@ ReceiptSchema.index({ status: 1, createdAt: -1 });
 ReceiptSchema.index({ "credit.email": 1 }, { sparse: true });
 ReceiptSchema.index({ "credit.phone": 1 }, { sparse: true });
 ReceiptSchema.index({ "credit.settledAt": 1, "credit.dueAt": 1 }, { sparse: true });
+
+/* Retiring a run of sales is a superadmin action, and this is what makes it
+ * reach every screen at once: an archived row is hidden from find, count,
+ * distinct and aggregate unless a caller asks for it by name. See
+ * libs/archivable.js — the point is that no future query has to remember. */
+archivable(ReceiptSchema);
 
 const Receipt = mongoose.model("Receipt", ReceiptSchema);
 

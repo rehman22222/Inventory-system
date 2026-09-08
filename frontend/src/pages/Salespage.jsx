@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import TopNavbar from "../Components/TopNavbar";
 import { IoMdAdd } from "react-icons/io";
 import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
-import { FiLock } from "react-icons/fi";
+import { FiArchive, FiLock } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import {gettingallproducts} from '../features/productSlice'
@@ -15,6 +15,7 @@ import ReportButton from "../Components/ReportButton";
 import DayClosingModal from "../Components/pos/DayClosingModal";
 import { currency } from "../Components/pos/posUtils";
 import toast from "react-hot-toast";
+import SalesArchiveModal from "../Components/SalesArchiveModal";
 
 
 
@@ -35,6 +36,17 @@ function Salespage() {
   // produce them as a file.
   const canManageSales = ["admin", "superadmin"].includes(Authuser?.role);
   const canPrintSales = ["admin", "superadmin", "manager"].includes(Authuser?.role);
+
+  /* Retiring sales is the owner's alone, not admin's.
+   *
+   * An admin edits one sale. This takes a run of them out of every report the
+   * shop has and recounts days that were already signed off, which is a
+   * different kind of act. The backend enforces it on the route; this only
+   * decides whether the button is worth drawing.
+   */
+  const canArchiveSales = Authuser?.role === "superadmin";
+  const [archiving, setArchiving] = useState(false);
+  const [picked, setPicked] = useState([]);
 
   const { getallproduct } = useSelector(
     (state) => state.product
@@ -267,7 +279,33 @@ function Salespage() {
           >
             <FiLock className="mr-2 text-lg" /> {t("sales.closeDay")}
           </button>
+          {/* Retiring sales, in place of opening the database and deleting
+              rows. Owner only — see canArchiveSales. */}
+          {canArchiveSales && (
+            <button
+              onClick={() => setArchiving(true)}
+              className="flex h-12 items-center justify-center gap-2 rounded-lg border-2 border-base-300 px-4 font-semibold opacity-80 transition hover:border-error hover:text-error"
+            >
+              <FiArchive className="text-lg" />
+              {t("salesArchive.button", "Archive sales")}
+              {picked.length > 0 ? ` (${picked.length})` : ""}
+            </button>
+          )}
         </div>
+
+        {archiving && (
+          <SalesArchiveModal
+            picked={picked}
+            onClose={() => setArchiving(false)}
+            onDone={() => {
+              // The list, the chart and the revenue on this page all come from
+              // the same fetch, so one refresh puts every figure on screen back
+              // in step with what was just taken out of the books.
+              setPicked([]);
+              dispatch(gettingallSales());
+            }}
+          />
+        )}
 
         {showCloseDay && (
           <DayClosingModal
@@ -409,6 +447,29 @@ function Salespage() {
             <table className="min-w-full bg-base-100 border mb-24 border-base-300 rounded-lg shadow-md">
               <thead className="bg-base-200">
                 <tr>
+                {canArchiveSales && (
+                  <th className="px-3 py-2 border w-8 bg-base-100">
+                    {/* All or nothing for what is on screen — which is the
+                        filtered list, not the whole ledger. */}
+                    <input
+                      type="checkbox"
+                      aria-label={t("salesArchive.tickAll", "Tick every sale shown")}
+                      className="checkbox checkbox-xs"
+                      checked={
+                        (displaySales?.length || 0) > 0 &&
+                        displaySales.every((row) => picked.includes(String(row?._id)))
+                      }
+                      onChange={(event) => {
+                        const shown = (displaySales || []).map((row) => String(row?._id));
+                        setPicked((current) =>
+                          event.target.checked
+                            ? [...new Set([...current, ...shown])]
+                            : current.filter((id) => !shown.includes(id)),
+                        );
+                      }}
+                    />
+                  </th>
+                )}
                 <th className="px-3 py-2 border w-5 bg-base-100">#</th>
                   <th className="px-3 py-2 border bg-base-100">{t("sales.customerName")}</th>
                   <th className="px-3 py-2 border bg-base-100">{t("sales.product")}</th>
@@ -427,6 +488,23 @@ function Salespage() {
                displaySales.length > 0 ? (
                 displaySales.map((sales,index) => (
                     <tr key={sales?._id} className="">
+                      {canArchiveSales && (
+                        <td className="px-3 py-2 border">
+                          <input
+                            type="checkbox"
+                            aria-label={t("salesArchive.tickOne", "Tick this sale")}
+                            className="checkbox checkbox-xs"
+                            checked={picked.includes(String(sales?._id))}
+                            onChange={(event) =>
+                              setPicked((current) =>
+                                event.target.checked
+                                  ? [...current, String(sales?._id)]
+                                  : current.filter((id) => id !== String(sales?._id)),
+                              )
+                            }
+                          />
+                        </td>
+                      )}
                        <td className="px-3 py-2 border">{index+1}</td>
                       <td className="px-3 py-2 border">{sales?.customerName
                       }</td>

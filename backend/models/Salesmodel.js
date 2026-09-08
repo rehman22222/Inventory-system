@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { archivable } = require("../libs/archivable");
 
 const SaleSchema = new mongoose.Schema(
   {
@@ -70,6 +71,12 @@ SaleSchema.index({ status: 1, createdAt: -1 });
 SaleSchema.index({ source: 1, createdAt: -1 });
 SaleSchema.index({ dayClosing: 1 });
 SaleSchema.index({ "products.product": 1 });
+
+/* Retiring a run of sales is a superadmin action, and this is what makes it
+ * reach every screen at once: an archived row is hidden from find, count,
+ * distinct and aggregate unless a caller asks for it by name. See
+ * libs/archivable.js — the point is that no future query has to remember. */
+archivable(SaleSchema);
 
 const Sale= mongoose.model("Sale", SaleSchema);
 

@@ -70,6 +70,41 @@ const DayClosingSchema = new mongoose.Schema(
         expected: { type: Number },
       },
     ],
+    /* Set only when an archive has restated this closing.
+     *
+     * A closing is stored rather than derived because it is the record of a
+     * shift somebody handed over and signed for — recomputing it later from
+     * today's rules would quietly restate what they signed. Archiving sales out
+     * of a closed day makes a recount unavoidable, so it happens LOUDLY
+     * instead: the figures that were signed for are kept here beside who
+     * restated them and which archive did it, and the screens say so.
+     *
+     * Absent on every closing that has never been touched, which is nearly all
+     * of them. */
+    adjusted: {
+      at: { type: Date },
+      by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      byName: { type: String },
+      batch: { type: String },
+      reason: { type: String },
+      // The signed-for figures, exactly as they stood. Written once, on the
+      // first restatement, so a second archive against the same day cannot
+      // overwrite the original with an already-adjusted one.
+      was: {
+        _id: false,
+        receiptCount: { type: Number },
+        gross: { type: Number },
+        discount: { type: Number },
+        tax: { type: Number },
+        net: { type: Number },
+        refunded: { type: Number },
+        grossSales: { type: Number },
+        refundAmount: { type: Number },
+        netSales: { type: Number },
+        expectedCash: { type: Number },
+        expectedCard: { type: Number },
+      },
+    },
   },
   { timestamps: true }
 );
