@@ -2,6 +2,10 @@ const Sale = require("../models/Salesmodel");
 const ProductModel = require('../models/Productmodel');
 const logActivity = require("../libs/logger");
 
+// Characters that mean something to a regex, escaped before a typed search
+// becomes one.
+const REGEX_SPECIALS = /[.*+?^${}()|[\]\\]/g;
+
 const money = (value) => Math.round(Number(value || 0) * 100) / 100;
 
 // Who reviews the shop's sales, as opposed to their own shift's.
@@ -73,10 +77,22 @@ module.exports.createSale = async (req, res) => {
 
 module.exports.getAllSales = async (req, res) => {
   try {
-    // .lean(): read-only list — skip document hydration for speed.
+    /* Oldest first, so the newest sale is the LAST row rather than the first.
+     *
+     * The shop reads this the way a till roll reads: the day's takings in the
+     * order they were rung up. Newest-first also stood the numbering on its
+     * head — row 1 was the most recent sale, not the first of the day.
+     *
+     * Three things were quietly disagreeing with that order and now agree
+     * with it: the sales chart plots this array as it stands, so its time
+     * axis ran backwards; the search below never sorted at all; and the store
+     * appends a newly created sale to the END of the list, which was the
+     * wrong end while this was descending.
+     *
+     * .lean(): read-only list — skip document hydration for speed. */
     const sales = await Sale.find(salesScope(req.user))
       .populate("products.product")
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: 1 })
       .lean();
 
     res.status(200).json({ success: true, sales });
@@ -166,17 +182,50 @@ module.exports.SearchSales = async (req, res) => {
 
     if (!query || query.trim() === "") {
 
-      const allSales = await Sale.find(scope).populate("products.product");
+      // The same order as the list this filters, or clearing the box would
+      // reshuffle the rows under the cashier's hand.
+      const allSales = await Sale.find(scope)
+        .populate("products.product")
+        .sort({ createdAt: 1 });
       return res.status(200).json({ success: true, sales: allSales });
     }
+
+    /* The box says "Enter your product", so it had better find one.
+
+     * It searched customerName and paymentMethod only, which at a till are
+     * nearly always "Walk-In" and "cash" — so the one thing anybody actually
+     * types, a product name, matched nothing and the page went blank. That
+     * reads as a broken search rather than as no results.
+     *
+     * A product name cannot be reached with a regex from here: products.product
+     * is a reference and the name lives on the Product, so the products are
+     * looked up first and the sales matched on their ids.
+     *
+     * Receipt numbers are in too. They are how a sale is referred to out loud —
+     * on the customer's slip, in the day's takings, and by the archive screen,
+     * which asks for a range "from this sale to that sale".
+     *
+     * The text is escaped before it becomes a regex. Somebody searching for a
+     * product with a bracket in its name should get that product, not a cast
+     * error, and a regex built from typing is a regex somebody else controls. */
+    const escaped = query.trim().replace(REGEX_SPECIALS, "\\$&");
+    const like = { $regex: escaped, $options: "i" };
+
+    const named = await ProductModel.find({ name: like }).select("_id").lean();
 
     const searchdata = await Sale.find({
       ...scope,
       $or: [
-        { customerName: { $regex: query, $options: "i" } },
-        { paymentMethod: { $regex: query, $options: "i" } }
-      ]
-    }).populate("products.product");
+        { customerName: like },
+        { paymentMethod: like },
+        { receiptNo: like },
+        ...(named.length
+          ? [{ "products.product": { $in: named.map((row) => row._id) } }]
+          : []),
+      ],
+    })
+      .populate("products.product")
+      .sort({ createdAt: 1 });
 
     res.status(200).json({ sales: searchdata });
 

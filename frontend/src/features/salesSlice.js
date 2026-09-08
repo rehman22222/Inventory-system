@@ -67,7 +67,14 @@ export const EditSales = createAsyncThunk(
 export const searchsalesdata=createAsyncThunk(
   'sales/searchdata',async (query, { rejectWithValue }) => {
     try {
-      const response=await axiosInstance.get(`sales/searchdata?query=${query}`,query,{ withCredentials: true,})
+      // Encoded, because product names are typed here and a name with a & or a
+      // # in it used to cut the search off at that character or lose it
+      // entirely. The bare `query` that sat in the second slot did nothing —
+      // that slot is axios's config — and withCredentials is already on the
+      // instance.
+      const response = await axiosInstance.get(
+        `sales/searchdata?query=${encodeURIComponent(query)}`,
+      )
       return response.data;
  
      
