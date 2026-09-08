@@ -3,6 +3,7 @@ import { lazy, Suspense } from "react";
 import { Toaster } from "react-hot-toast";
 import VirtualKeyboard from "./Components/VirtualKeyboard";
 import SessionExpiryGuard from "./Components/SessionExpiryGuard";
+import SessionOwnerGuard from "./Components/SessionOwnerGuard";
 // Public + always-needed pieces load eagerly; everything behind auth is
 // code-split so the first paint (landing/login) ships a small bundle and each
 // dashboard page is fetched only when a user actually opens it.
@@ -56,6 +57,10 @@ function App() {
     <Router>
       <Toaster />
       <SessionExpiryGuard />
+      {/* One browser holds one session cookie, so a sign-in anywhere takes
+          every other tab with it. This is what stops a tab that has lost it
+          from carrying on with somebody else's authority. */}
+      <SessionOwnerGuard />
       <VirtualKeyboard />
       <Suspense fallback={<PageFallback />}>
       <Routes>

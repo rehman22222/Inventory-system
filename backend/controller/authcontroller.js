@@ -398,3 +398,30 @@ module.exports.removeuser = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
+/* Who does the SESSION COOKIE say this is?
+ *
+ * Not the same question as "who is logged in", and the difference is the whole
+ * point. A tab remembers who it signed in as; the cookie decides who the server
+ * treats it as. Those are one browser-wide cookie and any number of tabs, so a
+ * second sign-in anywhere replaces the first everywhere — and a tab that keeps
+ * showing the old user is a tab acting with someone else's authority.
+ *
+ * authmiddleware has already resolved req.user from the cookie, so this is just
+ * that answer handed back. Cheap on purpose: the guard calls it whenever a tab
+ * comes back to the foreground.
+ */
+module.exports.me = async (req, res) => {
+  try {
+    return res.status(200).json({
+      success: true,
+      user: {
+        _id: req.user._id,
+        name: req.user.name,
+        role: req.user.role,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};

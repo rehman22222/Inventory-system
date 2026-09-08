@@ -36,10 +36,18 @@ function LoginPage() {
     const reason = params.get("reason");
     if (!reason) return;
 
+    // "session-taken" is not an expiry: somebody signed in as someone else on
+    // this computer, which replaces the one session cookie a browser holds.
+    // Telling them it expired would send them looking for a fault there isn't.
     const message =
       reason === "account-removed"
         ? t("login.accountRemoved")
-        : t("login.sessionExpired");
+        : reason === "session-taken"
+          ? t(
+              "login.sessionTaken",
+              "Somebody else signed in on this computer, so this tab was signed out. Use a private window to keep two accounts open at once.",
+            )
+          : t("login.sessionExpired");
 
     setLoginError(message);
     toast.error(message);
