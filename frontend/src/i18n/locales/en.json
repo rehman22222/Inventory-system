@@ -335,6 +335,8 @@
     "productList": "Product List",
     "expiry": "Expiry",
     "noCategory": "No Category",
+    "new": "New",
+    "newAddedAt": "Added {{when}}",
     "noProducts": "No products found.",
     "selectImageError": "Please select an image file",
     "added": "Product added successfully",

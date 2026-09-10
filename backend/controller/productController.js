@@ -171,7 +171,11 @@ module.exports.quickAddProduct = async (req, res) => {
             : "full";
           const projection =
             views[view] ||
-            "name Desciption shelfLabel Category Price costPrice costSource quantity lowStockThreshold barcode expiryDate image.url supplier";
+            // createdAt rides along so the Products page can mark what was added
+            // recently. Deliberately NOT in the `pos` view above: the till fetches
+            // the whole catalogue at once and has no use for it, and the badge is
+            // for the back office, not the counter.
+            "name Desciption shelfLabel Category Price costPrice costSource quantity lowStockThreshold barcode expiryDate image.url supplier createdAt";
 
           // The till can only ring up what it can scan. Online-only products —
           // web flavours that share a Product row with the shop but were never

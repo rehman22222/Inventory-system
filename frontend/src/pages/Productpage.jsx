@@ -20,6 +20,7 @@ import ConfirmDeleteProductModal from "../Components/ConfirmDeleteProductModal";
 import DealsModal from "../Components/DealsModal";
 import ReportButton from "../Components/ReportButton";
 import toast from "react-hot-toast";
+import { isNewProduct, newestFirst } from "./productOrdering";
 
 // Currencies a supplier might invoice in. Mirrors the server's list in
 // libs/cost.js, which mirrors the shop's own currency options.
@@ -293,7 +294,7 @@ function Productpage() {
 
   const displayProducts = useMemo(() => {
     const source = query.trim() !== "" ? searchdata : getallproduct;
-    return Array.isArray(source) ? source : [];
+    return newestFirst(source);
   }, [getallproduct, query, searchdata]);
 
   const productPageCount = Math.max(
@@ -712,7 +713,22 @@ function Productpage() {
                           className="h-12 w-12"
                         />
                       </td>
-                      <td className="border px-3 py-2">{product.name}</td>
+                      <td className="border px-3 py-2">
+                        {product.name}
+                        {/* Quiet on purpose: this is a nudge towards a row, not a
+                            warning about one. It sits after the name so a long
+                            name still reads first. */}
+                        {isNewProduct(product) && (
+                          <span
+                            title={t("products.newAddedAt", "Added {{when}}", {
+                              when: new Date(product.createdAt).toLocaleString(),
+                            })}
+                            className="ms-2 align-middle rounded-full border border-red-200 bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-500"
+                          >
+                            {t("products.new", "New")}
+                          </span>
+                        )}
+                      </td>
                       <td className="border px-3 py-2 font-mono">{product.shelfLabel || "—"}</td>
                       <td className="border px-3 py-2">
                         {product.Category?.name || t("products.noCategory")}
