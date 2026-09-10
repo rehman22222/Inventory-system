@@ -90,7 +90,7 @@ function QuickSellCards({
           className="flex h-9 shrink-0 items-center gap-1.5 bg-amber-700 px-3.5 text-xs font-bold uppercase tracking-wide text-white ring-1 ring-amber-500 transition hover:bg-amber-600 active:scale-95"
         >
           <FaMoneyBillWave className="h-4 w-4" />
-          {t("pos.quickCash.short", "Misc")}
+          {t("pos.quickCash.short", "Misc.")}
         </button>
       </div>
 

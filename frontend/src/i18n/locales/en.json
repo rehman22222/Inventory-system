@@ -871,7 +871,7 @@
       "add": "Add to basket",
       "keep": "Also save as a card",
       "defaultName": "Misc.",
-      "short": "Misc",
+      "short": "Misc.",
       "addAmount": "Add {{amount}}"
     },
     "monitor": {
