@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { archivable } = require("../libs/archivable");
 
 // A cashier's end-of-day cash-up (the "Z report" on a real till).
 //
@@ -112,6 +113,15 @@ const DayClosingSchema = new mongoose.Schema(
 // The admin list is always "newest first, optionally per cashier".
 DayClosingSchema.index({ closedAt: -1 });
 DayClosingSchema.index({ cashier: 1, closedAt: -1 });
+
+/* A closing can be archived too, and for one reason only: when every sale it
+ * counted has been archived out from under it, what is left is a day that
+ * says nothing happened — which is not what happened, and not something the
+ * shop should have to scroll past.
+ *
+ * Archived rather than deleted, like everything else in this feature, so
+ * putting the sales back puts the day back with them. See libs/archivable.js. */
+archivable(DayClosingSchema);
 
 const DayClosing = mongoose.model("DayClosing", DayClosingSchema);
 

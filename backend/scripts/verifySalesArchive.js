@@ -187,20 +187,36 @@ async function whatComesWithIt() {
 
   // One receipt: two sale lines, and a refund against it whose own Sale row is
   // written under an RFD- reference.
+  /* Modelled on what the shop's database actually holds, which is not what
+   * this fixture used to assume.
+   *
+   * A refund written by performRefund gives its Sale row the number
+   * RFD-<receiptNo> and puts NOTHING in the receipt's refunds[] that names
+   * it. An older path wrote RFD-<sequence> into refunds[] instead. Both forms
+   * are in the ledger, and a fixture carrying only the second is how this
+   * check passed while the feature quietly left modern refunds behind. */
   const receipt = {
     _id: oid(5),
     receiptNo: "POS-000008",
     saleIds: [oid(1), oid(2)],
+    // The old form, named by the receipt.
     refunds: [{ reference: "RFD-000003" }],
     dayClosing: oid(7),
   };
+  // The modern form: a refund row whose number is derived from the receipt's,
+  // with nothing on the receipt pointing at it.
+  const MODERN_REFUND = "RFD-POS-000008";
 
   const wire = (seedRows) => {
     Sale.find = (query) => {
-      if (query.receiptNo?.$in?.some((no) => String(no).startsWith("RFD-"))) {
-        return chain([{ _id: oid(9) }]);
-      }
-      return chain(seedRows);
+      const asked = query.receiptNo?.$in || [];
+      // Both refund forms are asked for in ONE query, so both are answered in
+      // one reply. A stub that returned only the first match would let a
+      // half-working lookup pass.
+      const rows = [];
+      if (asked.includes("RFD-000003")) rows.push({ _id: oid(9) });
+      if (asked.includes(MODERN_REFUND)) rows.push({ _id: oid(8) });
+      return rows.length ? chain(rows) : chain(seedRows);
     };
     Receipt.find = (query) => {
       const clauses = query.$or || [];
@@ -209,7 +225,10 @@ async function whatComesWithIt() {
           c.saleIds?.$in?.some((id) => receipt.saleIds.map(String).includes(String(id))),
         ) ||
         clauses.some((c) => c.receiptNo?.$in?.includes(receipt.receiptNo)) ||
-        clauses.some((c) => c["refunds.reference"]?.$in?.includes("RFD-000003"));
+        clauses.some((c) => c["refunds.reference"]?.$in?.includes("RFD-000003")) ||
+        // Reached from a modern refund row, whose parent is its own number
+        // less the prefix.
+        clauses.some((c) => c.receiptNo?.$in?.includes(receipt.receiptNo));
       return chain(hit ? [receipt] : []);
     };
   };
@@ -222,7 +241,12 @@ async function whatComesWithIt() {
     got.includes(oid(1)) && got.includes(oid(2)),
     "half an archived receipt prints a total nothing adds up to",
   );
-  check("and the refund put through against it", got.includes(oid(9)));
+  check("and the refund written the old way", got.includes(oid(9)));
+  check(
+    "and the refund written the way the till writes them today",
+    got.includes(oid(8)),
+    "nothing on the receipt names this one — it has to be derived",
+  );
   check("nothing is counted twice", new Set(got).size === got.length);
   check("the closed day it belongs to is reported for recounting", out.dayClosingIds[0] === oid(7));
 

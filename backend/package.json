@@ -30,7 +30,8 @@
     "verify:idempotency": "node scripts/verifyCheckoutIdempotency.js",
     "uppercase-names": "node scripts/uppercaseBarcodedNames.js",
     "verify:till": "node scripts/verifyTillEndToEnd.js",
-    "verify:archive": "node scripts/verifySalesArchive.js"
+    "verify:archive": "node scripts/verifySalesArchive.js",
+    "archive-test-sales": "node scripts/archiveTestSales.js"
   },
   "author": "",
   "license": "ISC",

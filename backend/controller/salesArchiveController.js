@@ -112,11 +112,22 @@ async function seedFilter(body) {
  * receipt the seed touches, whole, plus the refunds that were put through
  * against those receipts.
  *
- * Refunds have to be gathered by hand because they are not on receipt.saleIds:
- * a refund writes its own negative Sale row under its own RFD- reference, and
- * the only thread back to the receipt is the reference in receipt.refunds[].
- * Miss them and archiving a sale leaves its refund behind as a credit the shop
- * appears to have given against nothing. */
+ * Refunds have to be gathered by hand: they are not on receipt.saleIds. A
+ * refund writes its own negative Sale row, and there are TWO threads back to
+ * the receipt, because the till has written them two ways.
+ *
+ *   RFD-<receiptNo>  — what performRefund writes today. The refund row's own
+ *                      number is the original's with a prefix, and NOTHING in
+ *                      that receipt's refunds[] points back at it.
+ *   RFD-<sequence>   — an older form, still sitting in refunds[] on rows this
+ *                      shop already has.
+ *
+ * Both are followed, in both directions. Following only refunds[].reference
+ * looked right and quietly missed every refund written the modern way —
+ * archiving a sale and leaving its return behind, so the shop's revenue went
+ * UP by the refund. That is the exact bug this function exists to prevent, and
+ * it was live until a dry run over real data showed a refund missing from a
+ * batch that plainly should have held it. */
 async function expandSelection(seed) {
   const seedSales = await Sale.find(seed).select("_id receiptNo").lean();
   if (seedSales.length === 0) {
@@ -138,6 +149,15 @@ async function expandSelection(seed) {
       // negative row alone and leaves the sale — and the shop's revenue goes UP
       // by the refund. The thread back is the reference in receipt.refunds[].
       { "refunds.reference": { $in: seedNos } },
+      // The same reached from the other side, for a refund picked on its own:
+      // its original's number is its own, less the prefix.
+      {
+        receiptNo: {
+          $in: seedNos
+            .filter((no) => no.startsWith("RFD-"))
+            .map((no) => no.slice("RFD-".length)),
+        },
+      },
     ],
   })
     .select("_id receiptNo saleIds refunds dayClosing total createdAt cashierName")
@@ -148,9 +168,17 @@ async function expandSelection(seed) {
     for (const id of receipt.saleIds || []) saleIds.add(String(id));
   }
 
-  const refundRefs = receipts.flatMap((receipt) =>
-    (receipt.refunds || []).map((entry) => entry.reference).filter(Boolean),
-  );
+  const refundRefs = [
+    ...new Set([
+      // What the receipt itself recorded, whichever form it took.
+      ...receipts.flatMap((receipt) =>
+        (receipt.refunds || []).map((entry) => entry.reference).filter(Boolean),
+      ),
+      // …and the form today's refunds carry, DERIVED rather than read: a
+      // receipt refunded this way has nothing in refunds[] naming the row.
+      ...receipts.map((receipt) => `RFD-${receipt.receiptNo}`),
+    ]),
+  ].filter(Boolean);
   if (refundRefs.length) {
     const refundRows = await Sale.find({ receiptNo: { $in: refundRefs } }).select("_id").lean();
     for (const id of idsOf(refundRows)) saleIds.add(id);
@@ -232,23 +260,44 @@ async function recountDayClosing(dayClosingId, stamp, session) {
 
   const summary = summariseTakings(receipts, creditTaken);
 
-  // Kept only the first time, so a second archive against the same day does not
-  // overwrite the original with an already-adjusted one.
-  const was = closing.adjusted?.was || {
-    receiptCount: closing.receiptCount,
-    gross: closing.gross,
-    discount: closing.discount,
-    tax: closing.tax,
-    net: closing.net,
-    refunded: closing.refunded,
-    grossSales: closing.grossSales,
-    refundAmount: closing.refundAmount,
-    netSales: closing.netSales,
-    expectedCash: closing.expectedCash,
-    expectedCard: closing.expectedCard,
-  };
+  /* The figures as they stand, kept only the FIRST time this day is restated,
+   * so a second archive against it cannot overwrite the signed-off originals
+   * with already-adjusted ones.
+   *
+   * Tested on `adjusted.batch` rather than on `adjusted.was` itself, because
+   * Mongoose materialises nested paths whether or not they hold anything: on a
+   * closing that has never been touched, `adjusted` is {} and `adjusted.was`
+   * is {} — both truthy, so a `||` fallback here never fired and the originals
+   * were recorded as an empty object. `batch` is written only by an actual
+   * restatement, so its presence is the honest test. */
+  const was = closing.adjusted?.batch
+    ? closing.adjusted.was
+    : {
+        receiptCount: closing.receiptCount,
+        gross: closing.gross,
+        discount: closing.discount,
+        tax: closing.tax,
+        net: closing.net,
+        refunded: closing.refunded,
+        grossSales: closing.grossSales,
+        refundAmount: closing.refundAmount,
+        netSales: closing.netSales,
+        expectedCash: closing.expectedCash,
+        expectedCard: closing.expectedCard,
+      };
 
-  closing.set({
+  /* Written as an update of the figures that changed, NOT as a save().
+   *
+   * save() re-validates the whole document, and this one was written by a
+   * cashier's day closing possibly years and several schema revisions ago. A
+   * field that has since become required, or a value that has since left an
+   * enum, would make an unrelated old record refuse to be restated — and the
+   * archive would fail with something that has nothing to do with the sales
+   * being archived.
+   *
+   * Only these figures are ours to change. The rest of the closing — who
+   * closed it, when, its reference — is theirs and is left exactly alone. */
+  const restated = {
     receiptCount: summary.receiptCount,
     receiptNos: receipts.map((receipt) => receipt.receiptNo),
     receipts: receipts.map((receipt) => receipt._id),
@@ -274,10 +323,34 @@ async function recountDayClosing(dayClosingId, stamp, session) {
       reason: stamp.reason,
       was,
     },
-  });
+  };
 
-  await closing.save({ session: session || undefined });
-  return { reference: closing.reference, was, now: { netSales: summary.netSales } };
+  /* A day with nothing left in it goes with the sales.
+   *
+   * Restating it to zero would leave a closing on the list swearing that a
+   * cashier worked a shift and took nothing — which is not what happened, and
+   * is worse than the day simply not being there. It is ARCHIVED, not deleted,
+   * carrying the same batch as the sales, so putting them back puts the day
+   * back with them. */
+  const emptied = receipts.length === 0;
+
+  await DayClosing.updateOne(
+    { _id: closing._id },
+    {
+      $set: emptied
+        ? {
+            ...restated,
+            archivedAt: stamp.at,
+            archivedBy: stamp.by,
+            archivedByName: stamp.byName,
+            archiveBatch: stamp.batch,
+            archiveReason: stamp.reason,
+          }
+        : restated,
+    },
+    { session: session || undefined },
+  );
+  return { reference: closing.reference, was, now: { netSales: summary.netSales }, emptied };
 }
 
 /* ── The endpoints ────────────────────────────────────────────────────────── */
@@ -304,6 +377,8 @@ module.exports.previewArchive = async (req, res) => {
       dayClosings: closings,
     });
   } catch (error) {
+    // The browser is told little on purpose; the terminal is told all of it.
+    console.error("[sales-archive] previewArchive failed:", error);
     return res
       .status(error.status || 500)
       .json({ success: false, message: error.message || "Could not work out that selection" });
@@ -362,7 +437,7 @@ module.exports.archiveSales = async (req, res) => {
 
     await logActivity({
       action: "archive",
-      entity: "Sale",
+      entity: "sale",
       description:
         `Archived ${totals.sales} sale(s) and ${totals.refunds} refund(s) across ` +
         `${receipts.length} receipt(s), worth ${totals.revenue}, as ${result.batch}. ` +
@@ -379,6 +454,29 @@ module.exports.archiveSales = async (req, res) => {
       dayClosingsRestated: result.restated,
     });
   } catch (error) {
+    // The browser is told little on purpose; the terminal is told all of it.
+    console.error("[sales-archive] archiveSales failed:", error);
+
+    /* And into the audit trail, where the shop can actually reach it.
+     *
+     * On the live server nobody sees that console line, and a 5xx body is
+     * replaced with "Something went wrong" before it reaches the browser
+     * (see server.js) — which is right for a browser and leaves the one
+     * person allowed to run this with nothing to go on. The activity log is
+     * already superadmin-only and already where the successful archives are
+     * recorded, so a failed one belongs beside them.
+     *
+     * Awaited so the response cannot land before the record exists, and
+     * logActivity swallows its own failures, so this can never turn one
+     * error into two. */
+    await logActivity({
+      action: "archive-sales-failed",
+      entity: "sale",
+      description: `Archiving failed: ${error.message || "no reason given"}`,
+      userId: req.user?._id,
+      ipAddress: req.ip,
+    });
+
     return res
       .status(error.status || 500)
       .json({ success: false, message: error.message || "Could not archive those sales" });
@@ -421,6 +519,8 @@ module.exports.listArchives = async (req, res) => {
       })),
     });
   } catch (error) {
+    // The browser is told little on purpose; the terminal is told all of it.
+    console.error("[sales-archive] listArchives failed:", error);
     return res
       .status(500)
       .json({ success: false, message: error.message || "Could not read the archives" });
@@ -469,6 +569,12 @@ module.exports.restoreArchive = async (req, res) => {
         { $set: clear },
         { session, withArchived: true },
       );
+      // The days that were emptied by this batch come back with it.
+      await DayClosing.updateMany(
+        { archiveBatch: batch },
+        { $set: clear },
+        { session, withArchived: true },
+      );
 
       // The days those receipts belong to count them again, so they are
       // recounted a second time and land back on their original figures.
@@ -489,7 +595,7 @@ module.exports.restoreArchive = async (req, res) => {
 
     await logActivity({
       action: "restore",
-      entity: "Sale",
+      entity: "sale",
       description: `Restored archive ${batch}: ${rows.length} sale row(s) back in the books`,
       userId: req.user._id,
       ipAddress: req.ip,
@@ -499,6 +605,29 @@ module.exports.restoreArchive = async (req, res) => {
       .status(200)
       .json({ success: true, batch, restored: rows.length, dayClosings: dayClosingIds.length });
   } catch (error) {
+    // The browser is told little on purpose; the terminal is told all of it.
+    console.error("[sales-archive] restoreArchive failed:", error);
+
+    /* And into the audit trail, where the shop can actually reach it.
+     *
+     * On the live server nobody sees that console line, and a 5xx body is
+     * replaced with "Something went wrong" before it reaches the browser
+     * (see server.js) — which is right for a browser and leaves the one
+     * person allowed to run this with nothing to go on. The activity log is
+     * already superadmin-only and already where the successful archives are
+     * recorded, so a failed one belongs beside them.
+     *
+     * Awaited so the response cannot land before the record exists, and
+     * logActivity swallows its own failures, so this can never turn one
+     * error into two. */
+    await logActivity({
+      action: "restore-archive-failed",
+      entity: "sale",
+      description: `Restoring failed: ${error.message || "no reason given"}`,
+      userId: req.user?._id,
+      ipAddress: req.ip,
+    });
+
     return res
       .status(500)
       .json({ success: false, message: error.message || "Could not restore that archive" });
