@@ -64,6 +64,11 @@ function Written({
   // keeps both. The gradient runs top to bottom, so every letter shows the same
   // sweep and the line still reads as one colour rather than a rainbow.
   letterClassName = "",
+  // Something to arrive after the last letter, on the next beat, as though
+  // the same hand put it there. Kept OUT of letterClassName on purpose: that
+  // class clips a gradient to the text and paints the glyph transparent,
+  // which turns a colour emoji into an invisible one.
+  trailing = null,
   delay = 0,
   step = 55,
   duration = 420,
@@ -80,7 +85,12 @@ function Written({
 
   if (reduced) {
     return (
-      <span className={`${className} ${letterClassName}`.trim()}>{text}</span>
+      <span className={className}>
+        <span className={letterClassName}>{text}</span>
+        {trailing ? (
+          <span aria-hidden="true"> {trailing}</span>
+        ) : null}
+      </span>
     );
   }
 
@@ -114,9 +124,40 @@ function Written({
           </React.Fragment>
         );
       })}
+      {trailing ? (
+        <span
+          aria-hidden="true"
+          className="pos-written"
+          style={{
+            animationDelay: `${delay + (index + 1) * step}ms`,
+            animationDuration: `${duration}ms`,
+          }}
+        >
+          {" "}
+          {trailing}
+        </span>
+      ) : null}
     </span>
   );
 }
+
+/* The picture that goes with the hour. The shop chose these three.
+ *
+ * The sun is U+2600 followed by U+FE0F, the variation selector that asks for
+ * the colour emoji rather than the black-and-white dingbat — two code points
+ * for one picture. That matters here because the greeting is drawn by walking
+ * its text a character at a time, and a walk like that would split the sun in
+ * half and strand the selector.
+ *
+ * It does not happen, and the reason is structural rather than lucky: these
+ * are passed to Written as `trailing`, which renders what it is given WHOLE
+ * and never walks it. Keep it that way — the moment one of these is fed
+ * through the letter-by-letter path, the sun loses its colour. */
+export const GREETING_EMOJI = {
+  morning: "🍻",
+  afternoon: "☀️",
+  evening: "🪐",
+};
 
 // The greeting across the top of the till.
 //
@@ -139,6 +180,9 @@ export function Greeting({ className = "" }) {
       text={text}
       className={className}
       letterClassName="pos-greeting-ink"
+      trailing={
+        <span className="pos-greeting-emoji">{GREETING_EMOJI[part]}</span>
+      }
       step={130}
       duration={900}
     />

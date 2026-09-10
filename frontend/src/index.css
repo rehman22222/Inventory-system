@@ -1254,6 +1254,26 @@ body.osk-open .admin-drawer {
  * `color` stays as the fallback underneath: a browser that does not clip
  * backgrounds to text gets a solid readable green instead of nothing at all,
  * which is the failure mode that matters on a screen a shop is trading from. */
+/* The picture beside the greeting: bigger than the words, and standing a
+   little apart from them.
+
+   Sized in em, so it grows with whatever type size the header gives the
+   greeting rather than being pinned to one screen's pixels.
+
+   Deliberately WITHOUT .pos-greeting-ink. That class clips a gradient to the
+   text and paints the glyph transparent, which is right for letters and would
+   make a colour emoji disappear entirely.
+
+   inline-block so the size and the nudge apply; the small negative baseline
+   shift stops a taller glyph from lifting the whole line. */
+.pos-greeting-emoji {
+  display: inline-block;
+  font-size: 1.5em;
+  line-height: 1;
+  margin-left: 0.2em;
+  vertical-align: -0.14em;
+}
+
 .pos-greeting-ink {
   color: #34d399;
   background-image: linear-gradient(180deg, #6ee7b7 0%, #34d399 45%, #059669 100%);
