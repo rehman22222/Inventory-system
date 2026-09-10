@@ -3,6 +3,9 @@ const zlib = require("zlib");
 const Product=require('../models/Productmodel')
 const Category=require('../models/ Categorymodel')
 const OnlineListing=require('../models/OnlineListingmodel')
+// One definition of what POS and Online mean, shared with the Inventory
+// Report so the screen and the download cannot disagree.
+const { readChannel, channelScope } = require("../libs/productChannel");
 const Sale=require('../models/Salesmodel')
 const Deal=require('../models/Dealmodel')
 
@@ -185,25 +188,12 @@ module.exports.quickAddProduct = async (req, res) => {
           // so the products BOTH channels share (barcoded on the shelf and sold
           // on the site) show up under either filter, which is the whole point
           // of them being one row. Default stays the full catalogue.
-          const channel = ["pos", "online"].includes(req.query.channel)
-            ? req.query.channel
-            : "all";
+          const channel = readChannel(req.query.channel);
           // "Which products are still waiting for a barcode?" — the till asks
           // this when a scan finds nothing and the cashier is holding the box.
           const needsBarcode = String(req.query.needsBarcode || "") === "1";
 
-          const onlineProductIds = async () => {
-            const listings = await OnlineListing.find({})
-              .select("product variants.product")
-              .lean();
-            const ids = new Set();
-            for (const l of listings) {
-              if (l.product) ids.add(String(l.product));
-              for (const v of l.variants || []) if (v.product) ids.add(String(v.product));
-            }
-            return [...ids].map((id) => new mongoose.Types.ObjectId(id));
-          };
-          
+
           // .lean() returns plain objects instead of full Mongoose documents —
           // the wire JSON is identical, but the server skips hydrating every
           // product on each request, which is the single biggest win when a
@@ -218,11 +208,7 @@ module.exports.quickAddProduct = async (req, res) => {
           // questions and must not share an entry.
           const catalogue = await getProductCatalog(async () => {
           const scoped = { ...filter };
-          if (channel === "pos") {
-            scoped.barcode = { $exists: true, $nin: [null, ""] };
-          } else if (channel === "online") {
-            scoped._id = { $in: await onlineProductIds() };
-          }
+          Object.assign(scoped, await channelScope(channel));
           if (needsBarcode) {
             // Unset or empty — both mean "never been given one".
             scoped.$or = [{ barcode: { $exists: false } }, { barcode: { $in: [null, ""] } }];

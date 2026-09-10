@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 const Sale = require("../models/Salesmodel");
 const Receipt = require("../models/Receiptmodel");
 const Product = require("../models/Productmodel");
+// One definition of what POS and Online mean, shared with the Products page.
+const { readChannel, channelScope } = require("../libs/productChannel");
 const User = require("../models/Usermodel");
 const DayClosing = require("../models/DayClosingmodel");
 const Store = require("../models/Storemodel");
@@ -247,7 +249,20 @@ async function buildCreditSales(req) {
 
 // ── Inventory: stock valuation + potential profit ───────────────────────────
 async function buildInventory(req) {
-  const products = await Product.find({})
+  /* Narrowed to whichever channel the Products page was showing.
+   *
+   * The report is taken FROM that page, with its All / POS / Online switch
+   * sitting right beside the download. Ignoring it meant the shop read 1,808
+   * products on screen, downloaded the report, and found a different number
+   * in it with nothing on either to explain the gap.
+   *
+   * The definition of a channel is not repeated here — libs/productChannel.js
+   * holds it and the product list reads the same one, so the two cannot drift
+   * the first time somebody changes what "online" means. */
+  const channel = readChannel(req.query.channel);
+  const scope = await channelScope(channel);
+
+  const products = await Product.find(scope)
     .populate("Category", "name")
     .populate("supplier", "name")
     .sort({ name: 1 });
@@ -279,13 +294,21 @@ async function buildInventory(req) {
   });
 
   return {
-    title: "Inventory & Stock Valuation Report",
+    title:
+      channel === "pos"
+        ? "Inventory & Stock Valuation Report — POS"
+        : channel === "online"
+          ? "Inventory & Stock Valuation Report — Online"
+          : "Inventory & Stock Valuation Report",
     headers: [
       "Name", "Category", "Barcode", "Quantity", "Unit Cost",
       "Unit Price", "Retail Value", "Stock Status", "Expiry Date", "Supplier",
     ],
     rows,
     summary: [
+      // Said on the sheet too, so a report read on its own says which
+      // catalogue it counted.
+      ["Catalogue", channel === "all" ? "All products" : channel === "pos" ? "POS only" : "Online only"],
       ["Total Products", products.length],
       ["Total Units in Stock", totalUnits],
       ["Total Cost Value", money(totalCostValue)],

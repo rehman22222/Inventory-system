@@ -378,9 +378,17 @@ function Productpage() {
               {t("generate.button")}
             </button>
           )}
+          {/* The report answers the question the SCREEN is answering: narrow
+              the catalogue to POS or Online and the download narrows with it.
+              Reading 1,808 products here and finding another number in the
+              file is the kind of gap nobody can explain afterwards.
+
+              "all" sends nothing, so the report keeps the shape it has always
+              had for anyone who never touches the switch. */}
           <ReportButton
             reportKey="inventory"
             label={t("products.inventoryReport")}
+            params={channel === "all" ? undefined : { channel }}
             className="h-12"
           />
         </div>
