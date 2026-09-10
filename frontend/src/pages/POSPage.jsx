@@ -111,6 +111,14 @@ const TAX_RATE_KEY = "pos_tax_rate";
 // get their own tile at the front of the list rather than a real DB category.
 const DEALS_TAB = "__deals__";
 
+/* "ONLINE — …" are the website's shelves, not the shop's. One of their
+ * products picking up a barcode should not put a web aisle on the till; the
+ * item still scans, it just isn't browsable here.
+ *
+ * Written once because two lists ask it — the tiles, and the categories a new
+ * product can be filed into — and they must never disagree about which
+ * shelves belong to the till. */
+const isWebAisle = (entry) => /^ONLINE — /.test(entry?.name || "");
 function POSPage() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
@@ -430,10 +438,6 @@ function POSPage() {
 
   const categories = useMemo(() => {
     const isMisc = (entry) => entry?.name === MISC_CATEGORY;
-    // "ONLINE — …" are the website's shelves, not the shop's. One of their
-    // products picking up a barcode should not put a web aisle on the till;
-    // the item still scans, it just isn't browsable here.
-    const isWebAisle = (entry) => /^ONLINE — /.test(entry?.name || "");
     const stocked = realCategories
       .filter((entry) => stockedCounts.has(String(entry?._id)) && !isWebAisle(entry))
       .map((entry) => ({
@@ -452,6 +456,25 @@ function POSPage() {
       ...pinned,
     ];
   }, [realCategories, stockedCounts, activeDeals, t]);
+
+  /* Where a NEW product can be filed, which is a different question from
+   * which aisles a cashier can browse.
+   *
+   * The list above is the tiles: a category earns one by having something in
+   * it, because a tile that opens onto an empty grid is a dead end. Handing
+   * that same list to the two forms that CREATE a product got the rule exactly
+   * backwards — a category made in IMS a minute ago has nothing in it yet, and
+   * that is precisely when somebody is trying to put the first thing there.
+   * The shop made "Loom" and "Gummies" and then could not reach either.
+   *
+   * So: every category the till owns, empty or not. The web aisles are still
+   * left out — those are the website's shelves and stay its own, which is the
+   * one rule both lists share. */
+  const filingCategories = useMemo(
+    () =>
+      realCategories.filter((entry) => !isWebAisle(entry)),
+    [realCategories],
+  );
 
   // Nothing is open to begin with, and Clear puts it back to nothing.
   //
@@ -2590,7 +2613,7 @@ function POSPage() {
           subtotal={subtotal}
           applied={voucher}
           canGenerate={isElevated}
-          categories={categories}
+          categories={filingCategories}
           symbol={currencySymbol()}
           discount={discount}
           discountType={discountType}
@@ -2782,7 +2805,7 @@ function POSPage() {
       {unknownBarcode && (
         <UnknownBarcodeModal
           barcode={unknownBarcode}
-          categories={categories}
+          categories={filingCategories}
           onResolved={(product) => {
             setUnknownBarcode(null);
             dispatch(gettingallproducts({ view: "pos" }));
