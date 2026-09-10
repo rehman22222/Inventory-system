@@ -4,6 +4,8 @@ const Receipt = require("../models/Receiptmodel");
 const Product = require("../models/Productmodel");
 // One definition of what POS and Online mean, shared with the Products page.
 const { readChannel, channelScope } = require("../libs/productChannel");
+// Reports say what the till says: a card is a "Card", not a "creditcard".
+const { paymentLabel } = require("../libs/paymentLabels");
 const User = require("../models/Usermodel");
 const DayClosing = require("../models/DayClosingmodel");
 const Store = require("../models/Storemodel");
@@ -173,7 +175,7 @@ async function buildSales(req, options = {}) {
       money(lineNet),
       money(lineProfit),
       money(s.totalAmount),
-      s.paymentMethod,
+      paymentLabel(s.paymentMethod),
       s.status,
       channel,
     ];
@@ -394,7 +396,7 @@ async function buildDayClosing(req) {
         item.quantity,
         money(item.price),
         money(item.lineTotal),
-        receipt.paymentMethod || "",
+        paymentLabel(receipt.paymentMethod),
         receipt.status || "",
       ]);
     });
@@ -431,7 +433,7 @@ async function buildDayClosing(req) {
     const expected = entry.expected ?? entry.amount;
     const back = Number(entry.refunded || 0);
     summary.push([
-      `  ${entry.method}`,
+      `  ${paymentLabel(entry.method)}`,
       back > 0
         ? `${money(expected)} (${entry.count}, in ${money(entry.amount)} / back ${money(back)})`
         : `${money(expected)} (${entry.count})`,
