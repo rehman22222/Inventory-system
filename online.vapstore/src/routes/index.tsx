@@ -21,10 +21,18 @@ import { cldHeroDesktopImage, cldHeroMobileImage, cldProductCardImage } from "@/
 
 function EventsHeading({
   heading,
+  headingImage,
   align = "center",
   items = [],
 }: {
   heading: string;
+  /* Artwork shown INSTEAD of the words. Most seasonal headings are a lockup
+   * rather than a line of type, and asking the shop to reproduce one as text
+   * was always an approximation of what they actually had.
+   *
+   * `heading` stays required, and is the alt text when this is set — a screen
+   * reader still announces the season, and the words show if the file fails. */
+  headingImage?: string;
   align?: "left" | "center" | "right";
   items?: {
     kind: "product" | "category";
@@ -47,18 +55,41 @@ function EventsHeading({
   ];
 
   return (
-    <section className="relative overflow-hidden border-b hair bg-background py-12 md:py-16">
+    <section className="relative overflow-hidden border-b hair bg-background py-6 md:py-8">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-accent" />
       <div className="pointer-events-none absolute -right-16 top-8 h-32 w-32 rounded-full bg-accent/25 blur-3xl" />
       <div className={`container-x flex flex-col ${alignment}`}>
-        <h2
-          className="max-w-4xl font-display text-4xl leading-none tracking-tight text-ink sm:text-5xl md:text-6xl"
-          style={{ textShadow: "4px 4px 0 var(--color-accent)" }}
-        >
-          <span className="inline-block">{heading}</span>
-        </h2>
+        {headingImage ? (
+          /* Capped by HEIGHT, not width, so a wide lockup and a square one
+             occupy the same band and the section does not jump about when the
+             shop swaps the artwork.
+
+             The cap is about 2.9x what it first shipped at (4/5/6rem), grown
+             in three passes as the shop looked at it on the real store. A
+             seasonal lockup is the banner for the whole section, and at the
+             original size it read as a caption above the cards.
+
+             The three keep their proportions to each other, and are rounded
+             to one decimal rather than carrying the exact multiplier out to
+             three — a hair of precision nobody can see, on a number somebody
+             will have to read. */
+          <img
+            src={headingImage}
+            alt={heading}
+            className="h-[11.7rem] w-auto max-w-full object-contain sm:h-[14.6rem] md:h-[17.5rem]"
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <h2
+            className="max-w-4xl font-display text-4xl leading-none tracking-tight text-ink sm:text-5xl md:text-6xl"
+            style={{ textShadow: "4px 4px 0 var(--color-accent)" }}
+          >
+            <span className="inline-block">{heading}</span>
+          </h2>
+        )}
         {items.length > 0 && (
-          <div className="mt-10 flex w-full max-w-5xl items-end justify-center overflow-visible px-1 sm:px-0">
+          <div className="mt-6 flex w-full max-w-5xl items-end justify-center overflow-visible px-1 sm:px-0">
             {items.slice(0, 3).map((item, index) => (
               <Link
                 key={`${item.kind}-${item.title}-${index}`}
@@ -248,9 +279,11 @@ function Home() {
 
       {hero.length > 0 && <HeroCarousel slides={hero} />}
 
-      {settings.events?.enabled && settings.events.heading?.trim() && (
+      {settings.events?.enabled &&
+        (settings.events.heading?.trim() || settings.events.headingImage?.url) && (
         <EventsHeading
-          heading={settings.events.heading.trim()}
+          heading={settings.events.heading?.trim() || ""}
+          headingImage={settings.events.headingImage?.url || undefined}
           align={settings.events.align || "center"}
           items={eventItems}
         />

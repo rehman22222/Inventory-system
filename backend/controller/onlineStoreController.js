@@ -2214,6 +2214,16 @@ module.exports.updateStoreSettings = async (req, res) => {
     if (Object.prototype.hasOwnProperty.call(events, "heading")) {
       settings.events.heading = String(events.heading || "").trim().slice(0, 140);
     }
+    if (Object.prototype.hasOwnProperty.call(events, "headingImage")) {
+      // A picture in place of the heading. Sent as null (or with no url) to
+      // take it off, which puts the text heading back — the words are kept
+      // either way as the image's alt text.
+      const image = events.headingImage || {};
+      settings.events.headingImage = {
+        url: String(image.url || "").trim().slice(0, 500),
+        publicId: String(image.publicId || "").trim().slice(0, 200),
+      };
+    }
     if (Object.prototype.hasOwnProperty.call(events, "align")) {
       settings.events.align = ["left", "center", "right"].includes(events.align)
         ? events.align

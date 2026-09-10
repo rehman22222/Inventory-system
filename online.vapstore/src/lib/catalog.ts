@@ -123,6 +123,9 @@ export interface StorefrontSettings {
   events?: {
     enabled: boolean;
     heading: string;
+    /* Artwork shown in place of the heading. The words are kept either way —
+     * they are the alt text, and they come back if the picture is removed. */
+    headingImage?: { url?: string; publicId?: string };
     align: "left" | "center" | "right";
     items?: {
       enabled?: boolean;

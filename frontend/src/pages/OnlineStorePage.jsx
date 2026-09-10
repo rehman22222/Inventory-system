@@ -4035,7 +4035,13 @@ const BLANK_SETTINGS = {
     blog: { enabled: true, label: "Blog", href: "/blog" },
   },
   announcement: { enabled: true, primary: "", secondary: "" },
-  events: { enabled: false, heading: "", align: "center", items: [] },
+  events: {
+    enabled: false,
+    heading: "",
+    headingImage: { url: "", publicId: "" },
+    align: "center",
+    items: [],
+  },
   blog: { ...BLOG_PAGE_DEFAULTS },
   emergencyAlert: {
     active: false,
@@ -4309,6 +4315,24 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
         [key]: { ...current.footerLinks[key], ...patch },
       },
     }));
+  /* The heading as a picture rather than as type.
+   *
+   * A seasonal lockup is artwork; asking a shop to reproduce it as a text
+   * heading was always going to be an approximation. Uploading one does NOT
+   * clear the words — they stay as the image's alt text, which is what a
+   * screen reader announces and what shows if the file ever fails to load, and
+   * it means removing the picture puts the old wording straight back. */
+  const uploadEventsHeading = async (files) => {
+    const selected = Array.from(files || []);
+    if (!selected.length) return;
+    const result = await dispatch(uploadListingImages([selected[0]]));
+    if (result.error) return toast.error(result.payload || "Upload failed");
+    const image = (result.payload || [])[0];
+    if (image?.url) {
+      set("events", "headingImage", { url: image.url, publicId: image.publicId || "" });
+    }
+  };
+
   const setEventItem = (index, patch) =>
     setDraft((current) => {
       const items = normalizeEventItems(current.events.items || []);
@@ -4597,6 +4621,64 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
             <option value="center">Align center</option>
             <option value="right">Align right</option>
           </select>
+        </div>
+
+        {/* A picture in place of the words. Most seasonal headings are artwork
+            — a Halloween lockup, a launch logo — and a text heading was always
+            an approximation of what the shop actually had.
+
+            The wording above is NOT cleared when one is uploaded. It stays as
+            the alt text, which is what a screen reader reads out and what shows
+            if the file fails to load, and it means Remove puts the old heading
+            straight back rather than leaving a gap. */}
+        <div className="mt-3 rounded-lg border border-base-300 bg-base-200/40 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h4 className="flex items-center gap-2 text-sm font-semibold">
+                <FiImage /> Heading image (optional)
+              </h4>
+              <p className="text-[11px] text-base-content/50">
+                A PNG shown instead of the words above. The text stays as its
+                alt text, so removing the image brings the heading back.
+              </p>
+            </div>
+            {draft.events.headingImage?.url ? (
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs"
+                onClick={() =>
+                  set("events", "headingImage", { url: "", publicId: "" })
+                }
+              >
+                Remove
+              </button>
+            ) : (
+              <label className="btn btn-outline btn-xs gap-2">
+                <FiUpload /> Upload PNG
+                <input
+                  hidden
+                  type="file"
+                  accept="image/png,image/webp,image/svg+xml"
+                  onChange={(event) => {
+                    uploadEventsHeading(event.target.files);
+                    event.target.value = "";
+                  }}
+                />
+              </label>
+            )}
+          </div>
+          {draft.events.headingImage?.url && (
+            <div className="mt-3 rounded-lg bg-black/90 p-3 text-center">
+              {/* The same cap the storefront uses at desktop width, so this
+                  preview shows the artwork at the size a shopper will see it
+                  rather than at a flattering thumbnail size. */}
+              <img
+                src={draft.events.headingImage.url}
+                alt={draft.events.heading || "Events heading"}
+                className="mx-auto max-h-[17.5rem] w-auto object-contain"
+              />
+            </div>
+          )}
         </div>
         <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-3">
           {[0, 1, 2].map((index) => {

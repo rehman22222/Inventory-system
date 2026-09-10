@@ -217,6 +217,23 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
         trim: true,
         maxlength: 140,
       },
+      /* A picture INSTEAD of the words above.
+       *
+       * A seasonal heading is usually a piece of artwork — a Halloween
+       * lockup, a launch logo — and setting it as type was always going to be
+       * an approximation of the thing the shop actually had. When this is set
+       * the storefront shows it in place of `heading`.
+       *
+       * `heading` is NOT cleared when one is uploaded. It stays as the text
+       * alternative for the image, which is what a screen reader announces and
+       * what shows if the image ever fails to load — and it means removing the
+       * picture puts the old wording straight back rather than leaving a gap. */
+      headingImage: {
+        url: { type: String, default: "", trim: true },
+        // Cloudinary's handle for the file, so replacing or removing the
+        // picture can clean up after itself rather than leaving it orphaned.
+        publicId: { type: String, default: "", trim: true },
+      },
       align: {
         type: String,
         enum: ["left", "center", "right"],
