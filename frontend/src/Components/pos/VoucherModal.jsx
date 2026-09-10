@@ -6,7 +6,7 @@ import { cacheGet, isVoucherSpentOffline } from "../../lib/offlineDb";
 import { isNetworkError } from "../../lib/offlineQueue";
 import { FiMinus, FiPlus, FiPrinter } from "react-icons/fi";
 import PosModal from "./PosModal";
-import BarcodeLabel from "../BarcodeLabel";
+import BarcodeLabel, { SHELF_LABEL_MM } from "../BarcodeLabel";
 import {
   currency,
   newInStoreBarcode,
@@ -179,7 +179,6 @@ function VoucherModal({
   const [product, setProduct] = useState({
     name: "",
     Price: "",
-    wasPrice: "",
     Category: "",
     quantity: "",
     barcode: "",
@@ -232,9 +231,6 @@ function VoucherModal({
       name: product.name.trim(),
       barcode: product.barcode.trim(),
       Price: Number(product.Price),
-      // Kept off the product itself: what a thing used to cost is a fact about
-      // this batch of stickers, not about the item.
-      wasPrice: product.wasPrice ? Number(product.wasPrice) : null,
     });
     // One sticker. A shelf edge takes a single label however many units came in,
     // and a cashier who wants a strip can count up with the steppers.
@@ -260,10 +256,17 @@ function VoucherModal({
     onProductAdded?.();
   };
 
-  // The app prints to an 80mm till roll by default. Shelf labels go on a normal
-  // sheet, so @page is overridden for this print only — a rule appended last
-  // wins the cascade, and it comes off again so the next receipt is not printed
-  // on A4.
+  // Printed exactly the way a receipt is printed.
+  //
+  // No @page of its own. A sticker-sized page (40x30mm) is a size most drivers
+  // do not have, and one that cannot honour it quietly falls back to its
+  // default sheet — which is how a small ticket ended up adrift in the middle
+  // of an A4 page with the browser's own header above it.
+  //
+  // The till's roll printer already prints receipts correctly under the app's
+  // own @page, so the ticket goes out under the same one and the roll feeds and
+  // cuts as it always does. What makes it a LABEL rather than a receipt is the
+  // width of the ticket itself — see SHELF_LABEL_MM — not the page.
   const saveAndPrint = async () => {
     if (busy) return;
 
@@ -288,15 +291,7 @@ function VoucherModal({
   };
 
   const printLabels = () => {
-    const style = document.createElement("style");
-    style.textContent = "@page { size: A4; margin: 8mm; }";
-    document.head.appendChild(style);
-
-    try {
-      printSlip("barcode-sheet");
-    } finally {
-      style.remove();
-    }
+    printSlip("barcode-sheet");
   };
 
   const field =
@@ -509,15 +504,15 @@ function VoucherModal({
               <p className="font-mono text-xs text-slate-400">{made.barcode}</p>
             </div>
 
-            {/* One label at the size it prints, so nobody discovers the symbol
-                is unreadable after running off a sheet of forty. */}
+            {/* One ticket at the size it prints, from the same constant the page
+                and the stylesheet use — so nobody discovers the symbol is
+                unreadable after running off a roll of them. */}
             <div className="mx-auto w-fit bg-white px-3 py-2">
-              <div style={{ width: "84mm" }}>
+              <div style={{ width: `${SHELF_LABEL_MM.width}mm` }}>
                 <BarcodeLabel
                   variant="shelf"
                   code={made.barcode}
                   price={made.Price}
-                  wasPrice={made.wasPrice}
                   name={made.name}
                   symbol={symbol}
                 />
@@ -578,7 +573,6 @@ function VoucherModal({
                   setProduct({
                     name: "",
                     Price: "",
-                    wasPrice: "",
                     Category: "",
                     quantity: "",
                     barcode: "",
@@ -601,7 +595,6 @@ function VoucherModal({
                     variant="shelf"
                     code={made.barcode}
                     price={made.Price}
-                    wasPrice={made.wasPrice}
                     name={made.name}
                     symbol={symbol}
                   />
@@ -622,39 +615,20 @@ function VoucherModal({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={label}>{t("pos.newProduct.price", "Selling Price")}</label>
-                <input
-                  inputMode="decimal"
-                  value={product.Price}
-                  onChange={(event) =>
-                    setProduct((current) => ({
-                      ...current,
-                      Price: sanitizeDecimal(event.target.value),
-                    }))
-                  }
-                  placeholder="0.0"
-                  className={field}
-                />
-              </div>
-              <div>
-                <label className={label}>{t("pos.newProduct.wasPrice", "Was Price")}</label>
-                <input
-                  inputMode="decimal"
-                  value={product.wasPrice}
-                  onChange={(event) =>
-                    setProduct((current) => ({
-                      ...current,
-                      wasPrice: sanitizeDecimal(event.target.value),
-                    }))
-                  }
-                  placeholder="0.0"
-                  className={field}
-                />
-                {/* Not required, but the reports say so if it is missing: with
-                    no cost there is no profit figure to report. */}
-              </div>
+            <div>
+              <label className={label}>{t("pos.newProduct.price", "Selling Price")}</label>
+              <input
+                inputMode="decimal"
+                value={product.Price}
+                onChange={(event) =>
+                  setProduct((current) => ({
+                    ...current,
+                    Price: sanitizeDecimal(event.target.value),
+                  }))
+                }
+                placeholder="0.0"
+                className={field}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-3">

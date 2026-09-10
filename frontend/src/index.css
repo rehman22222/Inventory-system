@@ -470,61 +470,73 @@ input[inputmode="decimal"],
     margin-bottom: 0.5mm;
   }
 
-  /* --- Price sticker. Wider than the plain label because the two figures sit
-     side by side, so its sheet gets its own column width. --- */
+  /* --- The price ticket, printed the way a receipt is printed. ---
+
+     It goes out under the app's own @page, on the till's roll, and the roll
+     feeds and cuts as it always does. It does NOT declare a page of its own:
+     a 40x30mm page is a size most drivers do not have, and one that cannot
+     honour it falls back to its default sheet — which put a small ticket adrift
+     in the middle of an A4 page with the browser's header above it.
+
+     So what makes this a label rather than a receipt is the width of the TICKET,
+     not the page. 40mm of it, centred on whatever roll is loaded, which is why
+     it comes out the same on a 58mm roll as on an 80mm one.
+
+     Nothing here is coloured. A thermal head has one ink and no greys, so a
+     background it cannot print comes out as a dither pattern that reads as dirt
+     across the price — which is exactly what it did. --- */
   #barcode-sheet .bc-grid-shelf {
-    grid-template-columns: repeat(auto-fill, 70mm);
+    display: block !important;
   }
   #barcode-sheet .bc-label.bc-shelf {
-    width: 70mm;
+    width: 40mm;
+    /* Hard against the left edge, NOT centred.
+     *
+     * A roll printer starts its head at the left of the paper and prints as far
+     * across as it is given. Centring a 40mm ticket on a wider page leaves the
+     * whole left half blank and pushes the ticket towards the right edge, where
+     * a narrow roll clips it — which is exactly what it did.
+     *
+     * Left-aligned, the ticket starts where the head starts, so it comes out
+     * whole on any roll at least 40mm wide and the shop tears it off the top. */
+    margin: 0;
     overflow: hidden;
-    text-align: left;
-    padding: 1.5mm;
-    border: 0.3mm solid #111;
+    text-align: center;
+    padding: 0;
+    border: 0;
+    /* Never sliced in half by a page break. */
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
-  #barcode-sheet .bc-shelf-row {
-    display: flex;
-    align-items: baseline;
-    /* A long price (three figures and cents) would push the old price off the
-       sticker. Let it drop to its own line instead of overflowing. */
-    flex-wrap: wrap;
-    gap: 1mm 2.5mm;
-    margin-bottom: 1mm;
+  /* A strip of them runs down the roll like the lines of a receipt, with enough
+     of a gap to tear or cut between. Not a page break each — that is a sheet
+     printer's idea, and on a roll it feeds and wastes a ticket's length every
+     time. */
+  #barcode-sheet .bc-label.bc-shelf + .bc-label.bc-shelf {
+    margin-top: 6mm;
   }
-  /* The highlight has to survive printing. Browsers drop background colour on
-     paper unless told not to, and without this the block prints white and the
-     sticker loses the thing that marks it. */
-  #barcode-sheet .bc-now {
-    background: #f5c518;
-    padding: 1mm 2.5mm;
-    font-size: 28pt;
-    font-weight: 800;
-    line-height: 1.1;
-    letter-spacing: -0.03em;
-    white-space: nowrap;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  #barcode-sheet .bc-was {
-    font-size: 15pt;
-    font-weight: 700;
-    line-height: 1.1;
-    text-decoration: line-through;
-    white-space: nowrap;
-  }
-  /* Two lines of name at most: a sticker is found by its price and its symbol,
-     and a third line pushes the barcode off it. */
-  #barcode-sheet .bc-name {
+  /* One line of name. A second costs the room the symbol needs, and a ticket is
+     found by its price and read by its barcode — the name is a courtesy. */
+  #barcode-sheet .bc-shelf .bc-name {
     font-size: 6pt;
-    font-weight: 600;
-    letter-spacing: 0.03em;
+    font-weight: 700;
+    letter-spacing: 0.01em;
     text-transform: uppercase;
-    line-height: 1.2;
-    margin-bottom: 0.8mm;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    line-height: 1.1;
+    margin-bottom: 0.4mm;
+    white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* The one thing on the ticket that has to be read at arm's length. Big rather
+     than highlighted — see above for why there is no block behind it. */
+  #barcode-sheet .bc-shelf .bc-now {
+    font-size: 22pt;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+    margin-bottom: 0.4mm;
   }
 
   /* The SVG carries its own quiet zone, so it fills the label edge to edge. */
@@ -557,49 +569,35 @@ input[inputmode="decimal"],
   line-height: 1.1;
 }
 
-/* Price sticker, on screen. Same shape as the printed one so the preview is
-   worth looking at before a sheet is run off. */
+/* Price sticker, on screen. The dialog renders it at the sticker's real size
+   (see SHELF_LABEL_MM), so these track the print sizes rather than being chosen
+   to look right in a large preview — a preview that flatters the label is worse
+   than none, because the roll is what tells you afterwards. */
 .bc-label.bc-shelf {
-  text-align: left;
-  padding: 8px;
+  text-align: center;
+  padding: 0;
   border: 1px solid #111;
   border-radius: 2px;
   overflow: hidden;
 }
-.bc-shelf-row {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  margin-bottom: 5px;
-}
-.bc-now {
-  background: #f5c518;
-  padding: 4px 11px;
-  font-size: 40px;
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-  white-space: nowrap;
-}
-.bc-was {
-  font-size: 21px;
+.bc-shelf .bc-name {
+  font-size: 8px;
   font-weight: 700;
-  line-height: 1.1;
-  text-decoration: line-through;
-  white-space: nowrap;
-}
-.bc-name {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.01em;
   text-transform: uppercase;
-  line-height: 1.2;
-  margin-bottom: 5px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  line-height: 1.1;
+  margin-bottom: 1px;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bc-shelf .bc-now {
+  font-size: 29px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  margin-bottom: 1px;
 }
 
 .bc-svg {
