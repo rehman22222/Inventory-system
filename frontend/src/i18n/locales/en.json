@@ -815,7 +815,11 @@
     },
     "newProduct": {
       "tab": "Shelf Labels",
-      "name": "Name",
+      "name": "Inventory Name",
+      "header": "Header",
+      "headerHint": "Defaults to the product name",
+      "footer": "Footer",
+      "footerHint": "e.g. 2 for 5",
       "price": "Selling Price",
       "category": "Category",
       "stock": "Add Stock",

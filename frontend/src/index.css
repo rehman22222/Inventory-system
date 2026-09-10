@@ -515,28 +515,76 @@ input[inputmode="decimal"],
   #barcode-sheet .bc-label.bc-shelf + .bc-label.bc-shelf {
     margin-top: 6mm;
   }
-  /* One line of name. A second costs the room the symbol needs, and a ticket is
-     found by its price and read by its barcode — the name is a courtesy. */
+  /* TWO lines of header, and that is a deliberate reversal of what this said
+     before. It used to be one line, trimmed with an ellipsis, on the argument
+     that a second line costs the room the symbol needs. Once the header grew
+     to 9pt that argument stopped holding: a header long enough to matter was
+     being thrown away at "WERTYHJKLHGFDSDFG...", which tells a shopper
+     nothing at all. Two lines of real words beat one line of half a word.
+
+     A THIRD line is still refused. The clamp is what keeps a runaway name
+     from pushing the barcode off the bottom of the ticket — without it this
+     is not "wraps nicely", it is "prints until the roll runs out".
+
+     overflow-wrap: anywhere, because the thing that overflows here is a
+     single unbroken word. Ordinary wrapping has nowhere to break one, so it
+     would leave the line as long as it started and undo the clamp.
+
+     9pt, not the 6pt this started at, because the shop asked for a header it
+     could read off the shelf and 6pt on a thermal head is a caption rather
+     than a word. The cost is worth stating plainly: this line does not wrap,
+     so at 9pt roughly twenty characters fit across 40mm where thirty did
+     before, and a long product name falling back into the header is trimmed
+     with an ellipsis sooner. That is the right trade — a header the shop TYPES
+     is short by nature, and a name too long to read at 6pt was not being read. */
   #barcode-sheet .bc-shelf .bc-name {
-    font-size: 6pt;
+    font-size: 9pt;
     font-weight: 700;
     letter-spacing: 0.01em;
     text-transform: uppercase;
     line-height: 1.1;
     margin-bottom: 0.4mm;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
   /* The one thing on the ticket that has to be read at arm's length. Big rather
      than highlighted — see above for why there is no block behind it. */
   #barcode-sheet .bc-shelf .bc-now {
-    font-size: 22pt;
+    font-size: 18.7pt;
     font-weight: 800;
     line-height: 1;
     letter-spacing: -0.02em;
     white-space: nowrap;
     margin-bottom: 0.4mm;
+  }
+
+  /* The shop's own line under the symbol. Same size as the header so the two
+     read as a pair framing the price, and clamped to TWO lines for the same
+     reasons — see the header above, which this deliberately mirrors.
+
+     It reads as a pair with the header, so it has to break like one: a footer
+     cut off at an ellipsis under a header allowed to wrap would look like a
+     bug rather than a decision. The clamp is still what stops a long line
+     running the ticket off the end of the roll. */
+  #barcode-sheet .bc-shelf .bc-foot {
+    font-size: 9pt;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    line-height: 1.1;
+    margin-top: 0.4mm;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   /* The SVG carries its own quiet zone, so it fills the label edge to edge. */
@@ -549,6 +597,21 @@ input[inputmode="decimal"],
   .no-print {
     display: none !important;
   }
+}
+.bc-shelf .bc-foot {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  margin-top: 1px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* On-screen preview of a label. The print rules above take over at print time;
@@ -581,18 +644,22 @@ input[inputmode="decimal"],
   overflow: hidden;
 }
 .bc-shelf .bc-name {
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.01em;
   text-transform: uppercase;
   line-height: 1.1;
   margin-bottom: 1px;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .bc-shelf .bc-now {
-  font-size: 29px;
+  font-size: 24.7px;
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.02em;

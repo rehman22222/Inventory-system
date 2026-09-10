@@ -28,9 +28,15 @@ export const SHELF_LABEL_MM = { width: 40 };
 //   plain — price over a symbol. What the stock screens print in bulk when all
 //           they know is a code and a price. The default, so those callers keep
 //           the sticker they already print.
-//   shelf — the ticket that goes in the rail on the shelf edge: the product
-//           named across the top, the price under it, and the symbol beneath
-//           that with its digits. Nothing else on it.
+//   shelf — the ticket that goes in the rail on the shelf edge, in four lines:
+//           a HEADER, the price, the symbol with its digits, and a FOOTER.
+//
+//           Header and footer are the shop's own words — a shelf position, a
+//           promise like "2 for 5", a warning. Both are optional and an empty
+//           one prints NOTHING rather than an empty line, which on a 40mm
+//           ticket is a waste of roll. The header falls back to the product
+//           name, which is what used to sit there, so a ticket that ignores
+//           both is exactly the ticket this printed before they existed.
 //
 // THE TICKET PRINTS ON THE TILL'S ROLL, the way a receipt does, at the width
 // in SHELF_LABEL_MM above. That decides most of what it looks like.
@@ -53,7 +59,16 @@ export const SHELF_LABEL_MM = { width: 40 };
 // The `margin` is the quiet zone. It looks like empty space but it is part of
 // the symbol — EAN-13 will not scan reliably without it, so do not set it to 0
 // to squeeze the label down.
-function BarcodeLabel({ code, price, symbol = "€", name, variant = "plain" }) {
+function BarcodeLabel({
+  code,
+  price,
+  symbol = "€",
+  name,
+  // The two lines the shop writes itself. See the note above.
+  header,
+  footer,
+  variant = "plain",
+}) {
   const ref = useRef(null);
   const shelf = variant === "shelf";
 
@@ -91,11 +106,16 @@ function BarcodeLabel({ code, price, symbol = "€", name, variant = "plain" }) 
     );
   }
 
+  // Header, price, symbol, footer — the order a shopper's eye takes them in.
+  const top = (header || "").trim() || name;
+  const bottom = (footer || "").trim();
+
   return (
     <div className="bc-label bc-shelf">
-      {name && <div className="bc-name">{name}</div>}
+      {top && <div className="bc-name">{top}</div>}
       <div className="bc-now">{money(price)}</div>
       <svg ref={ref} className="bc-svg" />
+      {bottom && <div className="bc-foot">{bottom}</div>}
     </div>
   );
 }

@@ -182,6 +182,10 @@ function VoucherModal({
     Category: "",
     quantity: "",
     barcode: "",
+    // The two lines the shop writes on the ticket itself. Both optional; an
+    // empty one prints nothing at all rather than a blank line.
+    header: "",
+    footer: "",
   });
   const [made, setMade] = useState(null);
   // The barcode of the product this screen actually created. Nothing is written
@@ -231,6 +235,8 @@ function VoucherModal({
       name: product.name.trim(),
       barcode: product.barcode.trim(),
       Price: Number(product.Price),
+      header: product.header.trim(),
+      footer: product.footer.trim(),
     });
     // One sticker. A shelf edge takes a single label however many units came in,
     // and a cashier who wants a strip can count up with the steppers.
@@ -514,6 +520,8 @@ function VoucherModal({
                   code={made.barcode}
                   price={made.Price}
                   name={made.name}
+                  header={made.header}
+                  footer={made.footer}
                   symbol={symbol}
                 />
               </div>
@@ -576,6 +584,8 @@ function VoucherModal({
                     Category: "",
                     quantity: "",
                     barcode: "",
+                    header: "",
+                    footer: "",
                   });
                 }}
                 className="bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-700"
@@ -596,6 +606,8 @@ function VoucherModal({
                     code={made.barcode}
                     price={made.Price}
                     name={made.name}
+                    header={made.header}
+                    footer={made.footer}
                     symbol={symbol}
                   />
                 ))}
@@ -605,7 +617,7 @@ function VoucherModal({
         ) : (
           <form onSubmit={reviewProduct} className="space-y-3">
             <div>
-              <label className={label}>{t("pos.newProduct.name", "Product Name")}</label>
+              <label className={label}>{t("pos.newProduct.name", "Inventory Name")}</label>
               <input
                 autoFocus
                 value={product.name}
@@ -613,6 +625,35 @@ function VoucherModal({
                 placeholder={t("products.namePlaceholder")}
                 className={field}
               />
+            </div>
+
+            {/* What the shop writes on the ticket itself, above the price and
+                under the symbol. Both optional: leave one empty and that line
+                is not printed at all, so a ticket that ignores them is the
+                ticket this printed before they existed. */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={label}>
+                  {t("pos.newProduct.header", "Header")}
+                </label>
+                <input
+                  value={product.header}
+                  onChange={setProductField("header")}
+                  placeholder={t("pos.newProduct.headerHint", "Defaults to the product name")}
+                  className={field}
+                />
+              </div>
+              <div>
+                <label className={label}>
+                  {t("pos.newProduct.footer", "Footer")}
+                </label>
+                <input
+                  value={product.footer}
+                  onChange={setProductField("footer")}
+                  placeholder={t("pos.newProduct.footerHint", "e.g. 2 for 5")}
+                  className={field}
+                />
+              </div>
             </div>
 
             <div>
