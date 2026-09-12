@@ -16,6 +16,7 @@ import DayClosingModal from "../Components/pos/DayClosingModal";
 import { currency } from "../Components/pos/posUtils";
 import toast from "react-hot-toast";
 import SalesArchiveModal from "../Components/SalesArchiveModal";
+import { saleRowClass } from "./salesRowKind";
 
 
 
@@ -442,7 +443,27 @@ function Salespage() {
         )}
 
         <div className="mt-10">
-          <h2 className="text-xl font-semibold mb-4">{t("sales.salesList")}</h2>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold">{t("sales.salesList")}</h2>
+            {/* A key for the row colours. Colour on its own is a code nobody
+                was given, and it is also the one cue a colour-blind reader
+                may not get at all — so the words are here beside it. */}
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              {[
+                { className: "bg-red-50 text-red-900", label: t("sales.legend.refund", "Refund") },
+                { className: "bg-amber-50 text-amber-900", label: t("sales.legend.credit", "On credit") },
+                { className: "bg-purple-50 text-purple-900", label: t("sales.legend.deal", "Deal applied") },
+              ].map((entry) => (
+                <span key={entry.label} className="flex items-center gap-1.5">
+                  <span
+                    className={`inline-block h-3 w-3 rounded border border-base-300 ${entry.className}`}
+                    aria-hidden="true"
+                  />
+                  {entry.label}
+                </span>
+              ))}
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <table className="min-w-full bg-base-100 border mb-24 border-base-300 rounded-lg shadow-md">
               <thead className="bg-base-200">
@@ -487,7 +508,12 @@ function Salespage() {
                 {Array.isArray(displaySales) &&
                displaySales.length > 0 ? (
                 displaySales.map((sales,index) => (
-                    <tr key={sales?._id} className="">
+                    <tr
+                      key={sales?._id}
+                      // Refund, credit or deal — see salesRowKind for the
+                      // order they win in when a row is more than one.
+                      className={saleRowClass(sales)}
+                    >
                       {canArchiveSales && (
                         <td className="px-3 py-2 border">
                           <input

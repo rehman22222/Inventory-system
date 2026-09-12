@@ -26,6 +26,29 @@ const COLORS = {
   amberSoft: "FFFEF3C7",
   green: "FF15803D",
   greenSoft: "FFDCFCE7",
+  purple: "FF6B21A8",
+  purpleSoft: "FFF3E8FF",
+};
+
+/* A row worth picking out of a long report at a glance.
+ *
+ * The same three the sales screen marks, so a row does not change meaning
+ * between the screen and the download:
+ *
+ *   refund  — money going OUT, the most exceptional row on the page
+ *   credit  — sold, not yet paid for
+ *   deal    — an offer was given; an ordinary sale, just a cheaper one
+ *
+ * Credit is AMBER, the colour of the till's own credit button and of the credit
+ * row on the sales screen. It was printed red here for a while; the shop asked
+ * for the button's colour, and one idea wearing one colour everywhere is worth
+ * more than a download's habit. That freed the ordinary red for refunds, which
+ * is where a red belongs — the row where money goes out.
+ */
+const ROW_KIND_FILLS = {
+  refund: { bg: "redSoft", ink: "red" },
+  credit: { bg: "amberSoft", ink: "amber" },
+  deal: { bg: "purpleSoft", ink: "purple" },
 };
 
 const toNumber = (value) => {
@@ -157,6 +180,9 @@ async function buildWorkbookBuffer({
   generatedBy,
   headers = [],
   rows = [],
+  // One entry per row, naming what it is — see ROW_KIND_FILLS. Only the sales
+  // reports send it; everything else prints exactly as it always did.
+  rowKinds,
   summary = [],
   shop = {},
   currency = "EUR",
@@ -501,20 +527,31 @@ async function buildWorkbookBuffer({
         };
       });
     }
-    if (
-      shouldMarkCreditRows &&
-      String(typedRows[rowNumber - firstDataRow]?.[paymentColumn] || "").toLowerCase() === "credit"
-    ) {
+    /* What this row is.
+
+       The sales reports say so outright. Anything else falls back to reading
+       the Payment column, which is how credit rows were marked before
+       rowKinds existed. */
+    const kind =
+      (Array.isArray(rowKinds) ? rowKinds[rowNumber - firstDataRow] : "") ||
+      (shouldMarkCreditRows &&
+      String(
+        typedRows[rowNumber - firstDataRow]?.[paymentColumn] || "",
+      ).toLowerCase() === "credit"
+        ? "credit"
+        : "");
+    const marked = ROW_KIND_FILLS[kind];
+    if (marked) {
       row.eachCell({ includeEmpty: true }, (cell) => {
         cell.fill = {
           type: "pattern",
           pattern: "solid",
-          fgColor: { argb: COLORS.redSoft },
+          fgColor: { argb: COLORS[marked.bg] },
         };
         cell.font = {
           ...(cell.font || {}),
           bold: true,
-          color: { argb: COLORS.red },
+          color: { argb: COLORS[marked.ink] },
         };
       });
     }

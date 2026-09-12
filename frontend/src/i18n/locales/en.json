@@ -336,6 +336,8 @@
     "expiry": "Expiry",
     "noCategory": "No Category",
     "new": "New",
+    "recent": "Added in {{hours}}h",
+    "recentSince": "Added since {{when}}",
     "newAddedAt": "Added {{when}}",
     "noProducts": "No products found.",
     "selectImageError": "Please select an image file",

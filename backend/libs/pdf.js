@@ -21,8 +21,25 @@ const RULE = "#d1d5db";
 const HEAD_BG = "#1e293b";
 const ZEBRA = "#f8fafc";
 const ACCENT = "#1d4ed8";
-const CREDIT_BG = "#fee2e2";
-const CREDIT_INK = "#b91c1c";
+/* A row that is worth picking out of a long report at a glance.
+ *
+ * The same three the sales screen marks, in the same colours, so a row does
+ * not change meaning between the screen and the download:
+ *
+ *   refund  — money going OUT, the most exceptional row on the page
+ *   credit  — sold, not yet paid for
+ *   deal    — an offer was given; an ordinary sale, just a cheaper one
+ *
+ * Credit is AMBER, the colour of the till's own credit button and of the credit
+ * row on the sales screen. It was printed red here for a while; the shop asked
+ * for the button's colour, and one idea wearing one colour everywhere is worth
+ * more than a download's habit. That freed the ordinary red for refunds, which
+ * is where a red belongs — the row where money goes out. */
+const ROW_KIND_COLOURS = {
+  refund: { bg: "#fee2e2", ink: "#b91c1c" },
+  credit: { bg: "#fef3c7", ink: "#b45309" },
+  deal: { bg: "#f3e8ff", ink: "#6b21a8" },
+};
 
 // Columns holding money or counts. They are right-aligned, because digits only
 // line up for comparison when their last digit does.
@@ -65,6 +82,9 @@ const buildPdfBuffer = ({
   generatedBy,
   headers,
   rows,
+  // One entry per row, naming what it is — see ROW_KIND_COLOURS. Only the sales
+  // reports send it; everything else prints exactly as it always did.
+  rowKinds,
   summary,
   shop = {},
   currency = "EUR",
@@ -175,14 +195,24 @@ const buildPdfBuffer = ({
       }
 
       const y = doc.y;
-      const isCreditRow =
-        shouldMarkCreditRows &&
-        String(row[paymentColumn] || "").toLowerCase() === "credit";
-      if (isCreditRow || rowIndex % 2 === 1) {
-        doc.rect(left, y, available, rowHeight).fill(isCreditRow ? CREDIT_BG : ZEBRA);
+      /* What this row is.
+
+         The sales reports say so outright in `rowKinds`. Anything else falls
+         back to reading the Payment column, which is how credit rows were
+         marked before rowKinds existed — so a report that does not send them
+         prints exactly as it always did. */
+      const kind =
+        (Array.isArray(rowKinds) ? rowKinds[rowIndex] : "") ||
+        (shouldMarkCreditRows &&
+        String(row[paymentColumn] || "").toLowerCase() === "credit"
+          ? "credit"
+          : "");
+      const marked = ROW_KIND_COLOURS[kind] || null;
+      if (marked || rowIndex % 2 === 1) {
+        doc.rect(left, y, available, rowHeight).fill(marked ? marked.bg : ZEBRA);
       }
 
-      doc.fillColor(isCreditRow ? CREDIT_INK : INK);
+      doc.fillColor(marked ? marked.ink : INK);
       let x = left;
       row.forEach((cell, index) => {
         doc.text(truncate(doc, cell, widths[index] - 8), x + 4, y + 4, {

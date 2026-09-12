@@ -108,6 +108,21 @@ async function buildSales(req, options = {}) {
     .populate("products.product", "name costPrice")
     .sort({ createdAt: -1 });
 
+  /* Which of these baskets had an offer on them.
+   *
+   * A deal is recorded on the RECEIPT, not on the sale row — one receipt is
+   * often several lines, and the offer belongs to the basket. Without this the
+   * report cannot tell a "3 for 18" from a hand-typed markdown, and colouring
+   * on the sale's own `discount` would paint every markdown as an offer.
+   *
+   * One query whatever the range: it asks only for receipts that carried an
+   * offer, and only for their number. */
+  const dealReceipts = new Set(
+    (await Receipt.find({ dealDiscount: { $gt: 0 } }).select("receiptNo").lean())
+      .map((receipt) => String(receipt.receiptNo || ""))
+      .filter(Boolean),
+  );
+
   // Every statement figure comes from salesStatement, over these same rows —
   // one definition, run once here and again in its own test. Only the
   // per-channel split is accumulated in the row loop below.
@@ -118,6 +133,20 @@ async function buildSales(req, options = {}) {
     refunds: { receipts: new Set(), revenue: 0 },
   };
   const allReceipts = new Set();
+
+  /* What kind each row is, for the colour the report prints it in.
+   *
+   * One row, one kind, in this order: refund, then credit, then deal. A
+   * refund taken on credit is a refund first — money left the drawer, which
+   * is the thing somebody scanning a report for a dip is looking for. A deal
+   * sold on credit is unpaid first: the shop is owed for it.
+   *
+   * The same order the sales screen uses — see frontend salesRowKind.js — so a
+   * row is not one colour on screen and another in the download.
+   *
+   * Pushed as the rows are built, so a row and its kind cannot fall out of
+   * step with each other. */
+  const rowKinds = [];
 
   const rows = sales.map((s) => {
     // Refund rows reverse an earlier sale: the goods came back, so their value
@@ -161,6 +190,16 @@ async function buildSales(req, options = {}) {
     bucket.receipts.add(receiptKey);
     allReceipts.add(receiptKey);
     bucket.revenue += Number(s.totalAmount || 0);
+
+    rowKinds.push(
+      s.source === "refund"
+        ? "refund"
+        : s.paymentMethod === "credit"
+          ? "credit"
+          : dealReceipts.has(String(s.receiptNo || ""))
+            ? "deal"
+            : "",
+    );
 
     return [
       s.receiptNo || "",
@@ -230,6 +269,7 @@ async function buildSales(req, options = {}) {
       "Line Profit", "Charged", "Payment", "Status", "Channel",
     ],
     rows,
+    rowKinds,
     summary,
   };
 }
@@ -608,6 +648,10 @@ module.exports.downloadReport = async (req, res) => {
       generatedBy: `${req.user.name || "User"} (${req.user.role})`,
       headers: report.headers,
       rows: report.rows,
+      // One entry per row, naming what it is: refund, credit, deal, or empty
+      // for an ordinary line. Only the sales reports set it; every other
+      // report leaves it undefined and prints as it always did.
+      rowKinds: report.rowKinds,
       summary: report.summary,
       shop: shop || {},
       currency: shop?.currency || "EUR",
