@@ -375,6 +375,33 @@ const loadProducts = async (categorySlug?: string): Promise<Product[]> => {
   return data.products.map(toProduct);
 };
 
+/* A saved section laid over its defaults, without the defaults being able to
+ * be erased by a field that is not there.
+ *
+ * Spreading does not do this. `{ ...base, ...saved }` copies EVERY key the
+ * saved object has, including ones whose value is undefined — so a payload
+ * carrying `enabled` with nothing in it turns a default of `true` into
+ * undefined, and the section quietly disappears. TypeScript was pointing at
+ * exactly that on the two sections whose fields are required.
+ *
+ * This copies only what the saved object actually says. */
+const withDefaults = <T extends object>(
+  // Optional on both sides, because the sections themselves are optional on
+  // StorefrontSettings — this hands back the same optionality it was given.
+  base: T | undefined,
+  saved?: Partial<T>,
+): T | undefined => {
+  if (!base) return saved as T | undefined;
+
+  const merged: T = { ...base };
+  for (const [key, value] of Object.entries(saved ?? {})) {
+    if (value !== undefined) {
+      (merged as Record<string, unknown>)[key] = value;
+    }
+  }
+  return merged;
+};
+
 const mergeSettings = (settings?: StorefrontSettings): StorefrontSettings => {
   return {
     social: { ...defaultStorefrontSettings.social, ...(settings?.social || {}) },
@@ -389,10 +416,7 @@ const mergeSettings = (settings?: StorefrontSettings): StorefrontSettings => {
       ...defaultStorefrontSettings.announcement,
       ...(settings?.announcement || {}),
     },
-    events: {
-      ...defaultStorefrontSettings.events,
-      ...(settings?.events || {}),
-    },
+    events: withDefaults(defaultStorefrontSettings.events, settings?.events),
     emergencyAlert: {
       ...defaultStorefrontSettings.emergencyAlert,
       ...(settings?.emergencyAlert || {}),
@@ -413,10 +437,10 @@ const mergeSettings = (settings?: StorefrontSettings): StorefrontSettings => {
       ...defaultStorefrontSettings.newThisWeek,
       ...(settings?.newThisWeek || {}),
     },
-    bestSellers: {
-      ...defaultStorefrontSettings.bestSellers,
-      ...(settings?.bestSellers || {}),
-    },
+    bestSellers: withDefaults(
+      defaultStorefrontSettings.bestSellers,
+      settings?.bestSellers,
+    ),
     deals: {
       ...defaultStorefrontSettings.deals,
       ...(settings?.deals || {}),

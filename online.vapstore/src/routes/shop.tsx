@@ -51,15 +51,22 @@ function Shop() {
       ),
     [search.products],
   );
+  /* Read out of the search once, here.
+   *
+   * It was read inside the filter callback, where TypeScript could not carry
+   * the check across the function boundary — `search.q` is a property, and
+   * nothing promises it is still a string by the time the callback runs. Taking
+   * a copy makes that promise, and does the lowercasing once instead of once
+   * per product. */
+  const query = search.q?.trim().toLowerCase() ?? "";
   const list = campaignProductIds.size
     ? filters.filtered.filter((product) => campaignProductIds.has(product.id))
-    : search.q
-      ? filters.filtered.filter((product) => {
-          const query = search.q.toLowerCase();
-          return [product.name, product.brand, product.short, product.description]
+    : query
+      ? filters.filtered.filter((product) =>
+          [product.name, product.brand, product.short, product.description]
             .filter(Boolean)
-            .some((value) => value.toLowerCase().includes(query));
-        })
+            .some((value) => value.toLowerCase().includes(query)),
+        )
       : filters.filtered;
   const [filtersOpen, setFiltersOpen] = useState(false);
 
