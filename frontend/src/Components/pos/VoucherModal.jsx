@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import axiosInstance from "../../lib/axios";
@@ -42,6 +42,7 @@ function VoucherModal({
   applied,
   canGenerate,
   categories = [],
+  products = [],
   symbol = "€",
   onApply,
   onRemove,
@@ -188,6 +189,16 @@ function VoucherModal({
     footer: "",
   });
   const [made, setMade] = useState(null);
+  /* The product this label is FOR, when it is an existing one.
+   *
+   * A shelf label is usually wanted for something the shop already sells — a
+   * ticket got wet, a price changed, the rail was rearranged. This screen
+   * could only ever create a NEW product, so printing a replacement meant
+   * either typing a duplicate into the catalogue or not using it at all.
+   *
+   * Empty means the old behaviour exactly: a new product, written on Print. */
+  const [linked, setLinked] = useState(null);
+  const [productSearch, setProductSearch] = useState("");
   // The barcode of the product this screen actually created. Nothing is written
   // until Print, and a second Print is another sheet of the same sticker rather
   // than a second product — so what was saved is remembered by its code, not by
@@ -243,6 +254,52 @@ function VoucherModal({
     setLabels(1);
   };
 
+  /* Print a label for something the shop already sells.
+   *
+   * Fills the form from the catalogue rather than asking the shop to retype
+   * it — a retyped price is a price that can disagree with the till, and the
+   * whole point of the ticket is that it matches. The header and footer are
+   * left alone: they are the shop's words for this ticket, not the product's.
+   */
+  /* What the search box is offering.
+   *
+   * Capped at eight. A list that fills the dialog is not a shortlist, and a
+   * cashier looking for one product will type another letter sooner than
+   * scroll. Only searched once there are two characters, so an empty box does
+   * not drop the whole catalogue under the field.
+   */
+  const matchingProducts = useMemo(() => {
+    const needle = productSearch.trim().toLowerCase();
+    if (needle.length < 2) return [];
+
+    return (Array.isArray(products) ? products : [])
+      .filter((entry) => {
+        const name = String(entry?.name || "").toLowerCase();
+        const barcode = String(entry?.barcode || "").toLowerCase();
+        return name.includes(needle) || barcode.includes(needle);
+      })
+      .slice(0, 8);
+  }, [products, productSearch]);
+
+  const linkProduct = (found) => {
+    if (!found) return;
+    setLinked(found);
+    setProductSearch("");
+    setProduct((current) => ({
+      ...current,
+      name: found.name || "",
+      Price: String(found.Price ?? ""),
+      barcode: String(found.barcode || ""),
+      // Stock is not being added; this is a ticket, not a delivery.
+      quantity: "",
+    }));
+  };
+
+  const unlinkProduct = () => {
+    setLinked(null);
+    setProduct((current) => ({ ...current, name: "", Price: "", barcode: "" }));
+  };
+
   // Write the product. This is the moment the catalogue changes, and it happens
   // on Print rather than on Generate.
   const saveProduct = async () => {
@@ -276,8 +333,13 @@ function VoucherModal({
   const saveAndPrint = async () => {
     if (busy) return;
 
-    // Already written on an earlier press — this is just another sheet.
-    if (savedBarcode !== made?.barcode) {
+    /* Nothing to write when the label is for a product that already exists.
+     *
+     * This is the difference between a replacement ticket and a new line in
+     * the catalogue. Without it, reprinting a label for something the shop
+     * already sells would add a second copy of it — and the shop would find
+     * out from a stock count. */
+    if (!linked && savedBarcode !== made?.barcode) {
       setBusy(true);
       try {
         await saveProduct();
@@ -296,7 +358,35 @@ function VoucherModal({
     printLabels();
   };
 
+  /* Printed on the till's roll, with no margin of its own.
+   *
+   * The app's default print page is the 80mm receipt roll with a 4mm margin,
+   * and that margin is where the browser draws ITS OWN header and footer — the
+   * date, the page title and "1/1". On a receipt nobody minds. On a shelf
+   * ticket the shop is left peeling a sticker that says "9/9/26, 10:51 AM" and
+   * "Sign in — E360" above the price.
+   *
+   * Setting the margin to zero for this print alone is what removes them: with
+   * no margin there is nowhere for the browser to put them. The rule is
+   * appended last so it wins the cascade, and taken away again afterwards so
+   * receipts keep the margin they need — a thermal head cannot print to the
+   * very edge of the paper.
+   *
+   * The height stays `auto`: the roll should feed the ticket and stop, not a
+   * whole page. If a long blank strip still comes out, that is the printer
+   * driver's own paper length and is set there, not here.
+   */
   const printLabels = () => {
+    const style = document.createElement("style");
+    style.textContent = "@page { size: 80mm auto; margin: 0; }";
+    document.head.appendChild(style);
+
+    const cleanup = () => {
+      style.remove();
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup);
+
     printSlip("barcode-sheet");
   };
 
@@ -510,11 +600,21 @@ function VoucherModal({
               <p className="font-mono text-xs text-slate-400">{made.barcode}</p>
             </div>
 
-            {/* One ticket at the size it prints, from the same constant the page
-                and the stylesheet use — so nobody discovers the symbol is
-                unreadable after running off a roll of them. */}
+            {/* One ticket, from the same constant the page and the stylesheet
+                use — so nobody discovers the symbol is unreadable after running
+                off a roll of them.
+
+                Shown at TWICE its printed size, and it says so below. At 40mm
+                the ticket is honest but too small to read across a counter,
+                and the header and footer are what the shop is here to check.
+
+                `zoom` rather than `transform: scale`, because zoom takes part
+                in layout: a scaled ticket would keep its 40mm box and overlap
+                whatever sat under it. Everything inside grows together, so the
+                proportions stay exactly what the roll will print — a preview
+                that flattered the label would be worse than none. */}
             <div className="mx-auto w-fit bg-white px-3 py-2">
-              <div style={{ width: `${SHELF_LABEL_MM.width}mm` }}>
+              <div style={{ width: `${SHELF_LABEL_MM.width}mm`, zoom: 2 }}>
                 <BarcodeLabel
                   variant="shelf"
                   code={made.barcode}
@@ -526,6 +626,9 @@ function VoucherModal({
                 />
               </div>
             </div>
+            <p className="mt-2 text-center font-mono text-[10px] uppercase tracking-wide text-slate-500">
+              {t("pos.newProduct.previewScale", "Shown at twice actual size")}
+            </p>
 
             <div className="flex items-center gap-2">
               <label className="text-xs font-semibold uppercase text-slate-400">
@@ -615,7 +718,67 @@ function VoucherModal({
             </div>
           </div>
         ) : (
-          <form onSubmit={reviewProduct} className="space-y-3">
+          <form onSubmit={reviewProduct} className="mx-auto max-w-md space-y-3">
+            {/* Print a ticket for something the shop already sells.
+
+                First, because it is the commoner errand: a ticket got wet, a
+                price changed, the rail was rearranged. Leaving it empty is
+                the old behaviour exactly — a new product, written on Print. */}
+            <div>
+              <label className={label}>
+                {t("pos.newProduct.existing", "Existing product (optional)")}
+              </label>
+              {linked ? (
+                <div className="flex items-center justify-between gap-2 rounded-md bg-slate-800 px-3 py-2">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-slate-100">
+                      {linked.name}
+                    </div>
+                    <div className="font-mono text-[11px] text-slate-400">
+                      {linked.barcode}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={unlinkProduct}
+                    className="shrink-0 text-xs font-semibold text-slate-300 hover:text-white"
+                  >
+                    {t("common.remove", "Remove")}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    value={productSearch}
+                    onChange={(event) => setProductSearch(event.target.value)}
+                    placeholder={t(
+                      "pos.newProduct.existingHint",
+                      "Search by name or barcode",
+                    )}
+                    className={field}
+                  />
+                  {matchingProducts.length > 0 && (
+                    <div className="mt-1 max-h-40 overflow-y-auto rounded-md bg-slate-800">
+                      {matchingProducts.map((found) => (
+                        <button
+                          key={found._id || found.barcode}
+                          type="button"
+                          onClick={() => linkProduct(found)}
+                          className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-slate-700"
+                        >
+                          <span className="min-w-0 truncate text-sm text-slate-100">
+                            {found.name}
+                          </span>
+                          <span className="shrink-0 font-mono text-[11px] text-slate-400">
+                            {found.barcode}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
             <div>
               <label className={label}>{t("pos.newProduct.name", "Inventory Name")}</label>
               <input

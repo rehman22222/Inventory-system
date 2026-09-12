@@ -485,21 +485,53 @@ input[inputmode="decimal"],
      Nothing here is coloured. A thermal head has one ink and no greys, so a
      background it cannot print comes out as a dither pattern that reads as dirt
      across the price — which is exactly what it did. --- */
+  /* A shelf ticket sits in the MIDDLE of the page, across and down.
+   *
+   * Scoped with :has() to the shelf print alone. The same #barcode-sheet also
+   * carries the bulk sticker run from the Products page — dozens of labels
+   * that must flow from the top and break across pages — and centring those
+   * would strand the first page and fight the pagination.
+   *
+   * 100vh is the PAGE height when printing, so this is one page tall and the
+   * ticket sits at its centre. A browser without :has() simply leaves the
+   * ticket at the top, which is where it was before: nothing breaks, it just
+   * is not centred.
+   */
+  #barcode-sheet:has(.bc-grid-shelf) {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+  }
+
   #barcode-sheet .bc-grid-shelf {
     display: block !important;
+    /* A little paper above and below the ticket.
+     *
+     * The shelf label prints with NO page margin — see VoucherModal.printLabels
+     * for why: the margin is where the browser draws the date and "1/1", and on
+     * a sticker those are rubbish. With the margin gone the ticket would sit
+     * hard against the cut line, so the breathing room is put back here, where
+     * it belongs to the ticket rather than to the page.
+     *
+     * A thermal head cannot reach the very edge of the roll either, so this is
+     * not only about how it looks. */
+    padding: 3mm 0;
   }
   #barcode-sheet .bc-label.bc-shelf {
-    width: 40mm;
-    /* Hard against the left edge, NOT centred.
-     *
-     * A roll printer starts its head at the left of the paper and prints as far
-     * across as it is given. Centring a 40mm ticket on a wider page leaves the
-     * whole left half blank and pushes the ticket towards the right edge, where
-     * a narrow roll clips it — which is exactly what it did.
-     *
-     * Left-aligned, the ticket starts where the head starts, so it comes out
-     * whole on any roll at least 40mm wide and the shop tears it off the top. */
-    margin: 0;
+    width: 45mm;
+    /* Centred on the page.
+
+       THIS REVERSES AN EARLIER DECISION, and the reason it was made is worth
+       keeping: a roll printer starts its head at the left of the paper, and a
+       40mm ticket centred on a wider page was being clipped on a narrow roll.
+       That is what flush-left was for.
+
+       The shop has asked for centred after seeing it print on a full-width
+       page. If tickets start coming out cut off at an edge again, this line
+       is why — put `margin: 0` back. */
+    margin: 0 auto;
     overflow: hidden;
     text-align: center;
     padding: 0;
@@ -530,15 +562,16 @@ input[inputmode="decimal"],
      single unbroken word. Ordinary wrapping has nowhere to break one, so it
      would leave the line as long as it started and undo the clamp.
 
-     9pt, not the 6pt this started at, because the shop asked for a header it
-     could read off the shelf and 6pt on a thermal head is a caption rather
-     than a word. The cost is worth stating plainly: this line does not wrap,
-     so at 9pt roughly twenty characters fit across 40mm where thirty did
-     before, and a long product name falling back into the header is trimmed
-     with an ellipsis sooner. That is the right trade — a header the shop TYPES
-     is short by nature, and a name too long to read at 6pt was not being read. */
+     11.7pt — grown twice, from 6pt and then by a further 30%, because the
+     shop asked each time for a header it could read off the shelf. 6pt on a
+     thermal head is a caption rather than a word.
+
+     The cost is worth stating plainly: this clamps at two lines, so at
+     11.7pt roughly fifteen characters fit on a line across 45mm, and a long
+     product name falling back into the header is trimmed sooner than it was.
+     The ticket is wider and the symbol shorter to pay for the size. */
   #barcode-sheet .bc-shelf .bc-name {
-    font-size: 9pt;
+    font-size: 11.7pt;
     font-weight: 700;
     letter-spacing: 0.01em;
     text-transform: uppercase;
@@ -563,8 +596,12 @@ input[inputmode="decimal"],
     margin-bottom: 0.4mm;
   }
 
-  /* The shop's own line under the symbol. Same size as the header so the two
-     read as a pair framing the price, and clamped to TWO lines for the same
+  /* The shop's own line under the symbol.
+
+     SMALLER than the header now. They were a matched pair until the shop
+     asked for the header alone to grow — the header is what is read across a
+     shelf, and the footer is a note under the price. Clamped to two lines for
+     the same reasons as the header, which this otherwise mirrors: see above.
      reasons — see the header above, which this deliberately mirrors.
 
      It reads as a pair with the header, so it has to break like one: a footer
@@ -644,7 +681,7 @@ input[inputmode="decimal"],
   overflow: hidden;
 }
 .bc-shelf .bc-name {
-  font-size: 12px;
+  font-size: 15.6px;
   font-weight: 700;
   letter-spacing: 0.01em;
   text-transform: uppercase;

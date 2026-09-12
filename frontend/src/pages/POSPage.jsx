@@ -2613,6 +2613,9 @@ function POSPage() {
           subtotal={subtotal}
           applied={voucher}
           canGenerate={isElevated}
+          // The catalogue, so a shelf label can be printed for something the
+          // shop already sells instead of only for something new.
+          products={getallproduct}
           categories={filingCategories}
           symbol={currencySymbol()}
           discount={discount}
