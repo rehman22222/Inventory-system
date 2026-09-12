@@ -35,15 +35,22 @@ function EventsHeading({
   headingImage?: string;
   align?: "left" | "center" | "right";
   items?: {
-    kind: "product" | "category";
+    kind: "product" | "category" | "deal";
     title: string;
     image: string;
     tag?: string;
     price?: number;
     eventPrice?: number | null;
+    /* The offer in one line, already worded. Empty when the card carries no
+       offer, or carries one that cannot be put in a line. */
+    dealLine?: string;
     href:
       | { to: "/product/$id"; params: { id: string } }
-      | { to: "/category/$slug"; params: { slug: string } };
+      | { to: "/category/$slug"; params: { slug: string } }
+      /* An offer's own page. A deal card always goes here — it is the only
+         place that shows everything the offer covers, and an offer is
+         satisfied by any mix of that. */
+      | { to: "/deal/$id"; params: { id: string } };
   }[];
 }) {
   const alignment =
@@ -115,9 +122,11 @@ function EventsHeading({
                       className="h-full w-full object-contain p-2 transition-transform duration-500 group-hover:scale-105 sm:p-3"
                     />
                   ) : (
-                    <div className="p-4 text-center font-display text-2xl leading-none text-ink">
-                      {item.title}
-                    </div>
+                    /* Deliberately blank. The name is already in the caption
+                       below; repeating it large inside the frame reads as a
+                       bug rather than as a placeholder. An empty frame reads
+                       as a card still waiting for its picture. */
+                    <div aria-hidden="true" />
                   )}
                 </div>
                 <div className="pt-3 sm:pt-4">
@@ -130,14 +139,37 @@ function EventsHeading({
                   >
                     {item.kind === "product" ? truncateProductName(item.title) : item.title}
                   </div>
-                  {item.kind === "product" && typeof item.price === "number" && (
-                    <div className="mt-2 flex items-center gap-1.5 sm:mt-3 sm:gap-2">
-                      <span className="font-display text-base sm:text-xl">
-                        {formatPrice(item.eventPrice && item.eventPrice > 0 ? item.eventPrice : item.price)}
-                      </span>
-                      {item.eventPrice && item.eventPrice > 0 && item.eventPrice < item.price && (
-                        <span className="font-mono text-[9px] text-ink-muted line-through sm:text-xs">
-                          {formatPrice(item.price)}
+                  {/* The price and the offer, on one line.
+                   *
+                   * The offer used to be nested INSIDE the price, which meant a
+                   * card with no price printed no offer either — and a deal
+                   * card has no price whenever nothing it covers is sold
+                   * online, which is exactly when the offer is all it has to
+                   * say. They are siblings now, and either can stand alone.
+                   *
+                   * A price shows for a product card and for a deal card
+                   * alike: an offer reads as an offer only next to the price
+                   * it undercuts. A category has no one price, so it shows
+                   * none. */}
+                  {(typeof item.price === "number" || item.dealLine) && (
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 sm:mt-3 sm:gap-2">
+                      {item.kind !== "category" && typeof item.price === "number" && (
+                        <>
+                          <span className="font-display text-base sm:text-xl">
+                            {formatPrice(
+                              item.eventPrice && item.eventPrice > 0 ? item.eventPrice : item.price,
+                            )}
+                          </span>
+                          {item.eventPrice && item.eventPrice > 0 && item.eventPrice < item.price && (
+                            <span className="font-mono text-[9px] text-ink-muted line-through sm:text-xs">
+                              {formatPrice(item.price)}
+                            </span>
+                          )}
+                        </>
+                      )}
+                      {item.dealLine && (
+                        <span className="inline-block bg-accent px-2 py-1 font-mono text-[8px] font-bold uppercase tracking-wide text-accent-foreground sm:text-[10px]">
+                          {item.dealLine}
                         </span>
                       )}
                     </div>
@@ -152,6 +184,35 @@ function EventsHeading({
   );
 }
 
+/* The offer in one line, for the card.
+ *
+ * Written from the same three fields the server's matcher reads, so what the
+ * card promises and what the checkout charges come from one description of
+ * the offer rather than two.
+ *
+ * Only a mix offer gets a phrase. A bundle is a recipe of specific products
+ * and cannot be put in one line without misdescribing it, and a card that
+ * misdescribes an offer is worse than a card that stays quiet. */
+function dealLine(deal: {
+  name: string;
+  mode: "bundle" | "mix";
+  groupQuantity: number;
+  discountType: "amount" | "percent" | "setPrice";
+  discount: number;
+} | null | undefined): string {
+  if (!deal) return "";
+  const need = Math.floor(Number(deal.groupQuantity || 0));
+  if (deal.mode !== "mix" || need < 2) return "";
+
+  if (deal.discountType === "setPrice") {
+    return `Any ${need} for ${formatPrice(deal.discount)}`;
+  }
+  if (deal.discountType === "percent") {
+    return `Any ${need} — ${deal.discount}% off`;
+  }
+  return `Any ${need} — ${formatPrice(deal.discount)} off`;
+}
+
 function eventDeckItems(
   eventItems: NonNullable<NonNullable<ReturnType<typeof useCatalog>["settings"]["events"]>["items"]>,
   products: Product[],
@@ -159,15 +220,101 @@ function eventDeckItems(
 ) {
   return eventItems
     .slice(0, 3)
-    .filter((item) => item.enabled === true && item.targetId)
+    /* A card needs a type AND something to point at. Without the type check a
+       half-filled card would fall through to the product branch and be looked
+       up in the wrong list. */
+    /* A card needs a type, and whatever that type points at.
+
+       A DEAL card has no product of its own — that is the point of it — so
+       requiring a targetId here is what kept one off the page entirely. It
+       qualifies on having an offer instead. */
+    .filter((item) =>
+      item.enabled === true && item.kind
+        ? item.kind === "deal"
+          ? Boolean(item.deal)
+          : Boolean(item.targetId)
+        : false,
+    )
     .map((item) => {
+      /* The card's own artwork, and ONLY the card's own artwork.
+
+         It used to fall back to the catalogue photograph, which meant a card
+         the shop had not styled yet still appeared finished — a product shot
+         sitting in a seasonal frame it was never meant for. Left empty the
+         card shows its name instead, which reads as a card waiting for its
+         picture rather than as a card somebody dressed badly. */
+      const cardImage = item.image?.url || "";
+      const offer = dealLine(item.deal);
+      /* The shop's own wording for this card, falling back to the catalogue
+         name. Only the words on the card change — what a click adds to the
+         basket is still the product itself. */
+      /* What the card is called: the shop's own wording, then the offer's
+         name, then the catalogue's.
+
+         The offer comes before the product because a card carrying one is
+         about the offer — "any 3 for 18" is the thing being advertised, and
+         the product is only where it points. The admin writes this name into
+         the field when a deal is picked, so this ordering is what a card
+         saved before that existed falls back to. */
+      const cardTitle = item.title?.trim() || item.deal?.name?.trim() || "";
+
+      if (item.kind === "deal") {
+        const deal = item.deal;
+        if (!deal) return null;
+
+        /* Somewhere real to send a shopper who clicks it.
+
+           The offer covers several products and no single one of them is THE
+           product, so this takes the first that the website actually sells.
+           Without it the card would be a dead end — an offer advertised with
+           nowhere to go and buy it. */
+        /* Where a click on an offer should land.
+
+           The offer covers several products and no one of them is THE
+           product, so this takes the first that the website actually sells.
+
+           A CARD IS NEVER DROPPED FOR WANT OF ONE. Plenty of offers are
+           built at the till for stock that is not listed online at all, and
+           an earlier version of this returned null in that case — so a card
+           the shop had filled in and ticked simply never appeared, with
+           nothing anywhere to say why. It goes to the shop page instead. */
+        // What one of them costs on its own, so the card can show the price
+        // the offer undercuts. Absent when nothing in the offer is sold
+        // online — there is no honest number to print then.
+        const cheapest = (deal.productIds || [])
+          .map((id) => products.find((entry) => entry.productId === id))
+          .filter(Boolean)[0] as Product | undefined;
+
+        return {
+          kind: "deal" as const,
+          title: cardTitle || deal.name,
+          image: cardImage,
+          dealLine: offer,
+          tag: item.tag,
+          /* What one of them costs on its own, so the card can show the
+             ordinary price beside the offer the way a product card does.
+             Absent when nothing in the offer is sold online — there is no
+             honest number to print then. */
+          price: cheapest?.price,
+          /* The offer's own page, ALWAYS — never one of its products.
+
+             An offer is satisfied by any mix of what it covers, so the page
+             that lists all of it is the only one a shopper can actually
+             complete the offer from. Sending them to whichever product came
+             first left them to find the rest themselves, with nothing on
+             screen saying what counted. */
+          href: { to: "/deal/$id" as const, params: { id: deal.id } },
+        };
+      }
+
       if (item.kind === "category") {
         const category = categories.find((entry) => entry.slug === item.targetId);
         if (!category) return null;
         return {
           kind: "category" as const,
-          title: category.name,
-          image: category.image,
+          title: cardTitle || category.name,
+          image: cardImage,
+          dealLine: offer,
           tag: item.tag,
           href: { to: "/category/$slug" as const, params: { slug: category.slug } },
         };
@@ -176,8 +323,9 @@ function eventDeckItems(
       if (!product) return null;
         return {
           kind: "product" as const,
-          title: product.name,
-          image: product.image,
+          title: cardTitle || product.name,
+          image: cardImage,
+          dealLine: offer,
           tag: item.tag,
           price: product.price,
           eventPrice: item.eventPrice ?? null,

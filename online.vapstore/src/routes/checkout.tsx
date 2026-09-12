@@ -66,7 +66,15 @@ function Checkout() {
   });
 
   const discount = appliedVoucher?.discount || 0;
-  const merchandiseTotal = Math.max(0, subtotal - discount);
+  /* Set offers, as the server counted them.
+   *
+   * Taken from the quote rather than worked out here on purpose. "Any 5 for
+   * 15" is decided by one piece of code on the server — the same code the till
+   * runs — and a second opinion in the browser would only ever be a chance to
+   * disagree with it on the payment screen. */
+  const dealDiscount = quote?.dealDiscount ?? 0;
+  const dealsGiven = quote?.deals ?? [];
+  const merchandiseTotal = Math.max(0, subtotal - discount - dealDiscount);
   // Free shipping is judged BEFORE points are spent, matching the server.
   // Spending a reward must never cost somebody their free delivery.
   const shipping =
@@ -667,6 +675,21 @@ function Checkout() {
                     <dd className="font-display">−{formatPrice(discount)}</dd>
                   </div>
                 )}
+                {/* Each offer on its own line, named, so the shopper can see
+                    WHICH of their picks earned the discount rather than a
+                    lump sum appearing above the total. */}
+                {dealsGiven.map((deal, index) => (
+                  <div
+                    key={`${deal.name}-${index}`}
+                    className="flex justify-between text-[color:var(--sale)]"
+                  >
+                    <dt>
+                      {deal.name}
+                      {deal.sets > 1 ? ` ×${deal.sets}` : ""}
+                    </dt>
+                    <dd className="font-display">−{formatPrice(deal.amount)}</dd>
+                  </div>
+                ))}
                 {pointsValue > 0 && (
                   <div className="flex justify-between text-[color:var(--sale)]">
                     <dt>

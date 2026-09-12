@@ -244,12 +244,62 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
           enabled: { type: Boolean, default: false },
           kind: {
             type: String,
-            enum: ["product", "category"],
-            default: "product",
+            // The empty string is a real state: a card the shop has not
+            // filled in yet. Without it an untouched card would save itself
+            // as a product card and come back preselected.
+            // A card is about ONE thing: a product, a category, or an offer.
+            // Never a product AND an offer — a card advertising "any 3 for 18"
+            // is about the offer, and pinning it to one product as well only
+            // raises the question of which of the three it meant.
+            enum: ["", "product", "category", "deal"],
+            default: "",
           },
           targetId: { type: String, default: "", trim: true, maxlength: 160 },
           tag: { type: String, default: "", trim: true, maxlength: 40 },
+
+          /* What the card calls the thing, when the till's name is not what
+           * the shop wants a shopper to read.
+           *
+           * Empty falls back to the product's or category's own name — the
+           * same name the till uses — so a card nobody has renamed reads
+           * exactly as it always did.
+           *
+           * DISPLAY ONLY. It changes the words on the card and nothing else:
+           * the basket, the order and the stock all go on naming the real
+           * product, because that is what is actually being sold. */
+          title: { type: String, default: "", trim: true, maxlength: 80 },
           eventPrice: { type: Number, default: null, min: 0 },
+
+          /* The offer this card is advertising, if it is advertising one.
+           *
+           * A REFERENCE to a deal the shop already built at the till, not a
+           * copy of its terms. That is the whole point: "any 3 for 10" is
+           * defined once, priced by one piece of code, and the counter and
+           * the website cannot drift into charging different money for the
+           * same basket. Putting mode/quantity/price fields here instead
+           * would have meant a second deal engine to keep in step with the
+           * first, which is how a shop ends up with two prices for one offer.
+           *
+           * Linking a deal here is also what PUTS IT ON THE WEBSITE. Deals
+           * are built for the till and some are meant to stay there, so
+           * they do not reach online orders until the shop deliberately
+           * places one on a card. */
+          deal: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Deal",
+            default: null,
+          },
+
+          /* Artwork for this card alone, shown only in this section.
+           *
+           * Falls back to the product's or category's own picture when
+           * empty, so a card that has never been given one looks exactly as
+           * it did before this existed. A seasonal band usually wants its
+           * own treatment of a product rather than the catalogue shot. */
+          image: {
+            url: { type: String, default: "", trim: true },
+            publicId: { type: String, default: "", trim: true },
+          },
         },
       ],
     },

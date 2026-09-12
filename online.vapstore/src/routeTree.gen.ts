@@ -35,6 +35,7 @@ import { Route as AccountResetRouteImport } from './routes/account.reset'
 import { Route as AccountRewardsRouteImport } from './routes/account.rewards'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as CategorySlugRouteImport } from './routes/category.$slug'
+import { Route as DealIdRouteImport } from './routes/deal.$id'
 import { Route as ProductIdRouteImport } from './routes/product.$id'
 import { Route as AccountOrdersIndexRouteImport } from './routes/account.orders.index'
 import { Route as AccountOrdersOrderNoRouteImport } from './routes/account.orders.$orderNo'
@@ -170,6 +171,11 @@ const CategorySlugRoute = CategorySlugRouteImport.update({
   path: '/category/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DealIdRoute = DealIdRouteImport.update({
+  id: '/deal/$id',
+  path: '/deal/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductIdRoute = ProductIdRouteImport.update({
   id: '/product/$id',
   path: '/product/$id',
@@ -217,6 +223,7 @@ export interface FileRoutesByFullPath {
   '/account/rewards': typeof AccountRewardsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/category/$slug': typeof CategorySlugRoute
+  '/deal/$id': typeof DealIdRoute
   '/product/$id': typeof ProductIdRoute
   '/account/': typeof AccountIndexRoute
   '/account/orders/$orderNo': typeof AccountOrdersOrderNoRoute
@@ -248,6 +255,7 @@ export interface FileRoutesByTo {
   '/account/rewards': typeof AccountRewardsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/category/$slug': typeof CategorySlugRoute
+  '/deal/$id': typeof DealIdRoute
   '/product/$id': typeof ProductIdRoute
   '/account': typeof AccountIndexRoute
   '/account/orders/$orderNo': typeof AccountOrdersOrderNoRoute
@@ -281,6 +289,7 @@ export interface FileRoutesById {
   '/account/rewards': typeof AccountRewardsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/category/$slug': typeof CategorySlugRoute
+  '/deal/$id': typeof DealIdRoute
   '/product/$id': typeof ProductIdRoute
   '/account/': typeof AccountIndexRoute
   '/account/orders/$orderNo': typeof AccountOrdersOrderNoRoute
@@ -315,6 +324,7 @@ export interface FileRouteTypes {
     | '/account/rewards'
     | '/blog/$slug'
     | '/category/$slug'
+    | '/deal/$id'
     | '/product/$id'
     | '/account/'
     | '/account/orders/$orderNo'
@@ -346,6 +356,7 @@ export interface FileRouteTypes {
     | '/account/rewards'
     | '/blog/$slug'
     | '/category/$slug'
+    | '/deal/$id'
     | '/product/$id'
     | '/account'
     | '/account/orders/$orderNo'
@@ -378,6 +389,7 @@ export interface FileRouteTypes {
     | '/account/rewards'
     | '/blog/$slug'
     | '/category/$slug'
+    | '/deal/$id'
     | '/product/$id'
     | '/account/'
     | '/account/orders/$orderNo'
@@ -404,6 +416,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   WhyECigarettesRoute: typeof WhyECigarettesRoute
   CategorySlugRoute: typeof CategorySlugRoute
+  DealIdRoute: typeof DealIdRoute
   ProductIdRoute: typeof ProductIdRoute
   ReviewOrderNoTokenRoute: typeof ReviewOrderNoTokenRoute
 }
@@ -592,6 +605,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CategorySlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/deal/$id': {
+      id: '/deal/$id'
+      path: '/deal/$id'
+      fullPath: '/deal/$id'
+      preLoaderRoute: typeof DealIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/product/$id': {
       id: '/product/$id'
       path: '/product/$id'
@@ -679,6 +699,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   WhyECigarettesRoute: WhyECigarettesRoute,
   CategorySlugRoute: CategorySlugRoute,
+  DealIdRoute: DealIdRoute,
   ProductIdRoute: ProductIdRoute,
   ReviewOrderNoTokenRoute: ReviewOrderNoTokenRoute,
 }

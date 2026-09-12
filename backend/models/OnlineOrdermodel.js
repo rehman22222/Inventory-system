@@ -93,6 +93,25 @@ const OnlineOrderSchema = new mongoose.Schema(
       },
       value: { type: Number, default: 0 },
     },
+    /* Immutable snapshot of the set offers this basket earned, for the same
+     * reason the voucher above is snapshotted: a deal gets renamed, retired
+     * or taken off the website, and an order from last month still has to be
+     * able to say what it gave and why.
+     *
+     * `amount` is what came off for this offer across every set counted, not
+     * per set — the same figure the shopper saw at checkout. Their sum is
+     * included in the order's `discount`. */
+    deals: [
+      {
+        _id: false,
+        id: { type: mongoose.Schema.Types.ObjectId, ref: "Deal", default: null },
+        name: { type: String, default: "" },
+        // How many complete sets the basket qualified for.
+        sets: { type: Number, default: 0 },
+        amount: { type: Number, default: 0 },
+      },
+    ],
+
     // Guards usage-counter restoration on cancelled/refunded orders.
     voucherReleasedAt: { type: Date, default: null },
 

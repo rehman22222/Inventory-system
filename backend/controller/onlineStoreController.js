@@ -6,6 +6,8 @@ const OnlineHeroSlide = require("../models/OnlineHeroSlidemodel");
 const OnlineOrder = require("../models/OnlineOrdermodel");
 const OnlineNewsletterSubscriber = require("../models/OnlineNewsletterSubscribermodel");
 const OnlineVoucher = require("../models/OnlineVouchermodel");
+const Deal = require("../models/Dealmodel");
+const { eventDealIds, priceEventDeals } = require("../libs/onlineDeals");
 const OnlineStoreSetting = require("../models/OnlineStoreSettingmodel");
 const OnlineBlogPost = require("../models/OnlineBlogPostmodel");
 const {
@@ -480,6 +482,25 @@ const resolveOrderLines = async (store, items) => {
     });
   }
   return lines;
+};
+
+/* What the set offers on the website are worth to this basket.
+ *
+ * Shared by checkout and by the quote the shopper is shown before paying,
+ * because the one thing worse than not offering a deal is offering it on the
+ * basket page and not honouring it at the end.
+ *
+ * `room` is what is still discountable after the voucher has taken its
+ * share; the deal can never reach past it. */
+const dealsForBasket = async (settings, lines, room) => {
+  const ids = eventDealIds(settings);
+  if (!ids.length) return { discount: 0, applied: [] };
+
+  // Read fresh rather than trusting the ids alone: a deal that has been
+  // switched off or has run past its end date is no longer an offer, even
+  // though the card advertising it is still on the page.
+  const deals = await Deal.find({ _id: { $in: ids }, active: true }).lean();
+  return priceEventDeals(lines, deals, room);
 };
 
 const voucherEligibleLines = (voucher, lines) => {
@@ -2234,13 +2255,36 @@ module.exports.updateStoreSettings = async (req, res) => {
         .slice(0, 3)
         .map((item) => ({
           enabled: Boolean(item?.enabled),
-          kind: item?.kind === "category" ? "category" : "product",
-          targetId: String(item?.targetId || "").trim().slice(0, 160),
+          // Anything that is not one of the two real kinds is "not chosen",
+          // rather than being rounded up to product.
+          // Anything that is not one of the three real kinds is "not chosen",
+          // rather than being rounded up to product.
+          kind: ["product", "category", "deal"].includes(item?.kind) ? item.kind : "",
+          // A deal card points at its offer and nothing else; a product or
+          // category card points at its target and carries no offer. Whichever
+          // one the card is not, is cleared here rather than left to linger
+          // and be picked up by the other half of the code later.
+          targetId:
+            item?.kind === "deal"
+              ? ""
+              : String(item?.targetId || "").trim().slice(0, 160),
           tag: String(item?.tag || "").trim().slice(0, 40),
+          title: String(item?.title || "").trim().slice(0, 80),
           eventPrice:
             item?.eventPrice === "" || item?.eventPrice == null
               ? null
               : Math.max(0, Number(item.eventPrice) || 0),
+          /* The offer this card advertises. Only a real id is stored, so a
+           * blank picker or a pasted scrap of text clears the link rather
+           * than saving something the checkout will later fail to look up. */
+          deal:
+            item?.kind === "deal" && mongoose.isValidObjectId(item?.deal)
+              ? item.deal
+              : null,
+          image: {
+            url: String(item?.image?.url || "").trim().slice(0, 500),
+            publicId: String(item?.image?.publicId || "").trim().slice(0, 200),
+          },
         }));
     }
     settings.markModified("events");
@@ -3199,13 +3243,69 @@ module.exports.storefrontCategories = async (req, res) => {
   }
 };
 
-const publicStorefrontSettings = (settings) => ({
+/* The events section as the website needs to read it.
+ *
+ * A card stores its offer as an id. The page has to be able to PRINT the
+ * offer — "Any 5 for 15" — so the terms are resolved here, once, rather than
+ * the storefront being given an id and no way to look it up.
+ *
+ * Read fresh from the deal itself rather than copied into the settings when
+ * the card was saved: an offer edited at the till would otherwise go on being
+ * advertised on its old terms, which is the sort of difference a customer
+ * finds before the shop does.
+ *
+ * A deal that has been switched off is dropped here, so the card stops
+ * advertising an offer the checkout would refuse to give. */
+const eventsForStorefront = async (settings) => {
+  const events = settings.events?.toObject?.() || settings.events || {};
+  const items = Array.isArray(events.items) ? events.items : [];
+  const ids = items.map((item) => item?.deal).filter(Boolean);
+  if (!ids.length) return events;
+
+  const deals = await Deal.find({ _id: { $in: ids }, active: true })
+    .select("name mode groupQuantity discountType discount startsAt endsAt items.product")
+    .lean();
+  const byId = new Map(deals.map((deal) => [String(deal._id), deal]));
+
+  return {
+    ...events,
+    items: items.map((item) => {
+      const plain = item?.toObject?.() || item;
+      const deal = plain?.deal ? byId.get(String(plain.deal)) : null;
+      return {
+        ...plain,
+        deal: deal
+          ? {
+              id: String(deal._id),
+              name: deal.name,
+              mode: deal.mode,
+              groupQuantity: deal.groupQuantity,
+              discountType: deal.discountType,
+              discount: deal.discount,
+              /* The products the offer covers.
+               *
+               * A deal card has no single product of its own, so it needs
+               * somewhere to send a shopper who clicks it. The website
+               * already knows which listing each product belongs to, so
+               * handing it the ids lets it pick a real destination instead of
+               * the card being a dead end. */
+              productIds: (deal.items || [])
+                .map((entry) => String(entry.product || ""))
+                .filter(Boolean),
+            }
+          : null,
+      };
+    }),
+  };
+};
+
+const publicStorefrontSettings = (settings, events) => ({
   logo: settings.logo,
   social: settings.social,
   footer: settings.footer,
   footerLinks: settings.footerLinks,
   announcement: settings.announcement,
-  events: settings.events,
+  events: events || settings.events,
   emergencyAlert: settings.emergencyAlert,
   shipping: settings.shipping,
   promises: settings.promises,
@@ -3470,7 +3570,10 @@ module.exports.storefrontSettings = async (req, res) => {
   try {
     const store = await storeId();
     const settings = await cachedStorefrontRead("settings", async () =>
-      publicStorefrontSettings(await getOrCreateSettings(store)),
+      (async () => {
+        const current = await getOrCreateSettings(store);
+        return publicStorefrontSettings(current, await eventsForStorefront(current));
+      })(),
     );
     return res.status(200).json({
       settings,
@@ -3680,7 +3783,7 @@ module.exports.storefrontCatalog = async (req, res) => {
         return {
           categories,
           products,
-          settings: publicStorefrontSettings(settings),
+          settings: publicStorefrontSettings(settings, await eventsForStorefront(settings)),
         };
       }),
     );
@@ -3867,13 +3970,25 @@ module.exports.storefrontLoyaltyQuote = async (req, res) => {
     const settings = await getOrCreateSettings(store);
     const config = loyalty.programme(settings);
 
-    if (!config.enabled) {
+    /* Whether the shop runs a points programme has nothing to do with
+     * whether it runs offers, so the early exit below answers the offers
+     * first. A basket page that showed a total the checkout then undercut
+     * would be wrong even though the shopper pays less — they decided to buy
+     * at the price they were shown. */
+    const hasOffers = eventDealIds(settings).length > 0;
+    if (!config.enabled && !hasOffers) {
       return res.status(200).json({ enabled: false });
     }
 
     const items = Array.isArray(req.body?.items) ? req.body.items.slice(0, 50) : [];
     if (!items.length) {
-      return res.status(200).json({ enabled: true, earn: 0, redeem: null });
+      return res.status(200).json({
+        enabled: config.enabled,
+        earn: 0,
+        redeem: null,
+        deals: [],
+        dealDiscount: 0,
+      });
     }
 
     const lines = await resolveOrderLines(store, items);
@@ -3904,7 +4019,34 @@ module.exports.storefrontLoyaltyQuote = async (req, res) => {
       }
     }
 
-    const merchandiseTotal = money(subtotal - discount);
+    /* The same set offers checkout will price, priced here too.
+     *
+     * This quote is what the basket page shows before anyone pays, and it is
+     * also what caps the points slider and decides free delivery. If it left
+     * the offers out, the shopper would be shown one merchandise total and
+     * charged against another — and the difference would surface at the worst
+     * possible moment, on the payment screen. */
+    const dealQuote = await dealsForBasket(
+      settings,
+      lines,
+      Math.max(subtotal - discount, 0),
+    );
+    const dealDiscount = money(dealQuote.discount);
+
+    const offers = (dealQuote.applied || []).map((entry) => ({
+      name: entry.name,
+      sets: entry.sets,
+      amount: entry.amount,
+    }));
+    if (!config.enabled) {
+      return res.status(200).json({
+        enabled: false,
+        deals: offers,
+        dealDiscount,
+      });
+    }
+
+    const merchandiseTotal = money(subtotal - discount - dealDiscount);
     const shipping = shippingFor(settings, merchandiseTotal);
 
     const account = req.customer || null;
@@ -3943,6 +4085,11 @@ module.exports.storefrontLoyaltyQuote = async (req, res) => {
       // Signed out, this is still the honest answer: it is what they WOULD earn,
       // which is the whole argument for creating an account at this moment.
       earn: earning.points,
+      /* The set offers this basket has already earned, so the page can show
+       * them beside the total instead of the shopper meeting the discount for
+       * the first time on the payment screen. */
+      deals: offers,
+      dealDiscount,
       breakdown: earning.breakdown,
       signedIn: Boolean(account),
       tier: account ? tier.current : null,
@@ -5303,10 +5450,27 @@ module.exports.placeOrder = async (req, res) => {
       );
     }
 
-    const discount = money(voucherResult?.discount || 0);
+    const voucherDiscount = money(voucherResult?.discount || 0);
     const tax = 0;
-    const merchandiseTotal = money(subtotal - discount);
     const settings = await getOrCreateSettings(store);
+
+    /* Set offers — "any 3 for 10", mixed across flavours.
+     *
+     * Priced from the resolved lines, which carry server-owned prices, never
+     * the browser's, and capped at what is left after the voucher so the two
+     * together can never give away more than the basket is worth.
+     *
+     * Judged on the WHOLE basket. A shopper who found two of the five through
+     * search and three from the category page has five, and the offer was for
+     * five. Only deals the shop has placed on an events card are considered —
+     * see libs/onlineDeals for why that is deliberate. */
+    const dealRoom = Math.max(subtotal - voucherDiscount, 0);
+    const dealResult = await dealsForBasket(settings, lines, dealRoom);
+    const dealDiscount = money(dealResult.discount);
+
+    const discount = money(voucherDiscount + dealDiscount);
+    const merchandiseTotal = money(subtotal - discount);
+
     // Shipping is worked out on the merchandise value BEFORE any points are
     // spent. Spending a reward should never cost somebody their free delivery —
     // that turns the reward into a trap, and it is the kind of thing a customer
@@ -5440,6 +5604,17 @@ module.exports.placeOrder = async (req, res) => {
         },
         shippingAddress,
         subtotal,
+        /* What each offer gave, kept with the order the way the voucher
+         * snapshot above is: a deal gets renamed, retired or taken off the
+         * website, and an order from last month still has to be able to say
+         * what it gave and why. Their sum is inside `discount`. */
+        deals: (dealResult.applied || []).map((entry) => ({
+          id: entry.dealId,
+          name: entry.name,
+          sets: entry.sets,
+          amount: entry.amount,
+        })),
+
         shipping,
         tax,
         discount,

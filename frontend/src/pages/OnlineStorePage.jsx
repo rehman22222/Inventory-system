@@ -72,6 +72,8 @@ import {
   uploadListingImages,
 } from "../features/onlineStoreSlice";
 import { gettingallCategory } from "../features/categorySlice";
+import { gettingallDeals, CreateDeal } from "../features/dealSlice";
+import { sellableProductIds } from "./onlineOffers";
 import CustomersTab from "../Components/onlineStore/CustomersTab";
 import LoyaltyTab from "../Components/onlineStore/LoyaltyTab";
 import FulfilmentModal, {
@@ -4074,22 +4076,69 @@ const BLANK_SETTINGS = {
   },
 };
 
+/* How an offer reads in the picker, and later on the card itself.
+ *
+ * A deal's name is the shop's own words for it and may say nothing about the
+ * terms, so the terms are spelled out beside it. Written from the same three
+ * fields the matcher reads, so the words and the arithmetic cannot disagree.
+ *
+ * Only mix offers get a phrase. A bundle is a recipe of specific products and
+ * cannot be summarised in one line without lying about it. */
+export const dealSummary = (deal, symbol = "€") => {
+  if (!deal?.name) return "";
+  const price = Number(deal.discount);
+  const need = Math.floor(Number(deal.groupQuantity || 0));
+  if (deal.mode !== "mix" || need < 2 || !Number.isFinite(price)) return deal.name;
+
+  if (deal.discountType === "setPrice") {
+    return `${deal.name} — any ${need} for ${symbol}${price.toFixed(2)}`;
+  }
+  if (deal.discountType === "percent") {
+    return `${deal.name} — any ${need}, ${price}% off`;
+  }
+  return `${deal.name} — any ${need}, ${symbol}${price.toFixed(2)} off`;
+};
+
+
 const blankEventItem = () => ({
-  kind: "product",
+  kind: "",
   targetId: "",
   enabled: false,
   eventPrice: "",
   tag: "",
+  title: "",
+  // The offer the card advertises, by id. Empty means the card is only
+  // merchandising and the checkout has nothing extra to give.
+  deal: "",
+  image: { url: "", publicId: "" },
 });
 
 const normalizeEventItems = (items = []) =>
   Array.from({ length: 3 }, (_, index) => {
     const item = items[index] || {};
     return {
-      kind: item.kind === "category" ? "category" : "product",
+      /* Blank until the shop picks one. Rounding an unset card up to
+       * "product" is what made the dropdown look pre-answered.
+       *
+       * THE LIST HERE IS THE LIST OF REAL KINDS, and it has to stay in step
+       * with the one the server keeps. Every change to a card runs back
+       * through this, so a kind missing from it is not merely rejected on
+       * save — it is erased the instant it is picked, and the dropdown springs
+       * back to blank with no error to explain why. That is exactly what
+       * happened to "deal" when it was added everywhere but here. */
+      kind: ["product", "category", "deal"].includes(item.kind) ? item.kind : "",
       targetId: item.targetId || "",
       enabled: Boolean(item.enabled),
       tag: item.tag || "",
+      title: item.title || "",
+      // The server sends the offer's terms back as an object so the page can
+      // print them; the picker itself only ever needs the id.
+      deal: item.deal?.id || item.deal || "",
+      dealTerms: item.deal?.name ? item.deal : null,
+      image: {
+        url: item.image?.url || "",
+        publicId: item.image?.publicId || "",
+      },
       eventPrice:
         item.eventPrice === null || item.eventPrice === undefined
           ? ""
@@ -4243,6 +4292,14 @@ const SOCIAL_CHANNELS = [
 
 function StorefrontSettings({ settings, listings = [], categories = [], isActing }) {
   const dispatch = useDispatch();
+  /* The offers the shop has built at the till, for the card picker.
+   *
+   * Fetched here rather than passed down, because this is the only screen
+   * that needs them and the page above has no other use for a deal. */
+  const deals = useSelector((state) => state.deal?.deals) || [];
+  useEffect(() => {
+    dispatch(gettingallDeals());
+  }, [dispatch]);
   const [draft, setDraft] = useState(BLANK_SETTINGS);
   const productOptions = useMemo(
     () =>
@@ -4331,6 +4388,100 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
     if (image?.url) {
       set("events", "headingImage", { url: image.url, publicId: image.publicId || "" });
     }
+  };
+
+  /* Artwork for one card, shown only in the events band.
+   *
+   * Separate from the product's own photograph on purpose: a seasonal
+   * section usually wants its own treatment of a product, and the catalogue
+   * shot has to go on being the catalogue shot everywhere else. Left empty,
+   * the card falls back to it. */
+  const uploadEventCardImage = async (index, files) => {
+    const selected = Array.from(files || []);
+    if (!selected.length) return;
+    const result = await dispatch(uploadListingImages([selected[0]]));
+    if (result.error) return toast.error(result.payload || "Upload failed");
+    const image = (result.payload || [])[0];
+    if (image?.url) {
+      setEventItem(index, {
+        image: { url: image.url, publicId: image.publicId || "" },
+      });
+    }
+  };
+
+  /* The name a card starts with when the shop picks what it is about.
+   *
+   * WRITTEN INTO THE FIELD, not shown as a faint placeholder. A placeholder
+   * cannot be edited — the shop has to retype the whole name before they can
+   * change one word of it, which is the opposite of what an editable default
+   * is for.
+   *
+   * A deal wins over the product it is attached to: a card advertising
+   * "any 3 for 18" is about the offer, and the offer has its own name.
+   *
+   * Only ever fills a field the shop has not written in. Anything typed here
+   * is theirs and is left alone, even when they then change the product. */
+  const defaultCardName = (item, dealList, optionList) => {
+    if (item.deal) {
+      const deal = (dealList || []).find((entry) => String(entry._id) === String(item.deal));
+      if (deal?.name) return deal.name;
+    }
+    const option = (optionList || []).find((entry) => entry.value === item.targetId);
+    return option?.label || "";
+  };
+
+
+  /* An offer built here, out of what the website sells.
+   *
+   * Stored as an ordinary deal — the same kind the till builds — so the one
+   * engine prices it and the counter and the website can never disagree about
+   * what "any 3 for 18" means. This screen only chooses different products to
+   * put in it: the ones with web listings rather than the whole stock room. */
+  const BLANK_OFFER = { name: "", listingIds: [], quantity: "", price: "" };
+  const [offer, setOffer] = useState(BLANK_OFFER);
+
+  const createOffer = async () => {
+    const name = offer.name.trim();
+    const quantity = Math.floor(Number(offer.quantity));
+    const price = Number(offer.price);
+
+    // Said plainly and one at a time, because a form that fails with one
+    // vague message makes the shop guess which field it meant.
+    if (!name) return toast.error("Give the offer a name");
+    if (!offer.listingIds.length)
+      return toast.error("Add at least one product to the offer");
+    if (!Number.isFinite(quantity) || quantity < 2)
+      return toast.error("How many to buy? At least two");
+    if (!Number.isFinite(price) || price <= 0)
+      return toast.error("What does the set cost?");
+
+    const products = Array.from(
+      new Set(
+        offer.listingIds.flatMap((id) =>
+          sellableProductIds((listings || []).find((l) => String(l._id) === id)),
+        ),
+      ),
+    );
+    if (!products.length)
+      return toast.error("Those listings have nothing the website can sell");
+
+    const result = await dispatch(
+      CreateDeal({
+        name,
+        // Pick-any-N across the chosen products, at a price for the set.
+        mode: "mix",
+        groupQuantity: quantity,
+        // Every complete set counts: six on a 3-for offer is two sets, which
+        // is what a multibuy means to a shopper and to the shop.
+        quantityRule: "repeat_sets",
+        discountType: "setPrice",
+        discount: price,
+        items: products.map((product) => ({ product, quantity: 1 })),
+      }),
+    );
+    if (result.error) return toast.error(result.payload || "Could not create the offer");
+    toast.success(`${name} created — now pick it on a card`);
+    setOffer(BLANK_OFFER);
   };
 
   const setEventItem = (index, patch) =>
@@ -4680,15 +4831,143 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
             </div>
           )}
         </div>
+        {/* Build an offer out of what the website sells.
+
+            The same kind of offer the till builds — "any 3 for 18", satisfied
+            by any mix of the chosen products — and stored as the same kind of
+            record, so one engine prices it for both. What is different here is
+            only the shelf it picks from: web listings rather than the whole
+            stock room. */}
+        <div className="mt-4 rounded-xl border border-dashed p-3">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-base-content/50">
+            Build an offer from online products
+          </div>
+          <p className="mt-1 text-[11px] text-base-content/60">
+            Put products in, say how many make a set and what the set costs. A
+            shopper can then mix them however they like — five of one, or three
+            and two — and the offer applies at checkout.
+          </p>
+
+          <div className="mt-3 grid gap-2 md:grid-cols-4">
+            <input
+              className="input input-sm input-bordered w-full min-w-0 md:col-span-2"
+              maxLength={80}
+              placeholder="Offer name e.g. Any 3 papers for 5"
+              value={offer.name}
+              onChange={(event) =>
+                setOffer((current) => ({ ...current, name: event.target.value }))
+              }
+            />
+            <input
+              type="number"
+              min={2}
+              step={1}
+              className="input input-sm input-bordered w-full min-w-0"
+              placeholder="Buy any…"
+              value={offer.quantity}
+              onChange={(event) =>
+                setOffer((current) => ({ ...current, quantity: event.target.value }))
+              }
+            />
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              className="input input-sm input-bordered w-full min-w-0"
+              placeholder="…for this price"
+              value={offer.price}
+              onChange={(event) =>
+                setOffer((current) => ({ ...current, price: event.target.value }))
+              }
+            />
+          </div>
+
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <select
+              className="select select-sm select-bordered min-w-0 flex-1"
+              value=""
+              onChange={(event) => {
+                const id = event.target.value;
+                if (!id) return;
+                setOffer((current) =>
+                  current.listingIds.includes(id)
+                    ? current
+                    : { ...current, listingIds: [...current.listingIds, id] },
+                );
+              }}
+            >
+              <option value="">Add a product…</option>
+              {productOptions
+                .filter((option) => !offer.listingIds.includes(option.value))
+                .map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                    {option.hidden ? " (hidden)" : ""}
+                  </option>
+                ))}
+            </select>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={createOffer}
+            >
+              Create offer
+            </button>
+          </div>
+
+          {offer.listingIds.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {offer.listingIds.map((id) => {
+                const option = productOptions.find((entry) => entry.value === id);
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className="badge badge-outline gap-1 text-[11px]"
+                    onClick={() =>
+                      setOffer((current) => ({
+                        ...current,
+                        listingIds: current.listingIds.filter((entry) => entry !== id),
+                      }))
+                    }
+                  >
+                    {option?.label || id}
+                    <span aria-hidden="true">×</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
         <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-3">
           {[0, 1, 2].map((index) => {
             const item = draft.events.items?.[index] || {
-              kind: "product",
+              kind: "",
               targetId: "",
               enabled: false,
             };
-            const options =
-              item.kind === "category" ? categoryOptions : productOptions;
+            /* One list, whichever kind the card is — so the card has ONE
+               thing to point at rather than a product and an offer that could
+               disagree about what it is advertising.
+
+               Nothing to offer until a type is picked: a menu behind an
+               unanswered question is a guess at what the shop meant. */
+            const options = !item.kind
+              ? []
+              : item.kind === "category"
+                ? categoryOptions
+                : item.kind === "deal"
+                  ? (deals || [])
+                      .filter((deal) => deal.active !== false)
+                      .map((deal) => ({
+                        value: String(deal._id),
+                        label: dealSummary(deal),
+                      }))
+                  : productOptions;
+
+            // A deal card points at its offer; the other two at their target.
+            const chosen = item.kind === "deal" ? item.deal || "" : item.targetId;
+
             return (
               <div
                 key={index}
@@ -4721,29 +5000,60 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
                     onChange={(event) =>
                       setEventItem(index, {
                         kind: event.target.value,
+                        // Changing what a card is about empties what it was
+                        // about — including any offer, so switching away from
+                        // Deal cannot leave one behind to be saved later.
                         targetId: "",
+                        deal: "",
                         eventPrice: "",
                         tag: "",
+                        title: "",
                       })
                     }
                   >
+                    <option value="">Product or category?</option>
                     <option value="product">Product</option>
                     <option value="category">Category</option>
+                    <option value="deal">Deal</option>
                   </select>
                   <select
                     className="select select-sm select-bordered w-full min-w-0"
-                    value={item.targetId}
+                    value={chosen}
+                    /* Nothing to choose from until the kind is known, and a
+                       list of products under a blank type would be a guess at
+                       what the shop meant. */
+                    disabled={!item.kind}
                     onChange={(event) =>
                       setEventItem(index, {
-                        targetId: event.target.value,
+                        // A deal card stores its offer; the other two store
+                        // their target. Whichever the card is not is cleared,
+                        // so a card can never mean two things at once.
+                        ...(item.kind === "deal"
+                          ? { deal: event.target.value, targetId: "" }
+                          : { targetId: event.target.value, deal: "" }),
                         enabled: Boolean(event.target.value),
+                        title:
+                          item.title &&
+                          item.title !== defaultCardName(item, deals, options)
+                            ? item.title
+                            : defaultCardName(
+                                item.kind === "deal"
+                                  ? { ...item, deal: event.target.value }
+                                  : { ...item, targetId: event.target.value },
+                                deals,
+                                options,
+                              ),
                       })
                     }
                   >
                     <option value="">
-                      {item.kind === "category"
-                        ? "Choose category"
-                        : "Choose product"}
+                      {!item.kind
+                        ? "Pick a type first"
+                        : item.kind === "category"
+                          ? "Choose category"
+                          : item.kind === "deal"
+                            ? "Choose deal"
+                            : "Choose product"}
                     </option>
                     {options.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -4752,12 +5062,34 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
                       </option>
                     ))}
                   </select>
-                  {!options.length && (
+                  {Boolean(item.kind) && !options.length && (
                     <p className="text-[11px] text-warning">
-                      No {item.kind === "category" ? "categories" : "products"} loaded yet.
+                      No{" "}
+                      {item.kind === "category"
+                        ? "categories"
+                        : item.kind === "deal"
+                          ? "deals"
+                          : "products"}{" "}
+                      loaded yet.
                       Use Refresh if this tab was opened before the catalogue loaded.
                     </p>
                   )}
+                  {/* The card's own wording.
+
+                      Left empty the card prints the name the till uses, which
+                      is what it printed before this field existed. Typing one
+                      changes ONLY the words on the card — the basket, the
+                      order and the stock all go on naming the real product,
+                      because that is what is actually being sold. */}
+                  <input
+                    className="input input-sm input-bordered w-full min-w-0"
+                    maxLength={80}
+                    placeholder="Name on the card"
+                    value={item.title || ""}
+                    onChange={(event) =>
+                      setEventItem(index, { title: event.target.value })
+                    }
+                  />
                   <input
                     className="input input-sm input-bordered w-full min-w-0"
                     maxLength={40}
@@ -4779,6 +5111,38 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
                       setEventItem(index, { eventPrice: event.target.value })
                     }
                   />
+                  <div className="flex items-center gap-2">
+                    <label className="btn btn-outline btn-xs gap-2">
+                      {item.image?.url ? "Replace image" : "Card image"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(event) => {
+                          uploadEventCardImage(index, event.target.files);
+                          event.target.value = "";
+                        }}
+                      />
+                    </label>
+                    {item.image?.url && (
+                      <>
+                        <img
+                          src={item.image.url}
+                          alt=""
+                          className="h-8 w-8 rounded object-cover"
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-xs"
+                          onClick={() =>
+                            setEventItem(index, { image: { url: "", publicId: "" } })
+                          }
+                        >
+                          Remove
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             );

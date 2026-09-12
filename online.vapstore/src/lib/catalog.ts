@@ -129,10 +129,36 @@ export interface StorefrontSettings {
     align: "left" | "center" | "right";
     items?: {
       enabled?: boolean;
-      kind: "product" | "category";
+      /* Empty on a card the shop has not filled in yet. Kept in the type
+         rather than assumed away, because the server really can send it. */
+      /* Empty on a card the shop has not filled in yet. Kept in the type
+         rather than assumed away, because the server really can send it. */
+      kind: "" | "product" | "category" | "deal";
       targetId: string;
       tag?: string;
+      /* The card's own name for the thing. Empty falls back to the product's
+         or category's real name — the same one the till uses. Display only:
+         the basket and the order still name the real product. */
+      title?: string;
       eventPrice?: number | null;
+      /* Artwork for this card alone. Empty falls back to the product's or
+       * category's own picture, so a card never given one looks as it did. */
+      image?: { url?: string; publicId?: string };
+      /* The offer this card advertises, with its terms already resolved by
+       * the server — the card has to be able to PRINT "any 5 for 15", and an
+       * id alone gives it nothing to print. Null when the card is only
+       * merchandising, or when the offer has since been switched off. */
+      deal?: {
+        id: string;
+        name: string;
+        mode: "bundle" | "mix";
+        groupQuantity: number;
+        discountType: "amount" | "percent" | "setPrice";
+        discount: number;
+        /* The products the offer covers, so a deal card — which has no
+           product of its own — has somewhere real to send a shopper. */
+        productIds?: string[];
+      } | null;
     }[];
   };
   emergencyAlert: {

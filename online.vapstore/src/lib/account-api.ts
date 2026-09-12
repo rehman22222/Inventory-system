@@ -446,6 +446,14 @@ const quoteSchema = z.object({
 
 export interface LoyaltyQuote {
   enabled: boolean;
+  /** Set offers this basket has already earned — "any 5 for 15" and the like.
+   *  Answered whether or not the points programme is switched on, because
+   *  whether the shop runs a loyalty scheme has nothing to do with whether it
+   *  runs offers, and the basket has to show the discount the checkout will
+   *  give. */
+  deals?: { name: string; sets: number; amount: number }[];
+  /** Their total, already included in nothing — subtract it yourself. */
+  dealDiscount?: number;
   pointsName?: string;
   programName?: string;
   /** What this basket would earn — answered whether or not they are signed in. */
