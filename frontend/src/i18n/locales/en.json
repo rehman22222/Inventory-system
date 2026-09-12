@@ -838,7 +838,10 @@
       "print": "Print Labels",
       "another": "Add Another",
       "wasPrice": "Was Price",
-      "savesOnPrint": "Saves when you print"
+      "savesOnPrint": "Saves when you print",
+      "previewScale": "Shown at twice actual size",
+      "existing": "Existing product (optional)",
+      "existingHint": "Search by name or barcode"
     },
     "clearCategory": "Show all categories",
     "greeting": {

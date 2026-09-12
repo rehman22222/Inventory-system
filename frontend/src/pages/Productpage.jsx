@@ -20,7 +20,12 @@ import ConfirmDeleteProductModal from "../Components/ConfirmDeleteProductModal";
 import DealsModal from "../Components/DealsModal";
 import ReportButton from "../Components/ReportButton";
 import toast from "react-hot-toast";
-import { isNewProduct, newestFirst } from "./productOrdering";
+import {
+  RECENT_PRODUCT_HOURS,
+  addedWithin,
+  isNewProduct,
+  newestFirst,
+} from "./productOrdering";
 
 // Currencies a supplier might invoice in. Mirrors the server's list in
 // libs/cost.js, which mirrors the shop's own currency options.
@@ -99,6 +104,13 @@ function Productpage() {
   // Which channel's catalogue to show. "all" is the default and the honest one:
   // the two channels share rows, so narrowing is a lens, not a partition.
   const [channel, setChannel] = useState("all");
+  /* When the shop asked to see what was added recently.
+   *
+   * The MOMENT, not a boolean, so the window is fixed at the click and holds
+   * still while they work through the list. A boolean would mean reading the
+   * clock on every render, and rows would drop off the end as they scrolled.
+   * null is the filter switched off. */
+  const [recentSince, setRecentSince] = useState(null);
 
   useEffect(() => {
     dispatch(gettingallproducts(channel === "all" ? {} : { channel }));
@@ -294,8 +306,8 @@ function Productpage() {
 
   const displayProducts = useMemo(() => {
     const source = query.trim() !== "" ? searchdata : getallproduct;
-    return newestFirst(source);
-  }, [getallproduct, query, searchdata]);
+    return newestFirst(addedWithin(source, recentSince));
+  }, [getallproduct, query, searchdata, recentSince]);
 
   const productPageCount = Math.max(
     1,
@@ -656,6 +668,31 @@ function Productpage() {
                   : `${productStart}-${productEnd} of ${displayProducts.length} products`}
               </p>
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Switched on at a moment, not for a duration — see recentSince. */}
+              <button
+                type="button"
+                aria-pressed={Boolean(recentSince)}
+                onClick={() => setRecentSince(recentSince ? null : Date.now())}
+                className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                  recentSince
+                    ? "border-red-300 bg-red-50 text-red-600"
+                    : "border-base-300 text-base-content/70 hover:bg-base-200"
+                }`}
+                title={
+                  recentSince
+                    ? t("products.recentSince", "Added since {{when}}", {
+                        when: new Date(
+                          recentSince - RECENT_PRODUCT_HOURS * 60 * 60 * 1000,
+                        ).toLocaleString(),
+                      })
+                    : undefined
+                }
+              >
+                {t("products.recent", "Added in {{hours}}h", {
+                  hours: RECENT_PRODUCT_HOURS,
+                })}
+              </button>
             <div className="flex items-center gap-1 rounded-lg border border-base-300 p-1">
               {[
                 { key: "all", label: "All" },
@@ -676,6 +713,7 @@ function Productpage() {
                   {option.label}
                 </button>
               ))}
+            </div>
             </div>
           </div>
           <div className="relative overflow-x-auto">

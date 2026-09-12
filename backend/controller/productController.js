@@ -183,8 +183,29 @@ module.exports.quickAddProduct = async (req, res) => {
           // view so the cashier's grid holds shelf stock and nothing else. They
           // stay in every other view: the product pages still manage them, and
           // the website still sells them off the same `quantity`.
+          /* A quick cash sale is a SALE, not a line in the catalogue.
+           *
+           * It has to exist as a product — the till prices every line from the
+           * database and will not take a figure from a browser, which is a
+           * guard worth keeping — so typing "5.80" at the counter does leave a
+           * Product behind. What it must not do is turn up in the shop's
+           * catalogue: a day of quick sales filled the Products page with
+           * dozens of rows called "Misc.", one per amount, burying the real
+           * stock.
+           *
+           * A card the cashier deliberately KEPT is different, and stays. That
+           * is the shop saying "this is a thing we sell" — a product with a
+           * price and no barcode — and it belongs here.
+           */
+          const notQuickCash = { nonStock: { $ne: true } };
+          const catalogueOnly = {
+            $or: [notQuickCash, { quickSell: true }],
+          };
+
           const filter =
-            view === "pos" ? { barcode: { $exists: true, $nin: [null, ""] } } : {};
+            view === "pos"
+              ? { barcode: { $exists: true, $nin: [null, ""] } }
+              : catalogueOnly;
 
           // The Products page can narrow the catalogue to one channel. "pos" is
           // what the till can scan; "online" is what a listing actually sells —

@@ -1,4 +1,9 @@
-import { isNewProduct, newestFirst } from "./productOrdering";
+import {
+  RECENT_PRODUCT_HOURS,
+  addedWithin,
+  isNewProduct,
+  newestFirst,
+} from "./productOrdering";
 
 // A product row, as thin as the rule needs it to be.
 const at = (hoursAgo, name) => ({
@@ -86,5 +91,81 @@ describe("where a new product sits in the list", () => {
     expect(newestFirst(undefined)).toEqual([]);
     expect(newestFirst(null)).toEqual([]);
     expect(newestFirst("nonsense")).toEqual([]);
+  });
+});
+
+/* The "added recently" filter.
+ *
+ * Its window is measured back from a moment handed IN, which is the whole
+ * design: it is fixed when the filter is switched on, so it holds still while
+ * somebody works through the list. A filter that read the clock itself would
+ * slide as they scrolled and drop rows out from under them — and these tests
+ * would be impossible to write without freezing time.
+ */
+describe("what was added recently", () => {
+  const HOUR = 60 * 60 * 1000;
+  // A fixed moment, so the window is exactly where the test says it is.
+  const CLICKED = Date.parse("2026-09-12T12:00:00Z");
+  const before = (hours, name) => ({
+    name,
+    createdAt: new Date(CLICKED - hours * HOUR).toISOString(),
+  });
+
+  test("the window is 48 hours", () => {
+    expect(RECENT_PRODUCT_HOURS).toBe(48);
+  });
+
+  test("something added an hour ago is in", () => {
+    expect(addedWithin([before(1, "a")], CLICKED).map((p) => p.name)).toEqual(["a"]);
+  });
+
+  test("something added just inside the window is in", () => {
+    expect(addedWithin([before(47, "a")], CLICKED).map((p) => p.name)).toEqual(["a"]);
+  });
+
+  test("something added just outside it is out", () => {
+    expect(addedWithin([before(49, "a")], CLICKED)).toEqual([]);
+  });
+
+  test("a week-old product is out", () => {
+    expect(addedWithin([before(24 * 7, "a")], CLICKED)).toEqual([]);
+  });
+
+  /* The window is anchored to the click, so it does NOT move with the real
+     clock. This is the behaviour the shop asked for: what was added in the 48
+     hours before they pressed it. */
+  test("the window is measured from the moment given, not from now", () => {
+    const list = [before(1, "a"), before(60, "b")];
+    // An hour later, the same rows fall the same way.
+    expect(addedWithin(list, CLICKED + HOUR).map((p) => p.name)).toEqual(["a"]);
+    // Three days later, nothing is recent any more.
+    expect(addedWithin(list, CLICKED + 72 * HOUR)).toEqual([]);
+  });
+
+  // Products predating timestamps exist in the shop's database.
+  test("a product with no date, or a broken one, is not recent", () => {
+    expect(addedWithin([{ name: "old" }, { name: "bad", createdAt: "nonsense" }], CLICKED)).toEqual([]);
+  });
+
+  test("something dated in the future is not counted as recent", () => {
+    expect(addedWithin([before(-5, "a")], CLICKED)).toEqual([]);
+  });
+
+  test("no moment means the filter is off, and everything passes", () => {
+    const list = [before(1, "a"), before(500, "b")];
+    expect(addedWithin(list, null)).toBe(list);
+    expect(addedWithin(list, undefined)).toBe(list);
+  });
+
+  test("a missing list is an empty list, not a crash", () => {
+    expect(addedWithin(undefined, CLICKED)).toEqual([]);
+    expect(addedWithin(null, CLICKED)).toEqual([]);
+  });
+
+  test("the list handed in is not touched", () => {
+    const list = [before(1, "a"), before(99, "b")];
+    const before2 = list.map((p) => p.name);
+    addedWithin(list, CLICKED);
+    expect(list.map((p) => p.name)).toEqual(before2);
   });
 });

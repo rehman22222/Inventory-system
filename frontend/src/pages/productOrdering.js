@@ -35,6 +35,36 @@ export const isNewProduct = (product) => {
  *
  * On a COPY. The array handed in is the store's, and sorting in place would
  * reorder state behind the reducer's back. */
+/* How far back the "recently added" filter looks.
+ *
+ * Longer than the NEW chip on purpose. The chip answers "is this new?" at a
+ * glance and has to stay rare to mean anything; the filter answers "what did
+ * we put in?", and somebody doing that check on a Monday morning wants to see
+ * Saturday's delivery too. */
+export const RECENT_PRODUCT_HOURS = 48;
+
+/* The products added in the window before a given moment.
+ *
+ * The moment is passed IN rather than read here, and that is the point: it is
+ * fixed when the filter is switched on, so the window stays still while
+ * somebody works through the list. Reading the clock on every render would
+ * slide the window as they scrolled, and rows would quietly drop out from
+ * under them.
+ *
+ * A row with no date, or an unreadable one, is NOT recent. Products predating
+ * timestamps exist in the shop's database, and treating them as just-added
+ * would bury the real answer under hundreds of them. */
+export const addedWithin = (source, since, hours = RECENT_PRODUCT_HOURS) => {
+  if (!Array.isArray(source)) return [];
+  if (!Number.isFinite(since)) return source;
+
+  const from = since - hours * 60 * 60 * 1000;
+  return source.filter((product) => {
+    const added = Date.parse(product?.createdAt || "");
+    return !Number.isNaN(added) && added >= from && added <= since;
+  });
+};
+
 export const newestFirst = (source) => {
   if (!Array.isArray(source)) return [];
 
