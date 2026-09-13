@@ -6,7 +6,7 @@ import JsBarcode from "jsbarcode";
  * The ticket prints on the till's roll, the same way a receipt does — see
  * VoucherModal.printLabels for why it does not declare a page of its own. So
  * this is not a paper size: it is how much of the roll one ticket takes,
- * centred, which is why it comes out the same on a 58mm roll as on an 80mm one.
+ * centred, which is why the ticket keeps the same shape on a wider roll.
  *
  * Two things read it — the preview in the dialog and the print rules in
  * index.css — and when they disagree the preview lies about what the roll will
@@ -16,7 +16,7 @@ import JsBarcode from "jsbarcode";
  * nominal size and scanners give up somewhere around 80% of that — about 30mm.
  * Below 40mm there is no width left for the symbol to be readable in, and the
  * ticket stops being scannable before it stops being printable. */
-export const SHELF_LABEL_MM = { width: 45 };
+export const SHELF_LABEL_MM = { width: 72.5 };
 
 
 // One shelf-edge label: the price a customer reads, and a real EAN-13 symbol the
@@ -28,15 +28,9 @@ export const SHELF_LABEL_MM = { width: 45 };
 //   plain — price over a symbol. What the stock screens print in bulk when all
 //           they know is a code and a price. The default, so those callers keep
 //           the sticker they already print.
-//   shelf — the ticket that goes in the rail on the shelf edge, in four lines:
-//           a HEADER, the price, the symbol with its digits, and a FOOTER.
-//
-//           Header and footer are the shop's own words — a shelf position, a
-//           promise like "2 for 5", a warning. Both are optional and an empty
-//           one prints NOTHING rather than an empty line, which on a 40mm
-//           ticket is a waste of roll. The header falls back to the product
-//           name, which is what used to sit there, so a ticket that ignores
-//           both is exactly the ticket this printed before they existed.
+//   shelf — the ticket that goes in the rail on the shelf edge, in the format
+//           the roll printer is expected to cut: header/product text, price,
+//           barcode digits, and optional footer.
 //
 // THE TICKET PRINTS ON THE TILL'S ROLL, the way a receipt does, at the width
 // in SHELF_LABEL_MM above. That decides most of what it looks like.
@@ -64,7 +58,7 @@ function BarcodeLabel({
   price,
   symbol = "€",
   name,
-  // The two lines the shop writes itself. See the note above.
+  // Optional text the shop wants above and below the price. See the note above.
   header,
   footer,
   variant = "plain",
@@ -82,16 +76,11 @@ function BarcodeLabel({
         // bars bleed into their gaps — the symbol looks right and scans badly.
         // Two modules per bar is as fine as this printer should be asked for.
         width: 2,
-        // Short, because the price has to fit above it. See the note above.
-        // Shorter on a shelf ticket than it was: the header grew, and the
-        // room came from here. Height is the safe thing to take — an EAN-13
-        // is read across its WIDTH, and truncating it costs only a little
-        // tolerance at bad angles. The width is untouched.
-        height: shelf ? 42 : 46,
-        fontSize: shelf ? 12 : 15,
-        textMargin: 1,
+        height: shelf ? 50 : 46,
+        fontSize: shelf ? 14 : 15,
+        textMargin: shelf ? 0 : 1,
         margin: 8,
-        displayValue: true,
+        displayValue: !shelf,
       });
     } catch {
       // A malformed code shouldn't take the whole sheet down — leave it blank
@@ -110,7 +99,8 @@ function BarcodeLabel({
     );
   }
 
-  // Header, price, symbol, footer — the order a shopper's eye takes them in.
+  // Header/product text, price, symbol, footer — the same fields as before,
+  // printed in the clearer thermal-label style.
   const top = (header || "").trim() || name;
   const bottom = (footer || "").trim();
 

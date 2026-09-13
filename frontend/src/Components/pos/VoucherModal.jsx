@@ -10,7 +10,6 @@ import BarcodeLabel, { SHELF_LABEL_MM } from "../BarcodeLabel";
 import {
   currency,
   newInStoreBarcode,
-  printSlip,
   sanitizeDecimal,
   sanitizeInteger,
 } from "./posUtils";
@@ -355,7 +354,7 @@ function VoucherModal({
       }
     }
 
-    printLabels();
+    if (printLabels()) onClose();
   };
 
   /* Printed on the till's roll, with no margin of its own.
@@ -377,17 +376,147 @@ function VoucherModal({
    * driver's own paper length and is set there, not here.
    */
   const printLabels = () => {
-    const style = document.createElement("style");
-    style.textContent = "@page { size: 80mm auto; margin: 0; }";
-    document.head.appendChild(style);
+    const sheet = document.getElementById("barcode-sheet");
+    if (!sheet) return false;
 
-    const cleanup = () => {
-      style.remove();
-      window.removeEventListener("afterprint", cleanup);
+    const frame = document.createElement("iframe");
+    frame.setAttribute("title", "Shelf label print");
+    frame.setAttribute("aria-hidden", "true");
+    frame.style.position = "fixed";
+    frame.style.right = "0";
+    frame.style.bottom = "0";
+    frame.style.width = "0";
+    frame.style.height = "0";
+    frame.style.border = "0";
+    frame.style.visibility = "hidden";
+    document.body.appendChild(frame);
+
+    const win = frame.contentWindow;
+    const doc = win?.document;
+    if (!win || !doc) {
+      frame.remove();
+      toast.error(t("pos.newProduct.printFailed", "Could not open the label printer"));
+      return false;
+    }
+
+    doc.open();
+    doc.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>&nbsp;</title>
+          <style>
+            @page { size: 80mm 56mm; margin: 0; }
+            html,
+            body {
+              margin: 0;
+              padding: 0;
+              width: 100%;
+              height: 100%;
+              overflow: hidden;
+              background: #fff;
+              color: #000;
+              font-family: Arial, Helvetica, sans-serif;
+            }
+            #barcode-sheet {
+              display: flex !important;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              width: 100vw;
+              height: 100vh;
+              margin: 0;
+              padding: 0;
+              background: #fff;
+              color: #000;
+            }
+            .bc-grid-shelf {
+              display: flex !important;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+            }
+            .bc-label.bc-shelf {
+              width: ${SHELF_LABEL_MM.width}mm;
+              margin: 0 auto;
+              overflow: hidden;
+              text-align: center;
+              padding: 0;
+              border: 0;
+              break-inside: avoid;
+              page-break-inside: avoid;
+            }
+            .bc-label.bc-shelf + .bc-label.bc-shelf {
+              margin-top: 6mm;
+            }
+            .bc-shelf .bc-name {
+              font-size: 18.1pt;
+              font-weight: 500;
+              letter-spacing: 0;
+              text-transform: uppercase;
+              line-height: 1.1;
+              margin-bottom: 0.2mm;
+              display: -webkit-box;
+              -webkit-box-orient: vertical;
+              -webkit-line-clamp: 2;
+              line-clamp: 2;
+              overflow: hidden;
+              overflow-wrap: anywhere;
+              word-break: break-word;
+            }
+            .bc-shelf .bc-now {
+              font-size: 31.3pt;
+              font-weight: 500;
+              line-height: 1;
+              letter-spacing: 0;
+              white-space: nowrap;
+              margin-bottom: 0.4mm;
+            }
+            .bc-shelf .bc-foot {
+              font-size: 13.1pt;
+              font-weight: 500;
+              letter-spacing: 0;
+              text-transform: uppercase;
+              line-height: 1.08;
+              margin-top: 0.2mm;
+              display: -webkit-box;
+              -webkit-box-orient: vertical;
+              -webkit-line-clamp: 2;
+              line-clamp: 2;
+              overflow: hidden;
+              overflow-wrap: anywhere;
+              word-break: break-word;
+            }
+            .bc-svg {
+              width: 62.5mm;
+              max-width: 100%;
+              height: auto;
+              display: block;
+              margin: 0 auto;
+            }
+          </style>
+        </head>
+        <body>${sheet.outerHTML}</body>
+      </html>
+    `);
+    doc.close();
+
+    let cleaned = false;
+    const cleanupPrintFrame = () => {
+      if (cleaned) return;
+      cleaned = true;
+      setTimeout(() => frame.remove(), 50);
     };
-    window.addEventListener("afterprint", cleanup);
 
-    printSlip("barcode-sheet");
+    win.addEventListener("afterprint", cleanupPrintFrame, { once: true });
+
+    setTimeout(() => {
+      win.focus();
+      win.print();
+      window.focus();
+    }, 50);
+    setTimeout(cleanupPrintFrame, 30000);
+    return true;
   };
 
   const field =
