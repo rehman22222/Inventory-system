@@ -517,7 +517,7 @@ input[inputmode="decimal"],
      *
      * A thermal head cannot reach the very edge of the roll either, so this is
      * not only about how it looks. */
-    padding: 3mm 0;
+    padding: 1.8mm 0;
   }
   #barcode-sheet .bc-label.bc-shelf {
     width: 72.5mm;
@@ -571,7 +571,7 @@ input[inputmode="decimal"],
      product name falling back into the header is trimmed sooner than it was.
      The ticket is wider and the symbol shorter to pay for the size. */
   #barcode-sheet .bc-shelf .bc-name {
-    font-size: 18.1pt;
+    font-size: 13.1pt;
     font-weight: 500;
     letter-spacing: 0;
     text-transform: uppercase;
@@ -588,20 +588,20 @@ input[inputmode="decimal"],
   /* The one thing on the ticket that has to be read at arm's length. Big rather
      than highlighted — see above for why there is no block behind it. */
   #barcode-sheet .bc-shelf .bc-now {
-    font-size: 31.3pt;
+    font-size: 22.5pt;
     font-weight: 500;
     line-height: 1;
     letter-spacing: 0;
     white-space: nowrap;
-    margin-bottom: 0.4mm;
+    margin-bottom: 0.2mm;
   }
   #barcode-sheet .bc-shelf .bc-foot {
-    font-size: 13.1pt;
+    font-size: 10.5pt;
     font-weight: 500;
     letter-spacing: 0;
     text-transform: uppercase;
     line-height: 1.08;
-    margin-top: 0.2mm;
+    margin-top: 0.1mm;
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -670,7 +670,7 @@ input[inputmode="decimal"],
   overflow: hidden;
 }
 .bc-shelf .bc-name {
-  font-size: 24.1px;
+  font-size: 17.4px;
   font-weight: 500;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -685,7 +685,7 @@ input[inputmode="decimal"],
   word-break: break-word;
 }
 .bc-shelf .bc-now {
-  font-size: 41.6px;
+  font-size: 30px;
   font-weight: 500;
   line-height: 1;
   letter-spacing: 0;
@@ -693,7 +693,7 @@ input[inputmode="decimal"],
   margin-bottom: 1px;
 }
 .bc-shelf .bc-foot {
-  font-size: 17.5px;
+  font-size: 13.9px;
   font-weight: 500;
   letter-spacing: 0;
   text-transform: uppercase;

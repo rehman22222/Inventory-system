@@ -76,7 +76,7 @@ function BarcodeLabel({
         // bars bleed into their gaps — the symbol looks right and scans badly.
         // Two modules per bar is as fine as this printer should be asked for.
         width: 2,
-        height: shelf ? 50 : 46,
+        height: shelf ? 36 : 46,
         fontSize: shelf ? 14 : 15,
         textMargin: shelf ? 0 : 1,
         margin: 8,
