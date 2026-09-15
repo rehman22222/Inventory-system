@@ -211,7 +211,16 @@ export default function RichTextEditor({
         "Describe this image for screen readers and search engines (recommended):",
         "",
       );
-      editor.chain().focus().setImage({ src: url, alt: alt || "" }).run();
+      const { to } = editor.state.selection;
+      editor
+        .chain()
+        .focus()
+        .setTextSelection(to)
+        .insertContent({
+          type: "image",
+          attrs: { src: url, alt: alt || "" },
+        })
+        .run();
     },
     [editor, onUploadImage],
   );

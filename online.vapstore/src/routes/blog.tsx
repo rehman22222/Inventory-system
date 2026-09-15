@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { CalendarDays } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -31,9 +31,13 @@ function safeMediaUrl(value?: string) {
 }
 
 function BlogIndexPage() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const normalizedPath = pathname.replace(/\/+$/, "") || "/";
   const { posts, copy } = Route.useLoaderData();
   const featured = posts.find((post) => post.featured) || posts[0];
   const latest = featured ? posts.filter((post) => post._id !== featured._id) : posts;
+
+  if (normalizedPath !== "/blog") return <Outlet />;
 
   return (
     <div className="min-h-screen bg-background">
