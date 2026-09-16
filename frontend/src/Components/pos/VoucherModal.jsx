@@ -424,7 +424,7 @@ function VoucherModal({
               align-items: flex-start;
               justify-content: flex-start;
               position: fixed;
-              top: 0;
+              top: 1mm;
               left: 0;
               width: 80mm;
               height: 32.5mm;
