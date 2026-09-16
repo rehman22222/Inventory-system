@@ -16,7 +16,7 @@ import JsBarcode from "jsbarcode";
  * nominal size and scanners give up somewhere around 80% of that — about 30mm.
  * Below 40mm there is no width left for the symbol to be readable in, and the
  * ticket stops being scannable before it stops being printable. */
-export const SHELF_LABEL_MM = { width: 72.5 };
+export const SHELF_LABEL_MM = { width: 56.25 };
 
 
 // One shelf-edge label: the price a customer reads, and a real EAN-13 symbol the
@@ -76,10 +76,12 @@ function BarcodeLabel({
         // bars bleed into their gaps — the symbol looks right and scans badly.
         // Two modules per bar is as fine as this printer should be asked for.
         width: 2,
-        height: shelf ? 36 : 46,
+        height: shelf ? 25 : 46,
         fontSize: shelf ? 14 : 15,
         textMargin: shelf ? 0 : 1,
         margin: 8,
+        lineColor: "#000000",
+        background: "#ffffff",
         displayValue: !shelf,
       });
     } catch {

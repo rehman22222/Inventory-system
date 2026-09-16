@@ -500,8 +500,11 @@ input[inputmode="decimal"],
   #barcode-sheet:has(.bc-grid-shelf) {
     display: flex !important;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     justify-content: flex-start;
+    position: fixed;
+    top: 0;
+    left: 0;
     min-height: 0;
   }
 
@@ -517,10 +520,10 @@ input[inputmode="decimal"],
      *
      * A thermal head cannot reach the very edge of the roll either, so this is
      * not only about how it looks. */
-    padding: 1.8mm 0;
+    padding: 0.72mm 0;
   }
   #barcode-sheet .bc-label.bc-shelf {
-    width: 72.5mm;
+    width: 56.25mm;
     /* Centred on the page.
 
        THIS REVERSES AN EARLIER DECISION, and the reason it was made is worth
@@ -531,7 +534,7 @@ input[inputmode="decimal"],
        The shop has asked for centred after seeing it print on a full-width
        page. If tickets start coming out cut off at an edge again, this line
        is why — put `margin: 0` back. */
-    margin: 0 auto;
+    margin: 0;
     overflow: hidden;
     text-align: center;
     padding: 0;
@@ -571,12 +574,12 @@ input[inputmode="decimal"],
      product name falling back into the header is trimmed sooner than it was.
      The ticket is wider and the symbol shorter to pay for the size. */
   #barcode-sheet .bc-shelf .bc-name {
-    font-size: 13.1pt;
+    font-size: 15.2pt;
     font-weight: 500;
     letter-spacing: 0;
     text-transform: uppercase;
-    line-height: 1.1;
-    margin-bottom: 0.2mm;
+    line-height: 0.86;
+    margin-bottom: 0.1mm;
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -588,19 +591,19 @@ input[inputmode="decimal"],
   /* The one thing on the ticket that has to be read at arm's length. Big rather
      than highlighted — see above for why there is no block behind it. */
   #barcode-sheet .bc-shelf .bc-now {
-    font-size: 22.5pt;
+    font-size: 15.75pt;
     font-weight: 500;
-    line-height: 1;
+    line-height: 0.86;
     letter-spacing: 0;
     white-space: nowrap;
-    margin-bottom: 0.2mm;
+    margin-bottom: 0.1mm;
   }
   #barcode-sheet .bc-shelf .bc-foot {
-    font-size: 10.5pt;
+    font-size: 12.6pt;
     font-weight: 500;
     letter-spacing: 0;
     text-transform: uppercase;
-    line-height: 1.08;
+    line-height: 0.9;
     margin-top: 0.1mm;
     display: -webkit-box;
     -webkit-box-orient: vertical;
@@ -628,10 +631,12 @@ input[inputmode="decimal"],
     width: 100%;
     height: auto;
     display: block;
+    background: #fff;
+    shape-rendering: crispEdges;
   }
 
   #barcode-sheet .bc-shelf .bc-svg {
-    width: 62.5mm;
+    width: 56.25mm;
     max-width: 100%;
     margin: 0 auto;
   }
@@ -655,7 +660,7 @@ input[inputmode="decimal"],
 .bc-price {
   font-size: 12px;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 0.86;
 }
 
 /* Price sticker, on screen. The dialog renders it at the sticker's real size
@@ -670,11 +675,11 @@ input[inputmode="decimal"],
   overflow: hidden;
 }
 .bc-shelf .bc-name {
-  font-size: 17.4px;
+  font-size: 20.25px;
   font-weight: 500;
   letter-spacing: 0;
   text-transform: uppercase;
-  line-height: 1.1;
+  line-height: 0.99;
   margin-bottom: 1px;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -685,19 +690,19 @@ input[inputmode="decimal"],
   word-break: break-word;
 }
 .bc-shelf .bc-now {
-  font-size: 30px;
+  font-size: 21px;
   font-weight: 500;
-  line-height: 1;
+  line-height: 0.9;
   letter-spacing: 0;
   white-space: nowrap;
   margin-bottom: 1px;
 }
 .bc-shelf .bc-foot {
-  font-size: 13.9px;
+  font-size: 16.7px;
   font-weight: 500;
   letter-spacing: 0;
   text-transform: uppercase;
-  line-height: 1.08;
+  line-height: 0.97;
   margin-top: 1px;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -712,9 +717,11 @@ input[inputmode="decimal"],
   width: 100%;
   height: auto;
   display: block;
+  background: #fff;
+  shape-rendering: crispEdges;
 }
 .bc-shelf .bc-svg {
-  width: 62.5mm;
+  width: 56.25mm;
   max-width: 100%;
   margin: 0 auto;
 }

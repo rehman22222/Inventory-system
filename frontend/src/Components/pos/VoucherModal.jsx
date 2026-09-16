@@ -406,13 +406,13 @@ function VoucherModal({
         <head>
           <title>&nbsp;</title>
           <style>
-            @page { size: 80mm auto; margin: 0; }
+            @page { size: ${SHELF_LABEL_MM.width + 4}mm 36.5mm; margin: 2mm; }
             html,
             body {
               margin: 0;
               padding: 0;
-              width: 80mm;
-              height: 40.5mm;
+              width: ${SHELF_LABEL_MM.width}mm;
+              height: 32.5mm;
               overflow: hidden;
               background: #fff;
               color: #000;
@@ -421,10 +421,13 @@ function VoucherModal({
             #barcode-sheet {
               display: flex !important;
               flex-direction: column;
-              align-items: center;
-              justify-content: center;
-              width: 80mm;
-              height: 40.5mm;
+              align-items: flex-start;
+              justify-content: flex-start;
+              position: fixed;
+              top: 0;
+              left: 0;
+              width: ${SHELF_LABEL_MM.width}mm;
+              height: 32.5mm;
               margin: 0;
               padding: 0;
               background: #fff;
@@ -433,12 +436,13 @@ function VoucherModal({
             .bc-grid-shelf {
               display: flex !important;
               flex-direction: column;
-              align-items: center;
-              justify-content: center;
+              align-items: flex-start;
+              justify-content: flex-start;
+              margin: 0;
             }
             .bc-label.bc-shelf {
               width: ${SHELF_LABEL_MM.width}mm;
-              margin: 0 auto;
+              margin: 0;
               overflow: hidden;
               text-align: center;
               padding: 0;
@@ -450,12 +454,12 @@ function VoucherModal({
               margin-top: 6mm;
             }
             .bc-shelf .bc-name {
-              font-size: 13.1pt;
+              font-size: 15.2pt;
               font-weight: 500;
               letter-spacing: 0;
               text-transform: uppercase;
-              line-height: 1.1;
-              margin-bottom: 0.2mm;
+              line-height: 0.86;
+              margin-bottom: 0.1mm;
               display: -webkit-box;
               -webkit-box-orient: vertical;
               -webkit-line-clamp: 2;
@@ -465,19 +469,19 @@ function VoucherModal({
               word-break: break-word;
             }
             .bc-shelf .bc-now {
-              font-size: 22.5pt;
+              font-size: 15.75pt;
               font-weight: 500;
-              line-height: 1;
+              line-height: 0.86;
               letter-spacing: 0;
               white-space: nowrap;
-              margin-bottom: 0.2mm;
+              margin-bottom: 0.1mm;
             }
             .bc-shelf .bc-foot {
-              font-size: 10.5pt;
+              font-size: 12.6pt;
               font-weight: 500;
               letter-spacing: 0;
               text-transform: uppercase;
-              line-height: 1.08;
+              line-height: 0.9;
               margin-top: 0.1mm;
               display: -webkit-box;
               -webkit-box-orient: vertical;
@@ -488,11 +492,13 @@ function VoucherModal({
               word-break: break-word;
             }
             .bc-svg {
-              width: 62.5mm;
+              width: 56.25mm;
               max-width: 100%;
               height: auto;
               display: block;
               margin: 0 auto;
+              background: #fff;
+              shape-rendering: crispEdges;
             }
           </style>
         </head>
