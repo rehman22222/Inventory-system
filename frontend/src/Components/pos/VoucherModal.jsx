@@ -406,12 +406,12 @@ function VoucherModal({
         <head>
           <title>&nbsp;</title>
           <style>
-            @page { size: ${SHELF_LABEL_MM.width + 4}mm 36.5mm; margin: 2mm; }
+            @page { size: 80mm auto; margin: 0; }
             html,
             body {
               margin: 0;
               padding: 0;
-              width: ${SHELF_LABEL_MM.width}mm;
+              width: 80mm;
               height: 32.5mm;
               overflow: hidden;
               background: #fff;
@@ -426,7 +426,7 @@ function VoucherModal({
               position: fixed;
               top: 0;
               left: 0;
-              width: ${SHELF_LABEL_MM.width}mm;
+              width: 80mm;
               height: 32.5mm;
               margin: 0;
               padding: 0;
