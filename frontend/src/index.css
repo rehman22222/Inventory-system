@@ -503,9 +503,13 @@ input[inputmode="decimal"],
     align-items: flex-start;
     justify-content: flex-start;
     position: fixed;
-    top: 1mm;
-    left: 0;
+    top: 2.75mm;
+    left: 11.875mm;
     min-height: 0;
+  }
+
+  #barcode-sheet:has(.bc-grid-shelf-large) {
+    left: 0;
   }
 
   #barcode-sheet .bc-grid-shelf {
@@ -579,7 +583,7 @@ input[inputmode="decimal"],
     letter-spacing: 0;
     text-transform: uppercase;
     line-height: 0.86;
-    margin-bottom: 0.1mm;
+    margin-bottom: 0.35mm;
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -591,12 +595,16 @@ input[inputmode="decimal"],
   /* The one thing on the ticket that has to be read at arm's length. Big rather
      than highlighted — see above for why there is no block behind it. */
   #barcode-sheet .bc-shelf .bc-now {
-    font-size: 15.75pt;
-    font-weight: 500;
+    font-size: 20.5pt;
+    font-weight: 600;
     line-height: 0.86;
     letter-spacing: 0;
     white-space: nowrap;
-    margin-bottom: 0.1mm;
+    margin-bottom: 0.35mm;
+  }
+
+  #barcode-sheet .bc-label.bc-shelf-large {
+    width: 80mm;
   }
   #barcode-sheet .bc-shelf .bc-foot {
     font-size: 12.6pt;
@@ -604,7 +612,7 @@ input[inputmode="decimal"],
     letter-spacing: 0;
     text-transform: uppercase;
     line-height: 0.9;
-    margin-top: 0.1mm;
+    margin-top: 0.35mm;
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -636,9 +644,13 @@ input[inputmode="decimal"],
   }
 
   #barcode-sheet .bc-shelf .bc-svg {
-    width: 56.25mm;
+    width: 40.5mm;
     max-width: 100%;
-    margin: 0 auto;
+    margin: 0.25mm auto;
+  }
+
+  #barcode-sheet .bc-shelf-large .bc-svg {
+    width: 72mm;
   }
 
   .no-print {
@@ -724,6 +736,9 @@ input[inputmode="decimal"],
   width: 56.25mm;
   max-width: 100%;
   margin: 0 auto;
+}
+.bc-shelf-large .bc-svg {
+  width: 72mm;
 }
 
 @layer base {

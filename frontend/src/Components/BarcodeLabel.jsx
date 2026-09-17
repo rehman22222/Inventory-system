@@ -16,7 +16,7 @@ import JsBarcode from "jsbarcode";
  * nominal size and scanners give up somewhere around 80% of that — about 30mm.
  * Below 40mm there is no width left for the symbol to be readable in, and the
  * ticket stops being scannable before it stops being printable. */
-export const SHELF_LABEL_MM = { width: 56.25 };
+export const SHELF_LABEL_MM = { width: 56.25, largeWidth: 80 };
 
 
 // One shelf-edge label: the price a customer reads, and a real EAN-13 symbol the
@@ -62,6 +62,7 @@ function BarcodeLabel({
   header,
   footer,
   variant = "plain",
+  size = "small",
 }) {
   const ref = useRef(null);
   const shelf = variant === "shelf";
@@ -76,13 +77,14 @@ function BarcodeLabel({
         // bars bleed into their gaps — the symbol looks right and scans badly.
         // Two modules per bar is as fine as this printer should be asked for.
         width: 2,
-        height: shelf ? 25 : 46,
+        height: shelf ? 21 : 46,
         fontSize: shelf ? 14 : 15,
         textMargin: shelf ? 0 : 1,
         margin: 8,
-        lineColor: "#000000",
+        lineColor: shelf ? "#262626" : "#000000",
         background: "#ffffff",
         displayValue: !shelf,
+        flat: shelf,
       });
     } catch {
       // A malformed code shouldn't take the whole sheet down — leave it blank
@@ -107,7 +109,7 @@ function BarcodeLabel({
   const bottom = (footer || "").trim();
 
   return (
-    <div className="bc-label bc-shelf">
+    <div className={`bc-label bc-shelf ${size === "large" ? "bc-shelf-large" : ""}`}>
       {top && <div className="bc-name">{top}</div>}
       <div className="bc-now">{money(price)}</div>
       <svg ref={ref} className="bc-svg" />

@@ -208,6 +208,7 @@ function VoucherModal({
   // count up for the times a strip is wanted. It used to open at the quantity
   // received, which offered forty stickers for one price change.
   const [labels, setLabels] = useState(1);
+  const [labelSize, setLabelSize] = useState("small");
 
   // Hand-typed money off this basket, folded in from what used to be its own
   // rail button.
@@ -378,6 +379,8 @@ function VoucherModal({
   const printLabels = () => {
     const sheet = document.getElementById("barcode-sheet");
     if (!sheet) return false;
+    const shelfWidth = labelSize === "large" ? SHELF_LABEL_MM.largeWidth : SHELF_LABEL_MM.width;
+    const shelfLeft = (80 - shelfWidth) / 2;
 
     const frame = document.createElement("iframe");
     frame.setAttribute("title", "Shelf label print");
@@ -424,8 +427,8 @@ function VoucherModal({
               align-items: flex-start;
               justify-content: flex-start;
               position: fixed;
-              top: 1mm;
-              left: 0;
+              top: 2.75mm;
+              left: ${shelfLeft}mm;
               width: 80mm;
               height: 32.5mm;
               margin: 0;
@@ -441,7 +444,7 @@ function VoucherModal({
               margin: 0;
             }
             .bc-label.bc-shelf {
-              width: ${SHELF_LABEL_MM.width}mm;
+              width: ${shelfWidth}mm;
               margin: 0;
               overflow: hidden;
               text-align: center;
@@ -459,7 +462,7 @@ function VoucherModal({
               letter-spacing: 0;
               text-transform: uppercase;
               line-height: 0.86;
-              margin-bottom: 0.1mm;
+              margin-bottom: 0.35mm;
               display: -webkit-box;
               -webkit-box-orient: vertical;
               -webkit-line-clamp: 2;
@@ -469,12 +472,12 @@ function VoucherModal({
               word-break: break-word;
             }
             .bc-shelf .bc-now {
-              font-size: 15.75pt;
-              font-weight: 500;
+              font-size: 20.5pt;
+              font-weight: 600;
               line-height: 0.86;
               letter-spacing: 0;
               white-space: nowrap;
-              margin-bottom: 0.1mm;
+              margin-bottom: 0.35mm;
             }
             .bc-shelf .bc-foot {
               font-size: 12.6pt;
@@ -482,7 +485,7 @@ function VoucherModal({
               letter-spacing: 0;
               text-transform: uppercase;
               line-height: 0.9;
-              margin-top: 0.1mm;
+              margin-top: 0.35mm;
               display: -webkit-box;
               -webkit-box-orient: vertical;
               -webkit-line-clamp: 2;
@@ -492,11 +495,11 @@ function VoucherModal({
               word-break: break-word;
             }
             .bc-svg {
-              width: 56.25mm;
+              width: ${labelSize === "large" ? "72" : "40.5"}mm;
               max-width: 100%;
               height: auto;
               display: block;
-              margin: 0 auto;
+              margin: 0.25mm auto;
               background: #fff;
               shape-rendering: crispEdges;
             }
@@ -749,9 +752,15 @@ function VoucherModal({
                 proportions stay exactly what the roll will print — a preview
                 that flattered the label would be worse than none. */}
             <div className="mx-auto w-fit bg-white px-3 py-2">
-              <div style={{ width: `${SHELF_LABEL_MM.width}mm`, zoom: 2 }}>
+              <div
+                style={{
+                  width: `${labelSize === "large" ? SHELF_LABEL_MM.largeWidth : SHELF_LABEL_MM.width}mm`,
+                  zoom: labelSize === "large" ? 1.4 : 2,
+                }}
+              >
                 <BarcodeLabel
                   variant="shelf"
+                  size={labelSize}
                   code={made.barcode}
                   price={made.Price}
                   name={made.name}
@@ -766,6 +775,25 @@ function VoucherModal({
             </p>
 
             <div className="flex items-center gap-2">
+              <div className="flex items-center bg-slate-800 p-1">
+                {[
+                  ["small", t("pos.newProduct.labelSmall", "Small")],
+                  ["large", t("pos.newProduct.labelLarge", "Large")],
+                ].map(([value, text]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setLabelSize(value)}
+                    className={`px-3 py-1.5 text-xs font-semibold uppercase transition ${
+                      labelSize === value
+                        ? "bg-cyan-700 text-white"
+                        : "text-slate-300 hover:bg-slate-700"
+                    }`}
+                  >
+                    {text}
+                  </button>
+                ))}
+              </div>
               <label className="text-xs font-semibold uppercase text-slate-400">
                 {t("pos.newProduct.labels", "Labels")}
               </label>
@@ -834,13 +862,14 @@ function VoucherModal({
 
             {/* The sheet, hidden until it prints. */}
             <div id="barcode-sheet" className="hidden">
-              <div className="bc-grid bc-grid-shelf">
+              <div className={`bc-grid bc-grid-shelf bc-grid-shelf-${labelSize}`}>
                 {Array.from({
                   length: Math.max(1, Math.min(200, Number(labels) || 1)),
                 }).map((_, index) => (
                   <BarcodeLabel
                     key={index}
                     variant="shelf"
+                    size={labelSize}
                     code={made.barcode}
                     price={made.Price}
                     name={made.name}
