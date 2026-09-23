@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FiAlertTriangle, FiArchive, FiRotateCcw, FiX } from "react-icons/fi";
+import { FiAlertTriangle, FiArchive, FiRotateCcw, FiTrash2, FiX } from "react-icons/fi";
 import toast from "react-hot-toast";
 import axiosInstance from "../lib/axios";
 import { currency } from "./pos/posUtils";
@@ -21,6 +21,13 @@ import { currency } from "./pos/posUtils";
  * against a preview built by the same resolution the archive itself runs, so
  * "214 sales, EUR 4,182.50, 2 closed days restated" is a sentence the owner can
  * actually check before it is true.
+ *
+ * The one exception to "nothing here deletes" lives on the Already archived
+ * tab, and it is deliberately awkward to reach: rows have to be archived and
+ * looked at first, the batch code has to be typed back, and what goes is
+ * written to the activity log on the way out. It is there for takings that are
+ * not takings — the sales rung to prove a till before it went live — which
+ * archiving hides for ever but never gets out of the ledger.
  */
 
 const MODES = [
@@ -48,10 +55,11 @@ function Figure({ label, value, tone = "" }) {
   );
 }
 
-function SalesArchiveModal({ picked = [], onClose, onDone }) {
+function SalesArchiveModal({ picked = [], pickedReceiptNos = [], onClose, onDone }) {
   const { t } = useTranslation();
+  const tickedCount = picked.length || pickedReceiptNos.length;
   const [tab, setTab] = useState("archive");
-  const [mode, setMode] = useState(picked.length ? "picked" : "range");
+  const [mode, setMode] = useState(tickedCount ? "picked" : "range");
 
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -63,20 +71,27 @@ function SalesArchiveModal({ picked = [], onClose, onDone }) {
   const [checking, setChecking] = useState(false);
   const [working, setWorking] = useState(false);
   const [archives, setArchives] = useState([]);
+  // The batch whose "delete for good" panel is open: { batch, info, typed }.
+  const [purge, setPurge] = useState(null);
 
   // What the chosen mode comes to as a request. One place, so the preview and
   // the archive can never be asked different questions.
   const selection = useCallback(() => {
-    if (mode === "picked") return { saleIds: picked };
+    // Ticked rows arrive as sale ids from the sales list and as receipt numbers
+    // from the ghost view, which lists receipts rather than sale rows. The
+    // server resolves either into the same set.
+    if (mode === "picked") {
+      return picked.length ? { saleIds: picked } : { receiptNos: pickedReceiptNos };
+    }
     if (mode === "receipts") return { fromReceiptNo: fromReceiptNo.trim(), toReceiptNo: toReceiptNo.trim() };
     return {
       from: from ? new Date(from).toISOString() : undefined,
       to: to ? new Date(to).toISOString() : undefined,
     };
-  }, [mode, picked, from, to, fromReceiptNo, toReceiptNo]);
+  }, [mode, picked, pickedReceiptNos, from, to, fromReceiptNo, toReceiptNo]);
 
   const ready =
-    (mode === "picked" && picked.length > 0) ||
+    (mode === "picked" && tickedCount > 0) ||
     (mode === "range" && (from || to)) ||
     (mode === "receipts" && (fromReceiptNo.trim() || toReceiptNo.trim()));
 
@@ -148,6 +163,53 @@ function SalesArchiveModal({ picked = [], onClose, onDone }) {
     }
   };
 
+  /* Destroying an archive.
+   *
+   * Opening the panel fetches what the batch is made of rather than trusting
+   * the row already on screen, because the list is a summary and this is the
+   * last thing anybody sees before the rows stop existing. The typed code is
+   * checked here AND on the server — this one keeps the button dark, that one
+   * is the rule. */
+  const openPurge = async (batch) => {
+    setPurge({ batch, info: null, typed: "" });
+    try {
+      const { data } = await axiosInstance.get(`sales/archive/${batch}/purge/preview`);
+      setPurge((current) => (current?.batch === batch ? { ...current, info: data } : current));
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message ||
+          t("salesArchive.purgeCheckFailed", "Could not read that archive"),
+      );
+      setPurge(null);
+    }
+  };
+
+  const purgeNow = async () => {
+    if (!purge || purge.typed.trim() !== purge.batch) return;
+    setWorking(true);
+    try {
+      const { data } = await axiosInstance.delete(`sales/archive/${purge.batch}`, {
+        data: { confirm: purge.batch },
+      });
+      toast.success(
+        t("salesArchive.purged", "{{batch}} deleted for good — {{n}} row(s) gone", {
+          batch: data.batch,
+          n: data.sales,
+        }),
+      );
+      setPurge(null);
+      await loadArchives();
+      onDone?.();
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message ||
+          t("salesArchive.purgeFailed", "Could not delete that archive"),
+      );
+    } finally {
+      setWorking(false);
+    }
+  };
+
   const restore = async (batch) => {
     setWorking(true);
     try {
@@ -213,7 +275,7 @@ function SalesArchiveModal({ picked = [], onClose, onDone }) {
                   key={option.key}
                   type="button"
                   onClick={() => setMode(option.key)}
-                  disabled={option.key === "picked" && picked.length === 0}
+                  disabled={option.key === "picked" && tickedCount === 0}
                   className={`rounded border px-3 py-1.5 text-sm ${
                     mode === option.key
                       ? "border-primary bg-primary/10 font-semibold text-primary"
@@ -221,7 +283,7 @@ function SalesArchiveModal({ picked = [], onClose, onDone }) {
                   } disabled:opacity-30`}
                 >
                   {t(`salesArchive.mode.${option.key}`, option.label)}
-                  {option.key === "picked" && picked.length > 0 ? ` (${picked.length})` : ""}
+                  {option.key === "picked" && tickedCount > 0 ? ` (${tickedCount})` : ""}
                 </button>
               ))}
             </div>
@@ -304,7 +366,7 @@ function SalesArchiveModal({ picked = [], onClose, onDone }) {
             {mode === "picked" && (
               <p className="text-sm opacity-70">
                 {t("salesArchive.pickedHint", "{{n}} row(s) ticked on the sales list.", {
-                  n: picked.length,
+                  n: tickedCount,
                 })}
               </p>
             )}
@@ -403,32 +465,143 @@ function SalesArchiveModal({ picked = [], onClose, onDone }) {
               </p>
             ) : (
               archives.map((entry) => (
-                <div
-                  key={entry.batch}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded border border-base-300 p-3"
-                >
-                  <div className="min-w-0">
-                    <p className="font-semibold">
-                      {entry.batch}{" "}
-                      <span className="font-normal opacity-60">
-                        · {entry.sales} {t("salesArchive.rows", "rows")} ·{" "}
-                        {currency(entry.revenue)}
-                      </span>
-                    </p>
-                    <p className="truncate text-xs opacity-70">
-                      {entry.reason} — {entry.byName} ·{" "}
-                      {new Date(entry.at).toLocaleString()}
-                    </p>
+                <div key={entry.batch} className="rounded border border-base-300 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold">
+                        {entry.batch}{" "}
+                        <span className="font-normal opacity-60">
+                          · {entry.sales} {t("salesArchive.rows", "rows")} ·{" "}
+                          {currency(entry.revenue)}
+                        </span>
+                      </p>
+                      <p className="truncate text-xs opacity-70">
+                        {entry.reason} — {entry.byName} ·{" "}
+                        {new Date(entry.at).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => restore(entry.batch)}
+                        disabled={working}
+                        className="btn btn-outline btn-xs gap-1"
+                      >
+                        <FiRotateCcw className="h-3 w-3" />
+                        {t("salesArchive.restore", "Put back")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          purge?.batch === entry.batch ? setPurge(null) : openPurge(entry.batch)
+                        }
+                        disabled={working}
+                        className="btn btn-outline btn-error btn-xs gap-1"
+                      >
+                        <FiTrash2 className="h-3 w-3" />
+                        {t("salesArchive.purge", "Delete for good")}
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => restore(entry.batch)}
-                    disabled={working}
-                    className="btn btn-outline btn-xs gap-1"
-                  >
-                    <FiRotateCcw className="h-3 w-3" />
-                    {t("salesArchive.restore", "Put back")}
-                  </button>
+
+                  {purge?.batch === entry.batch && (
+                    <div className="mt-3 rounded border border-error/40 bg-error/5 p-3">
+                      <p className="flex items-center gap-2 text-sm font-semibold text-error">
+                        <FiAlertTriangle className="h-4 w-4" />
+                        {t("salesArchive.purgeTitle", "This cannot be undone")}
+                      </p>
+
+                      {!purge.info ? (
+                        <p className="mt-2 text-sm opacity-70">
+                          {t("salesArchive.purgeLoading", "Reading the archive…")}
+                        </p>
+                      ) : (
+                        <>
+                          <div className="mt-2">
+                            <Figure
+                              label={t("salesArchive.purgeSales", "Sale rows destroyed")}
+                              value={purge.info.sales}
+                            />
+                            {purge.info.refunds > 0 && (
+                              <Figure
+                                label={t("salesArchive.purgeRefunds", "Refund rows destroyed")}
+                                value={purge.info.refunds}
+                              />
+                            )}
+                            <Figure
+                              label={t("salesArchive.purgeReceipts", "Receipts destroyed")}
+                              value={purge.info.receipts}
+                            />
+                            <Figure
+                              label={t("salesArchive.purgeValue", "Value leaving the ledger")}
+                              value={currency(purge.info.revenue)}
+                            />
+                            {purge.info.retiredDayClosings?.length > 0 && (
+                              <Figure
+                                label={t("salesArchive.purgeDays", "Emptied day closings destroyed")}
+                                value={purge.info.retiredDayClosings.join(", ")}
+                              />
+                            )}
+                          </div>
+
+                          {purge.info.restatedDayClosings?.length > 0 && (
+                            <p className="mt-2 text-xs text-error">
+                              {t(
+                                "salesArchive.purgeRestatedWarning",
+                                "{{days}} were restated by this archive and keep their adjusted figures. Once it is deleted they can never be put back.",
+                                { days: purge.info.restatedDayClosings.join(", ") },
+                              )}
+                            </p>
+                          )}
+
+                          <p className="mt-2 text-xs opacity-70">
+                            {t(
+                              "salesArchive.purgeStockNote",
+                              "Stock is not changed — the counts moved when these sales were rung, and deleting the paperwork does not put them back.",
+                            )}
+                          </p>
+
+                          <label className="mt-3 block text-sm">
+                            <span className="mb-1 block opacity-70">
+                              {t("salesArchive.purgeTypeIt", "Type {{batch}} to confirm", {
+                                batch: entry.batch,
+                              })}
+                            </span>
+                            <input
+                              value={purge.typed}
+                              onChange={(event) =>
+                                setPurge((current) => ({ ...current, typed: event.target.value }))
+                              }
+                              placeholder={entry.batch}
+                              autoComplete="off"
+                              className="input input-bordered input-sm w-full font-mono"
+                            />
+                          </label>
+
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={purgeNow}
+                              disabled={working || purge.typed.trim() !== entry.batch}
+                              className="btn btn-error btn-sm text-white"
+                            >
+                              {working
+                                ? t("salesArchive.purging", "Deleting…")
+                                : t("salesArchive.purgeConfirm", "Delete permanently")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPurge(null)}
+                              disabled={working}
+                              className="btn btn-ghost btn-sm"
+                            >
+                              {t("common.cancel", "Cancel")}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))
             )}

@@ -149,6 +149,29 @@ module.exports.superadminmiddleware = (req, res, next) => {
   next();
 };
 
+/* Retiring sales from the books, and destroying what has been retired.
+ *
+ * The owner, plus the report account. The report account is the unfiltered
+ * view of the ledger — it already sees every sale every cashier ever rang,
+ * including handed-over days — and it is the view a till is set up and proved
+ * from before it goes live. The takings from that proving are not trade, and
+ * clearing them out belongs with the account that can see all of them at once.
+ *
+ * Deliberately NOT adminOrSuperadmin: an admin edits a sale, but retiring a
+ * run of them moves revenue on every report the shop has.
+ */
+module.exports.salesArchiveAccess = (req, res, next) => {
+  const role = req.user?.role;
+
+  if (role !== "superadmin" && role !== "report") {
+    return res
+      .status(403)
+      .json({ message: "Access denied. Super admin or report account only." });
+  }
+
+  next();
+};
+
 module.exports.reportAccess = (req, res, next) => {
   if (req.user?.role !== "report") {
     return res.status(403).json({ message: "Access denied. Report account only." });

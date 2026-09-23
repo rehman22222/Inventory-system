@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { FiChevronLeft, FiChevronRight, FiEye } from "react-icons/fi";
+import { FiArchive, FiChevronLeft, FiChevronRight, FiEye } from "react-icons/fi";
 import toast from "react-hot-toast";
 import axiosInstance from "../lib/axios";
 import ReportButton from "../Components/ReportButton";
+import SalesArchiveModal from "../Components/SalesArchiveModal";
 import { currency } from "../Components/pos/posUtils";
 
 const STATUS_TONE = {
@@ -42,6 +43,16 @@ function GhostModePage() {
   const [netPreview, setNetPreview] = useState({ existingNet: 0, receipts: 0 });
   const [previewLoading, setPreviewLoading] = useState(false);
 
+  /* Clearing takings that are not takings.
+   *
+   * This view is where a till is proved before it opens — every sale, every
+   * cashier, handed-over days included — so it is where the sales rung to
+   * prove it are seen all together. Ticked by receipt number, because that is
+   * what this table lists; the server resolves them to the same sale rows the
+   * owner's sales list would have ticked. */
+  const [ticked, setTicked] = useState([]);
+  const [archiving, setArchiving] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -66,6 +77,12 @@ function GhostModePage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // A tick belongs to the rows it was made on. Changing page or filter and
+  // keeping the ticks is how somebody archives a receipt they cannot see.
+  useEffect(() => {
+    setTicked([]);
+  }, [page, filters]);
 
   useEffect(() => {
     let alive = true;
@@ -134,7 +151,28 @@ function GhostModePage() {
           </h1>
           <p className="mt-1 text-sm text-base-content/60">{t("ghost.sub")}</p>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setArchiving(true)}
+          className="ms-auto flex h-10 items-center gap-2 rounded-lg border-2 border-base-300 px-3 text-sm font-semibold hover:border-blue-700"
+        >
+          <FiArchive className="text-lg" />
+          {t("salesArchive.button", "Archive sales")}
+          {ticked.length > 0 ? ` (${ticked.length})` : ""}
+        </button>
       </header>
+
+      {archiving && (
+        <SalesArchiveModal
+          pickedReceiptNos={ticked}
+          onClose={() => setArchiving(false)}
+          onDone={() => {
+            setTicked([]);
+            load();
+          }}
+        />
+      )}
 
       {/* Totals across the whole filter, not just this page. */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -370,6 +408,23 @@ function GhostModePage() {
             <table className="min-w-full rounded-lg border border-base-300 bg-base-100 shadow-md">
               <thead className="bg-base-200">
                 <tr>
+                  <th className="border px-2 py-2">
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-xs"
+                      aria-label={t("salesArchive.tickAll", "Tick every sale shown")}
+                      checked={
+                        data.receipts.length > 0 && ticked.length === data.receipts.length
+                      }
+                      onChange={(event) =>
+                        setTicked(
+                          event.target.checked
+                            ? data.receipts.map((receipt) => receipt.receiptNo)
+                            : [],
+                        )
+                      }
+                    />
+                  </th>
                   <th className="border px-3 py-2 text-left">{t("ghost.receipt")}</th>
                   <th className="border px-3 py-2 text-left">{t("ghost.when")}</th>
                   <th className="border px-3 py-2 text-left">{t("ghost.cashier")}</th>
@@ -382,6 +437,21 @@ function GhostModePage() {
               <tbody>
                 {data.receipts.map((receipt) => (
                   <tr key={receipt._id}>
+                    <td className="border px-2 py-2 text-center">
+                      <input
+                        type="checkbox"
+                        className="checkbox checkbox-xs"
+                        aria-label={t("salesArchive.tickOne", "Tick this sale")}
+                        checked={ticked.includes(receipt.receiptNo)}
+                        onChange={(event) =>
+                          setTicked((current) =>
+                            event.target.checked
+                              ? [...current, receipt.receiptNo]
+                              : current.filter((no) => no !== receipt.receiptNo),
+                          )
+                        }
+                      />
+                    </td>
                     <td className="border px-3 py-2 font-mono text-sm font-semibold">
                       {receipt.receiptNo}
                       {receipt.offline?.ref && (

@@ -634,7 +634,180 @@ module.exports.restoreArchive = async (req, res) => {
   }
 };
 
+/* The only rows a purge may ever touch.
+ *
+ * `archivedAt` is named as well as the batch. libs/archivable.js hides archived
+ * rows from find, count, update and aggregate — but NOT from deletes, so
+ * nothing upstream of here would stop a delete reaching a live row that
+ * happened to carry a batch label. Naming the flag makes "only what is already
+ * out of the books" a property of the query rather than of how it is called.
+ *
+ * One function, used by all three deletes and asserted on by the tests, so the
+ * rule cannot drift apart from the thing that checks it. */
+const purgeFilter = (batch) => ({ archiveBatch: batch, archivedAt: { $ne: null } });
+
+/* What an archive is made of, and what destroying it would cost. Read-only, so
+ * the confirmation can be built from the same counts the deletion will use. */
+async function weigh(batch) {
+  const sales = await Sale.find({ archiveBatch: batch })
+    .setOptions({ withArchived: true })
+    .select("_id totalAmount source createdAt receiptNo")
+    .sort({ createdAt: 1 })
+    .lean();
+
+  const receipts = await Receipt.find({ archiveBatch: batch })
+    .setOptions({ withArchived: true })
+    .select("_id")
+    .lean();
+
+  // Days that went with the batch come back with a restore; days that merely
+  // had their figures restated do not, and after a purge they never can.
+  const retired = await DayClosing.find({ archiveBatch: batch })
+    .setOptions({ withArchived: true })
+    .select("reference")
+    .lean();
+
+  const restated = await DayClosing.find({
+    "adjusted.batch": batch,
+    archiveBatch: null,
+  })
+    .setOptions({ withArchived: true })
+    .select("reference")
+    .lean();
+
+  const refunds = sales.filter((row) => row.source === "refund");
+
+  return {
+    sales: sales.length - refunds.length,
+    refunds: refunds.length,
+    revenue: money(sales.reduce((sum, row) => sum + Number(row.totalAmount || 0), 0)),
+    receipts: receipts.length,
+    retiredDayClosings: retired.map((row) => row.reference),
+    restatedDayClosings: restated.map((row) => row.reference),
+    first: sales[0] ? { receiptNo: sales[0].receiptNo, at: sales[0].createdAt } : null,
+    last: sales.at(-1) ? { receiptNo: sales.at(-1).receiptNo, at: sales.at(-1).createdAt } : null,
+  };
+}
+
+// What destroying an archive would take with it, without taking it.
+module.exports.previewPurge = async (req, res) => {
+  try {
+    const batch = String(req.params.batch || "").trim();
+    if (!batch) return res.status(400).json({ success: false, message: "Which archive?" });
+
+    const weight = await weigh(batch);
+    if (weight.sales + weight.refunds === 0) {
+      return res.status(404).json({ success: false, message: "No such archive" });
+    }
+
+    return res.status(200).json({ success: true, batch, ...weight });
+  } catch (error) {
+    console.error("[sales-archive] previewPurge failed:", error);
+    return res
+      .status(error.status || 500)
+      .json({ success: false, message: error.message || "Could not read that archive" });
+  }
+};
+
+/* Destroying an archive for good.
+ *
+ * Everything above this line exists to avoid exactly this, and for the shop's
+ * trade that reasoning has not changed: sales are archived, never deleted, and
+ * "put back" is one press away. But not everything in the ledger is trade. A
+ * till is proved before it goes live — a few sales rung against real products
+ * to watch the receipt print and the stock move — and those rows are not a
+ * record of anything that happened in a shop. Archived they are invisible but
+ * permanent, and the ledger carries a batch of pretend takings for ever.
+ *
+ * So this is deliberately the narrow door:
+ *
+ *   - It takes an ARCHIVE, never a selection of live sales. Retiring the rows
+ *     and destroying them are two decisions, made at two times, and the first
+ *     one is reversible — nothing can be destroyed that was not first put away
+ *     and seen on the archived list.
+ *   - The batch code has to be typed back. A button cannot be leaned on.
+ *   - Stock is not touched, exactly as archiving does not touch it. The count
+ *     moved when the sale was rung; whether the paperwork survives is a
+ *     separate question from what is on the shelf, and a delete that quietly
+ *     restocked would be a stocktake nobody asked for. Put stock back with a
+ *     refund, before archiving, or set it by hand afterwards.
+ *   - What went is written to the activity log, which is not something this
+ *     endpoint can delete. The rows go; the record that they existed stays.
+ */
+module.exports.purgeArchive = async (req, res) => {
+  try {
+    const batch = String(req.params.batch || "").trim();
+    if (!batch) return res.status(400).json({ success: false, message: "Which archive?" });
+
+    const confirm = String(req.body?.confirm || "").trim();
+    if (confirm !== batch) {
+      return res.status(400).json({
+        success: false,
+        message: `Type ${batch} to confirm this cannot be undone`,
+      });
+    }
+
+    const weight = await weigh(batch);
+    if (weight.sales + weight.refunds === 0) {
+      return res.status(404).json({ success: false, message: "No such archive" });
+    }
+
+    const archived = purgeFilter(batch);
+
+    const removed = await runInTransaction(async (session) => {
+      const sales = await Sale.deleteMany(archived, { session });
+      const receipts = await Receipt.deleteMany(archived, { session });
+      // Only the days this batch emptied and retired. A day that is still
+      // trading, and was merely restated, is somebody's signed-off shift.
+      const dayClosings = await DayClosing.deleteMany(archived, { session });
+
+      return {
+        sales: sales.deletedCount || 0,
+        receipts: receipts.deletedCount || 0,
+        dayClosings: dayClosings.deletedCount || 0,
+      };
+    });
+
+    /* Written after the rows are gone and awaited before the answer goes back,
+     * so the trail cannot say a deletion happened that did not. */
+    await logActivity({
+      action: "purge",
+      entity: "sale",
+      description:
+        `Permanently deleted archive ${batch}: ${removed.sales} sale row(s), ` +
+        `${removed.receipts} receipt(s) and ${removed.dayClosings} day closing(s), ` +
+        `worth ${weight.revenue}, covering ${weight.first?.receiptNo || "?"} to ` +
+        `${weight.last?.receiptNo || "?"}. Stock was not changed.`,
+      userId: req.user._id,
+      ipAddress: req.ip,
+    });
+
+    return res.status(200).json({ success: true, batch, ...removed, revenue: weight.revenue });
+  } catch (error) {
+    console.error("[sales-archive] purgeArchive failed:", error);
+
+    await logActivity({
+      action: "purge-archive-failed",
+      entity: "sale",
+      description: `Permanent delete failed: ${error.message || "no reason given"}`,
+      userId: req.user?._id,
+      ipAddress: req.ip,
+    });
+
+    return res
+      .status(error.status || 500)
+      .json({ success: false, message: error.message || "Could not delete that archive" });
+  }
+};
+
 /* Exported for the archive's own tests, which drive the two pieces where a
  * mistake would be silent: what a selection resolves to, and what it drags in
  * with it. Not part of the HTTP surface. */
-module.exports.__testables = { seedFilter, expandSelection, describe, recountDayClosing };
+module.exports.__testables = {
+  seedFilter,
+  expandSelection,
+  describe,
+  recountDayClosing,
+  weigh,
+  purgeFilter,
+};

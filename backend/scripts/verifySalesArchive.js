@@ -26,13 +26,20 @@
  *      Archiving a return on its own leaves the sale behind and the shop's
  *      revenue goes UP by the refund, which is the worst kind of bug this
  *      feature could have.
+ *
+ *   4. WHAT A PERMANENT DELETE CAN REACH. The one thing here that cannot be
+ *      undone. The schema hook that hides archived rows does NOT cover
+ *      deletes, so "only what is already out of the books" lives entirely in
+ *      the filter the purge builds — which is why that filter is asserted on
+ *      here rather than trusted.
  */
 
 const Sale = require("../models/Salesmodel");
 const Receipt = require("../models/Receiptmodel");
+const DayClosing = require("../models/DayClosingmodel");
 const { __testables } = require("../controller/salesArchiveController");
 
-const { seedFilter, expandSelection, describe: summarise } = __testables;
+const { seedFilter, expandSelection, describe: summarise, weigh, purgeFilter } = __testables;
 
 let failures = 0;
 const check = (label, ok, detail = "") => {
@@ -282,15 +289,114 @@ async function whatComesWithIt() {
   );
 }
 
+/* ── 4. What a permanent delete is allowed to reach ──────────────────────── */
+
+// The read chain weigh() uses: .setOptions().select().sort().lean()
+const weighChain = (rows) => {
+  const self = {
+    setOptions: () => self,
+    select: () => self,
+    sort: () => self,
+    lean: async () => rows,
+  };
+  return self;
+};
+
+async function destroying() {
+  section("4. A permanent delete can only reach rows that are already archived");
+
+  /* The load-bearing fact. libs/archivable.js hooks find, count, distinct,
+   * update and aggregate — deletes are not on that list, so nothing upstream
+   * of the purge would stop it reaching a live row. If this check ever starts
+   * failing the hook grew a delete branch, which is good news, but the purge's
+   * own filter stops being the only thing standing there and somebody should
+   * know that changed. */
+  let hookFencesDeletes = false;
+  try {
+    const filter = await filterAfterHooks(
+      Sale.deleteMany({ archiveBatch: "ARC-000007" }),
+      "deleteMany",
+    );
+    hookFencesDeletes = Object.prototype.hasOwnProperty.call(filter, "archivedAt");
+  } catch {
+    hookFencesDeletes = false;
+  }
+  check(
+    "deletes are not fenced by the schema hook, so the purge must fence itself",
+    hookFencesDeletes === false,
+    "the guarantee below is the only one there is",
+  );
+
+  check(
+    "the purge asks for the batch AND the archived flag",
+    same(purgeFilter("ARC-000007"), { archiveBatch: "ARC-000007", archivedAt: { $ne: null } }),
+    JSON.stringify(purgeFilter("ARC-000007")),
+  );
+  check(
+    "a live row carrying that batch label is outside the filter",
+    purgeFilter("ARC-000007").archivedAt.$ne === null,
+    "archivedAt: null would have matched rows still in the books",
+  );
+
+  section("   …and what it says it will destroy, before it does");
+
+  const real = { sale: Sale.find, receipt: Receipt.find, day: DayClosing.find };
+  Sale.find = () =>
+    weighChain([
+      { _id: oid(1), totalAmount: 40, source: "pos", receiptNo: "POS-000008", createdAt: new Date("2026-09-01") },
+      { _id: oid(2), totalAmount: 60, source: "pos", receiptNo: "POS-000009", createdAt: new Date("2026-09-01") },
+      { _id: oid(9), totalAmount: -25, source: "refund", receiptNo: "RFD-000003", createdAt: new Date("2026-09-02") },
+    ]);
+  Receipt.find = () => weighChain([{ _id: oid(3) }, { _id: oid(4) }]);
+  // weigh() asks for the days retired WITH the batch first, then the days it
+  // only restated.
+  let dayCall = 0;
+  DayClosing.find = () => {
+    dayCall += 1;
+    return weighChain(dayCall === 1 ? [{ reference: "DC-000004" }] : [{ reference: "DC-000005" }]);
+  };
+
+  let weight;
+  try {
+    weight = await weigh("ARC-000007");
+  } finally {
+    Sale.find = real.sale;
+    Receipt.find = real.receipt;
+    DayClosing.find = real.day;
+  }
+
+  check("sales and refunds are counted apart", weight.sales === 2 && weight.refunds === 1);
+  check("the receipts going with them are counted", weight.receipts === 2, `${weight.receipts}`);
+  check(
+    "the value quoted is the NET leaving the ledger",
+    weight.revenue === 75,
+    `${weight.revenue}`,
+  );
+  check(
+    "a day the archive emptied is named as going with it",
+    same(weight.retiredDayClosings, ["DC-000004"]),
+  );
+  check(
+    "a day it only restated is named as unrecoverable, and is NOT deleted",
+    same(weight.restatedDayClosings, ["DC-000005"]),
+    "it keeps its adjusted figures and can never be put back",
+  );
+  check(
+    "the span is named first to last",
+    weight.first.receiptNo === "POS-000008" && weight.last.receiptNo === "RFD-000003",
+  );
+}
+
 (async () => {
   console.log("Verifying the sales archive\n===========================");
   await hiding();
   await selection();
   await whatComesWithIt();
+  await destroying();
 
   console.log(
     failures === 0
-      ? "\nAll good — archived sales stay out of the books, and nothing is archived by halves."
+      ? "\nAll good — archived sales stay out of the books, nothing is archived by halves,\nand a permanent delete cannot reach a row that is still in them."
       : `\n${failures} check(s) FAILED`,
   );
   process.exit(failures === 0 ? 0 : 1);
