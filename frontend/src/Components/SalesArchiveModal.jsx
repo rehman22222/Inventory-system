@@ -71,8 +71,6 @@ function SalesArchiveModal({ picked = [], pickedReceiptNos = [], onClose, onDone
   const [checking, setChecking] = useState(false);
   const [working, setWorking] = useState(false);
   const [archives, setArchives] = useState([]);
-  // The batch whose "delete for good" panel is open: { batch, info, typed }.
-  const [purge, setPurge] = useState(null);
 
   // What the chosen mode comes to as a request. One place, so the preview and
   // the archive can never be asked different questions.
@@ -165,39 +163,21 @@ function SalesArchiveModal({ picked = [], pickedReceiptNos = [], onClose, onDone
 
   /* Destroying an archive.
    *
-   * Opening the panel fetches what the batch is made of rather than trusting
-   * the row already on screen, because the list is a summary and this is the
-   * last thing anybody sees before the rows stop existing. The typed code is
-   * checked here AND on the server — this one keeps the button dark, that one
-   * is the rule. */
-  const openPurge = async (batch) => {
-    setPurge({ batch, info: null, typed: "" });
-    try {
-      const { data } = await axiosInstance.get(`sales/archive/${batch}/purge/preview`);
-      setPurge((current) => (current?.batch === batch ? { ...current, info: data } : current));
-    } catch (error) {
-      toast.error(
-        error?.response?.data?.message ||
-          t("salesArchive.purgeCheckFailed", "Could not read that archive"),
-      );
-      setPurge(null);
-    }
-  };
-
-  const purgeNow = async () => {
-    if (!purge || purge.typed.trim() !== purge.batch) return;
+   * One press. There was a confirmation here — the batch code typed back —
+   * and it was taken out because the people who use this are clearing test
+   * takings a dozen times a day, and the rows are ALREADY archived: they are
+   * out of every report and list before this button is ever visible. The
+   * decision was made on the Archive tab; this is only the paperwork. */
+  const purgeNow = async (batch) => {
     setWorking(true);
     try {
-      const { data } = await axiosInstance.delete(`sales/archive/${purge.batch}`, {
-        data: { confirm: purge.batch },
-      });
+      const { data } = await axiosInstance.delete(`sales/archive/${batch}`);
       toast.success(
         t("salesArchive.purged", "{{batch}} deleted for good — {{n}} row(s) gone", {
           batch: data.batch,
           n: data.sales,
         }),
       );
-      setPurge(null);
       await loadArchives();
       onDone?.();
     } catch (error) {
@@ -465,143 +445,43 @@ function SalesArchiveModal({ picked = [], pickedReceiptNos = [], onClose, onDone
               </p>
             ) : (
               archives.map((entry) => (
-                <div key={entry.batch} className="rounded border border-base-300 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-semibold">
-                        {entry.batch}{" "}
-                        <span className="font-normal opacity-60">
-                          · {entry.sales} {t("salesArchive.rows", "rows")} ·{" "}
-                          {currency(entry.revenue)}
-                        </span>
-                      </p>
-                      <p className="truncate text-xs opacity-70">
-                        {entry.reason} — {entry.byName} ·{" "}
-                        {new Date(entry.at).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => restore(entry.batch)}
-                        disabled={working}
-                        className="btn btn-outline btn-xs gap-1"
-                      >
-                        <FiRotateCcw className="h-3 w-3" />
-                        {t("salesArchive.restore", "Put back")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          purge?.batch === entry.batch ? setPurge(null) : openPurge(entry.batch)
-                        }
-                        disabled={working}
-                        className="btn btn-outline btn-error btn-xs gap-1"
-                      >
-                        <FiTrash2 className="h-3 w-3" />
-                        {t("salesArchive.purge", "Delete for good")}
-                      </button>
-                    </div>
+                <div
+                  key={entry.batch}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded border border-base-300 p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold">
+                      {entry.batch}{" "}
+                      <span className="font-normal opacity-60">
+                        · {entry.sales} {t("salesArchive.rows", "rows")} ·{" "}
+                        {currency(entry.revenue)}
+                      </span>
+                    </p>
+                    <p className="truncate text-xs opacity-70">
+                      {entry.reason} — {entry.byName} ·{" "}
+                      {new Date(entry.at).toLocaleString()}
+                    </p>
                   </div>
-
-                  {purge?.batch === entry.batch && (
-                    <div className="mt-3 rounded border border-error/40 bg-error/5 p-3">
-                      <p className="flex items-center gap-2 text-sm font-semibold text-error">
-                        <FiAlertTriangle className="h-4 w-4" />
-                        {t("salesArchive.purgeTitle", "This cannot be undone")}
-                      </p>
-
-                      {!purge.info ? (
-                        <p className="mt-2 text-sm opacity-70">
-                          {t("salesArchive.purgeLoading", "Reading the archive…")}
-                        </p>
-                      ) : (
-                        <>
-                          <div className="mt-2">
-                            <Figure
-                              label={t("salesArchive.purgeSales", "Sale rows destroyed")}
-                              value={purge.info.sales}
-                            />
-                            {purge.info.refunds > 0 && (
-                              <Figure
-                                label={t("salesArchive.purgeRefunds", "Refund rows destroyed")}
-                                value={purge.info.refunds}
-                              />
-                            )}
-                            <Figure
-                              label={t("salesArchive.purgeReceipts", "Receipts destroyed")}
-                              value={purge.info.receipts}
-                            />
-                            <Figure
-                              label={t("salesArchive.purgeValue", "Value leaving the ledger")}
-                              value={currency(purge.info.revenue)}
-                            />
-                            {purge.info.retiredDayClosings?.length > 0 && (
-                              <Figure
-                                label={t("salesArchive.purgeDays", "Emptied day closings destroyed")}
-                                value={purge.info.retiredDayClosings.join(", ")}
-                              />
-                            )}
-                          </div>
-
-                          {purge.info.restatedDayClosings?.length > 0 && (
-                            <p className="mt-2 text-xs text-error">
-                              {t(
-                                "salesArchive.purgeRestatedWarning",
-                                "{{days}} were restated by this archive and keep their adjusted figures. Once it is deleted they can never be put back.",
-                                { days: purge.info.restatedDayClosings.join(", ") },
-                              )}
-                            </p>
-                          )}
-
-                          <p className="mt-2 text-xs opacity-70">
-                            {t(
-                              "salesArchive.purgeStockNote",
-                              "Stock is not changed — the counts moved when these sales were rung, and deleting the paperwork does not put them back.",
-                            )}
-                          </p>
-
-                          <label className="mt-3 block text-sm">
-                            <span className="mb-1 block opacity-70">
-                              {t("salesArchive.purgeTypeIt", "Type {{batch}} to confirm", {
-                                batch: entry.batch,
-                              })}
-                            </span>
-                            <input
-                              value={purge.typed}
-                              onChange={(event) =>
-                                setPurge((current) => ({ ...current, typed: event.target.value }))
-                              }
-                              placeholder={entry.batch}
-                              autoComplete="off"
-                              className="input input-bordered input-sm w-full font-mono"
-                            />
-                          </label>
-
-                          <div className="mt-3 flex gap-2">
-                            <button
-                              type="button"
-                              onClick={purgeNow}
-                              disabled={working || purge.typed.trim() !== entry.batch}
-                              className="btn btn-error btn-sm text-white"
-                            >
-                              {working
-                                ? t("salesArchive.purging", "Deleting…")
-                                : t("salesArchive.purgeConfirm", "Delete permanently")}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setPurge(null)}
-                              disabled={working}
-                              className="btn btn-ghost btn-sm"
-                            >
-                              {t("common.cancel", "Cancel")}
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => restore(entry.batch)}
+                      disabled={working}
+                      className="btn btn-outline btn-xs gap-1"
+                    >
+                      <FiRotateCcw className="h-3 w-3" />
+                      {t("salesArchive.restore", "Put back")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => purgeNow(entry.batch)}
+                      disabled={working}
+                      className="btn btn-outline btn-error btn-xs gap-1"
+                    >
+                      <FiTrash2 className="h-3 w-3" />
+                      {t("salesArchive.purge", "Delete for good")}
+                    </button>
+                  </div>
                 </div>
               ))
             )}

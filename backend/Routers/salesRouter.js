@@ -13,6 +13,7 @@ const {
   restoreArchive,
   previewPurge,
   purgeArchive,
+  purgeSales,
 } = require("../controller/salesArchiveController");
 
 // Reads are scoped to the signed-in cashier, so any authenticated user may list
@@ -30,18 +31,20 @@ router.get("/searchdata", authmiddleware, SearchSales);
  * revenue on every report the shop has and restates days that were already
  * signed off.
  *
- * The delete is a DELETE on an archive, never on a selection of live sales:
- * rows have to be archived and seen on the archived list before they can be
- * destroyed, so retiring and destroying stay two decisions.
+ * There are two ways to destroy: an archive already taken, or a selection of
+ * sales outright. Both end in the same place and both go through the archive's
+ * own resolution first, so a receipt is never half-deleted and a refund never
+ * leaves the sale it reverses behind.
  *
- * Declared ABOVE /:saleId, or "archives" is read as a sale id and the list
- * comes back as "sale not found". */
+ * Declared ABOVE /:saleId, or "archive" and "purge" are read as sale ids and
+ * come back as "sale not found". */
 router.get("/archive/list", authmiddleware, salesArchiveAccess, listArchives);
 router.post("/archive/preview", authmiddleware, salesArchiveAccess, previewArchive);
 router.post("/archive", authmiddleware, salesArchiveAccess, archiveSales);
 router.post("/archive/:batch/restore", authmiddleware, salesArchiveAccess, restoreArchive);
 router.get("/archive/:batch/purge/preview", authmiddleware, salesArchiveAccess, previewPurge);
 router.delete("/archive/:batch", authmiddleware, salesArchiveAccess, purgeArchive);
+router.post("/purge", authmiddleware, salesArchiveAccess, purgeSales);
 
 router.get("/:saleId", authmiddleware, getSaleById);
 router.put("/updatesales/:saleId", authmiddleware, adminOrSuperadmin, updateSale);

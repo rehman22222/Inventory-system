@@ -23,9 +23,15 @@ const SalesChart = () => {
     datasets: [],
   });
 
-  // Fetch sales data on component mount
+  /* Only if nobody has already. This sits on the sales page, which fetches the
+   * ledger itself, and asking for it again here meant every sale the shop had
+   * ever rung came down the wire a second time before the chart drew a line.
+   * Anywhere else it is on its own and still fills itself. */
   useEffect(() => {
-    dispatch(gettingallSales());
+    if (!getallsales || getallsales.length === 0) dispatch(gettingallSales());
+    // Deliberately on mount only: a shop with no sales yet must not re-ask on
+    // every render, and a shop with sales never needs to.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch]);
 
   // Update chart data when sales data changes

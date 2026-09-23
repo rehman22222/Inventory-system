@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import TopNavbar from "../Components/TopNavbar";
 import { IoMdAdd } from "react-icons/io";
 import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
-import { FiArchive, FiLock } from "react-icons/fi";
+import { FiArchive, FiChevronLeft, FiChevronRight, FiLock, FiTrash2 } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import {gettingallproducts} from '../features/productSlice'
@@ -16,9 +16,13 @@ import DayClosingModal from "../Components/pos/DayClosingModal";
 import { currency } from "../Components/pos/posUtils";
 import toast from "react-hot-toast";
 import SalesArchiveModal from "../Components/SalesArchiveModal";
+import axiosInstance from "../lib/axios";
 import { saleRowClass } from "./salesRowKind";
 
 
+
+// Enough to scroll through, few enough that the browser lays them out at once.
+const PAGE_SIZE = 50;
 
 function Salespage() {
   const { t } = useTranslation();
@@ -48,6 +52,7 @@ function Salespage() {
   const canArchiveSales = Authuser?.role === "superadmin";
   const [archiving, setArchiving] = useState(false);
   const [picked, setPicked] = useState([]);
+  const [deleting, setDeleting] = useState(false);
 
   const { getallproduct } = useSelector(
     (state) => state.product
@@ -71,8 +76,11 @@ function Salespage() {
 
 
 
+  /* The ledger is fetched by the search effect below, which runs on mount
+   * with an empty query and asks for the whole list. Fetching it here as
+   * well pulled every sale in the shop down the wire twice before the page
+   * drew anything. */
   useEffect(() => {
-   dispatch(gettingallSales())
    dispatch(gettingallproducts({ view: "lookup" }))
   
   }, [dispatch]);
@@ -184,6 +192,60 @@ function Salespage() {
 
  const displaySales = query.trim() !== "" ? searchdata : getallsales;
 
+  /* One page at a time.
+   *
+   * The table used to render every row the shop had ever rung - thousands of
+   * them - which is what made this page take seconds to appear and sluggish
+   * to scroll afterwards. The list itself is unchanged; only as much of it as
+   * anybody can read at once is put into the DOM.
+   *
+   * Oldest first is the order the ledger is read in, so the LAST page is the
+   * recent one, and that is where this opens. */
+  const rows = Array.isArray(displaySales) ? displaySales : [];
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(pages);
+  }, [pages]);
+
+  const safePage = Math.min(Math.max(1, page), pages);
+  const firstRow = (safePage - 1) * PAGE_SIZE;
+  const pageRows = rows.slice(firstRow, firstRow + PAGE_SIZE);
+
+  /* Destroying the ticked sales outright.
+   *
+   * No confirmation, by request: a till is proved before it goes live and
+   * these rows are cleared many times a day. The tick boxes are the choosing
+   * - the button does nothing until something is ticked, and says how many
+   * it will take.
+   *
+   * The server resolves the selection the way archiving does, so a receipt
+   * goes whole and a refund leaves with the sale it reverses. Stock is not
+   * put back: the counts moved when the sales were rung. */
+  const deletePicked = async () => {
+    if (!picked.length || deleting) return;
+    setDeleting(true);
+    try {
+      const { data } = await axiosInstance.post("sales/purge", {
+        saleIds: picked,
+        reason: "Deleted from the sales list",
+      });
+      toast.success(
+        t("salesArchive.purgedRows", "{{n}} sale row(s) deleted for good", { n: data.sales }),
+      );
+      setPicked([]);
+      dispatch(gettingallSales());
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message ||
+          t("salesArchive.purgeFailed", "Could not delete those sales"),
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
+
 
 
   return (
@@ -289,6 +351,21 @@ function Salespage() {
             >
               <FiArchive className="text-lg" />
               {t("salesArchive.button", "Archive sales")}
+              {picked.length > 0 ? ` (${picked.length})` : ""}
+            </button>
+          )}
+          {/* And destroying them, for the rows that were never trade. Dark
+              until something is ticked, so it cannot be leaned on. */}
+          {canArchiveSales && (
+            <button
+              onClick={deletePicked}
+              disabled={picked.length === 0 || deleting}
+              className="flex h-12 items-center justify-center gap-2 rounded-lg border-2 border-error px-4 font-semibold text-error transition hover:bg-error hover:text-white disabled:border-base-300 disabled:text-base-content/40 disabled:hover:bg-transparent"
+            >
+              <FiTrash2 className="text-lg" />
+              {deleting
+                ? t("salesArchive.purging", "Deleting...")
+                : t("salesArchive.purgeRows", "Delete permanently")}
               {picked.length > 0 ? ` (${picked.length})` : ""}
             </button>
           )}
@@ -477,11 +554,11 @@ function Salespage() {
                       aria-label={t("salesArchive.tickAll", "Tick every sale shown")}
                       className="checkbox checkbox-xs"
                       checked={
-                        (displaySales?.length || 0) > 0 &&
-                        displaySales.every((row) => picked.includes(String(row?._id)))
+                        pageRows.length > 0 &&
+                        pageRows.every((row) => picked.includes(String(row?._id)))
                       }
                       onChange={(event) => {
-                        const shown = (displaySales || []).map((row) => String(row?._id));
+                        const shown = pageRows.map((row) => String(row?._id));
                         setPicked((current) =>
                           event.target.checked
                             ? [...new Set([...current, ...shown])]
@@ -505,9 +582,8 @@ function Salespage() {
                 </tr>
               </thead>
               <tbody className="bg-base-100">
-                {Array.isArray(displaySales) &&
-               displaySales.length > 0 ? (
-                displaySales.map((sales,index) => (
+                {pageRows.length > 0 ? (
+                pageRows.map((sales,index) => (
                     <tr
                       key={sales?._id}
                       // Refund, credit or deal — see salesRowKind for the
@@ -531,7 +607,7 @@ function Salespage() {
                           />
                         </td>
                       )}
-                       <td className="px-3 py-2 border">{index+1}</td>
+                       <td className="px-3 py-2 border">{firstRow + index + 1}</td>
                       <td className="px-3 py-2 border">{sales?.customerName
                       }</td>
                       <td className="px-3 py-2 border">
@@ -573,6 +649,34 @@ function Salespage() {
               </tbody>
             </table>
           </div>
+
+          {pages > 1 && (
+            <div className="mt-3 flex items-center justify-center gap-3 pb-6">
+              <button
+                type="button"
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                disabled={safePage <= 1}
+                className="flex items-center gap-1 rounded-lg border-2 border-base-300 px-3 py-2 text-sm font-semibold disabled:opacity-40"
+              >
+                <FiChevronLeft /> {t("common.prev", "Previous")}
+              </button>
+              <span className="text-sm text-base-content/60">
+                {t("sales.pageOf", "Page {{page}} of {{pages}} - {{rows}} sales", {
+                  page: safePage,
+                  pages,
+                  rows: rows.length,
+                })}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((current) => Math.min(pages, current + 1))}
+                disabled={safePage >= pages}
+                className="flex items-center gap-1 rounded-lg border-2 border-base-300 px-3 py-2 text-sm font-semibold disabled:opacity-40"
+              >
+                {t("common.next", "Next")} <FiChevronRight />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

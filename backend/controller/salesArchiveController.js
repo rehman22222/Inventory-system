@@ -721,11 +721,6 @@ module.exports.previewPurge = async (req, res) => {
  *
  * So this is deliberately the narrow door:
  *
- *   - It takes an ARCHIVE, never a selection of live sales. Retiring the rows
- *     and destroying them are two decisions, made at two times, and the first
- *     one is reversible — nothing can be destroyed that was not first put away
- *     and seen on the archived list.
- *   - The batch code has to be typed back. A button cannot be leaned on.
  *   - Stock is not touched, exactly as archiving does not touch it. The count
  *     moved when the sale was rung; whether the paperwork survives is a
  *     separate question from what is on the shelf, and a delete that quietly
@@ -738,14 +733,6 @@ module.exports.purgeArchive = async (req, res) => {
   try {
     const batch = String(req.params.batch || "").trim();
     if (!batch) return res.status(400).json({ success: false, message: "Which archive?" });
-
-    const confirm = String(req.body?.confirm || "").trim();
-    if (confirm !== batch) {
-      return res.status(400).json({
-        success: false,
-        message: `Type ${batch} to confirm this cannot be undone`,
-      });
-    }
 
     const weight = await weigh(batch);
     if (weight.sales + weight.refunds === 0) {
@@ -797,6 +784,123 @@ module.exports.purgeArchive = async (req, res) => {
     return res
       .status(error.status || 500)
       .json({ success: false, message: error.message || "Could not delete that archive" });
+  }
+};
+
+/* Destroying a selection of sales outright, without archiving them first.
+ *
+ * The shop asked for this beside the Archive button, and the reason is the
+ * reason the archive exists: the rows rung to prove a till are not trade.
+ * Making somebody archive them, find the batch and then delete it is three
+ * steps to undo something that was never meant to be in the books.
+ *
+ * It is NOT a different code path. The selection goes through the same
+ * resolution the archive uses, the rows are stamped with a batch, the day
+ * closings are restated against what is left, and only then are the stamped
+ * rows deleted. That order is what keeps the guarantees the archive earned:
+ *
+ *   - a receipt goes whole, never half of one
+ *   - a refund travels with the sale it reverses, so revenue cannot go UP
+ *   - a day that was signed off is restated, and says so on its face
+ *   - a day left empty goes with the batch
+ *   - stock is not touched, and the money leaves the books
+ *
+ * What it does not have is a way back. The batch exists for the length of one
+ * transaction and is gone with the rows, so there is nothing to restore from —
+ * which is the whole point, and why the activity log entry is written with
+ * everything anybody would need to know what was here.
+ */
+module.exports.purgeSales = async (req, res) => {
+  try {
+    const reason = String(req.body?.reason || "").trim() || "Deleted permanently";
+
+    const seed = await seedFilter(req.body);
+    const { saleIds, receipts, dayClosingIds } = await expandSelection(seed);
+    if (saleIds.length === 0) {
+      return res.status(404).json({ success: false, message: "That selection matched no sales" });
+    }
+
+    const totals = await describe(saleIds);
+
+    const result = await runInTransaction(async (session) => {
+      const seq = await nextSequence("salesArchive", session);
+      const batch = `ARC-${String(seq).padStart(6, "0")}`;
+      const stamp = {
+        archivedAt: new Date(),
+        archivedBy: req.user._id,
+        archivedByName: req.user.name,
+        archiveBatch: batch,
+        archiveReason: reason,
+      };
+
+      await Sale.updateMany({ _id: { $in: saleIds } }, { $set: stamp }, { session });
+      await Receipt.updateMany(
+        { _id: { $in: receipts.map((receipt) => receipt._id) } },
+        { $set: stamp },
+        { session },
+      );
+
+      // After the stamps and BEFORE the deletes: the recount reads what is
+      // left, and these rows are only invisible to it once they are stamped.
+      const restated = [];
+      for (const id of dayClosingIds) {
+        const done = await recountDayClosing(
+          id,
+          { at: stamp.archivedAt, by: req.user._id, byName: req.user.name, batch, reason },
+          session,
+        );
+        if (done) restated.push(done);
+      }
+
+      const archived = purgeFilter(batch);
+      const goneSales = await Sale.deleteMany(archived, { session });
+      const goneReceipts = await Receipt.deleteMany(archived, { session });
+      const goneDays = await DayClosing.deleteMany(archived, { session });
+
+      return {
+        batch,
+        restated,
+        sales: goneSales.deletedCount || 0,
+        receipts: goneReceipts.deletedCount || 0,
+        dayClosings: goneDays.deletedCount || 0,
+      };
+    });
+
+    await logActivity({
+      action: "purge",
+      entity: "sale",
+      description:
+        `Permanently deleted ${result.sales} sale row(s) and ${result.receipts} receipt(s) ` +
+        `(${totals.sales} sale(s), ${totals.refunds} refund(s)) worth ${totals.revenue}, ` +
+        `covering ${totals.first?.receiptNo || "?"} to ${totals.last?.receiptNo || "?"}, ` +
+        `plus ${result.dayClosings} emptied day closing(s). Reason: ${reason}. ` +
+        "Stock was not changed.",
+      userId: req.user._id,
+      ipAddress: req.ip,
+    });
+
+    return res.status(200).json({
+      success: true,
+      ...totals,
+      sales: result.sales,
+      receipts: result.receipts,
+      dayClosings: result.dayClosings,
+      dayClosingsRestated: result.restated,
+    });
+  } catch (error) {
+    console.error("[sales-archive] purgeSales failed:", error);
+
+    await logActivity({
+      action: "purge-sales-failed",
+      entity: "sale",
+      description: `Permanent delete failed: ${error.message || "no reason given"}`,
+      userId: req.user?._id,
+      ipAddress: req.ip,
+    });
+
+    return res
+      .status(error.status || 500)
+      .json({ success: false, message: error.message || "Could not delete those sales" });
   }
 };
 

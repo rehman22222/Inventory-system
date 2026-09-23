@@ -118,9 +118,22 @@ module.exports.getAllSales = async (req, res) => {
      * appends a newly created sale to the END of the list, which was the
      * wrong end while this was descending.
      *
-     * .lean(): read-only list — skip document hydration for speed. */
+     * .lean(): read-only list — skip document hydration for speed.
+     *
+     * .select() and a narrowed populate, because this is a LIST. It used to
+     * hand back every field of every sale with the whole product document
+     * welded onto each one — description, images, cost history, the online
+     * catalogue link — for a table that shows a name. On a shop with a few
+     * years of takings that was 6 MB down the wire before the page drew
+     * anything. The fields named here are the ones the sales page, its chart
+     * and its edit form actually read; the product keeps its id, which the
+     * edit form needs, and gains nothing else. */
     const sales = await Sale.find(salesScope(req.user))
-      .populate("products.product")
+      .select(
+        "customerName receiptNo products totalAmount discount tax status " +
+          "paymentMethod paymentStatus source dayClosing createdAt",
+      )
+      .populate("products.product", "name")
       .sort({ createdAt: 1 })
       .lean();
 
