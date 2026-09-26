@@ -72,7 +72,7 @@ import {
   uploadListingImages,
 } from "../features/onlineStoreSlice";
 import { gettingallCategory } from "../features/categorySlice";
-import { gettingallDeals, CreateDeal } from "../features/dealSlice";
+import { gettingallDeals, CreateDeal, RemoveDeal } from "../features/dealSlice";
 import { sellableProductIds } from "./onlineOffers";
 import CustomersTab from "../Components/onlineStore/CustomersTab";
 import LoyaltyTab from "../Components/onlineStore/LoyaltyTab";
@@ -816,6 +816,7 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
         label: variant.label || "",
         kind: variant.kind || "option",
         image: variant.image || "",
+        imageAlt: variant.imageAlt || variant.label || "",
         priceOverride: variant.priceOverride ?? "",
       })),
     linkedListings: (listing.linkedListings || [])
@@ -826,6 +827,7 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
           link.listing?.webName || link.listing?.product?.name || "",
         label: link.label || link.listing?.webName || link.listing?.product?.name || "",
         image: link.image || "",
+        imageAlt: link.imageAlt || link.label || "",
         sortWeight: link.sortWeight ?? 0,
       })),
   });
@@ -959,6 +961,7 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
         label: product.name,
         kind: optionKind || "option",
         image: "",
+        imageAlt: product.name,
         priceOverride: "",
       },
     ]);
@@ -982,6 +985,7 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
         listingName: label,
         label,
         image: "",
+        imageAlt: label,
         sortWeight: draft.linkedListings.length,
       },
     ]);
@@ -1095,6 +1099,7 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
           label: variant.label.trim(),
           kind: variant.kind || "option",
           image: variant.image || "",
+          imageAlt: variant.imageAlt || variant.label.trim(),
           priceOverride:
             variant.priceOverride === "" || variant.priceOverride == null
               ? null
@@ -1104,6 +1109,7 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
           listing: item.listing,
           label: item.label.trim(),
           image: item.image || "",
+          imageAlt: item.imageAlt || item.label.trim(),
           sortWeight: Number(item.sortWeight || index),
         })),
         applyPriceToVariants: applyToOptions,
@@ -1330,10 +1336,10 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
         </div>
         {draft.catalogImage?.url ? (
           <div className="mt-3 grid gap-3 sm:grid-cols-[5rem_minmax(0,1fr)_auto] sm:items-center">
-            <img
-              className="h-20 w-20 rounded-lg border bg-base-200 object-cover"
-              src={draft.catalogImage.url}
-              alt=""
+                <img
+                  className="h-20 w-20 rounded-lg border bg-base-200 object-cover"
+                  src={draft.catalogImage.url}
+              alt={draft.catalogImage.alt || draft.webName}
             />
             <div className="min-w-0">
               <div className="truncate text-xs font-medium">
@@ -1342,6 +1348,18 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
               <div className="truncate text-[11px] text-base-content/45">
                 {draft.catalogImage.url}
               </div>
+              <div className="mt-2 text-xs font-medium text-base-content/70">Alt text</div>
+              <input
+                className="input input-xs input-bordered mt-1 w-full"
+                placeholder="Catalogue image alt text"
+                value={draft.catalogImage.alt}
+                onChange={(event) =>
+                  set("catalogImage", {
+                    ...draft.catalogImage,
+                    alt: event.target.value,
+                  })
+                }
+              />
             </div>
             <button
               type="button"
@@ -1406,7 +1424,7 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
                       <img
                         className="h-full w-full object-cover"
                         src={item.image}
-                        alt=""
+                        alt={item.imageAlt || item.label}
                       />
                     ) : (
                       <div className="grid h-full w-full place-items-center text-base-content/30">
@@ -1434,6 +1452,19 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
                         setLinkedListingField(index, "image", event.target.value)
                       }
                     />
+                    {item.image && (
+                      <>
+                        <div className="text-xs font-medium text-base-content/70">Alt text</div>
+                        <input
+                          className="input input-sm input-bordered w-full"
+                          placeholder="Cover image alt text"
+                          value={item.imageAlt || ""}
+                          onChange={(event) =>
+                            setLinkedListingField(index, "imageAlt", event.target.value)
+                          }
+                        />
+                      </>
+                    )}
                     <div className="flex flex-wrap gap-2">
                       <input
                         type="number"
@@ -1503,7 +1534,7 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
                 <img
                   className="h-16 w-16 rounded border object-cover"
                   src={image.url}
-                  alt=""
+                  alt={image.alt || draft.webName}
                 />
                 {index === 0 && (
                   <span className="badge badge-primary badge-xs absolute -left-1 -top-2">
@@ -1517,6 +1548,22 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
                 >
                   <FiX />
                 </button>
+                <div className="mt-2 text-xs font-medium text-base-content/70">Alt text</div>
+                <input
+                  className="input input-xs input-bordered mt-2 w-40"
+                  placeholder="Image alt text"
+                  value={image.alt || ""}
+                  onChange={(event) =>
+                    set(
+                      "gallery",
+                      draft.gallery.map((entry, imageIndex) =>
+                        imageIndex === index
+                          ? { ...entry, alt: event.target.value }
+                          : entry,
+                      ),
+                    )
+                  }
+                />
               </div>
             ))}
           </div>
@@ -1800,6 +1847,19 @@ function ProductEditor({ listing, categories, isActing, onClose }) {
                         setVariantField(index, "label", event.target.value)
                       }
                     />
+                    {variant.image && (
+                      <>
+                        <div className="mt-2 text-xs font-medium text-base-content/70">Alt text</div>
+                        <input
+                          className="input input-xs input-bordered mt-1 w-full"
+                          placeholder="Option image alt text"
+                          value={variant.imageAlt || ""}
+                          onChange={(event) =>
+                            setVariantField(index, "imageAlt", event.target.value)
+                          }
+                        />
+                      </>
+                    )}
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-base-content/50">
                       <span className="badge badge-xs capitalize">
                         {variant.kind || "option"}
@@ -2162,6 +2222,7 @@ function Categories({ categories }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [image, setImage] = useState("");
+  const [imageAlt, setImageAlt] = useState("");
   const [active, setActive] = useState(true);
   const [parent, setParent] = useState("");
   const reset = () => {
@@ -2169,6 +2230,7 @@ function Categories({ categories }) {
     setName("");
     setDescription("");
     setImage("");
+    setImageAlt("");
     setActive(true);
     setParent("");
   };
@@ -2177,6 +2239,7 @@ function Categories({ categories }) {
     setName(category.name || "");
     setDescription(category.description || "");
     setImage(category.image || "");
+    setImageAlt(category.imageAlt || category.name || "");
     setActive(category.active !== false);
     setParent(category.parent || "");
   };
@@ -2189,6 +2252,7 @@ function Categories({ categories }) {
           name,
           description,
           image,
+          imageAlt,
           active,
           parent: parent || null,
         }),
@@ -2201,7 +2265,7 @@ function Categories({ categories }) {
       return;
     }
     const result = await dispatch(
-      createOnlineCategory({ name, description, image, parent: parent || null }),
+      createOnlineCategory({ name, description, image, imageAlt, parent: parent || null }),
     );
     if (result.error)
       return toast.error(result.payload || "Could not create category");
@@ -2262,6 +2326,13 @@ function Categories({ categories }) {
           placeholder="Image URL (optional)"
           value={image}
           onChange={(event) => setImage(event.target.value)}
+        />
+        <div className="text-xs font-medium text-base-content/70">Alt text</div>
+        <input
+          className="input input-sm input-bordered w-full"
+          placeholder="Image alt text"
+          value={imageAlt}
+          onChange={(event) => setImageAlt(event.target.value)}
         />
         {image && (
           <img
@@ -2396,6 +2467,7 @@ const BLANK_SLIDE = {
   image: "",
   mobileImage: "",
   imageAlt: "",
+  mobileImageAlt: "",
   ctaPosition: "bottom-left",
   linkType: "none",
   listing: "",
@@ -3178,7 +3250,15 @@ function DealsControls({ listings, settings, isActing }) {
         saleEndsAt: deal.saleEndsAt || null,
         dealMinQty: minQty,
         dealImage: deal.dealImage?.url
-          ? { url: deal.dealImage.url, publicId: deal.dealImage.publicId || "" }
+          ? {
+              url: deal.dealImage.url,
+              publicId: deal.dealImage.publicId || "",
+                alt:
+                deal.dealImage.alt ||
+                selectedListing.webName ||
+                selectedListing.product?.name ||
+                "",
+            }
           : null,
       }),
     );
@@ -3443,8 +3523,20 @@ function DealsControls({ listings, settings, isActing }) {
               <div className="flex flex-wrap items-center gap-3">
                 <img
                   src={deal.dealImage.url}
-                  alt="Deal"
+                  alt={deal.dealImage.alt || selectedListing?.webName || "Deal"}
                   className="h-16 w-16 rounded-lg border object-cover"
+                />
+                <div className="w-full text-xs font-medium text-base-content/70">Alt text</div>
+                <input
+                  className="input input-sm input-bordered w-full max-w-md"
+                  placeholder="Deal image alt text"
+                  value={deal.dealImage.alt || ""}
+                  onChange={(event) =>
+                    setDealField("dealImage", {
+                      ...deal.dealImage,
+                      alt: event.target.value,
+                    })
+                  }
                 />
                 <button
                   type="button"
@@ -4011,6 +4103,7 @@ const CHECKOUT_TERMS_PLACEHOLDER = [
 
 const BLANK_SETTINGS = {
   logo: "",
+  logoAlt: "Store logo",
   social: { instagram: "", facebook: "", twitter: "", tiktok: "" },
   footer: {
     newsletterHeading: "Subscribe to our newsletters",
@@ -4021,6 +4114,8 @@ const BLANK_SETTINGS = {
     openingHours: "Mon-Sat 9am - 4pm",
     paymentImage: "/payment-logo2.webp",
     restrictionImage: "/not.webp",
+    paymentImageAlt: "Accepted payment methods",
+    restrictionImageAlt: "Age restricted product warnings",
     whyECigarettesTitle: "Why e-cigarettes?",
     whyECigarettesContent:
       "E-cigarettes give adult smokers an alternative to combustible cigarettes. Cliffs of Puff stocks age-restricted, authentic products only.",
@@ -4040,7 +4135,7 @@ const BLANK_SETTINGS = {
   events: {
     enabled: false,
     heading: "",
-    headingImage: { url: "", publicId: "" },
+    headingImage: { url: "", publicId: "", alt: "" },
     align: "center",
     items: [],
   },
@@ -4138,6 +4233,7 @@ const normalizeEventItems = (items = []) =>
       image: {
         url: item.image?.url || "",
         publicId: item.image?.publicId || "",
+        alt: item.image?.alt || item.title || "",
       },
       eventPrice:
         item.eventPrice === null || item.eventPrice === undefined
@@ -4298,7 +4394,7 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
    * that needs them and the page above has no other use for a deal. */
   const deals = useSelector((state) => state.deal?.deals) || [];
   useEffect(() => {
-    dispatch(gettingallDeals());
+    dispatch(gettingallDeals("online"));
   }, [dispatch]);
   const [draft, setDraft] = useState(BLANK_SETTINGS);
   const productOptions = useMemo(
@@ -4386,7 +4482,11 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
     if (result.error) return toast.error(result.payload || "Upload failed");
     const image = (result.payload || [])[0];
     if (image?.url) {
-      set("events", "headingImage", { url: image.url, publicId: image.publicId || "" });
+      set("events", "headingImage", {
+        url: image.url,
+        publicId: image.publicId || "",
+        alt: draft.events.heading || "Events heading",
+      });
     }
   };
 
@@ -4404,7 +4504,11 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
     const image = (result.payload || [])[0];
     if (image?.url) {
       setEventItem(index, {
-        image: { url: image.url, publicId: image.publicId || "" },
+        image: {
+          url: image.url,
+          publicId: image.publicId || "",
+          alt: draft.events.items?.[index]?.title || "Event card image",
+        },
       });
     }
   };
@@ -4437,7 +4541,13 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
    * engine prices it and the counter and the website can never disagree about
    * what "any 3 for 18" means. This screen only chooses different products to
    * put in it: the ones with web listings rather than the whole stock room. */
-  const BLANK_OFFER = { name: "", listingIds: [], quantity: "", price: "" };
+  const BLANK_OFFER = {
+    name: "",
+    listingIds: [],
+    quantity: "",
+    price: "",
+    channel: "online",
+  };
   const [offer, setOffer] = useState(BLANK_OFFER);
 
   const createOffer = async () => {
@@ -4476,6 +4586,7 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
         quantityRule: "repeat_sets",
         discountType: "setPrice",
         discount: price,
+        channel: offer.channel,
         items: products.map((product) => ({ product, quantity: 1 })),
       }),
     );
@@ -4497,6 +4608,61 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
         },
       };
     });
+
+  const eventDealIds = new Set(
+    (draft.events.items || [])
+      .filter((item) => item?.kind === "deal" && item?.deal)
+      .map((item) => String(item.deal)),
+  );
+  const eventDeals = deals.filter(
+    (deal) =>
+      deal?.mode === "mix" &&
+      deal?.active !== false &&
+      eventDealIds.has(String(deal._id)) &&
+      (["online", "both"].includes(deal?.channel) ||
+        (!deal?.channel && eventDealIds.has(String(deal._id)))),
+  );
+  const storefrontDeals = deals.filter(
+    (deal) =>
+      deal?.active !== false &&
+      (["online", "both"].includes(deal?.channel) ||
+        (!deal?.channel && eventDealIds.has(String(deal._id)))),
+  );
+
+  const deleteEventDeal = async (deal) => {
+    if (
+      !window.confirm(
+        `Delete ${dealSummary(deal)}? Any event card using it will be cleared.`,
+      )
+    ) {
+      return;
+    }
+    const result = await dispatch(RemoveDeal(deal._id));
+    if (result.error) {
+      return toast.error(result.payload || "Could not delete the event deal");
+    }
+    const nextItems = normalizeEventItems(draft.events.items || []).map((item) =>
+      item.kind === "deal" && String(item.deal) === String(deal._id)
+        ? blankEventItem()
+        : item,
+    );
+    const nextDraft = {
+      ...draft,
+      events: {
+        ...draft.events,
+        items: nextItems,
+      },
+    };
+    setDraft(nextDraft);
+    const settingsResult = await dispatch(saveOnlineSettings(nextDraft));
+    if (settingsResult.error) {
+      return toast.error(
+        settingsResult.payload || "Deal deleted, but event cards could not be updated",
+      );
+    }
+    toast.success("Event deal deleted");
+  };
+
   const save = async (event) => {
     event.preventDefault();
     const result = await dispatch(saveOnlineSettings(draft));
@@ -4532,6 +4698,15 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
             value={draft.logo}
             onChange={(event) =>
               setDraft((current) => ({ ...current, logo: event.target.value }))
+            }
+          />
+          <div className="text-xs font-medium text-base-content/70">Alt text</div>
+          <input
+            className="input input-sm input-bordered w-full"
+            placeholder="Logo alt text"
+            value={draft.logoAlt}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, logoAlt: event.target.value }))
             }
           />
         </div>
@@ -4610,6 +4785,13 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
                 }
               />
             </div>
+            <div className="text-xs font-medium text-base-content/70">Alt text</div>
+            <input
+              className="input input-sm input-bordered mt-2 w-full"
+              placeholder="Desktop banner alt text"
+              value={draft.imageAlt}
+              onChange={(event) => set("imageAlt", event.target.value)}
+            />
             <input
               className="input input-sm input-bordered w-full"
               placeholder="Store address"
@@ -4641,7 +4823,36 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
                   set("footer", "restrictionImage", event.target.value)
                 }
               />
+              <div>
+                <div className="mb-1 text-xs font-medium text-base-content/70">Alt text</div>
+                <input
+                className="input input-sm input-bordered"
+                placeholder="Payment image alt text"
+                value={draft.footer.paymentImageAlt}
+                onChange={(event) =>
+                  set("footer", "paymentImageAlt", event.target.value)
+                }
+                />
+              </div>
+              <div>
+                <div className="mb-1 text-xs font-medium text-base-content/70">Alt text</div>
+                <input
+                className="input input-sm input-bordered"
+                placeholder="Restriction image alt text"
+                value={draft.footer.restrictionImageAlt}
+                onChange={(event) =>
+                  set("footer", "restrictionImageAlt", event.target.value)
+                }
+                />
+              </div>
             </div>
+            <div className="text-xs font-medium text-base-content/70">Alt text</div>
+            <input
+              className="input input-sm input-bordered mt-2 w-full"
+              placeholder="Mobile banner alt text (optional)"
+              value={draft.mobileImageAlt}
+              onChange={(event) => set("mobileImageAlt", event.target.value)}
+            />
             <input
               className="input input-sm input-bordered w-full"
               placeholder="Why e-cigarettes? page title"
@@ -4825,8 +5036,20 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
                   rather than at a flattering thumbnail size. */}
               <img
                 src={draft.events.headingImage.url}
-                alt={draft.events.heading || "Events heading"}
+                alt={draft.events.headingImage.alt || draft.events.heading || "Events heading"}
                 className="mx-auto max-h-[17.5rem] w-auto object-contain"
+              />
+              <div className="mt-3 text-xs font-medium text-base-content/70">Alt text</div>
+              <input
+                className="input input-sm input-bordered mt-3 w-full bg-white text-base-content"
+                placeholder="Heading image alt text"
+                value={draft.events.headingImage.alt || ""}
+                onChange={(event) =>
+                  set("events", "headingImage", {
+                    ...draft.events.headingImage,
+                    alt: event.target.value,
+                  })
+                }
               />
             </div>
           )}
@@ -4906,6 +5129,17 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
                   </option>
                 ))}
             </select>
+            <select
+              className="select select-sm select-bordered min-w-0"
+              aria-label="Where this offer applies"
+              value={offer.channel}
+              onChange={(event) =>
+                setOffer((current) => ({ ...current, channel: event.target.value }))
+              }
+            >
+              <option value="online">Online storefront only</option>
+              <option value="both">Online storefront + POS</option>
+            </select>
             <button
               type="button"
               className="btn btn-primary btn-sm"
@@ -4939,6 +5173,53 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
             </div>
           )}
         </div>
+
+        <div className="mt-4 rounded-xl border bg-base-100 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-base-content/50">
+                Event deals
+              </div>
+              <p className="mt-1 text-[11px] text-base-content/60">
+                Deals created above appear here. Delete one to remove it from any event card.
+              </p>
+            </div>
+            <span className="badge badge-outline">{eventDeals.length}</span>
+          </div>
+          {eventDeals.length > 0 ? (
+            <div className="mt-3 grid gap-2">
+              {eventDeals.map((deal) => (
+                <div
+                  key={deal._id}
+                  className="flex flex-wrap items-center justify-between gap-3 border border-base-300 p-2.5"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold">
+                      {dealSummary(deal)}
+                    </div>
+                    <div className="mt-1 text-[11px] text-base-content/55">
+                      {eventDealIds.has(String(deal._id))
+                        ? "Shown on an event card"
+                        : "Available for an event card"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs gap-1 text-error"
+                    onClick={() => deleteEventDeal(deal)}
+                  >
+                    <FiTrash2 /> Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-base-content/50">
+              No online event deals created yet.
+            </p>
+          )}
+        </div>
+
         <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-3">
           {[0, 1, 2].map((index) => {
             const item = draft.events.items?.[index] || {
@@ -4957,8 +5238,7 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
               : item.kind === "category"
                 ? categoryOptions
                 : item.kind === "deal"
-                  ? (deals || [])
-                      .filter((deal) => deal.active !== false)
+                  ? storefrontDeals
                       .map((deal) => ({
                         value: String(deal._id),
                         label: dealSummary(deal),
@@ -5111,26 +5391,21 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
                       setEventItem(index, { eventPrice: event.target.value })
                     }
                   />
-                  <div className="flex items-center gap-2">
-                    <label className="btn btn-outline btn-xs gap-2">
-                      {item.image?.url ? "Replace image" : "Card image"}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(event) => {
-                          uploadEventCardImage(index, event.target.files);
-                          event.target.value = "";
-                        }}
-                      />
-                    </label>
-                    {item.image?.url && (
-                      <>
-                        <img
-                          src={item.image.url}
-                          alt=""
-                          className="h-8 w-8 rounded object-cover"
+                  <div className="flex min-w-0 flex-col gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="btn btn-outline btn-xs gap-2">
+                        {item.image?.url ? "Replace image" : "Card image"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(event) => {
+                            uploadEventCardImage(index, event.target.files);
+                            event.target.value = "";
+                          }}
                         />
+                      </label>
+                      {item.image?.url && (
                         <button
                           type="button"
                           className="btn btn-ghost btn-xs"
@@ -5140,7 +5415,29 @@ function StorefrontSettings({ settings, listings = [], categories = [], isActing
                         >
                           Remove
                         </button>
-                      </>
+                      )}
+                    </div>
+                    {item.image?.url && (
+                      <div className="grid min-w-0 grid-cols-[5rem_minmax(0,1fr)] items-start gap-3">
+                        <img
+                          src={item.image.url}
+                          alt={item.image.alt || item.title || "Event card image"}
+                          className="h-20 w-20 rounded border border-base-300 object-cover"
+                        />
+                        <label className="min-w-0 text-xs font-medium text-base-content/70">
+                          <span className="mb-1 block">Alt text</span>
+                          <input
+                            className="input input-xs input-bordered w-full min-w-0"
+                            placeholder="Card image alt text"
+                            value={item.image.alt || ""}
+                            onChange={(event) =>
+                              setEventItem(index, {
+                                image: { ...item.image, alt: event.target.value },
+                              })
+                            }
+                          />
+                        </label>
+                      </div>
                     )}
                   </div>
                 </div>
