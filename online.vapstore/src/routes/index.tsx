@@ -105,7 +105,7 @@ function EventsHeading({
                 key={`${item.kind}-${item.title}-${index}`}
                 {...item.href}
                 preload="intent"
-                className={`event-pick-card group relative w-[8.25rem] shrink-0 origin-bottom overflow-hidden border hair bg-surface p-0 text-left shadow-[0_18px_45px_rgba(0,0,0,0.14)] transition-transform duration-300 hover:z-30 hover:-translate-y-5 hover:rotate-0 sm:w-[16rem] sm:p-3 md:w-[19rem] lg:w-[20rem] ${
+                className={`event-pick-card group relative w-[8.62125rem] shrink-0 origin-bottom overflow-hidden border hair bg-surface p-0 text-left shadow-[0_18px_45px_rgba(0,0,0,0.14)] transition-transform duration-300 hover:z-30 hover:-translate-y-5 hover:rotate-0 sm:w-[16rem] sm:p-3 md:w-[19rem] lg:w-[20rem] ${
                   fanClasses[index] || "rotate-0"
                 }`}
               >
