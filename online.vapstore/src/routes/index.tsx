@@ -99,13 +99,13 @@ function EventsHeading({
           </h2>
         )}
         {items.length > 0 && (
-          <div className="mt-6 flex w-full max-w-5xl items-end justify-center overflow-visible px-1 sm:px-0">
+          <div className="mt-2 flex w-full max-w-5xl items-end justify-center overflow-visible px-1 sm:mt-6 sm:px-0">
             {items.slice(0, 3).map((item, index) => (
               <Link
                 key={`${item.kind}-${item.title}-${index}`}
                 {...item.href}
                 preload="intent"
-                className={`event-pick-card group relative w-[8.25rem] shrink-0 origin-bottom overflow-hidden border hair bg-surface p-2 text-left shadow-[0_18px_45px_rgba(0,0,0,0.14)] transition-transform duration-300 hover:z-30 hover:-translate-y-5 hover:rotate-0 sm:w-[16rem] sm:p-3 md:w-[19rem] lg:w-[20rem] ${
+                className={`event-pick-card group relative w-[8.25rem] shrink-0 origin-bottom overflow-hidden border hair bg-surface p-0 text-left shadow-[0_18px_45px_rgba(0,0,0,0.14)] transition-transform duration-300 hover:z-30 hover:-translate-y-5 hover:rotate-0 sm:w-[16rem] sm:p-3 md:w-[19rem] lg:w-[20rem] ${
                   fanClasses[index] || "rotate-0"
                 }`}
               >
@@ -114,7 +114,7 @@ function EventsHeading({
                     {item.tag}
                   </div>
                 )}
-                <div className="grid aspect-[4/5] place-items-center overflow-hidden bg-white">
+                <div className="grid aspect-square place-items-center overflow-hidden bg-white sm:aspect-[4/5]">
                   {item.image ? (
                     <img
                       src={item.image}
@@ -122,7 +122,7 @@ function EventsHeading({
                       loading="lazy"
                       decoding="async"
                       sizes="(min-width: 768px) 224px, 30vw"
-                      className="h-full w-full object-contain p-1 transition-transform duration-500 group-hover:scale-105 sm:p-2"
+                      className="h-full w-full object-cover p-0 transition-transform duration-500 group-hover:scale-105 sm:object-contain sm:p-2"
                     />
                   ) : (
                     /* Deliberately blank. The name is already in the caption
@@ -132,12 +132,12 @@ function EventsHeading({
                     <div aria-hidden="true" />
                   )}
                 </div>
-                <div className="pt-3 sm:pt-4">
+                <div className="px-2 pb-2 pt-3 sm:px-0 sm:pb-0 sm:pt-4">
                   <div className="font-mono text-[7px] uppercase tracking-widest text-ink-muted sm:text-[9px]">
                     {item.kind}
                   </div>
                   <div
-                    className="mt-1 line-clamp-2 font-display text-sm leading-none sm:text-lg"
+                    className="mt-1 line-clamp-2 font-display text-[1rem] leading-none sm:text-lg"
                     title={item.title}
                   >
                     {item.kind === "product" ? truncateProductName(item.title) : item.title}
@@ -171,7 +171,7 @@ function EventsHeading({
                         </>
                       )}
                       {item.dealLine && (
-                        <span className="inline-block whitespace-nowrap bg-accent px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wide text-accent-foreground sm:text-[13px]">
+                        <span className="block w-full max-w-full whitespace-normal break-words bg-accent px-1.5 py-1.5 text-center font-mono text-[10.7px] font-bold uppercase leading-tight tracking-wide text-accent-foreground sm:inline-block sm:w-auto sm:whitespace-nowrap sm:px-3 sm:text-[13px] sm:leading-normal">
                           {item.dealLine}
                         </span>
                       )}
