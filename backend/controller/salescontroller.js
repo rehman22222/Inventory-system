@@ -2,6 +2,7 @@ const Sale = require("../models/Salesmodel");
 const Receipt = require("../models/Receiptmodel");
 const ProductModel = require('../models/Productmodel');
 const logActivity = require("../libs/logger");
+const { dealProductsByReceipt, saleLineHasDeal } = require("../libs/dealLineCoverage");
 
 // Characters that mean something to a regex, escaped before a typed search
 // becomes one.
@@ -31,21 +32,21 @@ const seesAllSales = (user) =>
  * One query however long the ledger is: it asks only for receipts that
  * actually carried an offer, and only for their number.
  */
-const receiptNosWithDeals = async () => {
+const dealCoverage = async () => {
   const receipts = await Receipt.find({ dealDiscount: { $gt: 0 } })
-    .select("receiptNo")
+    .select("receiptNo deals")
     .lean();
-  return new Set(receipts.map((receipt) => String(receipt.receiptNo || "")).filter(Boolean));
+  return dealProductsByReceipt(receipts);
 };
 
 /* The sale, told what kind of sale it is.
  *
  * `hadDeal` is derived, never stored — the receipt remains the one record of
  * what was given, and this is only the list saying so. */
-const withKind = (sales, dealReceipts) =>
+const withKind = (sales, deals) =>
   sales.map((sale) => ({
     ...sale,
-    hadDeal: dealReceipts.has(String(sale.receiptNo || "")),
+    hadDeal: saleLineHasDeal(sale, deals),
   }));
 
 const salesScope = (user) =>
@@ -137,7 +138,7 @@ module.exports.getAllSales = async (req, res) => {
       .sort({ createdAt: 1 })
       .lean();
 
-    res.status(200).json({ success: true, sales: withKind(sales, await receiptNosWithDeals()) });
+    res.status(200).json({ success: true, sales: withKind(sales, await dealCoverage()) });
   } catch (error) {
     res.status(500).json({ success: false, message: "Error fetching sales", error });
   }
@@ -231,7 +232,7 @@ module.exports.SearchSales = async (req, res) => {
         .sort({ createdAt: 1 });
       return res.status(200).json({
         success: true,
-        sales: withKind(allSales, await receiptNosWithDeals()),
+        sales: withKind(allSales, await dealCoverage()),
       });
     }
 
@@ -272,7 +273,7 @@ module.exports.SearchSales = async (req, res) => {
       .populate("products.product")
       .sort({ createdAt: 1 });
 
-    res.status(200).json({ sales: withKind(searchdata, await receiptNosWithDeals()) });
+    res.status(200).json({ sales: withKind(searchdata, await dealCoverage()) });
 
   } catch (error) {
     res.status(500).json({ success: false, message: "Error in searching sales", error: error.message });

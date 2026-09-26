@@ -25,6 +25,7 @@ const { buildPdfBuffer } = require("../libs/pdf");
 const { buildShadowNetReport, currentNetTotal } = require("../libs/shadowNetReport");
 const { startOfDay, endOfDay, formatInZone } = require("../libs/time");
 const { salesStatement } = require("../libs/salesStatement");
+const { dealProductsByReceipt, saleLineHasDeal } = require("../libs/dealLineCoverage");
 
 // Every timestamp on a report is rendered in the shop's timezone, and every
 // date-range filter is interpreted there — so a report reads correctly whether
@@ -117,10 +118,8 @@ async function buildSales(req, options = {}) {
    *
    * One query whatever the range: it asks only for receipts that carried an
    * offer, and only for their number. */
-  const dealReceipts = new Set(
-    (await Receipt.find({ dealDiscount: { $gt: 0 } }).select("receiptNo").lean())
-      .map((receipt) => String(receipt.receiptNo || ""))
-      .filter(Boolean),
+  const dealCoverage = dealProductsByReceipt(
+    await Receipt.find({ dealDiscount: { $gt: 0 } }).select("receiptNo deals").lean(),
   );
 
   // Every statement figure comes from salesStatement, over these same rows —
@@ -196,7 +195,7 @@ async function buildSales(req, options = {}) {
         ? "refund"
         : s.paymentMethod === "credit"
           ? "credit"
-          : dealReceipts.has(String(s.receiptNo || ""))
+          : saleLineHasDeal(s, dealCoverage)
             ? "deal"
             : "",
     );
