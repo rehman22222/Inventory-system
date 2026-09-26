@@ -43,6 +43,7 @@ const OnlineHeroSlideSchema = new mongoose.Schema(
     image: { type: String, default: "" },
     mobileImage: { type: String, default: "" },
     imageAlt: { type: String, default: "" },
+    mobileImageAlt: { type: String, default: "" },
     ctaPosition: {
       type: String,
       enum: ["bottom-left", "bottom-center", "bottom-right"],

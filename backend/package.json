@@ -36,7 +36,9 @@
     "verify:online-deals": "node scripts/verifyOnlineDeals.js",
     "verify:event-cards": "node scripts/verifyEventCards.js",
     "verify:quick-cash": "node scripts/verifyQuickCashCatalogue.js",
-    "verify:row-colours": "node scripts/verifyReportRowColours.js"
+    "verify:row-colours": "node scripts/verifyReportRowColours.js",
+    "link-online": "node scripts/linkOnlineListingsToPos.js",
+    "format-names": "node scripts/formatBarcodedNames.js"
   },
   "author": "",
   "license": "ISC",

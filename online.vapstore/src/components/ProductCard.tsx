@@ -53,7 +53,7 @@ export function ProductCard({ product }: { product: Product }) {
       >
         <img
           src={cldProductCardImage(cardImage)}
-          alt={product.name}
+          alt={product.catalogImage ? product.catalogImageAlt || product.name : product.imageAlt || product.name}
           loading="lazy"
           decoding="async"
           sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"

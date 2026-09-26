@@ -91,12 +91,6 @@ function DealPage() {
               {terms}
             </div>
           )}
-          {need >= 2 && (
-            <p className="mt-3 max-w-2xl text-sm text-ink-muted">
-              Mix them however you like — {need} of one, or a few of each. The
-              offer comes off at checkout once {need} are in your basket.
-            </p>
-          )}
         </div>
       </section>
 

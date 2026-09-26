@@ -368,7 +368,11 @@ function ProductPage() {
           <div className="relative aspect-square max-h-[560px] overflow-hidden border hair bg-white p-4 sm:p-8">
             <img
               src={cldProductHeroImage(imageOverride ?? displayImage)}
-              alt={product.name}
+              alt={
+                selectedVariant?.imageAlt ||
+                product.imageAlt ||
+                product.name
+              }
               loading="eager"
               decoding="async"
               sizes="(min-width: 1024px) 50vw, 100vw"
@@ -394,7 +398,7 @@ function ProductPage() {
                 >
                   <img
                     src={cldProductThumbImage(image)}
-                    alt=""
+                    alt={product.gallery.find((entry) => entry.url === image)?.alt || product.name}
                     loading="lazy"
                     decoding="async"
                     className="h-full w-full object-contain"
@@ -449,7 +453,7 @@ function ProductPage() {
               {qtyDeal.image ? (
                 <img
                   src={cldProductThumbImage(qtyDeal.image)}
-                  alt="Deal"
+                  alt={product.dealImageAlt || product.name}
                   loading="lazy"
                   decoding="async"
                   className="h-16 w-16 shrink-0 border hair bg-white object-contain p-1"
@@ -477,7 +481,7 @@ function ProductPage() {
             <div className="mt-4 overflow-hidden border hair bg-surface">
               <img
                 src={cldProductHeroImage(product.dealImage)}
-                alt="Deal"
+                alt={product.dealImageAlt || product.name}
                 loading="lazy"
                 decoding="async"
                 className="max-h-40 w-full object-contain p-2"

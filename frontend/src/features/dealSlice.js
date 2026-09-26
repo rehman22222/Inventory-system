@@ -10,9 +10,10 @@ const initialState = {
 
 export const gettingallDeals = createAsyncThunk(
   "deal/all",
-  async (_, { rejectWithValue }) => {
+  async (channel, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get("deal/all", { withCredentials: true });
+      const suffix = channel ? `?channel=${encodeURIComponent(channel)}` : "";
+      const response = await axiosInstance.get(`deal/all${suffix}`, { withCredentials: true });
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Deal retrieval failed");

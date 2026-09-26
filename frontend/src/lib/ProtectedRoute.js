@@ -8,6 +8,7 @@ const dashboardByRole = {
   staff: "/StaffDashboard",
   report: "/ReportDashboard",
   seo: "/BlogStudio",
+  seo_store: "/OnlineStoreStudio",
 };
 
 const getStoredUser = () => {

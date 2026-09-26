@@ -18,6 +18,7 @@ const OnlineCategorySchema = new mongoose.Schema(
     description: { type: String, default: "" },
     // Cloudinary URL for the category tile.
     image: { type: String, default: "" },
+    imageAlt: { type: String, default: "", trim: true, maxlength: 160 },
 
     // Optional parent for a one-deep (or deeper) browse hierarchy. A top-level
     // category leaves this null; a sub-category points at its parent. Nesting is

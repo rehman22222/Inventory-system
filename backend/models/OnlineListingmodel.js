@@ -60,6 +60,7 @@ const OnlineListingSchema = new mongoose.Schema(
         },
         priceOverride: { type: Number, default: null, min: 0 },
         image: { type: String, default: "" },
+        imageAlt: { type: String, default: "", trim: true, maxlength: 160 },
         externalId: { type: String, trim: true, default: "" },
       },
     ],
@@ -78,6 +79,7 @@ const OnlineListingSchema = new mongoose.Schema(
         },
         label: { type: String, required: true, trim: true },
         image: { type: String, default: "" },
+        imageAlt: { type: String, default: "", trim: true, maxlength: 160 },
         sortWeight: { type: Number, default: 0 },
       },
     ],
@@ -136,6 +138,7 @@ const OnlineListingSchema = new mongoose.Schema(
     dealImage: {
       url: { type: String, default: "" },
       publicId: { type: String, default: "" },
+      alt: { type: String, default: "", trim: true, maxlength: 160 },
     },
 
     seo: {

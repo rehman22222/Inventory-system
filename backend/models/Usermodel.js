@@ -37,7 +37,9 @@ const UserSchema= new mongoose.Schema({
         // the shop can hand an outside agency the blog and nothing else. It
         // cannot open the till, see a sale, or read a customer — enforced by
         // an allowlist in Authmiddleware, not by hiding buttons.
-        enum:['superadmin','admin','manager','staff','report','seo'],
+        // "seo_store" is the website specialist: complete Online Store access,
+        // including its blog and deal tools, but no shop/till access.
+        enum:['superadmin','admin','manager','staff','report','seo','seo_store'],
         default:'staff',
 
     },

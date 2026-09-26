@@ -82,6 +82,8 @@ function LoginPage() {
           navigator("/ReportDashboard");
         } else if (role === "seo") {
           navigator("/BlogStudio");
+        } else if (role === "seo_store") {
+          navigator("/OnlineStoreStudio");
         } else if (role === "staff") {
           navigator("/StaffDashboard");
         } else if (role === "admin") {

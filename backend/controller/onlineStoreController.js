@@ -206,6 +206,7 @@ const publicListing = (l, { compact = false, includeLinked = true } = {}) => {
       regularPrice: money(regularItemPrice(l, variant.product, variant)),
       stock: Number(variant.product.quantity || 0),
       image: variant.image || "",
+      imageAlt: variant.imageAlt || variant.label || p.name,
     }));
 
   const linkedListings = includeLinked
@@ -222,6 +223,7 @@ const publicListing = (l, { compact = false, includeLinked = true } = {}) => {
             ...child,
             familyLabel: String(link.label || child.name).trim() || child.name,
             familyImage: link.image || "",
+            familyImageAlt: link.imageAlt || link.label || child.name,
           };
         })
         .filter(Boolean)
@@ -257,6 +259,7 @@ const publicListing = (l, { compact = false, includeLinked = true } = {}) => {
           price: money(Number(l.salePrice)),
           regularPrice,
           image: l.dealImage?.url || "",
+          imageAlt: l.dealImage?.alt || l.webName || p.name,
         }
       : null;
 
@@ -279,7 +282,10 @@ const publicListing = (l, { compact = false, includeLinked = true } = {}) => {
       name: category.name,
     })),
     image: l.gallery?.[0]?.url || p.image?.url || "",
+    imageAlt:
+      l.gallery?.[0]?.alt || l.webName || p.name,
     catalogImage: l.catalogImage?.url || "",
+    catalogImageAlt: l.catalogImage?.alt || l.webName || p.name,
     variants,
     variantLabel: l.variantLabel || "",
     selfVariantLabel: l.selfVariantLabel || "",
@@ -294,6 +300,10 @@ const publicListing = (l, { compact = false, includeLinked = true } = {}) => {
     qtyDeal,
     // Promo image for whichever deal is live (base sale or quantity deal).
     dealImage: saleIsActive(l) && l.dealImage?.url ? l.dealImage.url : "",
+    dealImageAlt:
+      saleIsActive(l) && l.dealImage?.url
+        ? l.dealImage.alt || l.webName || p.name
+        : "",
     publishedAt: l.createdAt,
     // Live from the shared ledger — the same number the till reads.
     stock,
@@ -499,7 +509,11 @@ const dealsForBasket = async (settings, lines, room) => {
   // Read fresh rather than trusting the ids alone: a deal that has been
   // switched off or has run past its end date is no longer an offer, even
   // though the card advertising it is still on the page.
-  const deals = await Deal.find({ _id: { $in: ids }, active: true }).lean();
+  const deals = await Deal.find({
+    _id: { $in: ids },
+    active: true,
+    $or: [{ channel: "online" }, { channel: "both" }, { channel: { $exists: false } }],
+  }).lean();
   return priceEventDeals(lines, deals, room);
 };
 
@@ -638,7 +652,13 @@ module.exports.listCategories = async (req, res) => {
 module.exports.createCategory = async (req, res) => {
   try {
     const store = await storeId();
-    const { name, description = "", image = "", sortWeight = 0 } = req.body;
+    const {
+      name,
+      description = "",
+      image = "",
+      imageAlt = "",
+      sortWeight = 0,
+    } = req.body;
     if (!name?.trim())
       return res.status(400).json({ message: "Category name is required" });
 
@@ -669,6 +689,7 @@ module.exports.createCategory = async (req, res) => {
       slug,
       description,
       image,
+      imageAlt: String(imageAlt || name).trim().slice(0, 160),
       sortWeight,
       parent,
     });
@@ -718,6 +739,11 @@ module.exports.updateCategory = async (req, res) => {
     if (updates.slug || updates.name)
       updates.slug = slugify(updates.slug || updates.name);
     delete updates.store;
+    if (Object.prototype.hasOwnProperty.call(updates, "imageAlt")) {
+      updates.imageAlt = String(updates.imageAlt || updates.name || "")
+        .trim()
+        .slice(0, 160);
+    }
 
     // Re-parenting: validate the new parent and refuse any move that would form
     // a cycle (a category cannot become its own descendant, nor its own parent).
@@ -1157,7 +1183,7 @@ module.exports.upsertListing = async (req, res) => {
           }))
       : [];
 
-    const fields = {
+      const fields = {
       store,
       product: product._id,
       slug,
@@ -1419,8 +1445,12 @@ module.exports.updateListing = async (req, res) => {
               url: img.url.trim(),
               publicId:
                 typeof img.publicId === "string" ? img.publicId.trim() : "",
+              alt:
+                typeof img.alt === "string" && img.alt.trim()
+                  ? img.alt.trim().slice(0, 160)
+                  : listing.webName || listing.product?.name || "",
             }
-          : { url: "", publicId: "" };
+          : { url: "", publicId: "", alt: "" };
     }
 
     if (Object.prototype.hasOwnProperty.call(req.body, "tags")) {
@@ -1536,6 +1566,10 @@ module.exports.updateListing = async (req, res) => {
           label: label.slice(0, 120),
           kind,
           image: typeof entry.image === "string" ? entry.image.trim() : "",
+          imageAlt:
+            typeof entry.imageAlt === "string" && entry.imageAlt.trim()
+              ? entry.imageAlt.trim().slice(0, 160)
+              : label,
           priceOverride,
           externalId:
             typeof entry.externalId === "string" ? entry.externalId.trim() : "",
@@ -1597,6 +1631,10 @@ module.exports.updateListing = async (req, res) => {
           listing: listingId,
           label: label.slice(0, 120),
           image: typeof entry.image === "string" ? entry.image.trim() : "",
+          imageAlt:
+            typeof entry.imageAlt === "string" && entry.imageAlt.trim()
+              ? entry.imageAlt.trim().slice(0, 160)
+              : label,
           sortWeight: Number(entry.sortWeight || 0),
         });
       }
@@ -2123,6 +2161,9 @@ module.exports.updateStoreSettings = async (req, res) => {
     if (Object.prototype.hasOwnProperty.call(req.body, "logo")) {
       settings.logo = String(req.body.logo || "").trim();
     }
+    if (Object.prototype.hasOwnProperty.call(req.body, "logoAlt")) {
+      settings.logoAlt = String(req.body.logoAlt || "").trim().slice(0, 160);
+    }
     const social = req.body.social || {};
     for (const platform of Object.keys(SOCIAL_HOSTS)) {
       if (Object.prototype.hasOwnProperty.call(social, platform)) {
@@ -2139,6 +2180,8 @@ module.exports.updateStoreSettings = async (req, res) => {
       "openingHours",
       "paymentImage",
       "restrictionImage",
+      "paymentImageAlt",
+      "restrictionImageAlt",
       "whyECigarettesTitle",
       "whyECigarettesContent",
     ]) {
@@ -2243,6 +2286,9 @@ module.exports.updateStoreSettings = async (req, res) => {
       settings.events.headingImage = {
         url: String(image.url || "").trim().slice(0, 500),
         publicId: String(image.publicId || "").trim().slice(0, 200),
+        alt: String(image.alt || settings.events.heading || "")
+          .trim()
+          .slice(0, 160),
       };
     }
     if (Object.prototype.hasOwnProperty.call(events, "align")) {
@@ -2284,6 +2330,9 @@ module.exports.updateStoreSettings = async (req, res) => {
           image: {
             url: String(item?.image?.url || "").trim().slice(0, 500),
             publicId: String(item?.image?.publicId || "").trim().slice(0, 200),
+            alt: String(item?.image?.alt || item?.title || "")
+              .trim()
+              .slice(0, 160),
           },
         }));
     }
@@ -2589,6 +2638,9 @@ const heroFields = async (body, store, current = {}) => {
     image: String(valueOf("image", current.image || "")).trim(),
     mobileImage: String(valueOf("mobileImage", current.mobileImage || "")).trim(),
     imageAlt: String(valueOf("imageAlt", current.imageAlt || "")).trim(),
+    mobileImageAlt: String(
+      valueOf("mobileImageAlt", current.mobileImageAlt || ""),
+    ).trim(),
     ctaPosition: ["bottom-left", "bottom-center", "bottom-right"].includes(
       valueOf("ctaPosition", current.ctaPosition || "bottom-left"),
     )
@@ -3262,7 +3314,11 @@ const eventsForStorefront = async (settings) => {
   const ids = items.map((item) => item?.deal).filter(Boolean);
   if (!ids.length) return events;
 
-  const deals = await Deal.find({ _id: { $in: ids }, active: true })
+  const deals = await Deal.find({
+    _id: { $in: ids },
+    active: true,
+    $or: [{ channel: "online" }, { channel: "both" }, { channel: { $exists: false } }],
+  })
     .select("name mode groupQuantity discountType discount startsAt endsAt items.product")
     .lean();
   const byId = new Map(deals.map((deal) => [String(deal._id), deal]));

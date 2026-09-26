@@ -26,7 +26,7 @@ export function CategoryTile({ category, index }: { category: Category; index: n
         {imgOk ? (
           <img
             src={cldCategoryImage(category.image)}
-            alt={category.name}
+            alt={category.imageAlt || category.name}
             loading="lazy"
             decoding="async"
             sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"

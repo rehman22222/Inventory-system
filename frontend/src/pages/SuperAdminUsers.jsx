@@ -8,6 +8,7 @@ import {
   staffUser,
   managerUser,
   adminUser,
+  onlineStoreUser,
   createUser,
   removeusers,
 } from "../features/authSlice";
@@ -20,7 +21,7 @@ const EMPTY = { name: "", email: "", password: "", role: "staff" };
 function SuperAdminUsers() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
-  const { staffuser, manageruser, adminuser, iscreatinguser } = useSelector(
+  const { staffuser, manageruser, adminuser, onlinestoreuser, iscreatinguser } = useSelector(
     (state) => state.auth
   );
   const [form, setForm] = useState(EMPTY);
@@ -30,6 +31,7 @@ function SuperAdminUsers() {
     dispatch(staffUser());
     dispatch(managerUser());
     dispatch(adminUser());
+    dispatch(onlineStoreUser());
   };
 
   useEffect(() => {
@@ -65,6 +67,7 @@ function SuperAdminUsers() {
     { key: "adminUser", users: adminuser },
     { key: "manager", users: manageruser },
     { key: "staffUser", users: staffuser },
+    { key: "seoStoreUser", users: onlinestoreuser },
   ];
 
   return (
@@ -131,6 +134,7 @@ function SuperAdminUsers() {
             {/* Not a shop role: this account reaches the blog and nothing
                 else — no till, no sales, no customers. */}
             <option value="seo">{t("users.seo")}</option>
+            <option value="seo_store">{t("users.seoStore")}</option>
           </select>
         </div>
         <div className="flex items-end">

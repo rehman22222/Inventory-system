@@ -30,6 +30,7 @@ const initialState = {
   staffuser:null,
   manageruser:null,
   adminuser:null,
+  onlinestoreuser:null,
   isUserLogin: false,
   // Kept in memory only — never read back from storage.
   token: null,
@@ -191,6 +192,22 @@ export const adminUser=createAsyncThunk('auth/adminuser',async(_,{rejectWithValu
   }
 })
 
+export const onlineStoreUser = createAsyncThunk(
+  "auth/onlinestoreuser",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.get("auth/onlinestoreuser", {
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to get online store specialists",
+      );
+    }
+  },
+);
+
 export const removeusers=createAsyncThunk("auth/removeuser",async(UserId,{rejectWithValue})=>{
   try {
 
@@ -236,6 +253,11 @@ const authSlice = createSlice({
           state.manageruser = [user, ...(Array.isArray(state.manageruser) ? state.manageruser : [])];
         } else if (user?.role === "staff") {
           state.staffuser = [user, ...(Array.isArray(state.staffuser) ? state.staffuser : [])];
+        } else if (user?.role === "seo_store") {
+          state.onlinestoreuser = [
+            user,
+            ...(Array.isArray(state.onlinestoreuser) ? state.onlinestoreuser : []),
+          ];
         }
 
         toast.success(action.payload.message || "User created");
@@ -324,6 +346,12 @@ const authSlice = createSlice({
       
        
       })
+
+      .addCase(onlineStoreUser.fulfilled, (state, action) => {
+        state.onlinestoreuser = action.payload;
+      })
+
+      .addCase(onlineStoreUser.rejected, () => {})
 
 
       .addCase(removeusers.fulfilled, (state, action) => {

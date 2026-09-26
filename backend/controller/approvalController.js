@@ -243,7 +243,11 @@ module.exports.approveRequest = async (req, res) => {
     let result;
 
     if (request.type === "create_user") {
-      result = await createUserRecord(request.payload, ["manager", "staff", "seo"], actor);
+      result = await createUserRecord(
+        request.payload,
+        ["manager", "staff", "seo", "seo_store"],
+        actor,
+      );
     } else if (request.type === "delete_user") {
       result = await deleteUserRecord(request.payload.userId, actor);
     } else if (request.type === "create_supplier") {

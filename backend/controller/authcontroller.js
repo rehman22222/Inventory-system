@@ -107,7 +107,7 @@ module.exports.createUser = async (req, res) => {
     // "seo" is a content-only account for an outside agency — it can write the
     // blog and nothing else (see the fence in Authmiddleware). Safe to hand out
     // directly for the same reason it is safe to exist at all.
-    ["admin", "manager", "staff", "seo"],
+    ["admin", "manager", "staff", "seo", "seo_store"],
     { _id: req.user?._id, ip: req.ip }
   );
 
@@ -423,5 +423,15 @@ module.exports.me = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports.onlineStoreUser = async (req, res) => {
+  try {
+    const users = await User.find({ role: "seo_store" }).select("-password");
+    return res.status(200).json(users);
+  } catch (error) {
+    console.log("Error in get online store specialist Controller:", error.message);
+    return res.status(500).json({ message: "Internal Server Error", error });
   }
 };

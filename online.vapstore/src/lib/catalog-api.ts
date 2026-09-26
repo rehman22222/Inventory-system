@@ -253,6 +253,7 @@ type ApiProduct = {
   familyLabel?: string;
   familyImage?: string;
   catalogImage?: string;
+  catalogImageAlt?: string;
   selfVariantLabel?: string;
   brand: string;
   category: { id: string; slug: string; name: string } | null;
@@ -260,6 +261,7 @@ type ApiProduct = {
   short: string;
   description: string;
   image: string;
+  imageAlt?: string;
   gallery: { url: string; alt?: string }[];
   specs: Record<string, string>;
   flavour: string;
@@ -272,6 +274,7 @@ type ApiProduct = {
     price: number;
     stock: number;
     image?: string;
+    imageAlt?: string;
   }[];
   linkedListings?: ApiProduct[];
   tags: Product["tags"];
@@ -285,8 +288,10 @@ type ApiProduct = {
     price: number;
     regularPrice: number;
     image?: string;
+    imageAlt?: string;
   } | null;
   dealImage?: string;
+  dealImageAlt?: string;
   publishedAt: string | null;
   stock: number;
   featured: boolean;
@@ -298,6 +303,7 @@ type ApiCategory = {
   name: string;
   description: string;
   image: string;
+  imageAlt?: string;
   parent?: string | null;
 };
 
@@ -312,6 +318,7 @@ const toCategory = (c: ApiCategory): Category => ({
   name: c.name,
   tagline: c.description || "",
   image: cldAuto(c.image || ""),
+  imageAlt: c.imageAlt || c.name,
   parentSlug: c.parent || null,
 });
 
@@ -324,6 +331,7 @@ const toProduct = (p: ApiProduct): Product => {
     familyLabel: p.familyLabel || undefined,
     familyImage: p.familyImage ? cldProductImage(p.familyImage) : undefined,
     catalogImage: p.catalogImage ? cldProductImage(p.catalogImage) : undefined,
+    catalogImageAlt: p.catalogImageAlt || p.name,
     selfVariantLabel: p.selfVariantLabel || undefined,
     brand: p.brand || "",
     category: p.category?.slug || "",
@@ -337,8 +345,10 @@ const toProduct = (p: ApiProduct): Product => {
       ? { ...p.qtyDeal, image: p.qtyDeal.image ? cldProductImage(p.qtyDeal.image) : "" }
       : null,
     dealImage: p.dealImage ? cldProductImage(p.dealImage) : "",
+    dealImageAlt: p.dealImageAlt || p.name,
     publishedAt: p.publishedAt ?? undefined,
     image: cldProductImage(p.image),
+    imageAlt: p.imageAlt || p.name,
     gallery: (p.gallery || []).map((image) => ({ ...image, url: cldProductImage(image.url) })),
     tags: p.tags || [],
     short: p.short || "",

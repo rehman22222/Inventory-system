@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Deal = require("../models/Dealmodel");
 const Product = require("../models/Productmodel");
+const OnlineStoreSetting = require("../models/OnlineStoreSettingmodel");
 const logActivity = require("../libs/logger");
 
 // Normalise the incoming items into { product, quantity } with valid ids and
@@ -45,6 +46,10 @@ const validateDiscount = (discount, discountType) => {
 };
 
 const QUANTITY_RULES = ["repeat_sets", "single_set"];
+const DEAL_CHANNELS = ["pos", "online", "both"];
+
+const normaliseChannel = (value) =>
+  DEAL_CHANNELS.includes(value) ? value : "both";
 
 // An unrecognised rule becomes absent rather than wrong: the matcher reads
 // absence as "whatever this mode always did", which is the safe answer.
@@ -72,6 +77,7 @@ module.exports.createDealRecord = async (
     quantityRule,
     startsAt,
     endsAt,
+    channel = "both",
   },
   actor = {}
 ) => {
@@ -115,6 +121,7 @@ module.exports.createDealRecord = async (
     mode: dealMode,
     groupQuantity: dealMode === "mix" ? groupSize : 0,
     quantityRule: normaliseRule(quantityRule),
+    channel: normaliseChannel(channel),
     startsAt: parseDate(startsAt),
     endsAt: parseDate(endsAt),
     items: cleanItems,
@@ -154,7 +161,50 @@ module.exports.createDeal = async (req, res) => {
 
 module.exports.getDeals = async (req, res) => {
   try {
-    const deals = await Deal.find({})
+    const requestedChannel = req.query.channel;
+    let channelFilter = {};
+
+    if (DEAL_CHANNELS.includes(requestedChannel)) {
+      const allowed = [requestedChannel, "both"];
+      const legacyFilter = { channel: { $exists: false } };
+
+      // Before channels existed, an offer already placed on a storefront
+      // events card is the only reliable signal that it was intended online.
+      // Keep those legacy offers out of POS immediately, without rewriting
+      // live data; new records use the explicit channel field above.
+      if (requestedChannel === "pos") {
+        const settings = await OnlineStoreSetting.find({ "events.enabled": true })
+          .select("events.items")
+          .lean();
+        const onlineLegacyIds = settings.flatMap((setting) =>
+          (setting.events?.items || [])
+            .filter((item) => item?.enabled && item.kind === "deal" && item.deal)
+            .map((item) => String(item.deal?._id || item.deal))
+            .filter((id) => mongoose.isValidObjectId(id)),
+        );
+
+        channelFilter = {
+          $or: [
+            { channel: { $in: allowed } },
+            {
+              ...legacyFilter,
+              ...(onlineLegacyIds.length
+                ? { _id: { $nin: [...new Set(onlineLegacyIds)] } }
+                : {}),
+            },
+          ],
+        };
+      } else {
+        channelFilter = {
+          $or: [
+            { channel: { $in: allowed } },
+            legacyFilter,
+          ],
+        };
+      }
+    }
+
+    const deals = await Deal.find(channelFilter)
       .sort({ createdAt: -1 })
       .populate("items.product", "name Price barcode");
 
@@ -190,6 +240,7 @@ module.exports.updateDeal = async (req, res) => {
       quantityRule,
       startsAt,
       endsAt,
+      channel,
     } = req.body;
 
     if (name !== undefined) {
@@ -262,6 +313,13 @@ module.exports.updateDeal = async (req, res) => {
 
     if (active !== undefined) {
       deal.active = Boolean(active);
+    }
+
+    if (channel !== undefined) {
+      if (!DEAL_CHANNELS.includes(channel)) {
+        return res.status(400).json({ message: "Invalid deal channel" });
+      }
+      deal.channel = channel;
     }
 
     await deal.save();

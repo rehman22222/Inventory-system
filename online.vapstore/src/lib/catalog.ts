@@ -12,6 +12,7 @@ export interface Category {
   name: string;
   tagline: string;
   image: string;
+  imageAlt?: string;
   /** Slug of the parent category, or null for a top-level category. */
   parentSlug?: CategorySlug | null;
 }
@@ -25,6 +26,7 @@ export interface Product {
   familyLabel?: string;
   familyImage?: string;
   catalogImage?: string;
+  catalogImageAlt?: string;
   selfVariantLabel?: string;
   brand: string;
   category: CategorySlug;
@@ -40,11 +42,14 @@ export interface Product {
     price: number;
     regularPrice: number;
     image?: string;
+    imageAlt?: string;
   } | null;
   /** Promo image for the live deal (base sale or quantity deal), if uploaded. */
   dealImage?: string;
+  dealImageAlt?: string;
   publishedAt?: string;
   image: string;
+  imageAlt?: string;
   gallery: { url: string; alt?: string }[];
   tags?: ("new" | "bestseller" | "sale" | "limited" | "hot")[];
   short: string;
@@ -60,6 +65,7 @@ export interface Product {
     price: number;
     stock: number;
     image?: string;
+    imageAlt?: string;
   }[];
   linkedListings?: Product[];
   stock: number;
@@ -85,6 +91,8 @@ export interface ReviewSummary {
 }
 
 export interface StorefrontSettings {
+  logo?: string;
+  logoAlt?: string;
   social: {
     instagram: string;
     facebook: string;
@@ -100,6 +108,8 @@ export interface StorefrontSettings {
     openingHours: string;
     paymentImage: string;
     restrictionImage: string;
+    paymentImageAlt?: string;
+    restrictionImageAlt?: string;
     whyECigarettesTitle: string;
     whyECigarettesContent: string;
   };
@@ -125,7 +135,7 @@ export interface StorefrontSettings {
     heading: string;
     /* Artwork shown in place of the heading. The words are kept either way —
      * they are the alt text, and they come back if the picture is removed. */
-    headingImage?: { url?: string; publicId?: string };
+    headingImage?: { url?: string; publicId?: string; alt?: string };
     align: "left" | "center" | "right";
     items?: {
       enabled?: boolean;
@@ -143,7 +153,7 @@ export interface StorefrontSettings {
       eventPrice?: number | null;
       /* Artwork for this card alone. Empty falls back to the product's or
        * category's own picture, so a card never given one looks as it did. */
-      image?: { url?: string; publicId?: string };
+      image?: { url?: string; publicId?: string; alt?: string };
       /* The offer this card advertises, with its terms already resolved by
        * the server — the card has to be able to PRINT "any 5 for 15", and an
        * id alone gives it nothing to print. Null when the card is only
@@ -298,6 +308,7 @@ export interface HeroSlide {
   image: string;
   mobileImage?: string;
   imageAlt: string;
+  mobileImageAlt?: string;
   ctaPosition?: "bottom-left" | "bottom-center" | "bottom-right";
   burst: { top: string; big: string; bottom: string };
   tone: "cream" | "ink" | "accent";

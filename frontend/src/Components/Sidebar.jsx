@@ -25,6 +25,7 @@ const dashboardPath = {
   staff: "/StaffDashboard",
   report: "/ReportDashboard",
   seo: "/BlogStudio",
+  seo_store: "/OnlineStoreStudio",
 };
 
 // `label` is an i18n key under the `sidebar` namespace, resolved at render.
@@ -97,6 +98,9 @@ const menuByRole = {
   // thing this account can do — see the fence in backend Authmiddleware.
   seo: [
     { label: "sidebar.blogStudio", path: "", icon: FiBookOpen },
+  ],
+  seo_store: [
+    { label: "sidebar.onlineStore", path: "", icon: FiGlobe },
   ],
 };
 

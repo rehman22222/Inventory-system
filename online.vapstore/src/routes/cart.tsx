@@ -8,6 +8,19 @@ import { useCatalog } from "@/lib/catalog-context";
 import { formatPrice } from "@/lib/format";
 import { cldProductThumbImage } from "@/lib/img";
 
+function eventDealTerms(deal: {
+  mode: "bundle" | "mix";
+  groupQuantity: number;
+  discountType: "amount" | "percent" | "setPrice";
+  discount: number;
+}) {
+  const quantity = Math.floor(Number(deal.groupQuantity || 0));
+  if (deal.mode !== "mix" || quantity < 2) return "Deal";
+  if (deal.discountType === "setPrice") return `Any ${quantity} for ${formatPrice(deal.discount)}`;
+  if (deal.discountType === "percent") return `Any ${quantity} - ${deal.discount}% off`;
+  return `Any ${quantity} - ${formatPrice(deal.discount)} off`;
+}
+
 export const Route = createFileRoute("/cart")({
   component: Cart,
   head: () => ({
@@ -29,6 +42,31 @@ function Cart() {
   const shipping = subtotal >= freeThreshold || subtotal === 0 ? 0 : flatRate;
   const total = subtotal + shipping;
   const toFreeShipping = Math.max(0, freeThreshold - subtotal);
+  const eventDeals = (settings.events?.items || [])
+    .filter(
+      (item) =>
+        item?.enabled === true &&
+        item.kind === "deal" &&
+        item.deal?.mode === "mix" &&
+        Number(item.deal.groupQuantity || 0) >= 2 &&
+        Array.isArray(item.deal.productIds) &&
+        item.deal.productIds.length > 0,
+    )
+    .map((item) => {
+      const deal = item.deal!;
+      const coveredQty = lines.reduce(
+        (sum, line) =>
+          deal.productIds?.includes(line.productId) ? sum + line.qty : sum,
+        0,
+      );
+      return {
+        id: deal.id,
+        terms: eventDealTerms(deal),
+        needed: Math.floor(Number(deal.groupQuantity || 0)),
+        coveredQty,
+      };
+    })
+    .filter((deal) => deal.coveredQty > 0);
 
   if (empty) {
     return (
@@ -189,6 +227,34 @@ function Cart() {
               {toFreeShipping > 0 && (
                 <div className="mt-4 border hair bg-surface p-3 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
                   {t("cart.addForFreeShipping", { amount: formatPrice(toFreeShipping) })}
+                </div>
+              )}
+
+              {eventDeals.length > 0 && (
+                <div className="mt-4 grid gap-2">
+                  {eventDeals.map((deal) => {
+                    const remaining = Math.max(0, deal.needed - deal.coveredQty);
+                    return (
+                      <div
+                        key={deal.id}
+                        className={`border hair p-3 font-mono text-[10px] uppercase tracking-widest ${
+                          remaining === 0
+                            ? "border-accent bg-accent/20 text-ink"
+                            : "bg-surface text-ink-muted"
+                        }`}
+                      >
+                        <div className="font-bold">
+                          {remaining === 0 ? "Deal unlocked" : "Deal available"}
+                        </div>
+                        <div className="mt-1 normal-case tracking-normal">
+                          {deal.terms}
+                          {remaining === 0
+                            ? " - this offer is in your cart and will apply at checkout"
+                            : ` - add ${remaining} more to unlock`}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 

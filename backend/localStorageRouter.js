@@ -391,6 +391,7 @@ function localStorageRouter(app) {
   router.get("/auth/staffuser", (_req, res) => res.json(readStore().users.filter((user) => user.role === "staff").map(publicUser)));
   router.get("/auth/manageruser", (_req, res) => res.json(readStore().users.filter((user) => user.role === "manager").map(publicUser)));
   router.get("/auth/adminuser", (_req, res) => res.json(readStore().users.filter((user) => user.role === "admin").map(publicUser)));
+  router.get("/auth/onlinestoreuser", (_req, res) => res.json(readStore().users.filter((user) => user.role === "seo_store").map(publicUser)));
   router.delete("/auth/removeuser/:UserId", (req, res) => {
     const store = readStore();
     store.users = store.users.filter((user) => user._id !== req.params.UserId);

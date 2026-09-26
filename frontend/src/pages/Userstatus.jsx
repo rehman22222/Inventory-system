@@ -10,6 +10,7 @@ import {
   staffUser,
   managerUser,
   adminUser,
+  onlineStoreUser,
 } from "../features/authSlice";
 import { RaiseRequest } from "../features/approvalSlice";
 import  UserRoleChart from '../lib/Usersgraph'
@@ -18,7 +19,7 @@ const EMPTY_USER = { name: "", email: "", password: "", role: "staff" };
 
 function Userstatus() {
   const { t } = useTranslation();
-  const { staffuser, manageruser, adminuser } = useSelector((state) => state.auth);
+  const { staffuser, manageruser, adminuser, onlinestoreuser } = useSelector((state) => state.auth);
   const { issubmitting } = useSelector((state) => state.approval);
   const dispatch = useDispatch();
   const [form, setForm] = useState(EMPTY_USER);
@@ -28,6 +29,7 @@ function Userstatus() {
     dispatch(staffUser());
     dispatch(managerUser());
     dispatch(adminUser());
+    dispatch(onlineStoreUser());
   }, [dispatch]);
 
   // Admins no longer delete directly — they ask the superadmin to.
@@ -130,6 +132,7 @@ function Userstatus() {
                 superadmin for approval like every other account an admin asks
                 for. */}
             <option value="seo">{t("users.seo")}</option>
+            <option value="seo_store">{t("users.seoStore")}</option>
           </select>
         </div>
 
@@ -158,6 +161,24 @@ function Userstatus() {
                   <p className="text-base-content/60 text-sm">{user.email}</p>
                 </div>
                 <div><TiDelete  onClick={()=>handleremove(user)}  className="text-red-600 text-2xl"/></div>
+              </div>
+            ))
+          ) : (
+            <p className="text-base-content/50">{t("users.noUsers")}</p>
+          )}
+        </div>
+
+        <div className=" bg-base-100 p-4 rounded-lg shadow-md mb-4">
+          <h2 className="text-lg bg-base-100 font-semibold mb-2">{t("users.seoStoreUser")}</h2>
+          {onlinestoreuser?.length > 0 ? (
+            onlinestoreuser.map((user, index) => (
+              <div key={index} className="flex bg-base-100 items-center space-x-4 p-2 border-b">
+                <img src={user?.ProfilePic || image} alt="User" className="w-10 h-10 bg-base-100 rounded-full" />
+                <div className="bg-base-100">
+                  <p className="font-medium">{user.name}</p>
+                  <p className="text-base-content/60 text-sm">{user.email}</p>
+                </div>
+                <div><TiDelete onClick={() => handleremove(user)} className="text-red-600 text-2xl" /></div>
               </div>
             ))
           ) : (

@@ -294,7 +294,7 @@ function POSPage() {
   useEffect(() => {
     dispatch(gettingallproducts({ view: "pos" }));
     dispatch(gettingallCategory());
-    dispatch(gettingallDeals());
+    dispatch(gettingallDeals("pos"));
     dispatch(gettingStore());
     dispatch(getQuickSellCards());
   }, [dispatch]);
@@ -2705,7 +2705,7 @@ function POSPage() {
             setModal(null);
             // A new or edited offer has to reach the basket that is open right
             // now, not the next one.
-            dispatch(gettingallDeals());
+            dispatch(gettingallDeals("pos"));
           }}
         />
       )}

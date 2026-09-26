@@ -16,6 +16,14 @@ const DealSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
 
+    // Where this offer is allowed to be used. Missing legacy values are
+    // treated as "both" by the readers so existing deals keep working.
+    channel: {
+      type: String,
+      enum: ["pos", "online", "both"],
+      default: "both",
+    },
+
     // How the set is recognised in the basket.
     //
     //   bundle — the original: a named recipe. "1 vape + 2 coils", every line

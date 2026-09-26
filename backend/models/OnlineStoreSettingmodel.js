@@ -141,6 +141,7 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
     // Shop logo (Cloudinary URL). Shown in customer emails' header; blank falls
     // back to the brand name as text.
     logo: { type: String, default: "", trim: true },
+    logoAlt: { type: String, default: "", trim: true, maxlength: 160 },
     social: {
       instagram: { type: String, default: "", trim: true },
       facebook: { type: String, default: "", trim: true },
@@ -166,6 +167,8 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
       openingHours: { type: String, default: "Mon-Sat 9am - 4pm", trim: true },
       paymentImage: { type: String, default: "/payment-logo2.webp", trim: true },
       restrictionImage: { type: String, default: "/not.webp", trim: true },
+      paymentImageAlt: { type: String, default: "Accepted payment methods", trim: true, maxlength: 160 },
+      restrictionImageAlt: { type: String, default: "Age restricted product warnings", trim: true, maxlength: 160 },
       whyECigarettesTitle: {
         type: String,
         default: "Why e-cigarettes?",
@@ -233,6 +236,7 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
         // Cloudinary's handle for the file, so replacing or removing the
         // picture can clean up after itself rather than leaving it orphaned.
         publicId: { type: String, default: "", trim: true },
+        alt: { type: String, default: "", trim: true, maxlength: 160 },
       },
       align: {
         type: String,
@@ -299,6 +303,7 @@ const OnlineStoreSettingSchema = new mongoose.Schema(
           image: {
             url: { type: String, default: "", trim: true },
             publicId: { type: String, default: "", trim: true },
+            alt: { type: String, default: "", trim: true, maxlength: 160 },
           },
         },
       ],

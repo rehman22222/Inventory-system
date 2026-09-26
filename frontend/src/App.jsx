@@ -87,6 +87,11 @@ function App() {
           <Route path="Profilepage" element={protect(<Profilepage />, ["seo"])} />
         </Route>
 
+        <Route path="/OnlineStoreStudio" element={protect(<StaffDashboard />, ["seo_store"])}>
+          <Route index element={protect(<OnlineStorePage />, ["seo_store"])} />
+          <Route path="Profilepage" element={protect(<Profilepage />, ["seo_store"])} />
+        </Route>
+
         <Route path="/AdminDashboard" element={protect(<AdminDashboard />, ["admin"])}>
           <Route index element={protect(<Dashboardpage />, ["admin"])} />
           <Route path="product" element={protect(<Productpage />, ["admin"])} />

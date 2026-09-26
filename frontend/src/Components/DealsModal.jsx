@@ -91,7 +91,7 @@ function DealsModal({ onClose }) {
   const scrollRef = useRef(null);
 
   useEffect(() => {
-    dispatch(gettingallDeals());
+    dispatch(gettingallDeals("pos"));
     dispatch(gettingallCategory());
   }, [dispatch]);
 
@@ -311,6 +311,9 @@ function DealsModal({ onClose }) {
       // Empty means no limit at that end, which is what most deals want.
       startsAt: startsAt || null,
       endsAt: endsAt || null,
+      // Deals created from the till are intentionally unavailable to the
+      // storefront unless somebody explicitly creates a separate online one.
+      ...(editingId ? {} : { channel: "pos" }),
       // In mix mode every chosen product is simply eligible — the per-product
       // quantity is not a requirement, so it is pinned to 1.
       items: picked.map((entry) => ({

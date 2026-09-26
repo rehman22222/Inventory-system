@@ -229,7 +229,7 @@ export function Footer() {
           {settings.footer.paymentImage && (
             <img
               src={settings.footer.paymentImage}
-              alt="Accepted payment methods"
+              alt={settings.footer.paymentImageAlt || "Accepted payment methods"}
               width={220}
               height={48}
               className="h-9 w-auto object-contain"
@@ -242,7 +242,7 @@ export function Footer() {
           {settings.footer.restrictionImage && (
             <img
               src={settings.footer.restrictionImage}
-              alt="Age restricted product warnings"
+              alt={settings.footer.restrictionImageAlt || "Age restricted product warnings"}
               width={220}
               height={48}
               className="h-9 w-auto object-contain"

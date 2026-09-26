@@ -22,6 +22,7 @@ import { cldHeroDesktopImage, cldHeroMobileImage, cldProductCardImage } from "@/
 function EventsHeading({
   heading,
   headingImage,
+  headingImageAlt,
   align = "center",
   items = [],
 }: {
@@ -33,11 +34,13 @@ function EventsHeading({
    * `heading` stays required, and is the alt text when this is set — a screen
    * reader still announces the season, and the words show if the file fails. */
   headingImage?: string;
+  headingImageAlt?: string;
   align?: "left" | "center" | "right";
   items?: {
     kind: "product" | "category" | "deal";
     title: string;
     image: string;
+    imageAlt?: string;
     tag?: string;
     price?: number;
     eventPrice?: number | null;
@@ -82,7 +85,7 @@ function EventsHeading({
              will have to read. */
           <img
             src={headingImage}
-            alt={heading}
+            alt={headingImageAlt || heading}
             className="h-[11.7rem] w-auto max-w-full object-contain sm:h-[14.6rem] md:h-[17.5rem]"
             loading="lazy"
             decoding="async"
@@ -102,7 +105,7 @@ function EventsHeading({
                 key={`${item.kind}-${item.title}-${index}`}
                 {...item.href}
                 preload="intent"
-                className={`event-pick-card group relative w-[8.25rem] shrink-0 origin-bottom overflow-hidden border hair bg-surface p-2.5 text-left shadow-[0_18px_45px_rgba(0,0,0,0.14)] transition-transform duration-300 hover:z-30 hover:-translate-y-5 hover:rotate-0 sm:w-[14rem] sm:p-4 md:w-[16rem] lg:w-[17rem] ${
+                className={`event-pick-card group relative w-[8.25rem] shrink-0 origin-bottom overflow-hidden border hair bg-surface p-2 text-left shadow-[0_18px_45px_rgba(0,0,0,0.14)] transition-transform duration-300 hover:z-30 hover:-translate-y-5 hover:rotate-0 sm:w-[16rem] sm:p-3 md:w-[19rem] lg:w-[20rem] ${
                   fanClasses[index] || "rotate-0"
                 }`}
               >
@@ -115,11 +118,11 @@ function EventsHeading({
                   {item.image ? (
                     <img
                       src={item.image}
-                      alt={item.title}
+                      alt={item.imageAlt || item.title}
                       loading="lazy"
                       decoding="async"
                       sizes="(min-width: 768px) 224px, 30vw"
-                      className="h-full w-full object-contain p-2 transition-transform duration-500 group-hover:scale-105 sm:p-3"
+                      className="h-full w-full object-contain p-1 transition-transform duration-500 group-hover:scale-105 sm:p-2"
                     />
                   ) : (
                     /* Deliberately blank. The name is already in the caption
@@ -153,7 +156,7 @@ function EventsHeading({
                    * none. */}
                   {(typeof item.price === "number" || item.dealLine) && (
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 sm:mt-3 sm:gap-2">
-                      {item.kind !== "category" && typeof item.price === "number" && (
+                      {item.kind !== "category" && item.kind !== "deal" && typeof item.price === "number" && (
                         <>
                           <span className="font-display text-base sm:text-xl">
                             {formatPrice(
@@ -168,7 +171,7 @@ function EventsHeading({
                         </>
                       )}
                       {item.dealLine && (
-                        <span className="inline-block bg-accent px-2 py-1 font-mono text-[8px] font-bold uppercase tracking-wide text-accent-foreground sm:text-[10px]">
+                        <span className="inline-block whitespace-nowrap bg-accent px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wide text-accent-foreground sm:text-[13px]">
                           {item.dealLine}
                         </span>
                       )}
@@ -289,6 +292,7 @@ function eventDeckItems(
           kind: "deal" as const,
           title: cardTitle || deal.name,
           image: cardImage,
+          imageAlt: item.image?.alt || cardTitle || deal.name || "Event card image",
           dealLine: offer,
           tag: item.tag,
           /* What one of them costs on its own, so the card can show the
@@ -314,6 +318,7 @@ function eventDeckItems(
           kind: "category" as const,
           title: cardTitle || category.name,
           image: cardImage,
+          imageAlt: item.image?.alt || cardTitle || category.name,
           dealLine: offer,
           tag: item.tag,
           href: { to: "/category/$slug" as const, params: { slug: category.slug } },
@@ -325,6 +330,7 @@ function eventDeckItems(
           kind: "product" as const,
           title: cardTitle || product.name,
           image: cardImage,
+          imageAlt: item.image?.alt || cardTitle || product.imageAlt || product.name,
           dealLine: offer,
           tag: item.tag,
           price: product.price,
@@ -432,6 +438,7 @@ function Home() {
         <EventsHeading
           heading={settings.events.heading?.trim() || ""}
           headingImage={settings.events.headingImage?.url || undefined}
+          headingImageAlt={settings.events.headingImage?.alt || undefined}
           align={settings.events.align || "center"}
           items={eventItems}
         />

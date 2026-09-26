@@ -72,11 +72,15 @@ module.exports.authmiddleware = async (req, res, next) => {
  * ------------------------------------------------------------------------ */
 
 // Roles whose reach is defined by an allowlist instead of by role guards.
-const CONTENT_ONLY_ROLES = new Set(["seo"]);
+const CONTENT_ONLY_ROLES = new Set(["seo", "seo_store"]);
 
 const CONTENT_ROLE_ALLOWLIST = [
   // The blog itself — list, create, edit, delete, and images for articles.
   /^\/api\/online\/blog(\/|$|\?)/,
+  // The website specialist may manage the complete Online Store console.
+  /^\/api\/online(\/|$|\?)/,
+  // Online Store's offer builder uses the shared deal endpoints.
+  /^\/api\/deal(\/|$|\?)/,
   // Signing in and out, and their own name, password and avatar.
   /^\/api\/auth\/(logout|updateProfile|checkauth|me)(\/|$|\?)/,
 ];
@@ -188,7 +192,7 @@ module.exports.reportAccess = (req, res, next) => {
 module.exports.adminOrSuperadmin = (req, res, next) => {
   const role = req.user?.role;
 
-  if (role !== "admin" && role !== "superadmin") {
+  if (role !== "admin" && role !== "superadmin" && role !== "seo_store") {
     return res.status(403).json({ message: "Access denied. Admin or super admin only." });
   }
 
@@ -258,6 +262,13 @@ module.exports.tillUser = (req, res, next) => {
   // authmiddleware already refuses these accounts every till path; this is the
   // same answer given a second time, so that a route which somehow reaches
   // tillUser without the fence still cannot be worked by an outside agency.
+  // The website specialist may use the shared deal endpoints because the
+  // Online Store offer builder lives there, but still cannot use any till path.
+  const path = String(req.originalUrl || req.url || "").split("?")[0];
+  if (req.user.role === "seo_store" && /^\/api\/deal(\/|$)/.test(path)) {
+    return next();
+  }
+
   if (CONTENT_ONLY_ROLES.has(req.user.role)) {
     return res
       .status(403)
