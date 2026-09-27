@@ -10,6 +10,16 @@ const Sale=require('../models/Salesmodel')
 const Deal=require('../models/Dealmodel')
 
 const logActivity=require('../libs/logger')
+const { snapshot, diff, describe } = require('../libs/auditDiff')
+
+// Everything EditProduct can change, recorded before/after in the activity log.
+const PRODUCT_AUDIT_FIELDS = ["name", "Price", "costPrice", "quantity", "barcode", "Category", "shelfLabel", "lowStockThreshold", "expiryDate", "Desciption"];
+const PRODUCT_AUDIT_LABELS = {
+  labels: { Price: "price", costPrice: "cost price", quantity: "stock", Category: "category", shelfLabel: "shelf label", lowStockThreshold: "low-stock alert", expiryDate: "expiry", Desciption: "description" },
+  // An id or a paragraph means nothing in a one-line summary; the values are
+  // still kept in `changes`.
+  opaque: ["Category", "Desciption", "image"],
+};
 const { uploadImage, deleteImage } = require('../libs/cloudinaryImage')
 const { ean13FromSequence } = require('../libs/barcode')
 const { nextSequence } = require('../models/Countermodel')
@@ -442,6 +452,10 @@ module.exports.quickAddProduct = async (req, res) => {
           return res.status(404).json({ message: "Product not found." });
         }
 
+        // Taken before anything below touches the record, so the log can say
+        // what the price (or anything else) was, not just that it changed.
+        const before = snapshot(product, PRODUCT_AUDIT_FIELDS);
+
         // Apply only the fields that were actually provided. costPrice is handled
         // separately below because it may need converting first.
         const editable = ["name", "Desciption", "shelfLabel", "Category", "Price", "quantity", "lowStockThreshold", "barcode", "expiryDate"];
@@ -487,15 +501,23 @@ module.exports.quickAddProduct = async (req, res) => {
         }
 
         await product.save();
+
+        const changes = diff(before, product, PRODUCT_AUDIT_FIELDS);
+        if (req.file) changes.push({ field: "image", from: null, to: "replaced" });
+
         await product.populate("Category");
 
         void logActivity({
           action: "Update Product",
-          description: `Product "${product.name}" was updated.`,
+          description: changes.length
+            ? `Product "${product.name}" was updated: ${describe(changes, PRODUCT_AUDIT_LABELS)}.`
+            : `Product "${product.name}" was saved with no changes.`,
           entity: "product",
           entityId: product._id,
           userId: userId,
           ipAddress: ipAddress,
+          userAgent: req.get("user-agent"),
+          changes,
         });
 
         res.status(200).json(product);

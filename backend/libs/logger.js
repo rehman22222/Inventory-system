@@ -1,6 +1,8 @@
 const ActivityLog = require("../models/ActivityLogmodel");
 
-const logActivity = async ({ action, description, entity, entityId, userId, ipAddress }) => {
+const MAX_USER_AGENT = 300;
+
+const logActivity = async ({ action, description, entity, entityId, userId, ipAddress, userAgent, changes }) => {
   try {
     const newActivity = new ActivityLog({
       action,
@@ -9,6 +11,8 @@ const logActivity = async ({ action, description, entity, entityId, userId, ipAd
       entityId,
       userId,
       ipAddress,
+      userAgent: userAgent ? String(userAgent).slice(0, MAX_USER_AGENT) : undefined,
+      changes: Array.isArray(changes) && changes.length ? changes : undefined,
     });
 
     await newActivity.save();

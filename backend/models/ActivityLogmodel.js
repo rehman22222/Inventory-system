@@ -50,6 +50,26 @@ const ActivityLogSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
+    // The browser/device the action came from. An IP alone cannot tell a
+    // manager's phone from a stranger's laptop on the same network.
+    userAgent: {
+      type: String,
+      required: false,
+    },
+    // What an edit actually did, field by field (see libs/auditDiff). Empty on
+    // entries that are not edits, and on every entry written before this
+    // existed — those only ever said "was updated".
+    changes: {
+      type: [
+        {
+          _id: false,
+          field: { type: String, required: true },
+          from: { type: mongoose.Schema.Types.Mixed },
+          to: { type: mongoose.Schema.Types.Mixed },
+        },
+      ],
+      default: undefined,
+    },
   },
   { timestamps: true }
 );

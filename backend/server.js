@@ -33,6 +33,7 @@ const {
   storefrontRouter,
 } = require("./Routers/onlineStoreRouter");
 const localStorageRouter = require("./localStorageRouter");
+const { createRequestLogger } = require("./middleware/requestLogger");
 
 
 require("dotenv").config();
@@ -257,6 +258,13 @@ app.use((req, _res, next) => {
 
 app.set("io", io);
 app.use(cookieParser());
+
+// Server-side request log (see middleware/requestLogger). Mounted before the
+// origin check and the rate limiters so the requests they refuse are recorded
+// too. Local-storage mode has no database to write to.
+if (!useLocalStorage) {
+  app.use(createRequestLogger());
+}
 
 // A second CSRF boundary for cookie-authenticated writes. SameSite=Lax blocks
 // normal cross-site cookie use; this also covers unusual browser/proxy cases.

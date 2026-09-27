@@ -6,7 +6,7 @@
     "node": ">=18 <=24"
   },
   "scripts": {
-    "test": "node scripts/verifyReportLabels.js && node scripts/verifyReportRowColours.js && node scripts/verifySalesArchive.js && node scripts/verifyBlogSecurity.js && node scripts/verifyOrderEmails.js && node scripts/verifyPosCredit.js && node scripts/verifyTillEndToEnd.js && node scripts/verifyQuickSell.js && node scripts/verifyCheckoutIdempotency.js && node scripts/verifyOnlinePromotions.js && node scripts/verifyOnlineDeals.js && node scripts/verifyEventCards.js && node scripts/verifyQuickCashCatalogue.js && node scripts/verifyLoyaltyAccounts.js",
+    "test": "node scripts/verifyAuditTrail.js && node scripts/verifyReportLabels.js && node scripts/verifyReportRowColours.js && node scripts/verifySalesArchive.js && node scripts/verifyBlogSecurity.js && node scripts/verifyOrderEmails.js && node scripts/verifyPosCredit.js && node scripts/verifyTillEndToEnd.js && node scripts/verifyQuickSell.js && node scripts/verifyCheckoutIdempotency.js && node scripts/verifyOnlinePromotions.js && node scripts/verifyOnlineDeals.js && node scripts/verifyEventCards.js && node scripts/verifyQuickCashCatalogue.js && node scripts/verifyLoyaltyAccounts.js",
     "start": "node server",
     "build": "cd ../frontend && npm install && npm run build",
     "postinstall": "node scripts/postinstall.js",
@@ -20,6 +20,8 @@
     "seed-quick-sell": "node scripts/seedQuickSell.js",
     "clear-trading": "node scripts/clearTradingRecords.js",
     "migrate-blog": "node scripts/migrateBlogToRichText.js",
+    "request-logs": "node scripts/readRequestLogs.js",
+    "verify:audit": "node scripts/verifyAuditTrail.js",
     "verify:blog": "node scripts/verifyBlogSecurity.js",
     "verify:emails": "node scripts/verifyOrderEmails.js",
     "verify:pos-credit": "node scripts/verifyPosCredit.js",

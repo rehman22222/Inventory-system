@@ -3,6 +3,22 @@ const Deal = require("../models/Dealmodel");
 const Product = require("../models/Productmodel");
 const OnlineStoreSetting = require("../models/OnlineStoreSettingmodel");
 const logActivity = require("../libs/logger");
+const { snapshot, diff, describe } = require("../libs/auditDiff");
+
+// Everything updateDeal can change, recorded before/after in the activity log.
+// The product list is compared separately (see itemKeys) — as a whole array it
+// would only ever say "changed".
+const DEAL_AUDIT_FIELDS = ["name", "discount", "discountType", "mode", "groupQuantity", "quantityRule", "channel", "startsAt", "endsAt", "active"];
+const DEAL_AUDIT_LABELS = {
+  labels: { discountType: "discount type", groupQuantity: "buy quantity", quantityRule: "quantity rule", startsAt: "starts", endsAt: "ends" },
+};
+
+// "productId×quantity" per line, so a changed quantity reads as one line out
+// and one line in.
+const itemKeys = (items) =>
+  (Array.isArray(items) ? items : []).map(
+    (item) => `${String(item.product?._id || item.product)}×${item.quantity || 1}`
+  );
 
 // Normalise the incoming items into { product, quantity } with valid ids and
 // no duplicates (a repeated product just raises its required quantity).
@@ -226,6 +242,10 @@ module.exports.updateDeal = async (req, res) => {
       return res.status(404).json({ message: "Deal not found" });
     }
 
+    // Before anything is applied, so the log records what the deal was.
+    const before = snapshot(deal, DEAL_AUDIT_FIELDS);
+    const itemsBefore = itemKeys(deal.items);
+
     const {
       name,
       discount,
@@ -323,15 +343,35 @@ module.exports.updateDeal = async (req, res) => {
     }
 
     await deal.save();
+
+    const changes = diff(before, deal, DEAL_AUDIT_FIELDS);
+    const itemsAfter = itemKeys(deal.items);
+    const added = itemsAfter.filter((key) => !itemsBefore.includes(key));
+    const removed = itemsBefore.filter((key) => !itemsAfter.includes(key));
+    if (added.length || removed.length) {
+      changes.push({ field: "items", from: removed, to: added });
+    }
+
     await deal.populate("items.product", "name Price barcode");
 
     await logActivity({
       action: "Update Deal",
-      description: `Deal "${deal.name}" updated.`,
+      description: changes.length
+        ? `Deal "${deal.name}" updated: ${describe(
+            changes.filter((c) => c.field !== "items"),
+            DEAL_AUDIT_LABELS
+          )}${
+            added.length || removed.length
+              ? `${changes.length > 1 ? "; " : ""}products +${added.length} / -${removed.length}`
+              : ""
+          }.`
+        : `Deal "${deal.name}" saved with no changes.`,
       entity: "product",
       entityId: deal._id,
       userId: req.user?._id,
       ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+      changes,
     });
 
     return res.status(200).json({ message: "Deal updated", deal });
