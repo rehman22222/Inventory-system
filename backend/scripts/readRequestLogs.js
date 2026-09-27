@@ -3,6 +3,9 @@
  *   node scripts/readRequestLogs.js [filters]
  *   npm run request-logs -- [filters]
  *
+ * From PowerShell, npm drops "--" flags. Run the node form above, or write
+ * the filters without dashes: npm run request-logs -- hours=1 user=manager changes
+ *
  * READ ONLY. It opens the database, reads, prints, and disconnects. There is no
  * create, update or delete anywhere in this file, and index building is off, so
  * it is safe to run against the live shop.
@@ -37,13 +40,36 @@ mongoose.set("autoIndex", false);
 mongoose.set("autoCreate", false);
 const RequestLog = require("../models/RequestLogmodel");
 
+const FLAGS = new Set(["changes", "summary"]);
+const OPTIONS = new Set(["hours", "since", "until", "user", "ip", "path", "method", "status", "limit", "csv"]);
+
+// Accepts "--hours 24", "--hours=24" and "hours=24". The last form exists for
+// PowerShell, which drops the "--" in `npm run request-logs -- --hours 24`, so
+// npm swallows the flag and only a bare "24" arrives here. Anything unknown or
+// left over is an error: a filter silently ignored prints the wrong rows while
+// looking like the right answer.
 const parseArgs = (argv) => {
-  const flags = new Set(["changes", "summary"]);
   const out = {};
   for (let i = 0; i < argv.length; i += 1) {
-    const key = argv[i].replace(/^--/, "");
-    if (flags.has(key)) out[key] = true;
-    else out[key] = argv[++i];
+    const arg = argv[i];
+    const match = /^(?:--)?([a-z]+)(?:=(.*))?$/i.exec(arg);
+    const bare = match && FLAGS.has(match[1].toLowerCase());
+    const key = match && (arg.startsWith("--") || match[2] !== undefined || bare) ? match[1].toLowerCase() : null;
+
+    if (key && FLAGS.has(key)) {
+      out[key] = true;
+    } else if (key && OPTIONS.has(key)) {
+      const value = match[2] !== undefined ? match[2] : argv[++i];
+      if (value === undefined || value === "") throw new Error(`--${key} needs a value`);
+      out[key] = value;
+    } else {
+      throw new Error(
+        `Unrecognised argument "${arg}".\n` +
+          "  From PowerShell, npm drops \"--\" flags; use either:\n" +
+          "    node scripts/readRequestLogs.js --hours 1\n" +
+          "    npm run request-logs -- hours=1"
+      );
+    }
   }
   return out;
 };
@@ -141,7 +167,7 @@ const csvCell = (value) => {
       console.log(
         [
           stamp(row.createdAt),
-          (row.userName || row.attemptedEmail || "-").padEnd(18),
+          (row.userName || row.attemptedEmail || "-").slice(0, 24).padEnd(24),
           (row.ip || "-").padEnd(15),
           row.method.padEnd(6),
           String(row.status),
