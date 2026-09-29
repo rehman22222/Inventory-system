@@ -17,16 +17,16 @@
  * matters; nothing here is a security control.
  */
 
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import toast from "react-hot-toast";
 import {
   FiEdit2,
   FiExternalLink,
   FiEye,
+  FiPlus,
   FiSave,
   FiTrash2,
-  FiX,
 } from "react-icons/fi";
 import {
   createOnlineBlogPost,
@@ -50,6 +50,39 @@ export const BLOG_PAGE_DEFAULTS = {
   latestHeading: "Latest articles",
   seoTitle: "Blog",
   seoDescription: "News, guides and product stories from Cliffs of Puff.",
+};
+
+/* An article being written is kept in this browser until it is saved.
+ *
+ * The form lives in component state, and that state goes whenever the
+ * component does: switching to another Online store tab, a refresh, or the
+ * sign-out every session gets at the shop's midnight. An hour's writing lost to
+ * a stray click is the one failure a writing tool must not have. So the unsaved
+ * draft is copied here as it changes and offered back when the form next opens.
+ * It is cleared once the article is saved or deliberately discarded.
+ *
+ * This is a convenience, not storage: it is one browser, and it may be
+ * unavailable (private windows, blocked storage), in which case nothing here
+ * throws and the editor simply works as it did before. */
+const DRAFT_STORAGE_KEY = "e360_blog_unsaved_draft";
+const DRAFT_SAVE_DELAY_MS = 800;
+
+const readStoredDraft = () => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(DRAFT_STORAGE_KEY) || "null");
+    return parsed && typeof parsed.draft === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeStoredDraft = (value) => {
+  try {
+    if (value) window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(value));
+    else window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+  } catch {
+    // Storage full or blocked: the draft just isn't backed up.
+  }
 };
 
 const makeBlankBlogPost = () => ({
@@ -136,6 +169,25 @@ const legacyBlocksToHtml = (blocks) =>
 const postBodyHtml = (post) =>
   post?.content || legacyBlocksToHtml(post?.blocks) || "";
 
+// The form's shape for an article the server sent back.
+const draftFromPost = (post) => ({
+  title: post.title || "",
+  slug: post.slug || "",
+  excerpt: post.excerpt || "",
+  content: postBodyHtml(post),
+  coverImage: post.coverImage || "",
+  coverAlt: post.coverAlt || "",
+  author: post.author || "Cliffs of Puff",
+  featured: Boolean(post.featured),
+  titleAlign: post.titleAlign === "left" ? "left" : "center",
+  status: post.status === "published" ? "published" : "draft",
+  publishedAt: toLocalDateTime(post.publishedAt),
+  seoTitle: post.seoTitle || "",
+  seoDescription: post.seoDescription || "",
+  canonicalUrl: post.canonicalUrl || "",
+  noindex: Boolean(post.noindex),
+});
+
 /* Google truncates a title around 60 characters and a description around 155,
  * so the counters warn before the hard field limits (70/170) rather than at
  * them — an SEO person wants to know they are about to be cut off, not that
@@ -203,39 +255,68 @@ export default function BlogManager({ posts = [], settings, isActing, canEditPag
    * uses it to know when to replace its document — it must not do that on
    * every keystroke, or the cursor jumps to the end mid-word. */
   const [editorKey, setEditorKey] = useState(0);
+  /* The draft as it last matched what is saved (or blank, for a new article).
+   * Anything different from this is unsaved work. */
+  const savedSnapshot = useRef(JSON.stringify(makeBlankBlogPost()));
+  const isDirty = JSON.stringify(draft) !== savedSnapshot.current;
 
   useEffect(() => {
     setPageDraft({ ...BLOG_PAGE_DEFAULTS, ...(settings?.blog || {}) });
   }, [settings?.blog]);
 
-  const reset = () => {
-    setEditingId("");
-    setDraft(makeBlankBlogPost());
+  // Offer back whatever was being written when the form last went away.
+  useEffect(() => {
+    const stored = readStoredDraft();
+    if (!stored) return;
+    setEditingId(stored.editingId || "");
+    setDraft({ ...makeBlankBlogPost(), ...stored.draft });
+    savedSnapshot.current = stored.baseline || JSON.stringify(makeBlankBlogPost());
+    setEditorKey((key) => key + 1);
+    toast.success("Your unsaved article was restored.", { id: "blog-draft-restored" });
+  }, []);
+
+  // Keep the unsaved draft backed up while it changes; drop it once saved.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      writeStoredDraft(
+        isDirty ? { editingId, draft, baseline: savedSnapshot.current, savedAt: Date.now() } : null,
+      );
+    }, DRAFT_SAVE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [draft, editingId, isDirty]);
+
+  // Closing or reloading the page with unsaved work asks first.
+  useEffect(() => {
+    if (!isDirty) return undefined;
+    const warn = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [isDirty]);
+
+  const load = (id, nextDraft) => {
+    setEditingId(id);
+    setDraft(nextDraft);
+    savedSnapshot.current = JSON.stringify(nextDraft);
+    writeStoredDraft(null);
     setEditorKey((key) => key + 1);
     setShowPreview(false);
   };
 
+  const confirmDiscard = () =>
+    !isDirty || window.confirm("You have unsaved changes to this article. Discard them?");
+
+  const reset = () => load("", makeBlankBlogPost());
+
+  const startNew = () => {
+    if (confirmDiscard()) reset();
+  };
+
   const edit = (post) => {
-    setEditingId(post._id);
-    setDraft({
-      title: post.title || "",
-      slug: post.slug || "",
-      excerpt: post.excerpt || "",
-      content: postBodyHtml(post),
-      coverImage: post.coverImage || "",
-      coverAlt: post.coverAlt || "",
-      author: post.author || "Cliffs of Puff",
-      featured: Boolean(post.featured),
-      titleAlign: post.titleAlign === "left" ? "left" : "center",
-      status: post.status === "published" ? "published" : "draft",
-      publishedAt: toLocalDateTime(post.publishedAt),
-      seoTitle: post.seoTitle || "",
-      seoDescription: post.seoDescription || "",
-      canonicalUrl: post.canonicalUrl || "",
-      noindex: Boolean(post.noindex),
-    });
-    setEditorKey((key) => key + 1);
-    setShowPreview(false);
+    if (post._id !== editingId && !confirmDiscard()) return;
+    load(post._id, draftFromPost(post));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -291,7 +372,26 @@ export default function BlogManager({ posts = [], settings, isActing, canEditPag
       return;
     }
     toast.success(editingId ? "Blog post updated" : "Blog post created");
-    reset();
+
+    /* Stay on the article. Clearing the form here made a successful save look
+     * exactly like losing everything. The editor's own document is kept as it
+     * is (editorKey is not bumped), so the cursor stays where it was; only the
+     * fields the server fills in — the slug built from the title, the publish
+     * time — are taken from what came back. */
+    const saved = result.payload;
+    if (saved?._id) {
+      const next = {
+        ...draft,
+        slug: saved.slug || draft.slug,
+        publishedAt: toLocalDateTime(saved.publishedAt) || draft.publishedAt,
+      };
+      setEditingId(saved._id);
+      setDraft(next);
+      savedSnapshot.current = JSON.stringify(next);
+    } else {
+      savedSnapshot.current = JSON.stringify(draft);
+    }
+    writeStoredDraft(null);
   };
 
   const saveBlogPage = async (event) => {
@@ -396,9 +496,9 @@ export default function BlogManager({ posts = [], settings, isActing, canEditPag
               >
                 <FiEye /> {showPreview ? "Back to editing" : "Preview"}
               </button>
-              {editingId && (
-                <button type="button" className="btn btn-sm" onClick={reset}>
-                  <FiX /> Cancel edit
+              {(editingId || isDirty) && (
+                <button type="button" className="btn btn-sm" onClick={startNew}>
+                  <FiPlus /> New article
                 </button>
               )}
             </div>
@@ -640,6 +740,13 @@ export default function BlogManager({ posts = [], settings, isActing, canEditPag
                   ? "Publish article"
                   : "Save draft"}
           </button>
+          <p className={`text-center text-xs ${isDirty ? "text-warning" : "text-base-content/50"}`} aria-live="polite">
+            {isDirty
+              ? "Unsaved changes — kept in this browser until you save."
+              : editingId
+                ? "All changes saved."
+                : ""}
+          </p>
         </form>
 
         <section className="min-w-0 rounded-xl border bg-base-100 p-4 sm:p-5">
