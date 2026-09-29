@@ -85,6 +85,15 @@ const writeStoredDraft = (value) => {
   }
 };
 
+/* A comparable fingerprint of the form, for "is there unsaved work?". An empty
+ * editor produces "<p></p>" where a blank form holds "", and the two must not
+ * count as a difference. */
+const snapshotOf = (draft) =>
+  JSON.stringify({
+    ...draft,
+    content: /^\s*(<p>\s*<\/p>\s*)*$/i.test(draft.content || "") ? "" : draft.content,
+  });
+
 const makeBlankBlogPost = () => ({
   title: "",
   slug: "",
@@ -257,8 +266,8 @@ export default function BlogManager({ posts = [], settings, isActing, canEditPag
   const [editorKey, setEditorKey] = useState(0);
   /* The draft as it last matched what is saved (or blank, for a new article).
    * Anything different from this is unsaved work. */
-  const savedSnapshot = useRef(JSON.stringify(makeBlankBlogPost()));
-  const isDirty = JSON.stringify(draft) !== savedSnapshot.current;
+  const savedSnapshot = useRef(snapshotOf(makeBlankBlogPost()));
+  const isDirty = snapshotOf(draft) !== savedSnapshot.current;
 
   useEffect(() => {
     setPageDraft({ ...BLOG_PAGE_DEFAULTS, ...(settings?.blog || {}) });
@@ -270,7 +279,7 @@ export default function BlogManager({ posts = [], settings, isActing, canEditPag
     if (!stored) return;
     setEditingId(stored.editingId || "");
     setDraft({ ...makeBlankBlogPost(), ...stored.draft });
-    savedSnapshot.current = stored.baseline || JSON.stringify(makeBlankBlogPost());
+    savedSnapshot.current = stored.baseline || snapshotOf(makeBlankBlogPost());
     setEditorKey((key) => key + 1);
     toast.success("Your unsaved article was restored.", { id: "blog-draft-restored" });
   }, []);
@@ -299,7 +308,7 @@ export default function BlogManager({ posts = [], settings, isActing, canEditPag
   const load = (id, nextDraft) => {
     setEditingId(id);
     setDraft(nextDraft);
-    savedSnapshot.current = JSON.stringify(nextDraft);
+    savedSnapshot.current = snapshotOf(nextDraft);
     writeStoredDraft(null);
     setEditorKey((key) => key + 1);
     setShowPreview(false);
@@ -315,7 +324,9 @@ export default function BlogManager({ posts = [], settings, isActing, canEditPag
   };
 
   const edit = (post) => {
-    if (post._id !== editingId && !confirmDiscard()) return;
+    // Reopening the article already open would reload the saved copy over
+    // unsaved edits, so that asks first too.
+    if (!confirmDiscard()) return;
     load(post._id, draftFromPost(post));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -387,9 +398,9 @@ export default function BlogManager({ posts = [], settings, isActing, canEditPag
       };
       setEditingId(saved._id);
       setDraft(next);
-      savedSnapshot.current = JSON.stringify(next);
+      savedSnapshot.current = snapshotOf(next);
     } else {
-      savedSnapshot.current = JSON.stringify(draft);
+      savedSnapshot.current = snapshotOf(draft);
     }
     writeStoredDraft(null);
   };
@@ -549,7 +560,9 @@ export default function BlogManager({ posts = [], settings, isActing, canEditPag
               />
             </section>
           ) : (
-            <Field label="Article">
+            // A div, not a <label>: see Field. Inside a label every click in the
+            // article pressed the editor's Undo button.
+            <Field label="Article" as="div">
               <Suspense
                 fallback={
                   <div className="grid h-96 place-items-center rounded-lg border border-base-300 bg-base-200/40">

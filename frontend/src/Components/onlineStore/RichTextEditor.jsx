@@ -133,8 +133,12 @@ export default function RichTextEditor({
       TableKit.configure({ table: { resizable: true } }),
     ],
     content: value || "",
-    onUpdate: ({ editor: instance }) => {
+    onUpdate: ({ editor: instance, transaction }) => {
       if (applyingExternal.current) return;
+      // TipTap also fires "update" when the editor is merely switched between
+      // editable and read-only (it is, around every save). Nothing was edited,
+      // so nothing is reported — otherwise an untouched form reads as unsaved.
+      if (transaction && !transaction.docChanged) return;
       onChange?.(instance.getHTML());
     },
     editorProps: {

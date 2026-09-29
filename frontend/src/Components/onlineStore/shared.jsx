@@ -8,12 +8,17 @@
  */
 
 /** A labelled form control. The label is the layout, not just text. */
-export function Field({ label, className = "", children }) {
+/* A label and its control. Rendered as a <label> so clicking the caption
+ * focuses the input — but pass as="div" for anything that is not a single
+ * input. A <label> forwards every click inside it to its first control, and for
+ * a rich-text editor that control is the toolbar's Undo button: each click in
+ * the article silently undid the last edit, and a double-click emptied it. */
+export function Field({ label, className = "", children, as: Tag = "label" }) {
   return (
-    <label className={`form-control ${className}`}>
+    <Tag className={`form-control ${className}`}>
       <span className="mb-1 text-xs capitalize">{label}</span>
       {children}
-    </label>
+    </Tag>
   );
 }
 

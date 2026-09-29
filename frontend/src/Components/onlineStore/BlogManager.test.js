@@ -203,6 +203,41 @@ test("starting a new article with unsaved work asks first, and respects no", asy
   expect(titleInput().value).toBe("");
 });
 
+test("pressing Edit on the open article does not silently throw away unsaved edits", async () => {
+  mockDispatch.mockResolvedValue({ payload: { _id: "post-1", slug: "p", title: "P" } });
+  const posts = [{ _id: "post-1", title: "P", slug: "p", content: "<p>saved</p>", status: "draft" }];
+  container = document.createElement("div");
+  document.body.appendChild(container);
+  root = createRoot(container);
+  await act(async () => {
+    root.render(<BlogManager posts={posts} settings={{}} isActing={false} canEditPage={false} />);
+  });
+  await flush();
+
+  const editButton = () => [...container.querySelectorAll("button")].find((b) => b.textContent.trim() === "Edit");
+  await act(async () => editButton().click());
+  expect(editor().value).toBe("<p>saved</p>");
+
+  await type(editor(), "<p>saved and more</p>");
+  window.confirm.mockReturnValue(false);
+  await act(async () => editButton().click());
+  expect(window.confirm).toHaveBeenCalled();
+  expect(editor().value).toBe("<p>saved and more</p>");
+});
+
+test("the article editor is not inside a <label> (every click would press its Undo button)", async () => {
+  await render();
+  expect(editor().closest("label")).toBeNull();
+});
+
+test("an untouched form is not reported as unsaved", async () => {
+  await render();
+  expect(container.textContent).not.toContain("Unsaved changes");
+  // What an empty TipTap document reports is not a change either.
+  await type(editor(), "<p></p>");
+  expect(container.textContent).not.toContain("Unsaved changes");
+});
+
 test("storage being unavailable never breaks the editor", async () => {
   jest.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
     throw new Error("blocked");
