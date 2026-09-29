@@ -49,7 +49,10 @@ function BlogIndexPage() {
               {copy.eyebrow}
             </p>
           )}
-          <h1 className="mx-auto mt-4 max-w-4xl font-display text-5xl leading-[0.88] sm:text-7xl md:text-8xl">
+          {/* 30% below the old text-5xl / 7xl / 8xl (48 / 72 / 96px), and one
+              line from tablet width up. A phone is too narrow to force that
+              without the words running off screen, so there it may still wrap. */}
+          <h1 className="mx-auto mt-4 max-w-4xl font-display text-[2.1rem] leading-[0.88] sm:text-[3.15rem] md:max-w-none md:whitespace-nowrap md:text-[4.2rem]">
             {copy.heading}
           </h1>
           {copy.intro && <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-ink-muted">{copy.intro}</p>}
