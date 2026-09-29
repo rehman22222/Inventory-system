@@ -43,19 +43,26 @@ function BlogIndexPage() {
     <div className="min-h-screen bg-background">
       <Header />
       <section className="border-b hair bg-background">
-        <div className="container-x py-12 text-center md:py-16">
+        {/* Editorial masthead: a small brick-red kicker, the heading, then one
+            muted line of introduction — left-aligned, like a magazine's section
+            opener rather than a centred banner. */}
+        <div className="container-x py-10 md:py-14">
           {copy.eyebrow && (
-            <p className="font-mono text-[10px] uppercase text-ink-muted">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-kicker sm:text-xs">
               {copy.eyebrow}
             </p>
           )}
           {/* 30% below the old text-5xl / 7xl / 8xl (48 / 72 / 96px), and one
               line from tablet width up. A phone is too narrow to force that
               without the words running off screen, so there it may still wrap. */}
-          <h1 className="mx-auto mt-4 max-w-4xl font-display text-[2.1rem] leading-[0.88] sm:text-[3.15rem] md:max-w-none md:whitespace-nowrap md:text-[4.2rem]">
+          <h1 className="mt-3 max-w-4xl font-display text-[2.1rem] uppercase leading-[0.95] tracking-tight sm:text-[3.15rem] md:max-w-none md:whitespace-nowrap md:text-[4.2rem]">
             {copy.heading}
           </h1>
-          {copy.intro && <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-ink-muted">{copy.intro}</p>}
+          {copy.intro && (
+            <p className="mt-4 max-w-2xl text-base leading-7 text-ink-muted md:text-lg md:leading-8">
+              {copy.intro}
+            </p>
+          )}
         </div>
       </section>
 
