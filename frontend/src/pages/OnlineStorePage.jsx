@@ -82,6 +82,7 @@ import FulfilmentModal, {
 } from "../Components/onlineStore/FulfilmentModal";
 import { isDemoMode } from "../lib/demoMode";
 import BlogManager, { BLOG_PAGE_DEFAULTS } from "../Components/onlineStore/BlogManager";
+import BlogComments from "../Components/onlineStore/BlogComments";
 import { Field, toLocalDateTime } from "../Components/onlineStore/shared";
 
 /* Used by PolicyEditor, below, for the legal pages. Lazily loaded and pointing
@@ -122,6 +123,10 @@ export default function OnlineStorePage() {
   const [listingToEdit, setListingToEdit] = useState("");
   const [loadedTabs, setLoadedTabs] = useState({});
   const online = useSelector((state) => state.onlineStore);
+  // Blog comments are moderated by admins and the super admin only (the
+  // server enforces it; this just avoids drawing a panel that would be refused).
+  const role = useSelector((state) => state.auth?.Authuser?.role);
+  const canModerateComments = role === "admin" || role === "superadmin";
   const showNoStoreAttached = isDemoMode();
 
   const editListing = (listing) => {
@@ -331,11 +336,14 @@ export default function OnlineStorePage() {
             />
           )}
           {tab === "blog" && (
-            <BlogManager
-              posts={online.blogPosts}
-              settings={online.settings}
-              isActing={online.isActing}
-            />
+            <div className="space-y-5">
+              <BlogManager
+                posts={online.blogPosts}
+                settings={online.settings}
+                isActing={online.isActing}
+              />
+              {canModerateComments && <BlogComments />}
+            </div>
           )}
           {tab === "promotions" && (
             <Promotions

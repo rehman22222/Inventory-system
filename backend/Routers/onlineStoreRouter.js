@@ -90,6 +90,21 @@ const {
   optionalCustomerAuth,
 } = require("../middleware/Authmiddleware");
 const { upload } = require("../middleware/upload");
+const {
+  storefrontBlogComments,
+  submitBlogComment,
+  listBlogComments,
+  setBlogCommentStatus,
+  deleteBlogComment,
+} = require("../controller/onlineBlogCommentController");
+
+/* Which comments appear on the website is the shop's own call: admins and the
+ * super admin only. The admin router's guard also lets the website specialist
+ * (seo_store) in to run the store console; this narrows it back for comments. */
+const commentModerators = (req, res, next) => {
+  if (req.user?.role === "admin" || req.user?.role === "superadmin") return next();
+  return res.status(403).json({ message: "Only an admin or the super admin can moderate comments." });
+};
 
 /* ── Admin router — /api/online ──────────────────────────────────────────────
  * Everything the shop's own people use to run the website: what is listed,
@@ -145,6 +160,10 @@ adminRouter.get("/newsletter/report", newsletterReport);
 adminRouter.get("/reviews", listReviews);
 adminRouter.patch("/reviews/:id", updateReview);
 adminRouter.delete("/reviews/:id", deleteReview);
+
+adminRouter.get("/blog-comments", commentModerators, listBlogComments);
+adminRouter.patch("/blog-comments/:id", commentModerators, setBlogCommentStatus);
+adminRouter.delete("/blog-comments/:id", commentModerators, deleteBlogComment);
 
 /* The people who shop on the website, and what the shop owes them.
  *
@@ -279,5 +298,8 @@ storefrontRouter.post("/newsletter", subscribeNewsletter);
 storefrontRouter.post("/contact", submitContactMessage);
 storefrontRouter.get("/blog", storefrontBlogPosts);
 storefrontRouter.get("/blog/:slug", storefrontBlogPost);
+storefrontRouter.get("/blog/:slug/comments", storefrontBlogComments);
+// Signed-in readers comment as their account; guests give a name and email.
+storefrontRouter.post("/blog/:slug/comments", optionalCustomerAuth, submitBlogComment);
 
 module.exports = { adminRouter, blogRouter, storefrontRouter };

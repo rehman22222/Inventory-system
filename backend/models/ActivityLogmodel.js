@@ -40,6 +40,8 @@ const ActivityLogSchema = new mongoose.Schema(
         // was: logActivity swallows its own errors, so an entity it could
         // not name was dropped without a word.
         "sale",
+        // A reader's comment on a blog article, approved, hidden or deleted.
+        "blogComment",
       ],
     },
     entityId: {
