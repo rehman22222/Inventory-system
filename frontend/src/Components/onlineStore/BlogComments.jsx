@@ -157,6 +157,16 @@ export default function BlogComments() {
                   {comment.customer && <span className="badge badge-sm badge-info ml-2">Customer</span>}
                 </p>
                 <p className="break-all text-xs text-base-content/50">{comment.email}</p>
+                {comment.website && (
+                  <a
+                    href={comment.website}
+                    target="_blank"
+                    rel="noopener noreferrer nofollow"
+                    className="link link-hover break-all text-xs text-primary"
+                  >
+                    {comment.website}
+                  </a>
+                )}
               </div>
               <span className={`badge ${STATUS_BADGE[comment.status] || ""}`}>{STATUS_LABEL[comment.status]}</span>
             </div>

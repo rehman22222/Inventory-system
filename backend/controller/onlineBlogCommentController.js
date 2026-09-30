@@ -17,8 +17,10 @@
  *
  * SPAM, BEFORE IT REACHES THE QUEUE. Every request arrives from the website's
  * own server, so an IP limit would throttle the whole public at once. Instead:
- *   - a hidden "website" field real people never see (a bot fills it in; the
- *     comment is accepted politely and thrown away, so the bot learns nothing),
+ *   - a hidden "fax" field real people never see (a bot fills it in; the
+ *     comment is accepted politely and thrown away, so the bot learns nothing).
+ *     It is NOT called "website": that is the real, optional field for the
+ *     commenter's own site,
  *   - at most MAX_LINKS links in a comment,
  *   - at most MAX_RECENT_PER_EMAIL comments from one address per window,
  *   - the same text on the same article from the same address only once.
@@ -70,11 +72,32 @@ const cleanText = (value, max) =>
 
 const countLinks = (text) => (text.match(/(https?:\/\/|www\.)/gi) || []).length;
 
+/* The commenter's site, as something safe to put in an href: http(s) only
+ * (never javascript:, data: or the like), a bare "example.ie" given https://,
+ * and nothing that does not parse as a real host. Returns null when what was
+ * typed cannot be used, and "" when nothing was typed. */
+const cleanWebsite = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (raw.length > 200) return null;
+  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw.replace(/^\/+/, "")}`;
+  try {
+    const url = new URL(withScheme);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(url.hostname)) return null;
+    if (url.username || url.password) return null;
+    return url.toString().slice(0, 200);
+  } catch {
+    return null;
+  }
+};
+
 // What the website is allowed to see of a comment. Never the email.
 const publicComment = (comment) => ({
   _id: String(comment._id),
   name: comment.name,
   body: comment.body,
+  website: comment.website || "",
   createdAt: comment.createdAt,
   customer: Boolean(comment.customer),
 });
@@ -113,7 +136,7 @@ module.exports.submitBlogComment = async (req, res) => {
     };
 
     // The honeypot. Real readers never see this field.
-    if (String(req.body?.website || "").trim()) return res.status(201).json(accepted);
+    if (String(req.body?.fax || "").trim()) return res.status(201).json(accepted);
 
     // A signed-in customer comments as themselves; the name they typed is still
     // used if they gave one, so they can choose how they appear.
@@ -130,6 +153,12 @@ module.exports.submitBlogComment = async (req, res) => {
       return res.status(400).json({ message: "Please add a valid email address." });
     }
     if (body.length < 3) return res.status(400).json({ message: "Please write a comment." });
+    const website = cleanWebsite(req.body?.website);
+    if (website === null) {
+      return res
+        .status(400)
+        .json({ message: "Please enter a valid website address, e.g. https://example.ie" });
+    }
     if (countLinks(body) > MAX_LINKS) {
       return res
         .status(400)
@@ -156,6 +185,7 @@ module.exports.submitBlogComment = async (req, res) => {
       name,
       email,
       body,
+      website,
       customer: account?._id || null,
     });
 

@@ -121,6 +121,17 @@ test("a new comment on the website refreshes the queue", async () => {
   expect(mockGet.mock.calls.length).toBe(calls + 1);
 });
 
+test("the commenter's website is shown as a nofollow link", async () => {
+  mockGet.mockResolvedValue({
+    data: { comments: [{ ...pending, website: "https://my-shop.ie/" }], counts: { pending: 1, approved: 0, hidden: 0 } },
+  });
+  await act(async () => button("Refresh").click());
+  await flush();
+  const link = container.querySelector('a[href="https://my-shop.ie/"]');
+  expect(link).not.toBeNull();
+  expect(link.getAttribute("rel")).toContain("nofollow");
+});
+
 test("a comment body is shown as text, never as HTML", async () => {
   mockGet.mockResolvedValue({
     data: { comments: [{ ...pending, body: "<img src=x onerror=alert(1)>" }], counts: { pending: 1, approved: 0, hidden: 0 } },

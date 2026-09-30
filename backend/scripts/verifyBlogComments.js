@@ -150,7 +150,7 @@ async function main() {
 
   console.log("\nvalidation and spam");
   const before = await OnlineBlogComment.countDocuments();
-  const bot = await submit({ name: "Bot", email: "bot@spam.test", body: "buy now", website: "http://spam.test" });
+  const bot = await submit({ name: "Bot", email: "bot@spam.test", body: "buy now", fax: "555-0100" });
   check("a bot filling the hidden field is told it worked", bot.statusCode === 201);
   check("…but nothing is saved", (await OnlineBlogComment.countDocuments()) === before);
   const links = await submit({ name: "L", email: "l@example.ie", body: "a http://a.ie b http://b.ie c http://c.ie" });
@@ -168,6 +168,23 @@ async function main() {
   await submit({ name: "R", email: "r@example.ie", body: "third thought" });
   const flood = await submit({ name: "R", email: "r@example.ie", body: "fourth thought" });
   check("a fourth comment within ten minutes is refused", flood.statusCode === 429, String(flood.statusCode));
+
+  console.log("\nthe commenter's website");
+  const withSite = await submit({ name: "Site", email: "site@example.ie", body: "see my shop", website: "https://my-shop.ie/about" });
+  const siteDoc = await OnlineBlogComment.findOne({ email: "site@example.ie" }).lean();
+  check("a website is kept with the comment", withSite.statusCode === 201 && siteDoc?.website === "https://my-shop.ie/about", siteDoc?.website);
+  check("…and a comment with a website is not mistaken for a bot", Boolean(siteDoc));
+  await submit({ name: "Bare", email: "bare@example.ie", body: "bare domain", website: "bare-domain.ie" });
+  const bare = await OnlineBlogComment.findOne({ email: "bare@example.ie" }).lean();
+  check("a bare domain is given https://", bare?.website === "https://bare-domain.ie/", bare?.website);
+  const evil = await submit({ name: "Evil", email: "evil@example.ie", body: "click", website: "javascript:alert(1)" });
+  check("a javascript: website is refused", evil.statusCode === 400, String(evil.statusCode));
+  const junk = await submit({ name: "Junk", email: "junk@example.ie", body: "junk", website: "not a website" });
+  check("something that is not a website is refused", junk.statusCode === 400, String(junk.statusCode));
+  await moderate(String(siteDoc._id), "approved");
+  page = await shown();
+  check("the website reaches the article with the approved comment",
+    page.body?.comments?.some((c) => c.website === "https://my-shop.ie/about"), JSON.stringify(page.body));
 
   console.log("\nsigned-in customers");
   const customerId = new mongoose.Types.ObjectId();

@@ -24,6 +24,9 @@ const OnlineBlogCommentSchema = new mongoose.Schema(
     // throttle one address posting over and over.
     email: { type: String, required: true, trim: true, lowercase: true, maxlength: 200 },
     body: { type: String, required: true, trim: true, maxlength: 2000 },
+    // Optional: the commenter's own site. Always an http(s) URL; the website
+    // links their name to it with rel="nofollow ugc".
+    website: { type: String, default: "", trim: true, maxlength: 200 },
 
     // Set when the reader was signed in to their shop account, so the queue
     // can tell a known customer from an anonymous visitor.

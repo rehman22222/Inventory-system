@@ -716,6 +716,8 @@ export interface BlogComment {
   createdAt: string;
   /** Written by a signed-in shop customer. */
   customer: boolean;
+  /** The commenter's own site (always http/https), or "". */
+  website?: string;
 }
 
 export const getBlogComments = createServerFn({ method: "GET" })
@@ -733,8 +735,10 @@ const blogCommentSchema = z.object({
   name: z.string().trim().max(80).default(""),
   email: z.string().trim().max(200).default(""),
   body: z.string().trim().min(3, "Please write a comment.").max(2000),
+  // The commenter's own site, optional. Checked and normalised by the backend.
+  website: z.string().trim().max(200).optional().default(""),
   // Hidden from people; only a bot fills it in. See the backend controller.
-  website: z.string().max(200).optional().default(""),
+  fax: z.string().max(200).optional().default(""),
 });
 export type BlogCommentInput = z.infer<typeof blogCommentSchema>;
 

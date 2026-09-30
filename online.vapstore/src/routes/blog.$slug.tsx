@@ -248,7 +248,20 @@ function Comments({ slug, comments }: { slug: string; comments: BlogComment[] })
               </span>
               <div className="min-w-0 flex-1 border-b hair pb-5">
                 <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="text-sm font-semibold text-foreground">{comment.name}</span>
+                  {comment.website ? (
+                    // Reader-supplied link: nofollow + ugc so it passes no
+                    // search ranking, and a new tab so the reader keeps the article.
+                    <a
+                      href={comment.website}
+                      target="_blank"
+                      rel="nofollow ugc noopener noreferrer"
+                      className="text-sm font-semibold text-foreground underline decoration-kicker/50 underline-offset-2 transition-colors hover:text-kicker"
+                    >
+                      {comment.name}
+                    </a>
+                  ) : (
+                    <span className="text-sm font-semibold text-foreground">{comment.name}</span>
+                  )}
                   {comment.customer && (
                     <span className="bg-accent px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-accent-foreground">
                       Customer
@@ -279,6 +292,7 @@ function CommentForm({ slug }: { slug: string }) {
   const [email, setEmail] = useState("");
   const [body, setBody] = useState("");
   const [website, setWebsite] = useState("");
+  const [fax, setFax] = useState("");
   const [state, setState] = useState<{ status: "idle" | "sending" | "sent" | "error"; message: string }>({
     status: "idle",
     message: "",
@@ -295,6 +309,7 @@ function CommentForm({ slug }: { slug: string }) {
           email: customer ? "" : email,
           body,
           website,
+          fax,
         },
       });
       setBody("");
@@ -349,6 +364,20 @@ function CommentForm({ slug }: { slug: string }) {
       )}
 
       <label className="mt-4 block text-xs font-medium text-foreground">
+        Website <span className="font-normal text-ink-muted">(optional)</span>
+        <input
+          type="text"
+          inputMode="url"
+          maxLength={200}
+          autoComplete="url"
+          placeholder="https://yourwebsite.com"
+          className={field}
+          value={website}
+          onChange={(event) => setWebsite(event.target.value)}
+        />
+      </label>
+
+      <label className="mt-4 block text-xs font-medium text-foreground">
         Comment *
         <textarea
           required
@@ -364,8 +393,8 @@ function CommentForm({ slug }: { slug: string }) {
       {/* A field people never see: a bot that fills it in is quietly ignored. */}
       <div className="absolute -left-[9999px] h-px w-px overflow-hidden" aria-hidden="true">
         <label>
-          Website
-          <input tabIndex={-1} autoComplete="off" value={website} onChange={(event) => setWebsite(event.target.value)} />
+          Fax
+          <input tabIndex={-1} autoComplete="off" value={fax} onChange={(event) => setFax(event.target.value)} />
         </label>
       </div>
 
