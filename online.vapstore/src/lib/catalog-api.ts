@@ -704,6 +704,51 @@ export const getBlogPost = createServerFn({ method: "GET" })
     return data.post || null;
   });
 
+/* ── Blog comments ─────────────────────────────────────────────────────────
+ * Only comments the shop has approved come back here, and never with the
+ * commenter's email. A new comment is always held for approval. */
+
+export interface BlogComment {
+  _id: string;
+  name: string;
+  body: string;
+  createdAt: string;
+  /** Written by a signed-in shop customer. */
+  customer: boolean;
+}
+
+export const getBlogComments = createServerFn({ method: "GET" })
+  .validator((slug: string) => String(slug))
+  .handler(async ({ data: slug }): Promise<BlogComment[]> => {
+    const data = await get<{ comments: BlogComment[] }>(
+      `/blog/${encodeURIComponent(slug)}/comments`,
+      { comments: [] },
+    );
+    return data.comments || [];
+  });
+
+const blogCommentSchema = z.object({
+  slug: z.string().trim().min(1).max(200),
+  name: z.string().trim().max(80).default(""),
+  email: z.string().trim().max(200).default(""),
+  body: z.string().trim().min(3, "Please write a comment.").max(2000),
+  // Hidden from people; only a bot fills it in. See the backend controller.
+  website: z.string().max(200).optional().default(""),
+});
+export type BlogCommentInput = z.infer<typeof blogCommentSchema>;
+
+export const submitBlogComment = createServerFn({ method: "POST" })
+  .validator((input: BlogCommentInput) => blogCommentSchema.parse(input))
+  .handler(async ({ data }): Promise<{ message: string }> => {
+    const { slug, ...comment } = data;
+    // A signed-in shopper comments as their account; absent for a guest.
+    return post(
+      `/blog/${encodeURIComponent(slug)}/comments`,
+      comment,
+      getCookie(SESSION_COOKIE_NAME) || "",
+    );
+  });
+
 /* ── Reviews ───────────────────────────────────────────────────────────────*/
 
 export const getProductReviews = createServerFn({ method: "GET" })
