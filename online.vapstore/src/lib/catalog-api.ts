@@ -670,6 +670,9 @@ export interface BlogPostSummary {
   seoTitle?: string;
   seoDescription?: string;
   readingMinutes?: number;
+  /** Set when the article asks not to be indexed, or names an original elsewhere. */
+  noindex?: boolean;
+  canonicalUrl?: string;
   /* Legacy. Articles are `content` now; the index endpoint still sends blocks
    * so a post written under the old editor and not yet migrated can have a
    * cover image pulled out of it. It does NOT send `content` — the index shows
@@ -684,8 +687,6 @@ export interface BlogPost extends BlogPostSummary {
   content?: string;
   blocks?: BlogBlock[];
   updatedAt?: string;
-  canonicalUrl?: string;
-  noindex?: boolean;
 }
 
 export const getBlogPosts = createServerFn({ method: "GET" }).handler(
@@ -807,6 +808,10 @@ export const submitReview = createServerFn({ method: "POST" })
 
 /** Used by the sitemap server route, which already runs on the server. */
 export const storefrontForSitemap = async () => {
-  const [categories, products] = await Promise.all([loadCategories(), loadProducts()]);
-  return { categories, products };
+  const [categories, products, blog] = await Promise.all([
+    loadCategories(),
+    loadProducts(),
+    get<{ posts: BlogPostSummary[] }>("/blog", { posts: [] }),
+  ]);
+  return { categories, products, posts: blog.posts || [] };
 };

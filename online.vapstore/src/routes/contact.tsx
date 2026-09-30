@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/seo";
 import { useState, type FormEvent } from "react";
 import { Mail, MapPin, Phone, CheckCircle2 } from "lucide-react";
 import { Header } from "@/components/Header";
@@ -9,7 +10,9 @@ import { submitContactMessage } from "@/lib/catalog-api";
 export const Route = createFileRoute("/contact")({
   component: Contact,
   head: () => ({
+    links: [canonicalLink("/contact")],
     meta: [
+      ogUrlMeta("/contact"),
       { title: "Contact — Cliffs of Puff" },
       { name: "description", content: "Get in touch with the Cliffs of Puff team." },
     ],

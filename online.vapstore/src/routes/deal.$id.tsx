@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/seo";
 import { useMemo } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -25,6 +26,16 @@ import { StorefrontNotFound } from "@/components/StorefrontNotFound";
  * on the website — so a page cannot advertise terms the till would refuse.
  */
 export const Route = createFileRoute("/deal/$id")({
+  // The offer's name lives in the storefront settings the page reads on the
+  // client, so the head names it generically; the canonical is what matters.
+  head: ({ params }) => ({
+    links: [canonicalLink(`/deal/${params.id}`)],
+    meta: [
+      { title: "Deal — Cliffs of Puff" },
+      { name: "description", content: "Mix and match any of the products in this offer at Cliffs of Puff." },
+      ogUrlMeta(`/deal/${params.id}`),
+    ],
+  }),
   component: DealPage,
 });
 

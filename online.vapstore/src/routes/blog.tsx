@@ -4,6 +4,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { getBlogPosts, getStorefront, type BlogPostSummary } from "@/lib/catalog-api";
 import { cldAuto } from "@/lib/img";
+import { canonicalLink, ogUrlMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/blog")({
   loader: async () => {
@@ -11,15 +12,23 @@ export const Route = createFileRoute("/blog")({
     return { posts, copy: storefront.settings.blog };
   },
   component: BlogIndexPage,
-  head: ({ loaderData }) => ({
-    meta: [
-      { title: `${loaderData?.copy.seoTitle || "Blog"} — Cliffs of Puff` },
-      {
-        name: "description",
-        content: loaderData?.copy.seoDescription || "News, guides and product stories from Cliffs of Puff.",
-      },
-    ],
-  }),
+  head: ({ loaderData, match, matches }) => {
+    // This route is also the layout around every article (/blog/$slug). Its
+    // canonical belongs to the blog index only; on an article it would sit
+    // beside the article's own and tell search engines two different things.
+    const isIndex = matches[matches.length - 1]?.routeId === match.routeId;
+    return {
+      links: isIndex ? [canonicalLink("/blog")] : [],
+      meta: [
+        ...(isIndex ? [ogUrlMeta("/blog")] : []),
+        { title: `${loaderData?.copy.seoTitle || "Blog"} — Cliffs of Puff` },
+        {
+          name: "description",
+          content: loaderData?.copy.seoDescription || "News, guides and product stories from Cliffs of Puff.",
+        },
+      ],
+    };
+  },
 });
 
 function safeMediaUrl(value?: string) {

@@ -1,4 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/seo";
 import { useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -20,7 +21,10 @@ export const Route = createFileRoute("/category/$slug")({
     if (!category) throw notFound();
     return { category, products };
   },
-  head: ({ loaderData }) => ({
+  head: ({ loaderData, params }) => ({
+    // Filters and sorting live in the query string; the category itself is
+    // one page, so every variant points back at the bare path.
+    links: [canonicalLink(`/category/${loaderData?.category.slug || params.slug}`)],
     meta: loaderData
       ? [
           { title: `${loaderData.category.name} — Cliffs of Puff` },
@@ -30,6 +34,7 @@ export const Route = createFileRoute("/category/$slug")({
           },
           { property: "og:title", content: `${loaderData.category.name} — Cliffs of Puff` },
           { property: "og:description", content: loaderData.category.tagline },
+          ogUrlMeta(`/category/${loaderData.category.slug}`),
         ]
       : [],
   }),

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/seo";
 import { useTranslation } from "react-i18next";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -9,7 +10,9 @@ import { useCatalog } from "@/lib/catalog-context";
 export const Route = createFileRoute("/sale")({
   component: SalePage,
   head: () => ({
+    links: [canonicalLink("/sale")],
     meta: [
+      ogUrlMeta("/sale"),
       { title: "Sale — Cliffs of Puff" },
       {
         name: "description",

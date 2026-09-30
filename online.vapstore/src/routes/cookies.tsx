@@ -1,11 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/seo";
 import { PolicyPage } from "@/components/PolicyPage";
 import { useCatalog } from "@/lib/catalog-context";
 
 export const Route = createFileRoute("/cookies")({
   component: Cookies,
   head: () => ({
+    links: [canonicalLink("/cookies")],
     meta: [
+      ogUrlMeta("/cookies"),
       { title: "Cookie Policy — Cliffs of Puff" },
       { name: "description", content: "How Cliffs of Puff uses cookies and similar technologies." },
     ],

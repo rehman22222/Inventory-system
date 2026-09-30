@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { NOINDEX_META } from "@/lib/seo";
 import { useState } from "react";
 import { Check } from "lucide-react";
 import { Header } from "@/components/Header";
@@ -10,7 +11,8 @@ export const Route = createFileRoute("/review/$orderNo/$token")({
   component: ReviewPage,
   loader: async ({ params }): Promise<ReviewContext> =>
     getReviewContext({ data: { order: params.orderNo, token: params.token } }),
-  head: () => ({ meta: [{ title: "Write a review — Cliffs of Puff" }] }),
+  // The URL carries a private review token: never let it into search results.
+  head: () => ({ meta: [{ title: "Write a review — Cliffs of Puff" }, NOINDEX_META] }),
 });
 
 const MESSAGES: Record<string, { title: string; body: string }> = {

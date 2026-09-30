@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { canonicalLink } from "@/lib/seo";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, Clock3, MessageCircle } from "lucide-react";
 import { Header } from "@/components/Header";
@@ -47,7 +48,15 @@ export const Route = createFileRoute("/blog/$slug")({
       links: [
         // Only emitted when an author has said this article was published
         // somewhere else first. Absent means "this page is the original".
-        ...(post?.canonicalUrl ? [{ rel: "canonical", href: post.canonicalUrl }] : []),
+        // The article's own URL, unless its author said it was first published
+        // somewhere else — then that original.
+        ...(post
+          ? [
+              post.canonicalUrl
+                ? { rel: "canonical", href: post.canonicalUrl }
+                : canonicalLink(`/blog/${post.slug}`),
+            ]
+          : []),
         // Poppins, for articles only (see --font-blog in styles.css).
         { rel: "preconnect", href: "https://fonts.googleapis.com" },
         { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },

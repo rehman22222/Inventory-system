@@ -3591,7 +3591,7 @@ module.exports.storefrontBlogPosts = async (req, res) => {
        * comes along only so a post written before the WYSIWYG editor, and not
        * yet migrated, can still show a cover image pulled out of its blocks. */
       .select(
-        "title slug excerpt coverImage coverAlt author publishedAt seoTitle seoDescription featured titleAlign readingMinutes blocks",
+        "title slug excerpt coverImage coverAlt author publishedAt seoTitle seoDescription featured titleAlign readingMinutes blocks noindex canonicalUrl",
       )
       .sort({ featured: -1, publishedAt: -1 })
       .lean();

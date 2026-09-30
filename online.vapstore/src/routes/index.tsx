@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/seo";
 import { useTranslation } from "react-i18next";
 import { ArrowRight } from "lucide-react";
 import { Header } from "@/components/Header";
@@ -392,8 +393,9 @@ export const Route = createFileRoute("/")({
   component: Home,
   loader: async () => ({ hero: await getHero() }),
   head: ({ loaderData }) => ({
-    links: heroPreloadLinks(loaderData?.hero?.[0]),
+    links: [canonicalLink("/"), ...heroPreloadLinks(loaderData?.hero?.[0])],
     meta: [
+      ogUrlMeta("/"),
       { title: "Cliffs of Puff — Premium Vapes, Pods & E-Liquid" },
       {
         name: "description",

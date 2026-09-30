@@ -1,11 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/seo";
 import { PolicyPage } from "@/components/PolicyPage";
 import { useCatalog } from "@/lib/catalog-context";
 
 export const Route = createFileRoute("/why-e-cigarettes")({
   component: WhyECigarettesPage,
   head: () => ({
+    links: [canonicalLink("/why-e-cigarettes")],
     meta: [
+      ogUrlMeta("/why-e-cigarettes"),
       { title: "Why e-cigarettes? — Cliffs of Puff" },
       {
         name: "description",
