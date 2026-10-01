@@ -17,7 +17,9 @@ export function StorefrontNotFound({
 }: StorefrontNotFoundProps) {
   return (
     <div className="min-h-screen bg-background">
-      <title>{`${eyebrow} - Cliffs of Puff`}</title>
+      {/* No <title> here: the route's head already sets one, and a second
+          rendered from the body gave the page two. The robots tag has no
+          counterpart in the head, so it stays. */}
       <meta name="robots" content="noindex, follow" />
       <Header />
 

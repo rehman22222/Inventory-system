@@ -6,6 +6,7 @@ import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
 import { useCatalog } from "@/lib/catalog-context";
 import { formatPrice } from "@/lib/format";
+import { getStorefront } from "@/lib/catalog-api";
 import { StorefrontNotFound } from "@/components/StorefrontNotFound";
 
 /* Everything one offer covers, on one page.
@@ -25,17 +26,67 @@ import { StorefrontNotFound } from "@/components/StorefrontNotFound";
  * the same rule the checkout prices by — an offer that is not on a card is not
  * on the website — so a page cannot advertise terms the till would refuse.
  */
+type DealTerms = { mode?: string; groupQuantity?: number; discountType?: string; discount?: number };
+
+/* "Any 3 for €18" — the offer's terms in words, for the page and its description. */
+function dealTerms(deal: DealTerms) {
+  const need = Math.floor(Number(deal.groupQuantity || 0));
+  if (deal.mode !== "mix" || need < 2) return "";
+  if (deal.discountType === "setPrice") return `Any ${need} for ${formatPrice(Number(deal.discount))}`;
+  if (deal.discountType === "percent") return `Any ${need} — ${deal.discount}% off`;
+  return `Any ${need} — ${formatPrice(Number(deal.discount))} off`;
+}
+
 export const Route = createFileRoute("/deal/$id")({
-  // The offer's name lives in the storefront settings the page reads on the
-  // client, so the head names it generically; the canonical is what matters.
-  head: ({ params }) => ({
-    links: [canonicalLink(`/deal/${params.id}`)],
-    meta: [
-      { title: "Deal — Cliffs of Puff" },
-      { name: "description", content: "Mix and match any of the products in this offer at Cliffs of Puff." },
-      ogUrlMeta(`/deal/${params.id}`),
-    ],
-  }),
+  /* Only the offer's NAME is loaded here, for the page's <title>. The page
+   * itself still builds from the catalogue context as before. getStorefront is
+   * cached on the server, so this costs no extra backend round trip.
+   *
+   * The title belongs in head() and nowhere else: a <title> rendered inside the
+   * component as well gave every deal page two of them. */
+  loader: async ({ params }) => {
+    const { settings } = await getStorefront();
+    const card = (settings.events?.items || []).find(
+      (item) => item?.enabled && item.kind === "deal" && item.deal?.id === params.id,
+    );
+    if (!card?.deal) return { heading: "", terms: "", count: 0 };
+    return {
+      heading: card.title?.trim() || card.deal.name,
+      terms: dealTerms(card.deal),
+      count: (card.deal.productIds || []).length,
+    };
+  },
+  head: ({ params, loaderData }) => {
+    const heading = loaderData?.heading || "";
+    if (!heading) {
+      // An offer that has ended: one title, and kept out of search results.
+      return {
+        meta: [
+          { title: "Offer not found — Cliffs of Puff" },
+          { name: "robots", content: "noindex, follow" },
+        ],
+      };
+    }
+    return {
+      links: [canonicalLink(`/deal/${params.id}`)],
+      meta: [
+        { title: `${heading} — Cliffs of Puff` },
+        {
+          name: "description",
+          // Each offer's own name, terms and size, so no two deal pages share
+          // a description (search engines flag identical ones as duplicates).
+          content: [
+            `${heading}${loaderData?.terms ? ` — ${loaderData.terms}` : ""}.`,
+            loaderData?.count === 1
+              ? "One product in this offer at Cliffs of Puff."
+              : `Mix and match ${loaderData?.count ? `any of ${loaderData.count} products` : "any of the products"} in this offer at Cliffs of Puff.`,
+          ].join(" "),
+        },
+        { property: "og:title", content: `${heading} — Cliffs of Puff` },
+        ogUrlMeta(`/deal/${params.id}`),
+      ],
+    };
+  },
   component: DealPage,
 });
 
@@ -67,7 +118,6 @@ function DealPage() {
   }
 
   const { card, deal, covered } = offer;
-  const need = Math.floor(Number(deal.groupQuantity || 0));
 
   /* The terms, in the shop's own words where it has given any.
    *
@@ -75,18 +125,10 @@ function DealPage() {
    * itself uses, so a shopper who clicked "Halloween 3 for 18" does not land on
    * a page headed something else. */
   const heading = card.title?.trim() || deal.name;
-  const terms =
-    deal.mode === "mix" && need >= 2
-      ? deal.discountType === "setPrice"
-        ? `Any ${need} for ${formatPrice(deal.discount)}`
-        : deal.discountType === "percent"
-          ? `Any ${need} — ${deal.discount}% off`
-          : `Any ${need} — ${formatPrice(deal.discount)} off`
-      : "";
+  const terms = dealTerms(deal);
 
   return (
     <div className="min-h-screen bg-background">
-      <title>{`${heading} - Cliffs of Puff`}</title>
       <Header />
 
       <section className="border-b hair bg-surface py-8 md:py-12">

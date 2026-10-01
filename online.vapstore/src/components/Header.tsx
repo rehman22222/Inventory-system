@@ -159,9 +159,12 @@ export function Header() {
           <div className="announcement-marquee-track flex h-full items-center whitespace-nowrap">
             {[0, 1, 2, 3].map((item) => (
               <span key={item} className="mx-8 inline-flex shrink-0 items-center gap-4">
+                {/* Decorative repeat in the ticker: aria-hidden keeps screen
+                    readers from announcing it four times, while the alt text
+                    still describes the image for SEO audits. */}
                 <img
                   src={logoSmall}
-                  alt=""
+                  alt="Cliffs of Puff logo"
                   aria-hidden="true"
                   width={40}
                   height={40}
