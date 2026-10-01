@@ -85,17 +85,47 @@ function Salespage() {
   
   }, [dispatch]);
 
- 
+  /* The ledger's filters: what was sold (flavour / product, receipt or
+   * customer), how it was paid, and when. One set of them drives the list,
+   * the totals above it and the reports — what is downloaded is what is on
+   * screen. The narrowing happens on the server (libs/salesFilters). */
+  const [payment, setPaymentFilter] = useState("");
+  const search = query.trim();
+  const filtering = Boolean(search || payment || fromDate || toDate);
+  const filters = { query: search, payment, from: fromDate, to: toDate };
+
   useEffect(() => {
-    if (query.trim() !== "") {
-      const repeatTimeout = setTimeout(() => {
-        dispatch( searchsalesdata(query));
-      }, 500);
-      return () => clearTimeout(repeatTimeout);
-    } else {
+    if (!filtering) {
       dispatch(gettingallSales());
+      return undefined;
     }
-  }, [query, dispatch]);
+    // Typing waits for a pause; a picked payment or date is asked at once.
+    const wait = setTimeout(() => {
+      dispatch(searchsalesdata({ query: search, payment, from: fromDate, to: toDate }));
+    }, search ? 400 : 0);
+    return () => clearTimeout(wait);
+  }, [filtering, search, payment, fromDate, toDate, dispatch]);
+
+  // After rows are archived, deleted or handed over: the chart reads the full
+  // ledger and the list may be a filtered one, so both are asked again.
+  const refreshSales = () => {
+    dispatch(gettingallSales());
+    if (filtering) dispatch(searchsalesdata(filters));
+  };
+
+  const clearFilters = () => {
+    setquery("");
+    setPaymentFilter("");
+    setFromDate("");
+    setToDate("");
+  };
+
+  const reportParams = {
+    from: fromDate || undefined,
+    to: toDate || undefined,
+    q: search || undefined,
+    payment: payment || undefined,
+  };
 
 
  
@@ -190,7 +220,7 @@ function Salespage() {
 
 
 
- const displaySales = query.trim() !== "" ? searchdata : getallsales;
+ const displaySales = filtering ? searchdata : getallsales;
 
   /* One page at a time.
    *
@@ -202,6 +232,20 @@ function Salespage() {
    * Oldest first is the order the ledger is read in, so the LAST page is the
    * recent one, and that is where this opens. */
   const rows = Array.isArray(displaySales) ? displaySales : [];
+
+  // The figures over the list: every row it holds, not just this page of it.
+  const totals = rows.reduce(
+    (sum, sale) => {
+      const amount = Number(sale?.totalAmount) || 0;
+      sum.count += 1;
+      sum.total += amount;
+      if (sale?.paymentMethod === "cash") sum.cash += amount;
+      else if (sale?.paymentMethod === "creditcard") sum.card += amount;
+      else sum.other += amount;
+      return sum;
+    },
+    { count: 0, total: 0, cash: 0, card: 0, other: 0 },
+  );
   const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const [page, setPage] = useState(1);
 
@@ -235,7 +279,7 @@ function Salespage() {
         t("salesArchive.purgedRows", "{{n}} sale row(s) deleted for good", { n: data.sales }),
       );
       setPicked([]);
-      dispatch(gettingallSales());
+      refreshSales();
     } catch (error) {
       toast.error(
         error?.response?.data?.message ||
@@ -260,8 +304,87 @@ function Salespage() {
 
         <SalesChart className=" mb-10" />
 
-        {/* Sales report — date range + profit/loss summary. Anyone who can see
-            the sales below can print them. */}
+        {/* Sales history filters — the list, the totals and the reports below
+            all follow these. */}
+        <div className="mr-5 mb-6 rounded-xl border border-base-300 bg-base-100 p-5 shadow-sm">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[14rem] flex-1">
+              <label className="mb-1 block text-xs font-medium text-base-content/60">
+                {t("sales.filters.search", "Flavour / product, receipt or customer")}
+              </label>
+              <input
+                value={query}
+                onChange={(e) => setquery(e.target.value)}
+                type="search"
+                className="h-10 w-full rounded-lg border-2 border-base-300 bg-base-100 px-3 text-sm text-base-content"
+                placeholder={t("sales.searchPlaceholder")}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-base-content/60">
+                {t("sales.payment")}
+              </label>
+              <select
+                value={payment}
+                onChange={(e) => setPaymentFilter(e.target.value)}
+                className="h-10 rounded-lg border-2 border-base-300 bg-base-100 px-3 text-sm text-base-content"
+              >
+                <option value="">{t("sales.filters.allPayments", "Cash + card (all)")}</option>
+                <option value="cash">{t("common.payments.cash")}</option>
+                <option value="card">{t("common.payments.creditcard")}</option>
+                <option value="split">{t("common.payments.split")}</option>
+                <option value="credit">{t("common.payments.credit")}</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-base-content/60">{t("sales.from")}</label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="h-10 rounded-lg border-2 border-base-300 bg-base-100 px-3 text-sm text-base-content"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-base-content/60">{t("sales.to")}</label>
+              <input
+                type="date"
+                value={toDate}
+                min={fromDate || undefined}
+                onChange={(e) => setToDate(e.target.value)}
+                className="h-10 rounded-lg border-2 border-base-300 bg-base-100 px-3 text-sm text-base-content"
+              />
+            </div>
+            {filtering && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="h-10 rounded-lg border-2 border-base-300 px-4 text-sm font-semibold text-base-content/70 transition hover:border-blue-800 hover:text-blue-800"
+              >
+                {t("sales.filters.clear", "Clear filters")}
+              </button>
+            )}
+          </div>
+
+          {/* What the filtered rows came to, by tender. */}
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
+            {[
+              [t("sales.filters.count", "Sales"), String(totals.count)],
+              [t("sales.filters.total", "Total"), currency(totals.total)],
+              [t("common.payments.cash"), currency(totals.cash)],
+              [t("common.payments.creditcard"), currency(totals.card)],
+              [t("sales.filters.other", "Split / credit"), currency(totals.other)],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-lg bg-base-200 px-3 py-2">
+                <div className="text-xs text-base-content/60">{label}</div>
+                <div className="text-base font-semibold tabular-nums text-base-content">{value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Sales report — profit/loss download of the filtered sales above.
+            Anyone who can see the sales below can print them. */}
         {canPrintSales && (
         <div className="mr-5 mb-8 rounded-xl border border-base-300 bg-base-100 p-5 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -270,59 +393,39 @@ function Salespage() {
               <p className="mt-1 text-sm text-base-content/60">
                 {t("sales.reportSub")}
               </p>
+              {filtering && (
+                <p className="mt-1 text-xs font-medium text-blue-800">
+                  {t("sales.filters.reportNote", "Downloads include only the filtered sales shown below.")}
+                </p>
+              )}
             </div>
              <div className="flex flex-wrap items-end gap-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-base-content/60">{t("sales.from")}</label>
-                <input
-                  type="date"
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-                  className="h-10 rounded-lg border-2 border-base-300 bg-base-100 px-3 text-sm text-base-content"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-base-content/60">{t("sales.to")}</label>
-                <input
-                  type="date"
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                  className="h-10 rounded-lg border-2 border-base-300 bg-base-100 px-3 text-sm text-base-content"
-                />
-              </div>
               <ReportButton
                 reportKey="pos-sales"
                 label="POS Report"
-                params={{ from: fromDate || undefined, to: toDate || undefined }}
+                params={reportParams}
               />
               <ReportButton
                 reportKey="online-sales"
                 label="Online Report"
-                params={{ from: fromDate || undefined, to: toDate || undefined }}
+                params={reportParams}
               />
               <ReportButton
                 reportKey="combined-sales"
                 label="POS + Online Report"
-                params={{ from: fromDate || undefined, to: toDate || undefined }}
+                params={reportParams}
               />
               <ReportButton
                 reportKey="credit-sales"
                 label="Credit Report"
-                params={{ from: fromDate || undefined, to: toDate || undefined }}
+                params={reportParams}
               />
             </div>
           </div>
         </div>
         )}
 
-        <div className="flex items-center space-x-4">
-          <input
-           value={query}
-           onChange={(e)=>setquery(e.target.value)}
-            type="text"
-            className="w-full md:w-96 h-12 pl-4 pr-12 border-2 border-base-300 rounded-lg bg-base-100 text-base-content"
-            placeholder={t("sales.searchPlaceholder")}
-          />
+        <div className="flex flex-wrap items-center gap-4">
           {canManageSales && (
           <button
             onClick={() => {
@@ -380,7 +483,7 @@ function Salespage() {
               // the same fetch, so one refresh puts every figure on screen back
               // in step with what was just taken out of the books.
               setPicked([]);
-              dispatch(gettingallSales());
+              refreshSales();
             }}
           />
         )}
@@ -392,7 +495,7 @@ function Salespage() {
               setShowCloseDay(false);
               // Closed rows leave this cashier's scope — refresh so the list and
               // revenue reset to their new (open) state.
-              dispatch(gettingallSales());
+              refreshSales();
             }}
           />
         )}
@@ -474,7 +577,10 @@ function Salespage() {
                       <option value="">{t("sales.selectPayment")}</option>
                       <option value={"cash"}>{t("common.payments.cash")}</option>
                       <option value={"creditcard"}>{t("common.payments.creditcard")}</option>
-                      <option value={"wallet"}>{t("common.payments.wallet")}</option>
+                      {/* No wallet at this shop; kept only so an old wallet sale still shows its payment when edited. */}
+                      {Payment === "wallet" && (
+                        <option value={"wallet"}>{t("common.payments.wallet")}</option>
+                      )}
                     </select>
                   </div>
 

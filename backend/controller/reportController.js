@@ -26,6 +26,7 @@ const { buildShadowNetReport, currentNetTotal } = require("../libs/shadowNetRepo
 const { startOfDay, endOfDay, formatInZone } = require("../libs/time");
 const { salesStatement } = require("../libs/salesStatement");
 const { dealProductsByReceipt, saleLineHasDeal } = require("../libs/dealLineCoverage");
+const { salesFilter } = require("../libs/salesFilters");
 
 // Every timestamp on a report is rendered in the shop's timezone, and every
 // date-range filter is interpreted there — so a report reads correctly whether
@@ -95,17 +96,19 @@ function ghostReceiptFilter(query, tz = "UTC") {
 // ── Sales: the core profit/loss report ──────────────────────────────────────
 async function buildSales(req, options = {}) {
   const { from, to } = req.query;
+  /* The same narrowing as the sales screen the report is taken from — date,
+   * product / flavour search and tender (cash, card …) — so the download holds
+   * exactly the rows that were on screen. See libs/salesFilters. */
+  const { filter: picked, labels: pickedLabels } = await salesFilter(req.query, zoneOf(req));
   const filter = {};
   if (req.user.role === "staff") filter.cashier = req.user._id;
-  const range = dateFilter(from, to, zoneOf(req));
-  if (range) filter.createdAt = range;
   // Channel scope: "online" = web orders only; "pos" = everything except online
   // (counter sales + refunds); default = combined (no source filter).
   if (options.source === "online") filter.source = "online";
   else if (options.source === "pos") filter.source = { $ne: "online" };
   if (options.creditOnly) filter.paymentMethod = "credit";
 
-  const sales = await Sale.find(filter)
+  const sales = await Sale.find({ $and: [filter, picked] })
     .populate("products.product", "name costPrice")
     .sort({ createdAt: -1 });
 
@@ -261,7 +264,7 @@ async function buildSales(req, options = {}) {
       : req.user.role === "staff"
         ? "My Sales Report"
         : "Sales Report",
-    subtitle: periodLabel(from, to),
+    subtitle: [periodLabel(from, to), ...pickedLabels].join(" · "),
     headers: [
       "Receipt No", "Date & Time", "Customer", "Cashier", "Product",
       "Qty", "Unit Price", "Unit Cost", "Line Total (list)", "Line Net (excl. tax)",

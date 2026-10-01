@@ -65,16 +65,20 @@ export const EditSales = createAsyncThunk(
 
 
 export const searchsalesdata=createAsyncThunk(
-  'sales/searchdata',async (query, { rejectWithValue }) => {
+  'sales/searchdata',async (filters, { rejectWithValue }) => {
     try {
-      // Encoded, because product names are typed here and a name with a & or a
-      // # in it used to cut the search off at that character or lose it
-      // entirely. The bare `query` that sat in the second slot did nothing —
-      // that slot is axios's config — and withCredentials is already on the
-      // instance.
-      const response = await axiosInstance.get(
-        `sales/searchdata?query=${encodeURIComponent(query)}`,
-      )
+      // The sales page's filters: { query, payment, from, to }, every one
+      // optional. A bare string is still read as the search text.
+      //
+      // Sent as axios params so they are encoded — product names are typed
+      // here, and a name with a & or a # in it used to cut the search off at
+      // that character. Empty values are left out rather than sent blank.
+      const { query, payment, from, to } =
+        typeof filters === "string" ? { query: filters } : filters || {};
+      const params = Object.fromEntries(
+        Object.entries({ query, payment, from, to }).filter(([, value]) => value),
+      );
+      const response = await axiosInstance.get("sales/searchdata", { params });
       return response.data;
  
      
@@ -147,11 +151,15 @@ const salesSlice = createSlice({
        })
        
 
+       // Only the latest filter's answer is kept: changing payment and then
+       // the search quickly sends two requests, and the slower, older one must
+       // not land last and show rows for filters no longer chosen.
+       .addCase(searchsalesdata.pending,(state,action)=>{
+        state.searchRequest=action.meta.requestId
+      })
        .addCase(searchsalesdata.fulfilled,(state,action)=>{
-       
+        if (state.searchRequest && state.searchRequest !== action.meta.requestId) return;
         state.searchdata=action.payload.sales
-     
-     
       })
       
      

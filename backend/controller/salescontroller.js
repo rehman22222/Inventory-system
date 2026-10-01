@@ -3,10 +3,8 @@ const Receipt = require("../models/Receiptmodel");
 const ProductModel = require('../models/Productmodel');
 const logActivity = require("../libs/logger");
 const { dealProductsByReceipt, saleLineHasDeal } = require("../libs/dealLineCoverage");
-
-// Characters that mean something to a regex, escaped before a typed search
-// becomes one.
-const REGEX_SPECIALS = /[.*+?^${}()|[\]\\]/g;
+const { salesFilter } = require("../libs/salesFilters");
+const Store = require("../models/Storemodel");
 
 const money = (value) => Math.round(Number(value || 0) * 100) / 100;
 
@@ -217,64 +215,33 @@ module.exports.updateSale = async (req, res) => {
 }
 
 
+/* The filtered sales history: what was sold (product / flavour, receipt or
+ * customer), how it was paid (cash / card / …) and when.
+ *
+ *   GET /sales/searchdata?query=&payment=&from=&to=
+ *
+ * Every parameter is optional and they combine. The narrowing itself is
+ * libs/salesFilters — the same one the sales reports use — so the list on the
+ * screen and the report downloaded beside it always hold the same rows.
+ *
+ * A search never reaches past what this user may list: the caller's scope is
+ * ANDed with the filter, never replaced by it. */
 module.exports.SearchSales = async (req, res) => {
   try {
-    const { query } = req.query;
-    // A search must never reach past what this user is allowed to list.
-    const scope = salesScope(req.user);
+    const shop = await Store.findOne({ key: "shop" }).select("timezone").lean();
+    const { filter } = await salesFilter(req.query, shop?.timezone || "Europe/Dublin");
 
-    if (!query || query.trim() === "") {
+    const sales = await Sale.find({ $and: [salesScope(req.user), filter] })
+      .select(
+        "customerName receiptNo products totalAmount discount tax status " +
+          "paymentMethod paymentStatus source dayClosing createdAt",
+      )
+      .populate("products.product", "name")
+      // The same order as the full list, or filtering would reshuffle the rows.
+      .sort({ createdAt: 1 })
+      .lean();
 
-      // The same order as the list this filters, or clearing the box would
-      // reshuffle the rows under the cashier's hand.
-      const allSales = await Sale.find(scope)
-        .populate("products.product")
-        .sort({ createdAt: 1 });
-      return res.status(200).json({
-        success: true,
-        sales: withKind(allSales, await dealCoverage()),
-      });
-    }
-
-    /* The box says "Enter your product", so it had better find one.
-
-     * It searched customerName and paymentMethod only, which at a till are
-     * nearly always "Walk-In" and "cash" — so the one thing anybody actually
-     * types, a product name, matched nothing and the page went blank. That
-     * reads as a broken search rather than as no results.
-     *
-     * A product name cannot be reached with a regex from here: products.product
-     * is a reference and the name lives on the Product, so the products are
-     * looked up first and the sales matched on their ids.
-     *
-     * Receipt numbers are in too. They are how a sale is referred to out loud —
-     * on the customer's slip, in the day's takings, and by the archive screen,
-     * which asks for a range "from this sale to that sale".
-     *
-     * The text is escaped before it becomes a regex. Somebody searching for a
-     * product with a bracket in its name should get that product, not a cast
-     * error, and a regex built from typing is a regex somebody else controls. */
-    const escaped = query.trim().replace(REGEX_SPECIALS, "\\$&");
-    const like = { $regex: escaped, $options: "i" };
-
-    const named = await ProductModel.find({ name: like }).select("_id").lean();
-
-    const searchdata = await Sale.find({
-      ...scope,
-      $or: [
-        { customerName: like },
-        { paymentMethod: like },
-        { receiptNo: like },
-        ...(named.length
-          ? [{ "products.product": { $in: named.map((row) => row._id) } }]
-          : []),
-      ],
-    })
-      .populate("products.product")
-      .sort({ createdAt: 1 });
-
-    res.status(200).json({ sales: withKind(searchdata, await dealCoverage()) });
-
+    res.status(200).json({ success: true, sales: withKind(sales, await dealCoverage()) });
   } catch (error) {
     res.status(500).json({ success: false, message: "Error in searching sales", error: error.message });
   }

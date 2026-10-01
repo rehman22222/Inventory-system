@@ -6,7 +6,7 @@
     "node": ">=18 <=24"
   },
   "scripts": {
-    "test": "node scripts/verifyAuditTrail.js && node scripts/verifyReportLabels.js && node scripts/verifyReportRowColours.js && node scripts/verifySalesArchive.js && node scripts/verifyBlogSecurity.js && node scripts/verifyOrderEmails.js && node scripts/verifyPosCredit.js && node scripts/verifyTillEndToEnd.js && node scripts/verifyQuickSell.js && node scripts/verifyCheckoutIdempotency.js && node scripts/verifyOnlinePromotions.js && node scripts/verifyOnlineDeals.js && node scripts/verifyEventCards.js && node scripts/verifyQuickCashCatalogue.js && node scripts/verifyLoyaltyAccounts.js && node scripts/verifyBlogComments.js",
+    "test": "node scripts/verifyAuditTrail.js && node scripts/verifyReportLabels.js && node scripts/verifyReportRowColours.js && node scripts/verifySalesArchive.js && node scripts/verifyBlogSecurity.js && node scripts/verifyOrderEmails.js && node scripts/verifyPosCredit.js && node scripts/verifyTillEndToEnd.js && node scripts/verifyQuickSell.js && node scripts/verifyCheckoutIdempotency.js && node scripts/verifyOnlinePromotions.js && node scripts/verifyOnlineDeals.js && node scripts/verifyEventCards.js && node scripts/verifyQuickCashCatalogue.js && node scripts/verifyLoyaltyAccounts.js && node scripts/verifyBlogComments.js && node scripts/verifySalesFilters.js",
     "start": "node server",
     "build": "cd ../frontend && npm install && npm run build",
     "postinstall": "node scripts/postinstall.js",
@@ -23,6 +23,7 @@
     "request-logs": "node scripts/readRequestLogs.js",
     "verify:audit": "node scripts/verifyAuditTrail.js",
     "verify:blog-comments": "node scripts/verifyBlogComments.js",
+    "verify:sales-filters": "node scripts/verifySalesFilters.js",
     "verify:blog": "node scripts/verifyBlogSecurity.js",
     "verify:emails": "node scripts/verifyOrderEmails.js",
     "verify:pos-credit": "node scripts/verifyPosCredit.js",
