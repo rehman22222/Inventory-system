@@ -283,7 +283,7 @@ const publicListing = (l, { compact = false, includeLinked = true } = {}) => {
     })),
     image: l.gallery?.[0]?.url || p.image?.url || "",
     imageAlt:
-      l.gallery?.[0]?.alt || l.webName || p.name,
+      l.gallery?.[0]?.alt || l.catalogImage?.alt || l.webName || p.name,
     catalogImage: l.catalogImage?.url || "",
     catalogImageAlt: l.catalogImage?.alt || l.webName || p.name,
     variants,

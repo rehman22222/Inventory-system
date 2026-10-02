@@ -36,9 +36,13 @@ const toRow = (cells) => cells.map(escapeCell).join(",");
  * formulas, frozen panes or print layout; the Excel export is the polished
  * human-facing report. Starting with the header also keeps imports predictable.
  */
-const buildCsv = ({ headers, rows }) => {
+const buildCsv = ({ headers, rows, summary, includeCsvSummary }) => {
   const lines = [toRow(headers)];
   rows.forEach((r) => lines.push(toRow(r)));
+  if (includeCsvSummary && summary?.length) {
+    lines.push("", toRow(["Summary", "Value"]));
+    summary.forEach((row) => lines.push(toRow(row)));
+  }
 
   // Prepend BOM so Excel opens UTF-8 correctly.
   return "﻿" + lines.join("\r\n");

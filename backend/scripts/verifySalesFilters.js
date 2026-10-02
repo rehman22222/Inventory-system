@@ -19,7 +19,7 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
 
-const tempName = `e360_sales_filters_verify_${Date.now()}`;
+const tempName = `e360_sf_${Date.now()}`;
 
 const withDatabase = (uri, database) => {
   const queryAt = uri.indexOf("?");
@@ -71,6 +71,7 @@ async function main() {
   const User = require("../models/Usermodel");
   const Product = require("../models/Productmodel");
   const Sale = require("../models/Salesmodel");
+  const Receipt = require("../models/Receiptmodel");
   const sales = require("../controller/salescontroller");
   const reports = require("../controller/reportController");
 
@@ -99,7 +100,9 @@ async function main() {
   await sale(pineapple, "cash", "2026-09-01T10:00:00Z", { receiptNo: "POS-000101" });
   await sale(pineapple, "creditcard", "2026-09-01T12:00:00Z");
   await sale(mango, "creditcard", "2026-09-01T23:30:00Z"); // Dublin: 2 Sept
-  await sale(mango, "split", "2026-09-02T11:00:00Z");
+  await sale(mango, "split", "2026-09-02T11:00:00Z", { receiptNo: "POS-SPLIT" });
+  await Receipt.create({ receiptNo: "POS-SPLIT", customerName: "Walk-In", paymentMethod: "split", total: 45,
+    payments: [{ method: "cash", amount: 25 }, { method: "creditcard", amount: 15 }, { method: "credit", amount: 10 }], changeDue: 5 });
   await sale(pouch, "wallet", "2026-09-02T12:00:00Z");
   await sale(pineapple, "cash", "2026-09-02T13:00:00Z", { cashier: staff._id });
 
@@ -121,9 +124,9 @@ async function main() {
 
   console.log("\npayment");
   rows = await search({ payment: "cash" });
-  check("cash shows only cash sales", rows.length === 2 && rows.every((r) => r.endsWith("|cash")), JSON.stringify(rows));
+  check("cash includes cash-only sales and the cash part of split sales", rows.length === 3 && rows.some((r) => r.endsWith("|split")), JSON.stringify(rows));
   rows = await search({ payment: "card" });
-  check("card shows only card-terminal sales", rows.length === 2 && rows.every((r) => r.endsWith("|creditcard")), JSON.stringify(rows));
+  check("card includes card-only sales and the card part of split sales", rows.length === 3 && rows.some((r) => r.endsWith("|split")), JSON.stringify(rows));
   rows = await search({ payment: "split" });
   check("split is its own option", rows.length === 1 && rows[0].endsWith("|split"), JSON.stringify(rows));
   rows = await search({ payment: "wallet" });
@@ -139,7 +142,7 @@ async function main() {
   rows = await search({ from: "2026-09-01", to: "2026-09-01" });
   check("1 Sept in Dublin is 2 sales (23:30 UTC belongs to the 2nd)", rows.length === 2, JSON.stringify(rows));
   rows = await search({ from: "2026-09-02", to: "2026-09-02", payment: "card" });
-  check("date + payment combine", rows.length === 1 && rows[0] === "Loom Mango Haze 2ml|creditcard", JSON.stringify(rows));
+  check("date + payment includes the matching part of a split receipt", rows.length === 2 && rows.some((r) => r === "Loom Mango Haze 2ml|split"), JSON.stringify(rows));
 
   console.log("\nscope");
   rows = await search({ query: "pineapple" }, staff);
@@ -166,6 +169,37 @@ async function main() {
   const sheet = cells.join(" | ");
   check("the spreadsheet says which filters produced it", /Payment: Card/.test(sheet) && /Search: "pineapple"/.test(sheet),
     sheet.slice(0, 300));
+
+  const splitRes = response();
+  await sales.SearchSales({ query: { payment: "split" }, user: admin }, splitRes);
+  check("split list exposes cash, card and credit amounts after change", JSON.stringify(splitRes.result.body.sales[0].paymentBreakdown) === JSON.stringify([
+    { method: "cash", amount: 20 }, { method: "creditcard", amount: 15 }, { method: "credit", amount: 10 }
+  ]));
+  const splitReport = await download({ payment: "split" });
+  check("split report shows each tender and separate totals", /Cash: 20.00.*Card: 15.00.*Credit: 10.00/.test(splitReport.text)
+    && /Cash Total,20.00/.test(splitReport.text) && /Card Total,15.00/.test(splitReport.text) && /Credit Total,10.00/.test(splitReport.text));
+
+  const summaryAmount = (text, label) => {
+    const match = text.match(new RegExp(`${label},(-?\\d+\\.\\d{2})`));
+    return match ? Number(match[1]) : NaN;
+  };
+  const allReport = await download({});
+  const cashReport = await download({ payment: "cash" });
+  const cardReport = await download({ payment: "card" });
+  const creditReport = await download({ payment: "credit" });
+  check("all report tender totals reconcile exactly to net sales", Math.abs(
+    summaryAmount(allReport.text, "Cash Total")
+      + summaryAmount(allReport.text, "Card Total")
+      + summaryAmount(allReport.text, "Credit Total")
+      + summaryAmount(allReport.text, "Wallet Total")
+      - summaryAmount(allReport.text, "Net Sales incl. Tax")
+  ) < 0.001, allReport.text.slice(-500));
+  check("cash report net sales is exactly its cash total, including split cash", summaryAmount(cashReport.text, "Net Sales incl. Tax") === 110
+    && summaryAmount(cashReport.text, "Cash Total") === 110, cashReport.text.slice(-400));
+  check("card report net sales is exactly its card total, including split card", summaryAmount(cardReport.text, "Net Sales incl. Tax") === 105
+    && summaryAmount(cardReport.text, "Card Total") === 105, cardReport.text.slice(-400));
+  check("credit report net sales is exactly its credit total, including split credit", summaryAmount(creditReport.text, "Net Sales incl. Tax") === 10
+    && summaryAmount(creditReport.text, "Credit Total") === 10, creditReport.text.slice(-400));
 
   const failed = checks.filter((c) => !c.ok);
   console.log(failed.length ? `\nFAIL: ${failed.length} of ${checks.length}` : `\nPASS: all ${checks.length} sales filter checks`);

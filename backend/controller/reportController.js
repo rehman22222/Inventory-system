@@ -27,6 +27,7 @@ const { startOfDay, endOfDay, formatInZone } = require("../libs/time");
 const { salesStatement } = require("../libs/salesStatement");
 const { dealProductsByReceipt, saleLineHasDeal } = require("../libs/dealLineCoverage");
 const { salesFilter } = require("../libs/salesFilters");
+const { withPayments } = require("../libs/salePayments");
 
 // Every timestamp on a report is rendered in the shop's timezone, and every
 // date-range filter is interpreted there — so a report reads correctly whether
@@ -108,9 +109,36 @@ async function buildSales(req, options = {}) {
   else if (options.source === "pos") filter.source = { $ne: "online" };
   if (options.creditOnly) filter.paymentMethod = "credit";
 
-  const sales = await Sale.find({ $and: [filter, picked] })
+  let sales = await withPayments(await Sale.find({ $and: [filter, picked] })
     .populate("products.product", "name costPrice")
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 }));
+
+  // A Cash/Card/Credit report includes split receipts, but attributes only the
+  // selected tender's share to revenue, tax, discount, cost and profit. Without
+  // this, the Card report would count the cash half of every split receipt too.
+  const selectedMethod = {
+    cash: "cash",
+    card: "creditcard",
+    credit: "credit",
+    wallet: "wallet",
+  }[String(req.query.payment || "").toLowerCase()];
+  if (selectedMethod) {
+    sales = sales.map((sale) => {
+      const selectedAmount = sale.paymentBreakdown
+        .filter((part) => part.method === selectedMethod)
+        .reduce((sum, part) => sum + Number(part.amount || 0), 0);
+      const charged = Number(sale.totalAmount || 0);
+      const factor = charged ? selectedAmount / charged : 0;
+      return {
+        ...sale,
+        products: { ...sale.products, quantity: Number(sale.products?.quantity || 0) * factor },
+        totalAmount: selectedAmount,
+        discount: Number(sale.discount || 0) * factor,
+        tax: Number(sale.tax || 0) * factor,
+        paymentBreakdown: [{ method: selectedMethod, amount: selectedAmount }],
+      };
+    });
+  }
 
   /* Which of these baskets had an offer on them.
    *
@@ -216,7 +244,7 @@ async function buildSales(req, options = {}) {
       money(lineNet),
       money(lineProfit),
       money(s.totalAmount),
-      paymentLabel(s.paymentMethod),
+      s.paymentBreakdown.map((p) => `${paymentLabel(p.method)}: ${money(p.amount)}`).join(" + "),
       s.status,
       channel,
     ];
@@ -247,6 +275,18 @@ async function buildSales(req, options = {}) {
     ["Gross Profit", st.haveCost ? st.grossProfit : "N/A — no cost prices set"],
   ];
 
+  const tenderTotals = {};
+  for (const sale of sales) {
+    for (const payment of sale.paymentBreakdown) {
+      tenderTotals[payment.method] = (tenderTotals[payment.method] || 0) + Math.round(payment.amount * 100);
+    }
+  }
+  for (const method of ["cash", "creditcard", "credit", "wallet", "refund", "split"]) {
+    if (tenderTotals[method] || ["cash", "creditcard", "credit"].includes(method)) {
+      summary.push([`${paymentLabel(method)} Total`, money((tenderTotals[method] || 0) / 100)]);
+    }
+  }
+
   if (options.combined) {
     summary.unshift(
       ["POS / Counter Receipts", byChannel.counter.receipts.size],
@@ -273,6 +313,7 @@ async function buildSales(req, options = {}) {
     rows,
     rowKinds,
     summary,
+    includeCsvSummary: true,
   };
 }
 
@@ -655,6 +696,7 @@ module.exports.downloadReport = async (req, res) => {
       // report leaves it undefined and prints as it always did.
       rowKinds: report.rowKinds,
       summary: report.summary,
+      includeCsvSummary: report.includeCsvSummary,
       shop: shop || {},
       currency: shop?.currency || "EUR",
       timezone,

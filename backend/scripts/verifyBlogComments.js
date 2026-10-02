@@ -20,7 +20,9 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
 
-const tempName = `e360_blog_comments_verify_${Date.now()}`;
+// Atlas caps database names at 38 bytes. Keep the timestamp uniqueness without
+// making the verification database too long to create.
+const tempName = `e360_bc_${Date.now()}`;
 
 const withDatabase = (uri, database) => {
   const queryAt = uri.indexOf("?");

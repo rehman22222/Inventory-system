@@ -10,12 +10,13 @@
  *   ?payment=  cash | card | wallet | split | credit   (absent = every tender)
  *   ?from= / ?to=   YYYY-MM-DD, inclusive, in the shop's own timezone
  *
- * "card" is the card terminal (stored as "creditcard"). A split receipt — part
- * cash, part card — is its own option rather than being counted under both,
- * because each of its rows records one total, not how it was divided.
+ * "card" is the card terminal (stored as "creditcard"). Split remains its
+ * own filter; its component amounts are derived from the receipt for both
+ * the sales list and downloads by salePayments.
  */
 
 const ProductModel = require("../models/Productmodel");
+const Receipt = require("../models/Receiptmodel");
 const { startOfDay, endOfDay } = require("./time");
 
 const REGEX_SPECIALS = /[.*+?^${}()|[\]\\]/g;
@@ -24,7 +25,7 @@ const PAYMENT_FILTERS = {
   cash: { methods: ["cash"], label: "Cash" },
   card: { methods: ["creditcard"], label: "Card" },
   wallet: { methods: ["wallet"], label: "Wallet (Apple / Google Pay)" },
-  split: { methods: ["split"], label: "Split (cash + card)" },
+  split: { methods: ["split"], label: "Split payments" },
   credit: { methods: ["credit"], label: "Store credit" },
 };
 
@@ -43,7 +44,18 @@ async function salesFilter(query = {}, tz = "Europe/Dublin") {
 
   const payment = PAYMENT_FILTERS[String(query.payment || "").toLowerCase()];
   if (payment) {
-    filter.paymentMethod = { $in: payment.methods };
+    const clauses = [{ paymentMethod: { $in: payment.methods } }];
+    // A split receipt belongs to every tender actually used on it. This keeps
+    // Cash + Card equal to the Cash and Card views added together, while the
+    // dedicated Split filter still returns split receipts only.
+    if (["cash", "card", "credit", "wallet"].includes(String(query.payment).toLowerCase())) {
+      const splitReceiptNos = await Receipt.distinct("receiptNo", {
+        paymentMethod: "split",
+        "payments.method": { $in: payment.methods },
+      });
+      if (splitReceiptNos.length) clauses.push({ paymentMethod: "split", receiptNo: { $in: splitReceiptNos } });
+    }
+    filter.$and = [{ $or: clauses }];
     labels.push(`Payment: ${payment.label}`);
   }
 
@@ -62,11 +74,13 @@ async function salesFilter(query = {}, tz = "Europe/Dublin") {
     // The name lives on the Product, so the matching products are found first
     // and the sales matched on their ids.
     const named = await ProductModel.find({ name: like }).select("_id").lean();
-    filter.$or = [
+    const textClause = { $or: [
       { receiptNo: like },
       { customerName: like },
       ...(named.length ? [{ "products.product": { $in: named.map((row) => row._id) } }] : []),
-    ];
+    ] };
+    if (filter.$and) filter.$and.push(textClause);
+    else Object.assign(filter, textClause);
     labels.push(`Search: "${text}"`);
   }
 

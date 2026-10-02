@@ -5,6 +5,7 @@ const logActivity = require("../libs/logger");
 const { dealProductsByReceipt, saleLineHasDeal } = require("../libs/dealLineCoverage");
 const { salesFilter } = require("../libs/salesFilters");
 const Store = require("../models/Storemodel");
+const { withPayments } = require("../libs/salePayments");
 
 const money = (value) => Math.round(Number(value || 0) * 100) / 100;
 
@@ -136,7 +137,7 @@ module.exports.getAllSales = async (req, res) => {
       .sort({ createdAt: 1 })
       .lean();
 
-    res.status(200).json({ success: true, sales: withKind(sales, await dealCoverage()) });
+    res.status(200).json({ success: true, sales: withKind(await withPayments(sales), await dealCoverage()) });
   } catch (error) {
     res.status(500).json({ success: false, message: "Error fetching sales", error });
   }
@@ -241,7 +242,7 @@ module.exports.SearchSales = async (req, res) => {
       .sort({ createdAt: 1 })
       .lean();
 
-    res.status(200).json({ success: true, sales: withKind(sales, await dealCoverage()) });
+    res.status(200).json({ success: true, sales: withKind(await withPayments(sales), await dealCoverage()) });
   } catch (error) {
     res.status(500).json({ success: false, message: "Error in searching sales", error: error.message });
   }

@@ -90,6 +90,10 @@ function Salespage() {
    * the totals above it and the reports — what is downloaded is what is on
    * screen. The narrowing happens on the server (libs/salesFilters). */
   const [payment, setPaymentFilter] = useState("");
+  // Report tender is explicit and independent of the on-screen list. This lets
+  // an admin download Cash, Card and All for the same date range without
+  // changing the ledger underneath between every file.
+  const [reportPayment, setReportPayment] = useState("");
   const search = query.trim();
   const filtering = Boolean(search || payment || fromDate || toDate);
   const filters = { query: search, payment, from: fromDate, to: toDate };
@@ -124,7 +128,7 @@ function Salespage() {
     from: fromDate || undefined,
     to: toDate || undefined,
     q: search || undefined,
-    payment: payment || undefined,
+    payment: reportPayment || undefined,
   };
 
 
@@ -239,13 +243,16 @@ function Salespage() {
       const amount = Number(sale?.totalAmount) || 0;
       sum.count += 1;
       sum.total += amount;
-      if (sale?.paymentMethod === "cash") sum.cash += amount;
-      else if (sale?.paymentMethod === "creditcard") sum.card += amount;
-      else sum.other += amount;
+      for (const part of sale.paymentBreakdown || [{ method: sale.paymentMethod, amount }]) {
+        const key = { cash: "cash", creditcard: "card", credit: "credit" }[part.method] || "other";
+        sum[key] += Number(part.amount) || 0;
+      }
       return sum;
     },
-    { count: 0, total: 0, cash: 0, card: 0, other: 0 },
+    { count: 0, total: 0, cash: 0, card: 0, credit: 0, other: 0 },
   );
+  const selectedTenderKey = { cash: "cash", card: "card", credit: "credit" }[payment];
+  const displayedTotal = selectedTenderKey ? totals[selectedTenderKey] : totals.total;
   const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const [page, setPage] = useState(1);
 
@@ -329,7 +336,7 @@ function Salespage() {
                 onChange={(e) => setPaymentFilter(e.target.value)}
                 className="h-10 rounded-lg border-2 border-base-300 bg-base-100 px-3 text-sm text-base-content"
               >
-                <option value="">{t("sales.filters.allPayments", "Cash + card (all)")}</option>
+                <option value="">{t("sales.filters.allPayments", "All payments")}</option>
                 <option value="cash">{t("common.payments.cash")}</option>
                 <option value="card">{t("common.payments.creditcard")}</option>
                 <option value="split">{t("common.payments.split")}</option>
@@ -367,13 +374,14 @@ function Salespage() {
           </div>
 
           {/* What the filtered rows came to, by tender. */}
-          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-6">
             {[
               [t("sales.filters.count", "Sales"), String(totals.count)],
-              [t("sales.filters.total", "Total"), currency(totals.total)],
+              [t("sales.filters.total", "Total"), currency(displayedTotal)],
               [t("common.payments.cash"), currency(totals.cash)],
               [t("common.payments.creditcard"), currency(totals.card)],
-              [t("sales.filters.other", "Split / credit"), currency(totals.other)],
+              [t("common.payments.credit"), currency(totals.credit)],
+              [t("sales.paymentOther", "Other"), currency(totals.other)],
             ].map(([label, value]) => (
               <div key={label} className="rounded-lg bg-base-200 px-3 py-2">
                 <div className="text-xs text-base-content/60">{label}</div>
@@ -393,13 +401,23 @@ function Salespage() {
               <p className="mt-1 text-sm text-base-content/60">
                 {t("sales.reportSub")}
               </p>
-              {filtering && (
-                <p className="mt-1 text-xs font-medium text-blue-800">
-                  {t("sales.filters.reportNote", "Downloads include only the filtered sales shown below.")}
-                </p>
-              )}
+              <p className="mt-1 text-xs font-medium text-blue-800">
+                {t("sales.filters.reportNote", "Reports use the date/search above and the report payment selected here.")}
+              </p>
             </div>
              <div className="flex flex-wrap items-end gap-3">
+              <label className="flex min-w-36 flex-col gap-1 text-xs font-medium text-base-content/60">
+                {t("sales.reportPayment", "Report payment")}
+                <select
+                  value={reportPayment}
+                  onChange={(event) => setReportPayment(event.target.value)}
+                  className="h-10 rounded-lg border-2 border-base-300 bg-base-100 px-3 text-sm text-base-content"
+                >
+                  <option value="">{t("sales.filters.allPayments", "All payments")}</option>
+                  <option value="cash">{t("common.payments.cash")}</option>
+                  <option value="card">{t("common.payments.creditcard")}</option>
+                </select>
+              </label>
               <ReportButton
                 reportKey="pos-sales"
                 label="POS Report"
@@ -418,7 +436,7 @@ function Salespage() {
               <ReportButton
                 reportKey="credit-sales"
                 label="Credit Report"
-                params={reportParams}
+                params={{ ...reportParams, payment: "credit" }}
               />
             </div>
           </div>
@@ -727,7 +745,11 @@ function Salespage() {
                         {sales?.status ? t(`common.statuses.${sales.status}`, sales.status) : ""}
                       </td>
                       <td className="px-3 py-2 border">< FormattedTime  timestamp={sales?.createdAt}/></td>
-                      <td className="px-3 py-2 border">{sales?.paymentMethod ? t(`common.payments.${sales.paymentMethod}`, sales.paymentMethod) : ""}</td>
+                      <td className="px-3 py-2 border">{sales.paymentBreakdown?.length ? sales.paymentBreakdown.map((part) => (
+                        <div key={part.method} className="whitespace-nowrap text-sm">
+                          {t(`common.payments.${part.method}`, part.method)}: <span className="font-medium tabular-nums">{currency(part.amount)}</span>
+                        </div>
+                      )) : (sales?.paymentMethod ? t(`common.payments.${sales.paymentMethod}`, sales.paymentMethod) : "")}</td>
 
                       <td className="px-3 py-2 border">
                         {sales?.paymentStatus ? t(`common.statuses.${sales.paymentStatus}`, sales.paymentStatus) : ""}
