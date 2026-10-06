@@ -11,6 +11,7 @@ import type {
 } from "./catalog";
 import { cldAuto, cldProductImage } from "./img";
 import { SESSION_COOKIE_NAME } from "./account-api";
+import { activeDealItems, dealRouteKey } from "./deal-url";
 
 const defaultStorefrontSettings: StorefrontSettings = {
   social: { instagram: "", facebook: "", twitter: "", tiktok: "" },
@@ -819,14 +820,11 @@ export const storefrontForSitemap = async () => {
     get<{ posts: BlogPostSummary[] }>("/blog", { posts: [] }),
   ]);
 
-  // A deal page exists only while the shop advertises that active deal on an
-  // enabled event card. The backend has already removed inactive/offline deals
-  // from these settings, so this list follows the same rule as /deal/$id.
-  const dealIds = settings.events?.enabled
-    ? (settings.events.items || [])
-        .filter((item) => item?.enabled && item.kind === "deal" && item.deal?.id)
-        .map((item) => item.deal!.id)
-    : [];
+  // Match the deal route itself: an individually enabled card with a resolved
+  // active deal has a real page. Use its readable canonical key in the sitemap
+  // instead of exposing the database id.
+  const eventItems = settings.events?.items || [];
+  const dealSlugs = activeDealItems(eventItems).map((item) => dealRouteKey(item, eventItems));
 
-  return { categories, products, posts: blog.posts || [], dealIds };
+  return { categories, products, posts: blog.posts || [], dealSlugs };
 };

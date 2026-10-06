@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { canonicalLink, ogUrlMeta } from "@/lib/seo";
 import { useMemo } from "react";
 import { Header } from "@/components/Header";
@@ -8,6 +8,7 @@ import { useCatalog } from "@/lib/catalog-context";
 import { formatPrice } from "@/lib/format";
 import { getStorefront } from "@/lib/catalog-api";
 import { StorefrontNotFound } from "@/components/StorefrontNotFound";
+import { dealRouteKey, findDealRouteItem } from "@/lib/deal-url";
 
 /* Everything one offer covers, on one page.
  *
@@ -46,14 +47,22 @@ export const Route = createFileRoute("/deal/$id")({
    * component as well gave every deal page two of them. */
   loader: async ({ params }) => {
     const { settings } = await getStorefront();
-    const card = (settings.events?.items || []).find(
-      (item) => item?.enabled && item.kind === "deal" && item.deal?.id === params.id,
-    );
-    if (!card?.deal) return { heading: "", terms: "", count: 0 };
+    const items = settings.events?.items || [];
+    const card = findDealRouteItem(items, params.id);
+    if (!card?.deal) return { heading: "", terms: "", count: 0, routeKey: "" };
+    const routeKey = dealRouteKey(card, items);
+    if (params.id !== routeKey) {
+      throw redirect({
+        to: "/deal/$id",
+        params: { id: routeKey },
+        statusCode: 301,
+      });
+    }
     return {
       heading: card.title?.trim() || card.deal.name,
       terms: dealTerms(card.deal),
       count: (card.deal.productIds || []).length,
+      routeKey,
     };
   },
   head: ({ params, loaderData }) => {
@@ -68,7 +77,7 @@ export const Route = createFileRoute("/deal/$id")({
       };
     }
     return {
-      links: [canonicalLink(`/deal/${params.id}`)],
+      links: [canonicalLink(`/deal/${loaderData?.routeKey || params.id}`)],
       meta: [
         { title: `${heading} — Cliffs of Puff` },
         {
@@ -83,7 +92,7 @@ export const Route = createFileRoute("/deal/$id")({
           ].join(" "),
         },
         { property: "og:title", content: `${heading} — Cliffs of Puff` },
-        ogUrlMeta(`/deal/${params.id}`),
+        ogUrlMeta(`/deal/${loaderData?.routeKey || params.id}`),
       ],
     };
   },
@@ -95,9 +104,7 @@ function DealPage() {
   const { products, settings } = useCatalog();
 
   const offer = useMemo(() => {
-    const card = (settings.events?.items || []).find(
-      (item) => item?.enabled && item.kind === "deal" && item.deal?.id === id,
-    );
+    const card = findDealRouteItem(settings.events?.items || [], id);
     if (!card?.deal) return null;
 
     const covered = (card.deal.productIds || [])

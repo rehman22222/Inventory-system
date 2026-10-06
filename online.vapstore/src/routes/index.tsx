@@ -19,6 +19,7 @@ import { useCatalog } from "@/lib/catalog-context";
 import { HeroCarousel } from "@/components/HeroCarousel";
 import { formatPrice, truncateProductName } from "@/lib/format";
 import { cldHeroDesktopImage, cldHeroMobileImage, cldProductCardImage } from "@/lib/img";
+import { dealRouteKey } from "@/lib/deal-url";
 
 function EventsHeading({
   heading,
@@ -309,7 +310,10 @@ function eventDeckItems(
              complete the offer from. Sending them to whichever product came
              first left them to find the rest themselves, with nothing on
              screen saying what counted. */
-          href: { to: "/deal/$id" as const, params: { id: deal.id } },
+          href: {
+            to: "/deal/$id" as const,
+            params: { id: dealRouteKey(item, eventItems) },
+          },
         };
       }
 

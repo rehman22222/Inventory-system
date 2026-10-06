@@ -21,12 +21,12 @@ export const Route = createFileRoute("/sitemap.xml")({
       GET: async () => {
         // Built from what is actually listed, so the sitemap follows the shop
         // rather than a hardcoded catalogue.
-        const { categories, products, posts, dealIds } = await storefrontForSitemap();
+        const { categories, products, posts, dealSlugs } = await storefrontForSitemap();
         const paths = [
           ...STATIC_INDEXABLE_PATHS.map((path) => ({ path })),
           ...categories.map((category) => ({ path: `/category/${category.slug}` })),
           ...products.map((product) => ({ path: `/product/${product.id}` })),
-          ...dealIds.map((id) => ({ path: `/deal/${id}` })),
+          ...dealSlugs.map((slug) => ({ path: `/deal/${slug}` })),
         ];
 
         // An article that asks not to be indexed, or that names another URL as
