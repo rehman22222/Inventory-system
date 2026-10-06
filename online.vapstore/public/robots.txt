@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
 
+# Canonical sitemap for Google, Bing and other standards-compliant crawlers.
 Sitemap: https://cliffsofpuff.com/sitemap.xml

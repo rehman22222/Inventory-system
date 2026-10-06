@@ -812,10 +812,21 @@ export const submitReview = createServerFn({ method: "POST" })
 
 /** Used by the sitemap server route, which already runs on the server. */
 export const storefrontForSitemap = async () => {
-  const [categories, products, blog] = await Promise.all([
+  const [categories, products, settings, blog] = await Promise.all([
     loadCategories(),
     loadProducts(),
+    loadSettings(),
     get<{ posts: BlogPostSummary[] }>("/blog", { posts: [] }),
   ]);
-  return { categories, products, posts: blog.posts || [] };
+
+  // A deal page exists only while the shop advertises that active deal on an
+  // enabled event card. The backend has already removed inactive/offline deals
+  // from these settings, so this list follows the same rule as /deal/$id.
+  const dealIds = settings.events?.enabled
+    ? (settings.events.items || [])
+        .filter((item) => item?.enabled && item.kind === "deal" && item.deal?.id)
+        .map((item) => item.deal!.id)
+    : [];
+
+  return { categories, products, posts: blog.posts || [], dealIds };
 };
