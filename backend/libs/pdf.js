@@ -279,10 +279,18 @@ const buildPdfBuffer = ({
     const range = doc.bufferedPageRange();
     for (let i = 0; i < range.count; i += 1) {
       doc.switchToPage(range.start + i);
+      const originalBottomMargin = doc.page.margins.bottom;
       // Keep footer text inside PDFKit's content area. Drawing below maxY()
       // makes PDFKit append a fresh page while finishing each buffered page.
       // The row pagination above reserves 14pt, which leaves enough room here.
-      const footY = doc.page.height - doc.page.margins.bottom - 9;
+      const footY = doc.page.height - originalBottomMargin - 9;
+
+      // PDFKit's text renderer can automatically continue onto a new page when
+      // a fixed-position footer touches its normal flow boundary. Footer text
+      // is already inside the reserved area, so temporarily disable that page
+      // break guard while drawing it. Restore the page margin immediately so
+      // this cannot affect any report content or calculation.
+      doc.page.margins.bottom = 0;
 
       doc
         .moveTo(left, footY - 4)
@@ -298,6 +306,8 @@ const buildPdfBuffer = ({
         align: "right",
         lineBreak: false,
       });
+
+      doc.page.margins.bottom = originalBottomMargin;
     }
 
     doc.end();

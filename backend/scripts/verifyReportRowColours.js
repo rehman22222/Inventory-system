@@ -150,6 +150,12 @@ async function pdf() {
 
   check("a PDF was produced", buffer.length > 1000, `${buffer.length} bytes`);
   check("it is a PDF", buffer.toString("latin1").startsWith("%PDF"));
+  const pageCount = (buffer.toString("latin1").match(/\/Type\s*\/Page\b/g) || []).length;
+  check(
+    "numbering the report does not append a footer-only page",
+    pageCount === 1,
+    `${pageCount} PDF pages for a one-page report`,
+  );
 
   const drawn = drawnIn(buffer);
   check(
