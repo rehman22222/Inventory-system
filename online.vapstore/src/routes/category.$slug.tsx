@@ -146,7 +146,6 @@ function CategoryPage() {
               alt={category.name}
               loading="eager"
               decoding="async"
-              sizes="(min-width: 768px) 40vw, 100vw"
               className="block h-auto max-h-[68vh] max-w-full object-contain md:max-h-[520px]"
             />
           </div>

@@ -42,7 +42,9 @@ const salesStatement = (rows = []) => {
     // A refund row reverses an earlier sale: the goods came back, so its value
     // AND its cost are subtracted rather than added.
     const sign = row.source === "refund" ? -1 : 1;
-    const qty = sign * Number(row.products?.quantity || 0);
+    // Payment-filtered reports preserve the real quantity on each row and
+    // carry the tender-weighted equivalent separately for monetary totals.
+    const qty = sign * Number(row.reportQuantity ?? row.products?.quantity ?? 0);
     const unitPrice = Number(row.products?.price || 0);
     // populate() puts the product on `products.product`; a plain fixture may
     // carry the cost directly.

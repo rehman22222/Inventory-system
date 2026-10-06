@@ -279,7 +279,10 @@ const buildPdfBuffer = ({
     const range = doc.bufferedPageRange();
     for (let i = 0; i < range.count; i += 1) {
       doc.switchToPage(range.start + i);
-      const footY = doc.page.height - doc.page.margins.bottom + 6;
+      // Keep footer text inside PDFKit's content area. Drawing below maxY()
+      // makes PDFKit append a fresh page while finishing each buffered page.
+      // The row pagination above reserves 14pt, which leaves enough room here.
+      const footY = doc.page.height - doc.page.margins.bottom - 9;
 
       doc
         .moveTo(left, footY - 4)

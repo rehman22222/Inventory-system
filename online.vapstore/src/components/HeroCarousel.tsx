@@ -138,6 +138,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
+      <h2 className="sr-only">Featured banners</h2>
       <div
         ref={trackRef}
         className="touch-pan-y overflow-hidden"
@@ -181,7 +182,6 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                     loading={slideIndex === 0 ? "eager" : "lazy"}
                     decoding="async"
                     fetchPriority={slideIndex === 0 ? "high" : "auto"}
-                    sizes="100vw"
                     className={`h-full w-full object-cover ${
                       slideIndex === index ? "hero-slow-zoom" : ""
                     }`}

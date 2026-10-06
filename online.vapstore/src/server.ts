@@ -30,10 +30,46 @@ function staticAssetCacheControl(pathname: string): string | null {
   return "public, max-age=2592000";
 }
 
+function escapeNulInHtmlStream(body: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
+  const nulEscape = new Uint8Array([0x5c, 0x75, 0x30, 0x30, 0x30, 0x30]); // \\u0000
+
+  return body.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        let nulCount = 0;
+        for (const byte of chunk) {
+          if (byte === 0) nulCount += 1;
+        }
+        if (nulCount === 0) {
+          controller.enqueue(chunk);
+          return;
+        }
+
+        // TanStack's streamed hydration payload uses NUL separators inside JS
+        // string values. Emit the equivalent JS escape so the value survives
+        // hydration without placing an invalid NUL character in HTML.
+        const escaped = new Uint8Array(chunk.length + nulCount * (nulEscape.length - 1));
+        let offset = 0;
+        for (const byte of chunk) {
+          if (byte === 0) {
+            escaped.set(nulEscape, offset);
+            offset += nulEscape.length;
+          } else {
+            escaped[offset] = byte;
+            offset += 1;
+          }
+        }
+        controller.enqueue(escaped);
+      },
+    }),
+  );
+}
+
 function secureResponse(response: Response, request?: Request): Response {
   const headers = new Headers(response.headers);
   const pathname = request ? new URL(request.url).pathname : "";
   const assetCache = staticAssetCacheControl(pathname);
+  const isHtml = (headers.get("content-type") ?? "").includes("text/html");
   headers.delete("server");
   headers.delete("x-powered-by");
   headers.set("x-content-type-options", "nosniff");
@@ -49,7 +85,10 @@ function secureResponse(response: Response, request?: Request): Response {
     headers.set("cache-control", assetCache);
   }
 
-  return new Response(response.body, {
+  if (isHtml && response.body) headers.delete("content-length");
+  const body = isHtml && response.body ? escapeNulInHtmlStream(response.body) : response.body;
+
+  return new Response(body, {
     status: response.status,
     statusText: response.statusText,
     headers,

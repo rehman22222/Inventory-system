@@ -84,13 +84,15 @@ function EventsHeading({
              to one decimal rather than carrying the exact multiplier out to
              three — a hair of precision nobody can see, on a number somebody
              will have to read. */
-          <img
-            src={headingImage}
-            alt={headingImageAlt || heading}
-            className="h-[11.7rem] w-auto max-w-full object-contain sm:h-[14.6rem] md:h-[17.5rem]"
-            loading="lazy"
-            decoding="async"
-          />
+          <h2 className="m-0 flex justify-center">
+            <img
+              src={headingImage}
+              alt={headingImageAlt || heading}
+              className="h-[11.7rem] w-auto max-w-full object-contain sm:h-[14.6rem] md:h-[17.5rem]"
+              loading="lazy"
+              decoding="async"
+            />
+          </h2>
         ) : (
           <h2
             className="max-w-4xl font-display text-4xl leading-none tracking-tight text-ink sm:text-5xl md:text-6xl"
@@ -122,7 +124,6 @@ function EventsHeading({
                       alt={item.imageAlt || item.title}
                       loading="lazy"
                       decoding="async"
-                      sizes="(min-width: 768px) 224px, 30vw"
                       className="h-full w-full object-cover p-0 transition-transform duration-500 group-hover:scale-105 sm:object-contain sm:p-2"
                     />
                   ) : (
@@ -528,7 +529,6 @@ function Home() {
                         alt={product.name}
                         loading="lazy"
                         decoding="async"
-                        sizes="(min-width: 1024px) 25vw, 50vw"
                         className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.03]"
                       />
                       {saving > 0 && (

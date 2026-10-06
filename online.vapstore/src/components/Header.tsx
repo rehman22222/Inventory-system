@@ -23,7 +23,7 @@ import { formatPrice, truncateProductName } from "@/lib/format";
 import { useCart } from "@/lib/cart";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useAccount } from "@/lib/account-context";
-import logoSmall from "@/assets/logo-cop-180.png";
+import logoSmall from "@/assets/logo-cop-180.webp";
 
 export function Header() {
   const { t } = useTranslation();
@@ -205,7 +205,6 @@ export function Header() {
           <Link to="/" className="flex items-center" aria-label="Cliffs of Puff — home">
             <img
               src={logoSmall}
-              sizes="(min-width: 1024px) 91px, (min-width: 640px) 76px, 61px"
               alt="Cliffs of Puff"
               width={180}
               height={180}

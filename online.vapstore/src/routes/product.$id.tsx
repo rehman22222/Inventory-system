@@ -376,7 +376,6 @@ function ProductPage() {
               }
               loading="eager"
               decoding="async"
-              sizes="(min-width: 1024px) 50vw, 100vw"
               className="mx-auto h-full w-full max-w-[92%] object-contain"
             />
             {onSale && (

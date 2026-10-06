@@ -29,7 +29,6 @@ export function CategoryTile({ category, index }: { category: Category; index: n
             alt={category.imageAlt || category.name}
             loading="lazy"
             decoding="async"
-            sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
             onError={() => setImgOk(false)}
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.06]"
           />

@@ -131,7 +131,9 @@ async function buildSales(req, options = {}) {
       const factor = charged ? selectedAmount / charged : 0;
       return {
         ...sale,
-        products: { ...sale.products, quantity: Number(sale.products?.quantity || 0) * factor },
+        // Keep the physical quantity intact for the report row. The selected
+        // tender's financial share is tracked separately for statement totals.
+        reportQuantity: Number(sale.products?.quantity || 0) * factor,
         totalAmount: selectedAmount,
         discount: Number(sale.discount || 0) * factor,
         tax: Number(sale.tax || 0) * factor,
@@ -184,6 +186,7 @@ async function buildSales(req, options = {}) {
     const sign = s.source === "refund" ? -1 : 1;
 
     const qty = sign * Number(s.products?.quantity || 0);
+    const reportQty = sign * Number(s.reportQuantity ?? s.products?.quantity ?? 0);
     const unitPrice = Number(s.products?.price || 0);
     const unitCost = Number(s.products?.product?.costPrice || 0);
     // Three different figures, and only one of them is profit.
@@ -198,8 +201,8 @@ async function buildSales(req, options = {}) {
     // came back as profit it never made; and tax collected for the state was
     // counted as revenue. On a day of 20%-off promotions those columns did not
     // reconcile with anything.
-    const lineList = unitPrice * qty;
-    const lineCost = unitCost * qty;
+    const lineList = unitPrice * reportQty;
+    const lineCost = unitCost * reportQty;
     const lineTax = Number(s.tax || 0); // already signed with the row
     const lineNet = Number(s.totalAmount || 0) - lineTax;
     const lineProfit = lineNet - lineCost;
